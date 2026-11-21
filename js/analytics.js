@@ -32,7 +32,7 @@ import { renderRecoveryPerformance } from './analytics/views/view-recovery-perfo
 import { renderRecoveryMetricDetail } from './analytics/views/view-recovery-metric.js';
 import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progress-landing.js';
 import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
-import { weekStartOf } from './analytics/weekly-aggregate.js';
+import { weekStartOf, localDayKey } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
@@ -343,11 +343,10 @@ export function renderAnalytics() {
 
   document.querySelectorAll('.analytics-section').forEach(sec => sec.classList.remove('active'));
 
-  // The hub is an index screen: hide the week navigator (it has no meaning there).
-  // A leaf remembers where it was opened: Home deep-links return Home, while
-  // leaves opened from the Insights hub return to that hub.
+  // The hub is week-steppable: its hero and domain cards all describe one
+  // calendar week, so the navigator is real there rather than decorative.
   const weekNav = document.getElementById('analyticsWeekNav');
-  if (weekNav) weekNav.style.display = ['strength', 'strength_pr', 'weekly-volume', 'strength-volume', 'strength-volume-trends', 'running', 'muscle'].includes(context) ? '' : 'none';
+  if (weekNav) weekNav.style.display = ['hub', 'strength', 'strength_pr', 'weekly-volume', 'strength-volume', 'strength-volume-trends', 'running', 'muscle'].includes(context) ? '' : 'none';
   const backBtn = document.querySelector('#view-analytics .subview-back-btn');
   if (backBtn) {
     const destination = analyticsBackDestination(
@@ -389,6 +388,10 @@ export function renderAnalytics() {
         days,
         program,
         readiness: dashboard.ready,
+        // One calendar week, selected by the shared navigator. Never
+        // state.currentWeek.
+        today: localDayKey(new Date()),
+        weekStart: getSelectedWeekStart(),
         // Series included: the hub's Running card draws a trend spark from the
         // metric engine's own weekly points rather than computing a second one.
         runningMetric: (id) => buildRunningMetricDetail(st, id, { range: '12w' }),

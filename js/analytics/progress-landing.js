@@ -34,6 +34,23 @@ import { weightUnitOf } from './utils.js';
 import { moduleEnabled } from '../modules.js';
 import { classifyPlannedSession } from '../workout/completion-policy.js';
 
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * A human Monday–Sunday range for week labels and the strip tooltips. Date-only
+ * keys are parsed as calendar components, so a timezone can never move the day,
+ * and the year is only repeated when the range crosses one.
+ * @param {string} startISO
+ * @param {string} endISO
+ */
+export function formatWeekRange(startISO, endISO) {
+  const [sy, sm, sd] = startISO.split('-').map(Number);
+  const [ey, em, ed] = endISO.split('-').map(Number);
+  if (sy !== ey) return `${sd} ${MONTH_LABELS[sm - 1]} ${sy} – ${ed} ${MONTH_LABELS[em - 1]} ${ey}`;
+  if (sm !== em) return `${sd} ${MONTH_LABELS[sm - 1]} – ${ed} ${MONTH_LABELS[em - 1]}`;
+  return `${sd}–${ed} ${MONTH_LABELS[sm - 1]}`;
+}
+
 /** Days of a Monday-based week that have already elapsed, 1..7. */
 function elapsedDayCount(weekStartISO, todayISO) {
   for (let i = 0; i < 7; i++) {
@@ -222,7 +239,7 @@ function strengthDomain(state, { weekStart, unit }) {
       id: 'strength',
       title: 'Strength',
       context: 'strength',
-      headline: { value: '—', unit: null },
+      headline: { value: 'No sets', unit: null },
       interpretation: 'No strength work logged this week. Complete working sets to track estimated 1RM.',
       empty: true,
     });
@@ -288,7 +305,7 @@ function runningDomain(runningMetric) {
       id: 'running',
       title: 'Running',
       context: 'running',
-      headline: { value: '—', unit: null },
+      headline: { value: 'No runs', unit: null },
       // The metric engine's empty copy is written for a detail screen and can
       // read as jargon here ("0 contributing activities in the current scope").
       // The hub speaks training language, so it states the same fact plainly.
@@ -328,7 +345,7 @@ function recoveryDomain(readiness) {
       id: 'recovery',
       title: 'Recovery & Load',
       context: 'recovery',
-      headline: { value: '—', unit: null },
+      headline: { value: 'No signal', unit: null },
       interpretation: 'Not enough recent training or wellness data to estimate readiness.',
       empty: true,
     });
@@ -464,11 +481,27 @@ export function buildProgressLanding(state, opts = {}) {
     : null;
   const prCount = calendarStrengthSummary(state, { weekStart, today: todayISO }).prCount;
 
+  // The hub is week-steppable. Name the selection in training language — the
+  // old header printed the raw ISO range, which read like a database key.
+  const currentWeekStart = weekStartOf(todayISO);
+  const weeksAgo = Math.round(
+    (Date.parse(`${weekStart}T12:00:00Z`) - Date.parse(`${currentWeekStart}T12:00:00Z`)) / 604800000,
+  );
+  const periodLabel = weeksAgo === 0
+    ? 'This week'
+    : weeksAgo === -1
+      ? 'Previous week'
+      : weeksAgo > 0
+        ? 'Upcoming week'
+        : `${Math.abs(weeksAgo)} weeks ago`;
+
   return {
     weekStart,
     weekEnd,
+    weekRangeLabel: formatWeekRange(weekStart, weekEnd),
+    weeksAgo,
     isCurrentWeek,
-    periodLabel: isCurrentWeek ? 'This week so far' : `Week of ${weekStart}`,
+    periodLabel,
     domains,
     secondary: secondaryDestinations(state),
     units: {

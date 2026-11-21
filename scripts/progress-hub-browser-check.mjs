@@ -122,6 +122,7 @@ try {
         hasWeekHero: !!section.querySelector('.ph-week'),
         weekHeroText: section.querySelector('.ph-week')?.textContent?.trim() || '',
         weekBars: section.querySelectorAll('.ph-weeks__bar').length,
+        weekScale: section.querySelector('.ph-weeks__scale')?.textContent?.trim() || '',
         // The week label must name the real Monday–Sunday range, not a program week.
         sub: section.querySelector('.hub-sub')?.textContent?.trim() || '',
         overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
@@ -146,9 +147,36 @@ try {
     if (!seen.hasWeekHero) failures.push(`${width}px: missing the this-week overview`);
     if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: week overview does not name sessions`);
     if (seen.weekBars !== 12) failures.push(`${width}px: recent-weeks strip should have 12 bars (got ${seen.weekBars})`);
-    if (!/\d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}/.test(seen.sub)) failures.push(`${width}px: hub subtitle does not name a real calendar week range`);
+    if (!/This week$/.test(seen.weekScale)) failures.push(`${width}px: strip does not name the selected week (${seen.weekScale})`);
+    if (!seen.sub) failures.push(`${width}px: hub has no subtitle`);
+    if (/\d{4}-\d{2}-\d{2}/.test(seen.sub)) failures.push(`${width}px: hub subtitle leaks an ISO date (${seen.sub})`);
+    const navDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
+    if (!/^\d{1,2} [A-Z][a-z]{2} – \d{1,2} [A-Z][a-z]{2}$/.test(navDates)) {
+      failures.push(`${width}px: week navigator does not name a human date range (${navDates})`);
+    }
     if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow`);
     if (seen.smallControls) failures.push(`${width}px: ${seen.smallControls} controls below the 44px target`);
+
+    // The hub is week-steppable: the shared navigator must be visible and the
+    // header + cards must follow it. This is the one period control.
+    const navVisible = await page.$eval('#analyticsWeekNav', (el) => getComputedStyle(el).display !== 'none');
+    if (!navVisible) failures.push(`${width}px: hub does not expose the calendar-week navigator`);
+    await page.click('#weekNavPrev');
+    await page.waitForTimeout(350);
+    const previous = await page.$eval('#analytics-hub', (el) => ({
+      navLabel: document.getElementById('weekNavLabel')?.textContent?.trim() || '',
+      heroEyebrow: el.querySelector('.ph-week__eyebrow')?.textContent?.trim() || '',
+      weekScale: el.querySelector('.ph-weeks__scale')?.textContent?.trim() || '',
+      hasHero: !!el.querySelector('.ph-week'),
+    }));
+    if (previous.navLabel !== 'Previous week') failures.push(`${width}px: stepping back did not label the previous week (${previous.navLabel})`);
+    if (previous.heroEyebrow !== 'Previous week') failures.push(`${width}px: the overview did not follow the navigator (${previous.heroEyebrow})`);
+    if (!/Previous week$/.test(previous.weekScale)) failures.push(`${width}px: the strip did not follow the navigator (${previous.weekScale})`);
+    if (!previous.hasHero) failures.push(`${width}px: previous week lost its overview`);
+    await page.click('#weekNavToday');
+    await page.waitForTimeout(350);
+    const returned = await page.$eval('#weekNavLabel', (el) => el.textContent.trim());
+    if (returned !== 'This week') failures.push(`${width}px: return-to-this-week did not restore the live week (${returned})`);
 
     // Tapping a domain must reach its detail screen.
     await page.click('.ph-card[data-context="strength"]');

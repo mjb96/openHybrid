@@ -66,7 +66,7 @@ export function initWeekNav(getState, onNavigate) {
 const _MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function _fmt(iso) {
   const [, m, d] = iso.split('-').map(Number);
-  return `${_MONTH[m - 1]} ${d}`;
+  return `${d} ${_MONTH[m - 1]}`;
 }
 
 export function updateWeekNavDisplay(getState) {

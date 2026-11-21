@@ -1474,6 +1474,26 @@ html[data-theme="light"] .hub-link__icon {
   padding: 14px;
   margin: 0 0 14px;
 }
+.ph-empty p { margin: 0 0 12px; }
+.ph-empty__cta {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(34,211,238,0.35);
+  border-radius: 10px;
+  background: rgba(34,211,238,0.10);
+  color: var(--color-cyan, #22d3ee);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.ph-weeks__scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+}
+.ph-card--empty .ph-card__value { font-size: 1.15rem; }
 
 .ph-week {
   margin: 0 0 12px;

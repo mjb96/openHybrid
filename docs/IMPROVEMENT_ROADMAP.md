@@ -635,6 +635,24 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Progress hub: calendar-week control and honest empty states.**
+  - The hub now shows the shared calendar-week navigator and rebuilds the hero,
+    all four domain cards and the 12-week strip for the selected Monday–Sunday
+    week. It still never reads `state.currentWeek`.
+  - Dates are human ("This week", "Previous week", "2 weeks ago"; "23–29 Nov"),
+    never ISO keys. The weekday navigator uses the same day-first format.
+  - The 12-week strip encodes **sessions** (its label) instead of volume, so a
+    running-only week is no longer drawn as an empty dash. It names the oldest
+    and selected week and carries a range tooltip per bar.
+  - Empty domain headlines say "No sets", "No runs" and "No signal" instead of a
+    lone em dash; a brand-new profile leads with one honest empty state and a
+    Start action rather than four dashes.
+  - Validation: 37 progress-landing tests, typecheck, smoke, precache/workflow
+    checks and the 320/390/412 px Progress hub browser contract, including
+    stepping back and returning to the live week.
+  - Next: Progress domain detail hierarchy, then the Home hierarchy (demote the
+    program week, one Start, collapse bodyweight).
+
 - **2026-11-22 — Logger overhaul, Phase A: one line per set.**
   - The strength row is now the five-column contract — SET | PREVIOUS | WEIGHT
     | VALUE | ✓. The wide `Log S1` button is gone (it overflowed its 28px track

@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildProgressLanding, plannedTrainingDays, fastingIsEnabled, secondaryDestinations,
+  buildProgressLanding, plannedTrainingDays, fastingIsEnabled, secondaryDestinations, formatWeekRange,
 } from '../js/analytics/progress-landing.js';
 
 const work = (w, r) => ({ c: true, w: String(w), r: String(r) });
@@ -267,7 +267,7 @@ test('a strength week with no logged work is empty, not zero', () => {
     'strength',
   );
   assert.equal(strength.empty, true);
-  assert.equal(strength.headline.value, '—');
+  assert.equal(strength.headline.value, 'No sets');
   assert.equal(strength.delta, null);
 });
 
@@ -289,7 +289,7 @@ test('a strength decline is reported plainly without alarm or a change instructi
 test('running is empty and self-explaining when no metric model is supplied', () => {
   const running = domainOf(buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }), 'running');
   assert.equal(running.empty, true);
-  assert.equal(running.headline.value, '—');
+  assert.equal(running.headline.value, 'No runs');
   assert.match(running.interpretation, /No runs logged/);
 });
 
@@ -352,7 +352,7 @@ test('recovery is empty rather than a confident zero when readiness has no score
     'recovery',
   );
   assert.equal(recovery.empty, true);
-  assert.equal(recovery.headline.value, '—');
+  assert.equal(recovery.headline.value, 'No signal');
 });
 
 test('one signal is described in the singular', () => {
@@ -490,13 +490,17 @@ test('fasting appears only for people who actually fast', () => {
 test('the period label describes the real calendar week being viewed', () => {
   const live = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
   assert.equal(live.isCurrentWeek, true);
-  assert.equal(live.periodLabel, 'This week so far');
+  assert.equal(live.periodLabel, 'This week');
+  assert.equal(live.weekRangeLabel, '13–19 Jul');
   assert.equal(live.weekStart, WK);
   assert.equal(live.weekEnd, '2026-07-19');
 
   const past = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-27', weekStart: WK });
   assert.equal(past.isCurrentWeek, false);
-  assert.match(past.periodLabel, /Week of 2026-07-13/);
+  assert.equal(past.periodLabel, '2 weeks ago');
+  assert.equal(past.weekRangeLabel, '13–19 Jul');
+  assert.equal(formatWeekRange('2026-11-30', '2026-12-06'), '30 Nov – 6 Dec');
+  assert.equal(formatWeekRange('2026-12-28', '2027-01-03'), '28 Dec 2026 – 3 Jan 2027');
 });
 
 // =============================================================================

@@ -13,6 +13,8 @@
 import { esc, spark } from './screen-kit.js';
 import { icon } from '../../ui/icons.js';
 import { formatDist } from '../utils.js';
+import { addDaysISO } from '../weekly-aggregate.js';
+import { formatWeekRange } from '../progress-landing.js';
 
 const DOMAIN_ICON = {
   consistency: 'calendar',
@@ -117,16 +119,21 @@ function weekHero(model) {
 
 function recentWeeksStrip(model) {
   const weeks = Array.isArray(model.recentWeeks) ? model.recentWeeks : [];
-  if (!weeks.some((week) => week.sessions > 0)) return '';
-  const max = Math.max(1, ...weeks.map((week) => week.volumeKg || 0));
-  return `<section class="ph-weeks" aria-label="Last 12 calendar weeks">
+  const total = weeks.reduce((sum, week) => sum + (week.sessions || 0), 0);
+  if (total === 0) return '';
+  // The label says "Sessions", so the bar height must encode sessions. It used
+  // to encode volume, which painted a running-only week as an empty dash even
+  // though it had training in it.
+  const max = Math.max(1, ...weeks.map((week) => week.sessions || 0));
+  return `<section class="ph-weeks" aria-label="Sessions in the last 12 calendar weeks">
     <div class="ph-weeks__head"><span>Last 12 weeks</span><span>Sessions</span></div>
     <div class="ph-weeks__bars">
       ${weeks.map((week) => {
-        const height = week.sessions > 0 ? Math.max(10, Math.round((week.volumeKg / max) * 100)) : 4;
-        return `<span class="ph-weeks__bar${week.sessions > 0 ? ' is-trained' : ''}" style="height:${height}%" title="Week of ${esc(week.weekStart)}: ${week.sessions} session${week.sessions === 1 ? '' : 's'}"></span>`;
+        const height = week.sessions > 0 ? Math.max(12, Math.round((week.sessions / max) * 100)) : 4;
+        return `<span class="ph-weeks__bar${week.sessions > 0 ? ' is-trained' : ''}" style="height:${height}%" title="${esc(formatWeekRange(week.weekStart, addDaysISO(week.weekStart, 6)))}: ${week.sessions} session${week.sessions === 1 ? '' : 's'}"></span>`;
       }).join('')}
     </div>
+    <div class="ph-weeks__scale"><span>Oldest</span><span>${esc(model.periodLabel)}</span></div>
   </section>`;
 }
 
@@ -137,14 +144,17 @@ export function renderProgressHub(container, model, hidden = []) {
   const secondary = model.secondary.filter((entry) => !hiddenSet.has(SECONDARY_CARD_ID[entry.id]));
 
   const intro = model.allEmpty
-    ? `<p class="ph-empty">Nothing is logged yet. Finish a workout or a run and this page starts explaining what changed, and why.</p>`
+    ? `<div class="ph-empty">
+        <p>Nothing is logged yet. Finish a workout or a run and this page starts explaining what changed, and why.</p>
+        <button type="button" class="ph-empty__cta" data-action="switch-tab" data-target="workout">Start a workout</button>
+      </div>`
     : '';
 
   container.innerHTML = `
     <div class="hub-head">
       <div>
         <h2 class="hub-title">Progress</h2>
-        <p class="hub-sub">${esc(model.periodLabel)} · ${esc(model.weekStart)} to ${esc(model.weekEnd)}</p>
+        <p class="hub-sub">What changed, and why.</p>
       </div>
       <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
     </div>
