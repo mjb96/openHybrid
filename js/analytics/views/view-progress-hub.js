@@ -92,22 +92,38 @@ const SECONDARY_CARD_ID = {
 
 function weekHero(model) {
   const week = model.weekSummary;
-  if (!week || !week.hasData) return '';
+  if (!week) return '';
   const unit = model.units?.weight || 'kg';
   const distUnit = model.units?.distance || 'km';
+  // The eyebrow and accessible name are the real Monday–Sunday range, the same
+  // span the navigator above prints. The relative period ("2 weeks ago") stays
+  // in the navigator: an aria-label reading "2 weeks ago overview" did not say
+  // which two weeks, and the visible eyebrow already disagreed with it.
+  const range = model.weekRangeLabel || model.periodLabel;
   const sessions = week.planned ? `${week.sessions} / ${week.planned}` : String(week.sessions);
+  const head = `<div class="ph-week__head">
+      <div>
+        <span class="ph-week__eyebrow">${esc(range)}</span>
+        <h2 class="ph-week__title">${week.hasData ? `${sessions} session${week.sessions === 1 ? '' : 's'}` : '0 sessions'}</h2>
+      </div>
+      <button type="button" class="ph-week__link" data-action="open-activities">History →</button>
+    </div>`;
+
+  // An untrained selection used to drop the whole section, so stepping back to a
+  // rest week made the page silently lose its week surface. Say it plainly.
+  if (!week.hasData) {
+    return `<section class="ph-week ph-week--empty" aria-label="${esc(`${range} overview`)}">
+      ${head}
+      <p class="ph-week__empty text-muted text-sm">No training logged ${model.isCurrentWeek ? 'this week yet' : 'in that week'}. Use the week arrows above to find a trained week.</p>
+    </section>`;
+  }
+
   const adherence = week.adherencePct == null
     ? ''
     : `<div class="ph-week__adherence"><span style="width:${week.adherencePct}%"></span></div>
        <p class="ph-week__adherence-label">${week.adherencePct}% of planned sessions</p>`;
-  return `<section class="ph-week" aria-label="${esc(`${model.periodLabel} overview`)}">
-    <div class="ph-week__head">
-      <div>
-        <span class="ph-week__eyebrow">${esc(model.weekRangeLabel || model.periodLabel)}</span>
-        <h2 class="ph-week__title">${esc(sessions)} session${week.sessions === 1 ? '' : 's'}</h2>
-      </div>
-      <button type="button" class="ph-week__link" data-action="open-activities" data-view="calendar">History →</button>
-    </div>
+  return `<section class="ph-week" aria-label="${esc(`${range} overview`)}">
+    ${head}
     <div class="ph-week__stats">
       <div><b>${week.volumeKg.toLocaleString('en-AU')} ${esc(unit)}</b><span>Volume</span></div>
       <div><b>${esc(formatDist(week.distanceKm, distUnit, 1))}</b><span>Distance</span></div>

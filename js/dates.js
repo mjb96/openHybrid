@@ -4,9 +4,10 @@
 // ==========================================
 // Two sets of helpers live here:
 //
-//   DISPLAY helpers (todayKey, dateKey, formatDayMonth) — Sydney-local calendar
-//   SCHEDULE helpers (slotDate, slotDateISO, estimateWeekStart, daysBetween,
-//     weekRangeLabel) — UTC-based so week slot maths is timezone-independent
+//   DISPLAY helpers (todayKey, dateKey, formatDayMonth, formatDayMonthShort,
+//     formatWeekRange) — calendar keys rendered for humans, never ISO in copy
+//   SCHEDULE helpers (slotDate, slotDateISO, estimateWeekStart, daysBetween) —
+//     UTC-based so week slot maths is timezone-independent
 // ==========================================
 // DISPLAY helpers default to the *device* timezone so date keys match whatever
 // calendar day the user is actually on, anywhere in the world. Previously this
@@ -24,6 +25,7 @@ export const DEFAULT_TZ = resolveDeviceTz();
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const pad2 = (n) => String(n).padStart(2, '0');
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 function validDateOnly(value) {
   if (typeof value !== 'string' || !DATE_ONLY.test(value)) return false;
@@ -133,11 +135,27 @@ export function formatDayMonth(dateStr) {
   return `${day}/${month}`;
 }
 
+/**
+ * The one "22 Nov" formatter. The Strength and Recovery metric details had each
+ * grown a private copy of this, so the same date could be worded differently on
+ * two screens that sit side by side.
+ *
+ * Calendar keys only — no Date parsing, so a timezone can never move the day.
+ * Returns '' for an invalid key (callers label it "Date unavailable").
+ * @param {string} dateISO
+ * @param {{ year?: boolean }} [options] `year: true` → "22 Nov 2026"
+ */
+export function formatDayMonthShort(dateISO, { year = false } = {}) {
+  const key = localDayKey(dateISO);
+  if (!key) return '';
+  const [y, m, d] = key.split('-').map(Number);
+  return `${d} ${MONTH_ABBR[m - 1]}${year ? ` ${y}` : ''}`;
+}
+
 // ==========================================
 // SCHEDULE HELPERS (UTC-based)
 // ==========================================
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 // Returns a Date offset from the week-start ISO string by the day-key's slot index.
 // Returns null for missing or invalid inputs.
@@ -173,15 +191,6 @@ export function daysBetween(a, b) {
   const db = new Date(b + 'T00:00:00Z');
   if (isNaN(da.getTime()) || isNaN(db.getTime())) return null;
   return Math.round((db.getTime() - da.getTime()) / 86400000);
-}
-
-// Returns a human-readable week range like 'Jun 8–14' from a UTC week-start ISO string.
-export function weekRangeLabel(weekStartISO) {
-  const start = new Date(weekStartISO);
-  const end = new Date(weekStartISO);
-  end.setUTCDate(end.getUTCDate() + 6);
-  const m = MONTH_ABBR[start.getUTCMonth()];
-  return `${m} ${start.getUTCDate()}–${end.getUTCDate()}`;
 }
 
 /**

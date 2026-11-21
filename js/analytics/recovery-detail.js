@@ -26,7 +26,7 @@
 // PURE. No DOM, no state mutation.
 // =============================================================================
 
-import { addDaysISO, localDayKey, todayKey } from '../dates.js';
+import { addDaysISO, formatDayMonthShort, localDayKey, todayKey } from '../dates.js';
 import { comparePeriodValues } from './period-comparison.js';
 
 export const RECOVERY_RANGE_OPTIONS = Object.freeze([
@@ -158,16 +158,6 @@ const mean = (rows) => (rows.length
   ? Math.round((rows.reduce((sum, row) => sum + row.value, 0) / rows.length) * 10) / 10
   : null);
 
-const MONTH_ABBR = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
-
-/** "22 Nov" for an intentional calendar key. Never an ISO string in copy. */
-function formatDayMonthLong(iso) {
-  const key = localDayKey(iso);
-  if (!key) return '';
-  const [, month, day] = key.split('-').map(Number);
-  return `${day} ${MONTH_ABBR[month - 1]}`;
-}
-
 /**
  * Build one recovery metric's detail model.
  *
@@ -228,7 +218,7 @@ export function buildRecoveryMetricDetail(state, metricId, options = {}) {
     range,
     rangeOptions: RECOVERY_RANGE_OPTIONS,
     value,
-    period: { start: periodStart, end: today, label: `Last ${days} days · through ${formatDayMonthLong(today)}` },
+    period: { start: periodStart, end: today, label: `Last ${days} days · through ${formatDayMonthShort(today) || 'Date unavailable'}` },
     comparison,
     // Oldest → newest, one point per real reading. No zero-filling: a day
     // without a reading is missing data, not a zero-hour night.

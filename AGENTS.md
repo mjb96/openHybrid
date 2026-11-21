@@ -135,9 +135,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - Progress overview: `buildProgressLanding` returns `weekSummary`, `units` and
   `recentWeeks`; `buildRecentWeekSeries` and `buildCalendarTrainingWeeks`
   (`js/analytics/training-calendar.js`) are date-strict, so imported/archived
-  sessions appear in the real week. The hub leads with a this-week hero and a
-  12-week strip before the domain cards. Review Stats' Training Calendar and
-  Consistency Log use the same calendar weeks (no `W1..Wn` program grid).
+  sessions appear in the real week. The hub leads with a hero for the SELECTED
+  calendar week (eyebrow and aria-label are the Mon–Sun range, never a relative
+  "N weeks ago") and a 12-week strip before the domain cards. An untrained
+  selected week renders an honest `0 sessions · <range>` hero rather than
+  vanishing, and a historical week is never scored against the active plan —
+  "of N planned" and the adherence bar appear only for the live week. Review
+  Stats' Training Calendar and Consistency Log use the same calendar weeks (no
+  `W1..Wn` program grid).
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
   run — not slots, so a strength+run day is two sessions. The Training Report
   (`js/brain/monthly-report.js`) uses the same rule through

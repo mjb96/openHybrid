@@ -1,8 +1,10 @@
 // =============================================================================
 // WEEK NAVIGATOR (analytics/week-nav.js)
 //
-// Selects the CALENDAR week the strength / running detail views display. This is
-// deliberately independent of the program-week counter (`state.currentWeek`):
+// Selects the CALENDAR week the Progress hub, the Review Overview and the
+// strength / running detail views display (Review's Stats tab is not
+// week-scoped, so the navigator is hidden there). This is deliberately
+// independent of the program-week counter (`state.currentWeek`):
 //   • offset 0  = the current calendar week (resolved from today's real date),
 //   • offset -1 = the previous calendar week, and so on.
 // The offset is EPHEMERAL (reset on view entry via resetWeekNav) so "This week"

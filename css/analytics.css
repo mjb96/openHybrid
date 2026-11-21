@@ -1519,6 +1519,24 @@ html[data-theme="light"] .hub-link__icon {
 .ph-week__adherence { height: 6px; margin-top: 14px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
 .ph-week__adherence span { display: block; height: 100%; border-radius: inherit; background: var(--color-green, #10b981); }
 .ph-week__adherence-label { margin: 6px 0 0; color: var(--text-muted); font-size: 0.68rem; }
+/* ---- Untrained selected week ---------------------------------------------
+   A week with nothing logged still renders the week card, so it keeps the same
+   rhythm as a trained one. It deliberately drops the indigo reward gradient
+   (there is no progress to celebrate), charts no metric bars and rewards no
+   adherence — one muted line says what is missing. The History shortcut is the
+   only action on the card, so it keeps the 44px target. */
+.ph-week--empty {
+  background: var(--surface-2, rgba(255,255,255,0.04));
+}
+.ph-week--empty .ph-week__link {
+  min-height: 44px;
+}
+.ph-week__empty {
+  margin: 10px 0 0;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
 .ph-weeks {
   margin: 0 0 14px;
   padding: 12px 14px;
@@ -1674,6 +1692,16 @@ html[data-theme="light"] .ph-empty {
 html[data-theme="light"] .ph-empty__cta {
   border-color: rgba(21,94,117,0.36);
   background: rgba(21,94,117,0.10);
+  color: #155e75;
+}
+/* The untrained week drops the reward gradient for the same flat tint as the
+   other hub cards (--surface-2 has no light-theme value), and its History link
+   is the card's only action, so it uses the readable cyan-800 rather than the
+   accent cyan that measured 1.49:1 on a light tint. */
+html[data-theme="light"] .ph-week--empty {
+  background: rgba(0,0,0,0.02);
+}
+html[data-theme="light"] .ph-week--empty .ph-week__link {
   color: #155e75;
 }
 html[data-theme="light"] .hub-link--quiet {

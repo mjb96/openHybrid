@@ -2,7 +2,7 @@
 // Date-strict Strength metric details. Program week remains plan metadata;
 // persisted local dates decide chronology and every point retains exact workout
 // evidence. Only valid completed working sets contribute.
-import { addDaysISO, formatWeekRange, localDayKey, todayKey } from '../dates.js';
+import { addDaysISO, formatDayMonthShort, formatWeekRange, localDayKey, todayKey } from '../dates.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { muscleCreditsForExercise } from '../exercises/catalog.js';
 import { indexSlotsByDate, weekStartOf } from './weekly-aggregate.js';
@@ -113,22 +113,12 @@ function aggregate(metricId, records, allRecords, endDate) {
   return null;
 }
 
-const MONTH_ABBR = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
-
-/** "22 Jul" for an intentional calendar key. Never an ISO string in copy. */
-function formatDayMonthLong(iso) {
-  const key = localDayKey(iso);
-  if (!key) return '';
-  const [, month, day] = key.split('-').map(Number);
-  return `${day} ${MONTH_ABBR[month - 1]}`;
-}
-
 function periodFor(definition, today) {
   if (definition.scope === 'calendar-week') {
     const start = weekStartOf(today);
     return { start, end: today, label: formatWeekRange(start, addDaysISO(start, 6)), status: 'Live calendar week' };
   }
-  return { start: addDaysISO(today, -27), end: today, label: `Trailing 28 days · through ${formatDayMonthLong(today)}`, status: 'Rolling window' };
+  return { start: addDaysISO(today, -27), end: today, label: `Trailing 28 days · through ${formatDayMonthShort(today) || 'Date unavailable'}`, status: 'Rolling window' };
 }
 
 function rangeWeekStarts(records, rangeId, currentWeek) {

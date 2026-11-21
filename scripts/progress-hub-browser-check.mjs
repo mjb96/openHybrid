@@ -207,7 +207,8 @@ try {
       }));
       const previousDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
       if (previous.heroEyebrow !== previousDates) failures.push(`${width}px: the overview eyebrow did not follow the navigator (${previous.heroEyebrow} vs ${previousDates})`);
-      if (previous.heroLabel !== 'Previous week overview') failures.push(`${width}px: the overview aria-label did not follow the navigator (${previous.heroLabel})`);
+      // The accessible name is the visible range, not the relative period.
+      if (previous.heroLabel !== `${previousDates} overview`) failures.push(`${width}px: the overview aria-label does not name the selected range (${previous.heroLabel} vs ${previousDates})`);
       // The Running card must show the SELECTED week's distance (5.0 km), not
       // the live week's (6.0 km) — the engine is anchored by the through-date.
       if (!/^5\.0/.test(previous.runningValue)) failures.push(`${width}px: Running card ignored the selected week (${previous.runningValue})`);
@@ -237,10 +238,92 @@ try {
         if (forwardDates !== previousDates) failures.push(`${width}px: stepping forward did not restore the previous week (${forwardDates} vs ${previousDates})`);
       }
 
-      await page.click('#weekNavToday:not([hidden])', { timeout: 2000 });
-      if (!(await waitForNavLabel(page, 'This week'))) failures.push(`${width}px: return-to-this-week did not restore the live week`);
-      const returnedDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-      if (returnedDates !== navDates) failures.push(`${width}px: return-to-this-week restored the wrong week (${returnedDates} vs ${navDates})`);
+      // Review follows the SAME navigator. Opened from the previous week its
+      // Overview must describe THAT week — never the active programme's plan —
+      // and its Stats tab (monthly report, streak, goals, consistency log) is
+      // not week-scoped, so the navigator must disappear there.
+      const reviewCard = await page.$('.ph-card[data-context="weekly-review"]');
+      if (!reviewCard) {
+        failures.push(`${width}px: the hub lost its Review card while stepped back`);
+      } else {
+        await reviewCard.click({ timeout: 2000 }).catch(() => {
+          failures.push(`${width}px: the Review card did not open from a stepped-back week`);
+        });
+        const reviewOpen = await page.waitForSelector('#analytics-weekly-review.active', { timeout: 3000 })
+          .then(() => true).catch(() => false);
+        if (!reviewOpen) {
+          failures.push(`${width}px: Review did not open from the previous week`);
+        } else {
+          const onOverview = await page.$eval('#analytics-weekly-review',
+            (section) => section.querySelector('[data-an-tab="overview"].an-tab--active') !== null);
+          if (!onOverview) {
+            failures.push(`${width}px: Review did not open on its Overview tab`);
+            await page.click('#analytics-weekly-review [data-an-tab="overview"]', { timeout: 2000 }).catch(() => {});
+          }
+          const pastReview = await page.$eval('#analytics-weekly-review', (section) => ({
+            heroRange: section.querySelector('.an-hero__k')?.textContent?.trim() || '',
+            text: section.textContent || '',
+            navVisible: getComputedStyle(document.getElementById('analyticsWeekNav')).display !== 'none',
+          }));
+          if (!pastReview.navVisible) failures.push(`${width}px: Review Overview does not expose the calendar-week navigator`);
+          if ((await page.$eval('#weekNavLabel', (el) => el.textContent.trim())) !== 'Previous week') {
+            failures.push(`${width}px: Review Overview did not keep the previous-week navigator label`);
+          }
+          // The header names the real Mon–Sun span, never "This week".
+          if (pastReview.heroRange !== previousDates) {
+            failures.push(`${width}px: Review Overview did not name the selected week (${pastReview.heroRange} vs ${previousDates})`);
+          }
+          // A historical week has no plan to score and no week to advise.
+          if (/planned|adherence/i.test(pastReview.text)) {
+            failures.push(`${width}px: Review scored a historical week against the active plan`);
+          }
+          if (/Next week's focus/i.test(pastReview.text)) {
+            failures.push(`${width}px: Review promised next-week advice for a completed week`);
+          }
+
+          // Stats is not week-scoped: the shared navigator must hide there.
+          await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => {
+            failures.push(`${width}px: Review Stats tab did not open`);
+          });
+          const statsNavHidden = await page.waitForFunction(
+            () => getComputedStyle(document.getElementById('analyticsWeekNav')).display === 'none',
+            null,
+            { timeout: 2000 },
+          ).then(() => true).catch(() => false);
+          if (!statsNavHidden) failures.push(`${width}px: Review Stats kept the calendar-week navigator visible`);
+          const statsReview = await page.$eval('#weeklyReviewContainer', (el) => ({
+            text: el.textContent || '',
+            bars: el.querySelectorAll('.wrev-bar').length,
+          })).catch(() => ({ text: '', bars: 0 }));
+          if (statsReview.bars > 0 || /planned/i.test(statsReview.text)) {
+            failures.push(`${width}px: Review Stats scored a historical week against the active plan`);
+          }
+          if (/Next week's focus/i.test(statsReview.text)) {
+            failures.push(`${width}px: Review Stats promised next-week advice for a completed week`);
+          }
+
+          // The back link preserves the selected week, so the existing
+          // return-to-this-week step below still runs from the hub.
+          await page.click('#view-analytics .subview-back-btn', { timeout: 2000 }).catch(() => {
+            failures.push(`${width}px: Review did not offer a route back to the hub`);
+          });
+          const backToHub = await page.waitForSelector('#analytics-hub.active', { timeout: 3000 })
+            .then(() => true).catch(() => false);
+          if (!backToHub) failures.push(`${width}px: Review back did not return to the hub`);
+          if (!(await waitForNavLabel(page, 'Previous week'))) {
+            failures.push(`${width}px: Review lost the selected week on the way back to the hub`);
+          }
+        }
+      }
+
+      if (!(await page.$('#weekNavToday:not([hidden])'))) {
+        failures.push(`${width}px: could not return to this week after the Review detour`);
+      } else {
+        await page.click('#weekNavToday:not([hidden])', { timeout: 2000 });
+        if (!(await waitForNavLabel(page, 'This week'))) failures.push(`${width}px: return-to-this-week did not restore the live week`);
+        const returnedDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
+        if (returnedDates !== navDates) failures.push(`${width}px: return-to-this-week restored the wrong week (${returnedDates} vs ${navDates})`);
+      }
     }
 
     // Tapping a domain must reach its detail screen.

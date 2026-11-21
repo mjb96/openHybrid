@@ -3,16 +3,13 @@ import { buildStrengthMetricDetail, collectStrengthHistory } from '../strength-d
 import { esc } from './screen-kit.js';
 import { metricMethodHTML } from './metric-contract.js';
 import { weightUnitOf } from '../utils.js';
+import { formatDayMonthShort } from '../../dates.js';
 
 const ranges = new Map();
 const selectedPoints = new Map();
 
-function dateLabel(date, full = false) {
-  if (!date) return 'Date unavailable';
-  const value = new Date(`${date}T12:00:00`);
-  return Number.isNaN(value.getTime()) ? date : value.toLocaleDateString(undefined,
-    full ? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' });
-}
+/** "22 Nov" / "22 Nov 2026". An unreadable key says so instead of echoing ISO. */
+const dateLabel = (date, withYear = false) => formatDayMonthShort(date, { year: withYear }) || 'Date unavailable';
 
 function comparisonHTML(model) {
   const c = model.comparison;

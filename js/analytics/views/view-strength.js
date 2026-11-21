@@ -416,8 +416,10 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
 
   let hero;
   if (top) {
-    // Hero is the ALL-TIME top lift; the spark is its best e1RM by CALENDAR week.
-    const series = calendarWeekE1rmSeriesForLift(appState, top.name, { weeks: 12 });
+    // Hero is the ALL-TIME top lift; the spark is its best e1RM by CALENDAR week,
+    // anchored on the SELECTED week so it ends where the PR chip's count comes
+    // from. A live-week spark beside a historical PR chip described two periods.
+    const series = calendarWeekE1rmSeriesForLift(appState, top.name, { weeks: 12, today: getSelectedWeekStart() });
     const prChip = cs.prCount > 0
       ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} ${_periodWord(cs.weekKey)}</span>`
       : '';
