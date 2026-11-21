@@ -19,6 +19,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { enterCockpit } from './cockpit-entry.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const required = process.argv.includes('--required');
@@ -187,13 +188,7 @@ try {
   await closePreview(page);
 
   // The workout cockpit for Lower Strength agrees.
-  await page.click('.nav-item[data-target="workout"]');
-  await page.waitForSelector('#view-workout', { timeout: 6000 });
-  // Train opens on its landing; step into the cockpit for the day selector.
-  await page.click('#trainLanding .tl-today__primary');
-  await page.waitForSelector('#trainCockpit:not([hidden])');
-  await page.click(`#cockpitDaySelectorBar .day-pill[data-day="${DAY}"]`);
-  await page.waitForTimeout(300);
+  await enterCockpit(page, { day: DAY });
   eq(await cockpitNames(page), EXPECTED, '8 cockpit shows the edited Lower Strength');
 
   // Reload → the correction persists on both surfaces.
@@ -202,13 +197,7 @@ try {
   await openDayPreview(page, personalId, DAY, WEEK);
   eq(await previewNames(page), EXPECTED, '9 preview correct after reload');
   await closePreview(page);
-  await page.click('.nav-item[data-target="workout"]');
-  await page.waitForSelector('#view-workout', { timeout: 6000 });
-  // Train opens on its landing; step into the cockpit for the day selector.
-  await page.click('#trainLanding .tl-today__primary');
-  await page.waitForSelector('#trainCockpit:not([hidden])');
-  await page.click(`#cockpitDaySelectorBar .day-pill[data-day="${DAY}"]`);
-  await page.waitForTimeout(300);
+  await enterCockpit(page, { day: DAY });
   eq(await cockpitNames(page), EXPECTED, '9 cockpit correct after reload');
 
   // The SOURCE CATALOG entry is byte-for-byte unchanged (still has Weighted Sit-Up).
