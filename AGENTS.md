@@ -434,6 +434,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/workout/clear-log.js`, and cockpit run rendering/manual persistence in
   `js/workout/run-logging.js`; row addition/removal, removal Undo, set type/RIR,
   and bodyweight/band load choices live in `js/workout/set-mutations.js`; the
+  per-set sheet lives in `js/workout/set-sheet.js` and owns set type / value
+  shape / load / weight meaning / rest / effort / note / remove, opened by
+  tapping the set number or the PREVIOUS column. The row itself is five columns
+  — SET | PREVIOUS | WEIGHT | VALUE | ✓ — the tick is the ONLY completion action
+  (the old wide `Log S1` button overflowed its 28px track and squeezed the
+  weight/reps fields), and a completed row reads as one compact line. The value
+  column says Time/Distance on a card whose sets are all holds or carries.
+  Comparison against last time is `compareWithPrevious`
+  (`js/workout/set-entry.js`), shared by the template and the in-place refresh
+  after a tick so the glyph appears without a re-render. The
   weight-unit label lives in `js/workout/units.js`, and run distance/pace
   conversion lives in `js/workout/run-units.js` (pure; distance is
   STORED in km and the display value is rounded, so a UI round trip is lossy by

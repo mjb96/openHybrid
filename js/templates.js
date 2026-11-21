@@ -8,7 +8,7 @@ import { isBodyweightExercise, resolvedLoadMode } from './workout/load-mode.js';
 import {
   basisLabel, defaultBasisForExercise, normalizeBasis, supportsLoadBasis,
 } from './workout/load-basis.js';
-import { previousSetLabel } from './workout/set-entry.js';
+import { compareWithPrevious, previousSetCompact, setRowNumberLabel } from './workout/set-entry.js';
 import { effectiveSetMode } from './workout/set-shape.js';
 import { formatDistance, formatDuration, setModeOf } from './set-utils.js';
 
@@ -23,15 +23,9 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   const ghostReps   = historicalSetData?.r || prescribedReps || 'reps';
   const type = sData.type || '';
   const mode = setMode || effectiveSetMode(sData, exerciseName, null);
-  const modeLabels = { reps: 'Reps', time: 'Time', distance: 'Distance' };
-
-  const numLabels  = { '': `S${sIdx + 1}`, 'W': 'W', 'D': 'D', 'F': 'F' };
   const typeClass  = type === 'W' ? 'type-warmup' : type === 'D' ? 'type-dropset' : type === 'F' ? 'type-amrap' : '';
 
-  // Single "load" chip: one control cycling Weighted → Bodyweight → band tiers,
-  // instead of a separate label + BW button + band chip on every set.
   const loadState = sData.bw ? 'BW' : (sData.band || '');
-  const loadLabels = { '': 'Weighted', 'BW': 'Bodyweight', 'L': '🟢 Light band', 'M': '🟡 Med band', 'H': '🔴 Heavy band' };
   const loadCls = loadState === '' ? 'weighted' : loadState === 'BW' ? 'bw' : loadState;
   const bodyweightCapable = isBodyweightExercise(exerciseName);
   const basisCapable = supportsLoadBasis(exerciseName);
@@ -50,9 +44,6 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   const effectiveValue = bodyweightCapable && directMode === 'bodyweight' && !sData.w && knownBodyweight != null
     ? String(knownBodyweight)
     : String(sData.w || '');
-
-  // Full-word type label for the (now roomier) expander, vs the terse column badge.
-  const typeFullLabels = { '': 'Working set', 'W': 'Warm-up', 'D': 'Drop set', 'F': 'AMRAP (max reps)' };
 
   // Tier-aware role tag (J&T top set / back-off / plus / target / MRS …). The
   // label is derived from the role STORED on the set (stable across row edits)
@@ -75,64 +66,36 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
     ? ` data-bo-src="${escapeHtml(boSrc)}" data-bo-pct="${escapeHtml(String(roleTag.boPct ?? ''))}"`
     : '';
 
-  // Roadmap 2A, "previous values visible". Last time's numbers were only ever a
-  // PLACEHOLDER, so they disappeared the instant you typed — precisely when you
-  // want to compare against them. This line stays put. It renders only when
-  // there is a real prior set: a first-ever session shows nothing rather than a
-  // "-- × --" that reads as data which failed to load.
-  const prev = previousSetLabel(previousSetData, weightUnit);
-  // Per-set comparison against the SAME set index last session. Only shown once
-  // this set is complete: an arrow beside a blank row would claim a result that
-  // has not happened yet. Warm-ups never carry a prior set, so they never compare.
-  const currentWeight = parseFloat(sData.w);
+  // PREVIOUS is a COLUMN now, not a line under the row. It shows the real prior
+  // set for this set index — never the prescription or a ghost — because the
+  // whole point is comparing today against what actually happened. An em dash
+  // means there is no prior set; a blank would read as "still loading".
+  const prev = previousSetCompact(previousSetData, weightUnit);
   const priorWeight = parseFloat(previousSetData?.w);
   const priorMode = previousSetData ? setModeOf(previousSetData) : null;
-  const currentValue = mode === 'time' ? Number(sData.sec) || 0
-    : mode === 'distance' ? Number(sData.dist) || 0
-    : parseInt(sData.r, 10) || 0;
   const priorValue = priorMode === 'time' ? Number(previousSetData?.sec) || 0
     : priorMode === 'distance' ? Number(previousSetData?.dist) || 0
     : parseInt(previousSetData?.r, 10) || 0;
-  let compare = null;
-  if (sData.c && currentValue > 0 && priorMode === mode && priorValue > 0) {
-    // A hold/carry compares its seconds/metres first; a rep set keeps weight
-    // first (heavier at the same reps is the stronger signal), then reps.
-    const delta = mode === 'reps'
-      ? ((Number.isFinite(currentWeight) ? currentWeight : 0) - (Number.isFinite(priorWeight) ? priorWeight : 0)) || currentValue - priorValue
-      : currentValue - priorValue
-        || ((Number.isFinite(currentWeight) ? currentWeight : 0) - (Number.isFinite(priorWeight) ? priorWeight : 0));
-    compare = delta > 0 ? { glyph: '↑', tone: 'up', label: 'better than last time' }
-      : delta < 0 ? { glyph: '↓', tone: 'down', label: 'lower than last time' }
-        : { glyph: '=', tone: 'same', label: 'matched last time' };
-  }
+  const compare = compareWithPrevious(sData, previousSetData);
   const compareHtml = compare
     ? `<span class="set-cmp set-cmp--${compare.tone}" aria-label="${compare.label}" title="${compare.label}">${compare.glyph}</span>`
     : '';
-  const prevHtml = prev
-    ? `<div class="set-prev" aria-label="${escapeHtml(prev.label)}" data-prev-w="${Number.isFinite(priorWeight) ? priorWeight : ''}" data-prev-r="${Number.isFinite(parseInt(previousSetData?.r, 10)) ? parseInt(previousSetData?.r, 10) : ''}" data-prev-mode="${priorMode || ''}" data-prev-value="${priorValue || ''}">${escapeHtml(prev.text)}${compareHtml}</div>`
-    : '';
+  const prevCol = prev
+    ? `<button type="button" class="set-prev-col" data-action="open-set-sheet" data-liftname="${safeLiftName}" data-sidx="${sIdx}" aria-label="${escapeHtml(prev.label)}" title="${escapeHtml(prev.label)}" data-prev-w="${Number.isFinite(priorWeight) ? priorWeight : ''}" data-prev-r="${Number.isFinite(parseInt(previousSetData?.r, 10)) ? parseInt(previousSetData?.r, 10) : ''}" data-prev-mode="${priorMode || ''}" data-prev-value="${priorValue || ''}">${escapeHtml(prev.text)}${compareHtml}</button>`
+    : `<span class="set-prev-col is-empty" aria-label="No previous set">—</span>`;
   const noteHtml = sData.note
     ? `<div class="set-note">${escapeHtml(String(sData.note))}</div>`
     : '';
 
-  return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${mode}" data-load-mode="${directMode}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''}>
+  return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${mode}" data-load-mode="${directMode}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${type}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '')}">
     ${roleTagHtml}
     ${sData.isPR ? '<span class="pr-badge">PR</span>' : ''}
-    ${bodyweightCapable ? `<div class="set-load-choice" role="group" aria-label="Load mode for set ${sIdx + 1}">
-      ${['bodyweight', 'weighted', 'assisted'].map(mode => `<button type="button"
-        class="set-load-choice__btn${directMode === mode ? ' active' : ''}"
-        data-action="set-load-mode" data-mode="${mode}"
-        data-liftname="${safeLiftName}" data-sidx="${sIdx}"
-        aria-pressed="${directMode === mode}">${mode === 'bodyweight' ? 'Bodyweight' : mode === 'weighted' ? 'Weighted' : 'Assisted'}</button>`).join('')}
-    </div>` : ''}
-    <button type="button" class="set-num-lbl tactile-scale"
-         data-action="quick-log"
-         data-liftname="${safeLiftName}"
-         data-sidx="${sIdx}"
-         title="Tap to log this set at its target"
-         aria-label="Log set ${sIdx + 1} at target">
-         Log ${numLabels[type]}
-    </button>
+    <button type="button" class="set-num-lbl" data-action="open-set-sheet"
+         data-liftname="${safeLiftName}" data-sidx="${sIdx}"
+         aria-haspopup="dialog"
+         aria-label="Set ${sIdx + 1} options: ${escapeHtml(restLabel.toLowerCase())}"
+         title="Set type, load, rest, note">${setRowNumberLabel(type, sIdx)}</button>
+    ${prevCol}
     <div class="set-entry">
       <input type="number" inputmode="decimal" class="input-weight-node" aria-label="Effective load for set ${sIdx + 1}" placeholder="${escapeHtml(weightPlaceholder)}" data-ghost-default="${escapeHtml(ghostDefault)}" value="${escapeHtml(effectiveValue)}">
       ${boSrc ? `<small class="set-backoff-hint">${escapeHtml(backoffHint)}</small>` : ''}
@@ -150,86 +113,13 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
         <span class="gym-check-icon">✓</span>
       </label>
     </div>
-    <button class="btn-set-more tactile-scale"
-            data-action="toggle-set-adv"
-            aria-label="Set options"
-            title="Set type, load & remove">⋯</button>
     <div class="set-row-msg" role="status" aria-live="polite" hidden></div>
-    ${prevHtml}
     ${noteHtml}
     <div class="set-plate-line" data-set-plate hidden></div>
-
-    <div class="set-adv-row">
-      <button class="type-pill tactile-scale"
-           data-action="cycle-set-type"
-           data-liftname="${safeLiftName}"
-           data-sidx="${sIdx}"
-           title="Tap to cycle: Working → Warm-up → Drop → AMRAP">
-           ${typeFullLabels[type]}
-      </button>
-      <button class="btn-set-mode tactile-scale"
-           data-action="cycle-set-mode"
-           data-liftname="${safeLiftName}"
-           data-sidx="${sIdx}"
-           title="Tap to cycle: Reps → Time → Distance">
-           ${modeLabels[mode]}
-      </button>
-      <button class="btn-load tactile-scale load-${loadCls}"
-              data-action="cycle-load"
-              data-liftname="${safeLiftName}"
-              data-sidx="${sIdx}"
-              title="Tap to set load: Weighted → Bodyweight → Light → Medium → Heavy band. Bodyweight/band auto-fill the weight for volume; edit it to add or assist.">
-        ${loadLabels[loadState]}
-      </button>
-      <button class="btn-failure tactile-scale${sData.failure ? ' is-failure' : ''}"
-        data-action="toggle-set-failure"
-        data-liftname="${safeLiftName}"
-        data-sidx="${sIdx}"
-        aria-pressed="${!!sData.failure}"
-        title="Mark this set as taken to failure">Failure</button>
-      ${basisCapable ? `<button class="btn-basis tactile-scale${basis !== 'total' ? ' is-each' : ''}"
-        data-action="toggle-load-basis"
-        data-liftname="${safeLiftName}"
-        data-sidx="${sIdx}"
-        aria-pressed="${basis !== 'total'}"
-        title="${basis === 'each' ? 'The entered weight is per dumbbell'
-          : basis === 'per-side' ? 'The entered weight is for the working side'
-          : 'The entered weight is the pair total'}">${basisLabel(basis)}</button>` : ''}
-      <button class="btn-set-meta tactile-scale${sData.restSec != null ? ' has-rest' : ''}"
-        data-action="edit-set-rest"
-        data-liftname="${safeLiftName}"
-        data-sidx="${sIdx}"
-        title="Rest after this set">${restLabel}</button>
-      <button class="btn-set-meta tactile-scale"
-        data-action="clear-set-rest"
-        data-liftname="${safeLiftName}"
-        data-sidx="${sIdx}"
-        title="Use the default rest for this set"
-        ${sData.restSec == null ? 'hidden' : ''}>Reset</button>
-      <button class="btn-set-meta tactile-scale${sData.note ? ' has-note' : ''}"
-        data-action="edit-set-note"
-        data-liftname="${safeLiftName}"
-        data-sidx="${sIdx}"
-        title="Add a note to this set">${sData.note ? 'Note ✓' : 'Note'}</button>
-      <button class="btn-set-delete tactile-scale"
-        data-action="remove-set"
-        data-liftname="${safeLiftName}"
-        data-sidx="${sIdx}">✕ Remove set</button>
-    </div>
-    ${type === 'W' ? '' : `<div class="rpe-pad-row">
-      <span class="rpe-pad-label" title="Reps in reserve — how many more reps you could have done">Reps left</span>
-      ${(() => {
-        // Reps in reserve. Prefer a stored RIR; fall back to legacy per-set RPE
-        // (RIR = 10 − RPE) so older logs still show their selection. Warm-ups are
-        // deliberately submaximal, so they carry no effort pad.
-        const selRir = sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : null);
-        return [0,1,2,3,4].map(v => `<button class="btn-rpe tactile-scale${selRir === v ? ' rpe-selected' : ''}" data-action="set-rir" data-sidx="${sIdx}" data-rir="${v}">${v === 4 ? '4+' : v}</button>`).join('');
-      })()}
-    </div>`}
   </div>`;
 }
 
-export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, weightUnit = 'kg' }) {
+export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
   const stalledBadge = diagnostic.isStalled ? `<span class="badge-stall-indicator">PROGRESS CHECK</span>` : '';
   const targetStyle  = diagnostic.isStalled ? 'color: var(--color-amber); font-weight: 800;' : '';
   const ssBtnClass   = groupId ? 'btn-ss-link ss-active' : 'btn-ss-link';
@@ -261,11 +151,11 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
       </div>
     ` : ''}
     ${setsMarkup ? `<div class="set-rows-head" aria-hidden="true">
-      <span></span>
+      <span class="srh-lbl">Set</span>
+      <span class="srh-lbl">Previous</span>
       <span class="srh-lbl">Weight</span>
-      <span class="srh-lbl">Value</span>
+      <span class="srh-lbl">${weightColumnLabel}</span>
       <span class="srh-lbl">Done</span>
-      <span></span>
     </div>` : ''}
     <div class="set-rows-list">${setsMarkup}</div>
     <!-- Roadmap 2A, "make add/swap/… contextual instead of equally prominent".
@@ -277,10 +167,12 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
          the first tick. The capability is not lost — any row can still be
          re-typed to a warm-up from its dotted menu. -->
     <div class="append-set-row">
-      <button class="btn-pad-append tactile-scale btn-append-warmup" data-action="append-warmup-set" data-liftname="${safeLiftName}">+ Warmup</button>
-      <button class="btn-pad-append tactile-scale" data-action="append-set" data-liftname="${safeLiftName}">+ Working Set</button>
-      <button class="btn-pad-append tactile-scale btn-append-drop" data-action="append-drop-set" data-liftname="${safeLiftName}" aria-label="Add a drop set, 20 percent lighter than the last set">+ Drop</button>
-      <button class="btn-pad-append tactile-scale" data-action="swap-exercise" data-liftname="${safeLiftName}">⇄ Swap</button>
+      <button class="btn-pad-append btn-append-primary tactile-scale" data-action="append-set" data-liftname="${safeLiftName}">+ Add set</button>
+      <div class="append-set-secondary">
+        <button class="btn-pad-link tactile-scale btn-append-warmup" data-action="append-warmup-set" data-liftname="${safeLiftName}">+ Warm-up</button>
+        <button class="btn-pad-link tactile-scale btn-append-drop" data-action="append-drop-set" data-liftname="${safeLiftName}" aria-label="Add a drop set, 20 percent lighter than the last set">+ Drop</button>
+        <button class="btn-pad-link tactile-scale" data-action="swap-exercise" data-liftname="${safeLiftName}">⇄ Swap</button>
+      </div>
     </div>
   </div>`;
 }

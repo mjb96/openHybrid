@@ -68,10 +68,19 @@ function fixture(theme) {
   };
 }
 
+/** Enter the cockpit deterministically. The landing's primary CTA is a
+ *  wellness check-in on a rest day, so pick a training day from the week rail
+ *  first — a browser check must not depend on which weekday it runs. */
 async function enterCockpit(page) {
   await page.click('.nav-item[data-target="workout"]');
   await page.waitForSelector('#trainLanding .tl-today__primary');
-  await page.click('#trainLanding .tl-today__primary');
+  if (await page.locator('#trainLanding [data-action="select-program-workout"][data-day="thu"]').count()) {
+    await page.click('#trainLanding [data-action="select-program-workout"][data-day="thu"]');
+    await page.waitForTimeout(400);
+  }
+  if (!(await page.locator('#trainCockpit:not([hidden])').count())) {
+    await page.click('#trainLanding .tl-today__primary');
+  }
   await page.waitForSelector('#trainCockpit:not([hidden])');
   await page.click('#cockpitDaySelectorBar .day-pill[data-day="thu"]');
   await page.waitForSelector('#cockpitExercisesContainer .cockpit-exercise');
@@ -124,15 +133,17 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await enterCockpit(page);
 
-    // ---- previous values are visible, and stay visible while typing ---------
+    // ---- previous values are a COLUMN, and stay visible while typing -------
     const prev = await page.evaluate(() => {
       const card = document.querySelector('.cockpit-exercise:not(.collapsed)');
-      return [...(card?.querySelectorAll('.cockpit-set-row .set-prev') || [])].map((n) => n.textContent.trim());
+      return [...(card?.querySelectorAll('.cockpit-set-row .set-prev-col') || [])]
+        .map((n) => ({ text: n.textContent.replace(/[↑↓=]/g, '').trim(), empty: n.classList.contains('is-empty') }));
     });
     console.log(`${tag} previous-values:`, JSON.stringify(prev));
-    if (!prev.length) fail(`${tag}: no previous-values line despite a dated prior session`);
-    if (prev[0] && !/60kg\s*×\s*8/.test(prev[0])) fail(`${tag}: first row shows "${prev[0]}", expected last time's 60kg × 8`);
-    if (prev.some((t) => /undefined|NaN|--/.test(t))) fail(`${tag}: previous-values line rendered a placeholder: ${prev.join(' , ')}`);
+    if (!prev.length) fail(`${tag}: no PREVIOUS column despite a dated prior session`);
+    if (prev[0]?.empty) fail(`${tag}: the first row has no previous value despite a dated prior session`);
+    if (prev[0] && !/^60×8$/.test(prev[0].text)) fail(`${tag}: first row shows "${prev[0].text}", expected last time's 60×8`);
+    if (prev.some((p) => /undefined|NaN|--/.test(p.text))) fail(`${tag}: PREVIOUS rendered a placeholder: ${prev.map((p) => p.text).join(' , ')}`);
 
 
 
@@ -148,9 +159,11 @@ try {
     if (stored?.c) fail(`${tag}: a refused set was still stored complete: ${JSON.stringify(stored)}`);
 
     // The line must stay put while typing — that is the whole point of it.
-    const prevStillThere = await page.evaluate(() =>
-      !!document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row .set-prev')?.textContent.trim());
-    if (!prevStillThere) fail(`${tag}: previous-values line disappeared once the field had a value`);
+    const prevStillThere = await page.evaluate(() => {
+      const cell = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row .set-prev-col');
+      return !!cell && !cell.classList.contains('is-empty') && !!cell.textContent.trim();
+    });
+    if (!prevStillThere) fail(`${tag}: the PREVIOUS column disappeared once the field had a value`);
 
     // ---- zero reps is refused ----------------------------------------------
     await attemptLog(page, '60', '0');
@@ -202,7 +215,7 @@ try {
           rest: s.settings?.restOverrides?.['Incline Barbell Press'],
           loadMode: Object.values(s.settings?.exercisePrefs || {}).map((p) => p.loadMode).find(Boolean) || '',
           cardNote: document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-ex-note')?.textContent?.trim() || '',
-          blankLoad: document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row[data-set-index="1"] .btn-load')?.textContent?.trim() || '',
+          blankLoad: document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row[data-set-index="1"]')?.getAttribute('data-load-label') || '',
           blankWeight: document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row[data-set-index="1"] .input-weight-node')?.value || '',
         };
       });
@@ -210,7 +223,7 @@ try {
       if (cfg.warmup !== 'off') fail(`${tag}: exercise warm-up mode did not persist (${JSON.stringify(cfg)})`);
       if (cfg.rest !== 0) fail(`${tag}: exercise no-timer rest did not persist (${JSON.stringify(cfg)})`);
       if (cfg.loadMode !== 'banded') fail(`${tag}: exercise load default did not persist (${JSON.stringify(cfg)})`);
-      if (!/Med band/.test(cfg.blankLoad)) fail(`${tag}: a blank row ignored the Band load default (${JSON.stringify(cfg)})`);
+      if (cfg.blankLoad !== 'M') fail(`${tag}: a blank row ignored the Band load default (${JSON.stringify(cfg)})`);
       if (String(cfg.blankWeight) !== '20') fail(`${tag}: a Band row did not show the band load (${JSON.stringify(cfg)})`);
       if (!/Belt on/.test(cfg.cardNote)) fail(`${tag}: exercise note did not render on the card`);
     }
@@ -224,36 +237,50 @@ try {
     }
 
     // ---- per-set rest and note (one viewport is enough for this UI path) ----
+    // Both live in the set sheet now: the row keeps one line per set, and the
+    // sheet is opened by tapping the set number.
     if (width === 412 && theme === 'dark') {
-      await page.click('.cockpit-exercise:not(.collapsed) .cockpit-set-row .btn-set-more');
-      await page.click('.cockpit-set-row.adv-open [data-action="edit-set-rest"]');
+      await page.click('.cockpit-exercise:not(.collapsed) .cockpit-set-row .set-num-lbl');
+      await page.waitForSelector('#setSheet.active');
+      await page.click('#setSheet [data-action="set-sheet-custom-rest"]');
       await page.waitForSelector('.cmodal__input');
       await page.fill('.cmodal__input', '75');
       await page.click('.cmodal__btn--ok');
       await page.waitForTimeout(350);
-      const restButton = await page.locator('[data-action="edit-set-rest"]').first().textContent();
-      if (!/1:15/.test(restButton || '')) fail(`${tag}: per-set rest did not render 1:15 (got "${restButton}")`);
+      const restLabel = await page.locator('.cockpit-exercise:not(.collapsed) .cockpit-set-row').first().getAttribute('data-rest-label');
+      if (!/1:15/.test(restLabel || '')) fail(`${tag}: per-set rest did not render 1:15 (got "${restLabel}")`);
 
-      await page.click('.cockpit-set-row.adv-open [data-action="edit-set-note"]');
+      await page.click('#setSheet [data-action="set-sheet-note"]');
       await page.waitForSelector('.cmodal__input');
       await page.fill('.cmodal__input', 'Belt on, paused');
       await page.click('.cmodal__btn--ok');
       await page.waitForTimeout(350);
       const note = await page.locator('.cockpit-exercise:not(.collapsed) .cockpit-set-row .set-note').first().textContent();
       if (!/Belt on, paused/.test(note || '')) fail(`${tag}: per-set note did not render (got "${note}")`);
+      const noteState = await page.locator('#setSheetNoteState').textContent();
+      if (!/✓/.test(noteState || '')) fail(`${tag}: the sheet did not mark the stored note (got "${noteState}")`);
       const storedMeta = await storedFirstSet(page, 'Incline Barbell Press');
       if (storedMeta?.restSec !== 75 || storedMeta?.note !== 'Belt on, paused') {
         fail(`${tag}: per-set rest/note did not persist: ${JSON.stringify({ restSec: storedMeta?.restSec, note: storedMeta?.note })}`);
       }
+      await page.click('#setSheet .sheet-close-btn');
+      await page.waitForTimeout(250);
     }
 
     // ---- timed hold and carry shapes (one viewport is enough) --------------
     if (width === 412 && theme === 'dark') {
       const row2 = '.cockpit-exercise:not(.collapsed) .cockpit-set-row[data-set-index="1"]';
-      await page.click(`${row2} .btn-set-more`);
-      await page.click(`${row2} [data-action="cycle-set-mode"]`);
-      await page.waitForTimeout(350);
-      if (!(await page.locator(`${row2} .input-time-node`).count())) fail(`${tag}: cycling to Time did not render a time field`);
+      const shape = async (mode) => {
+        await page.click(`${row2} .set-num-lbl`);
+        await page.waitForSelector('#setSheet.active');
+        await page.click(`#setSheet [data-action="set-sheet-mode"][data-mode="${mode}"]`);
+        await page.waitForTimeout(350);
+        await page.click('#setSheet .sheet-close-btn');
+        await page.waitForTimeout(250);
+      };
+
+      await shape('time');
+      if (!(await page.locator(`${row2} .input-time-node`).count())) fail(`${tag}: choosing Time did not render a time field`);
       await page.fill(`${row2} .input-weight-node`, '40');
       await page.fill(`${row2} .input-time-node`, '1:30');
       await page.click(`${row2} .gym-check`);
@@ -270,10 +297,8 @@ try {
       // so leaving it checked would turn the next click into a removal.
       await page.click(`${row2} .gym-check`);
       await page.waitForTimeout(200);
-      await page.click(`${row2} .btn-set-more`);
-      await page.click(`${row2} [data-action="cycle-set-mode"]`);
-      await page.waitForTimeout(350);
-      if (!(await page.locator(`${row2} .input-dist-node`).count())) fail(`${tag}: cycling to Distance did not render a distance field`);
+      await shape('distance');
+      if (!(await page.locator(`${row2} .input-dist-node`).count())) fail(`${tag}: choosing Distance did not render a distance field`);
       await page.fill(`${row2} .input-weight-node`, '40');
       await page.fill(`${row2} .input-dist-node`, '20');
       await page.click(`${row2} .gym-check`);

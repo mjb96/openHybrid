@@ -21,6 +21,7 @@ import {
   isValidWorkingSet, parseDuration, setModeOf, setSummary, setVolume,
 } from './set-utils.js';
 import { effectiveSetMode } from './workout/set-shape.js';
+import { handleSetSheetAction, openSetSheet } from './workout/set-sheet.js';
 import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession } from './timers.js';
 import { mountExerciseDragAndDropSystems } from './dragdrop.js';
 import { showToast, saveNewCustomExerciseToLibrary } from './state.js';
@@ -47,7 +48,7 @@ import { hasRunData, newRunSessionId, upsertRunSession } from './state/run-sessi
 import { completionPresentation, evaluateSessionCompletion } from './workout/completion-policy.js';
 import { rescheduledWorkoutContext } from './workout/program-session-picker.js';
 import { applyBandLoad, applyLoadMode } from './workout/load-mode.js';
-import { validateSetEntry, primarySetEntryMessage } from './workout/set-entry.js';
+import { compareWithPrevious, validateSetEntry, primarySetEntryMessage } from './workout/set-entry.js';
 import { deleteDayWorkoutData, hasDayWorkoutDraft, snapshotDayWorkoutData, restoreDayWorkoutData } from './workout/delete-day.js';
 import { explicitSessionStatus, finishSession, markSessionInProgress, SESSION_STATUS } from './workout/session-status.js';
 import {
@@ -490,7 +491,18 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
   } catch (_) {}
 
   try {
-    exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, plates, weightUnit: wUnit });
+    // The column header names what the value field actually holds. A card whose
+    // sets are all holds or all carries says Time / Distance; a mixed card keeps
+    // the honest "Value" rather than labelling a plank in reps.
+    const rowModes = new Set(
+      (Array.isArray(loggedLiftsData) ? loggedLiftsData : [])
+        .filter((set) => set && !isWarmupSet(set))
+        .map((set) => effectiveSetMode(set, displayLiftName, null)),
+    );
+    const weightColumnLabel = rowModes.size === 1
+      ? ({ time: 'Time', distance: 'Distance' }[/** @type {string} */ ([...rowModes][0])] || 'Reps')
+      : 'Value';
+    exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, plates, weightUnit: wUnit, weightColumnLabel });
     // The athlete's own note is inserted as DOM text, never HTML: it is free
     // text they typed, so it must not be able to become markup.
     const exerciseNote = getExerciseNote(appState, displayLiftName);
@@ -966,30 +978,36 @@ function _ensureWorkoutDateStamp(appState, wk, day) {
 // Per-set comparison against the same set index last session. Shared by the
 // manual tick and the one-tap/log-all paths so a quick log cannot skip it.
 function applySetComparison(parentRow, value, mode = SET_MODE.REPS, weight = 0) {
-  const prevEl = parentRow?.querySelector('.set-prev');
-  const priorW = parseFloat(prevEl?.getAttribute('data-prev-w') || '');
-  const priorMode = prevEl?.getAttribute('data-prev-mode') || SET_MODE.REPS;
-  const priorValue = mode === SET_MODE.REPS
-    ? parseInt(prevEl?.getAttribute('data-prev-r') || '', 10)
-    : parseFloat(prevEl?.getAttribute('data-prev-value') || '');
-  if (!prevEl || priorMode !== mode || !Number.isFinite(priorValue) || priorValue <= 0) return;
-  // A hold/carry compares seconds/metres first; a rep set keeps weight first.
-  const delta = mode === SET_MODE.REPS
-    ? ((Number.isFinite(weight) ? weight : 0) - (Number.isFinite(priorW) ? priorW : 0)) || value - priorValue
-    : (value - priorValue) || ((Number.isFinite(weight) ? weight : 0) - (Number.isFinite(priorW) ? priorW : 0));
-  const tone = delta > 0 ? 'up' : delta < 0 ? 'down' : 'same';
-  const glyph = delta > 0 ? '↑' : delta < 0 ? '↓' : '=';
-  const label = delta > 0 ? 'better than last time'
-    : delta < 0 ? 'lower than last time' : 'matched last time';
+  const prevEl = parentRow?.querySelector('.set-prev-col');
+  if (!prevEl || prevEl.classList.contains('is-empty')) return;
+  // The prior numbers are stamped on the PREVIOUS cell by the row template, so
+  // the comparison can be refreshed in place instead of waiting for a full
+  // re-render — the tick does not redraw the cockpit.
+  const prior = {
+    c: true,
+    w: prevEl.getAttribute('data-prev-w') || '',
+    mode: prevEl.getAttribute('data-prev-mode') || SET_MODE.REPS,
+    r: prevEl.getAttribute('data-prev-r') || '',
+    sec: prevEl.getAttribute('data-prev-value') || '',
+    dist: prevEl.getAttribute('data-prev-value') || '',
+  };
+  const current = {
+    c: true, w: String(weight), mode,
+    r: mode === SET_MODE.REPS ? String(value) : '',
+    sec: mode === SET_MODE.TIME ? String(value) : '',
+    dist: mode === SET_MODE.DISTANCE ? String(value) : '',
+  };
+  const result = compareWithPrevious(current, prior);
   let cmp = prevEl.querySelector('.set-cmp');
+  if (!result) { cmp?.remove(); return; }
   if (!cmp) {
     cmp = document.createElement('span');
     prevEl.appendChild(cmp);
   }
-  cmp.className = `set-cmp set-cmp--${tone}`;
-  cmp.textContent = glyph;
-  cmp.setAttribute('aria-label', label);
-  cmp.title = label;
+  cmp.className = `set-cmp set-cmp--${result.tone}`;
+  cmp.textContent = result.glyph;
+  cmp.setAttribute('aria-label', result.label);
+  cmp.title = result.label;
 }
 
 // PR detection for one completed set. Extracted from the tick path so quick-log
@@ -1187,9 +1205,8 @@ export function logAllAtTarget(liftName) {
   let logged = 0;
   Array.from(card.querySelectorAll('.cockpit-set-row')).forEach(row => {
     if (row.classList.contains('is-complete') || row.classList.contains('type-warmup')) return;
-    const label = row.querySelector('.set-num-lbl[data-action="quick-log"]');
     const sIdx = parseInt(row.getAttribute('data-set-index'), 10);
-    if (label && !isNaN(sIdx)) { executeOneTapQuickLog(label, liftName, sIdx); logged++; }
+    if (!isNaN(sIdx)) { executeOneTapQuickLog(row, liftName, sIdx); logged++; }
   });
   if (logged > 0) { hapticSuccess(); showToast(`Logged ${logged} set${logged > 1 ? 's' : ''} at target ✓`); }
 }
@@ -2116,14 +2133,21 @@ document.addEventListener('click', (e) => {
   const liftName = exCard ? exCard.getAttribute('data-liftname') : target.getAttribute('data-liftname');
   const sIdx = parseInt(target.getAttribute('data-sidx'), 10);
 
-  if (action === 'quick-log') executeOneTapQuickLog(target, liftName, sIdx);
-  else if (action === 'log-all-target') logAllAtTarget(liftName);
+  // The per-set sheet owns its own controls, including the failure toggle that
+  // already exists on the row — route those first so the sheet's copy is read
+  // against the set it is actually showing.
+  if (action.startsWith('set-sheet-') || action === 'close-set-sheet') {
+    handleSetSheetAction(target, action, liftName, sIdx);
+    return;
+  }
+  if (action === 'open-set-sheet') { openSetSheet(liftName, sIdx); return; }
+
+  if (action === 'log-all-target') logAllAtTarget(liftName);
   else if (action === 'use-previous-values') usePreviousValues(liftName);
   else if (action === 'append-set') appendCustomSetRow(target, liftName);
   else if (action === 'append-warmup-set') appendWarmupSetRow(target, liftName);
   else if (action === 'append-drop-set') appendDropSetRow(target, liftName);
   else if (action === 'remove-set') removeCustomSetRow(liftName, sIdx);
-  else if (action === 'toggle-set-adv') target.closest('.cockpit-set-row')?.classList.toggle('adv-open');
   else if (action === 'cycle-set-type') cycleSetType(liftName, sIdx);
   else if (action === 'cycle-set-mode') cycleSetMode(liftName, sIdx);
   else if (action === 'set-load-mode') setSetLoadMode(liftName, sIdx, target.getAttribute('data-mode'));

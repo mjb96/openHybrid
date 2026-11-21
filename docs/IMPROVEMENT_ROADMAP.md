@@ -635,6 +635,33 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Logger overhaul, Phase A: one line per set.**
+  - The strength row is now the five-column contract — SET | PREVIOUS | WEIGHT
+    | VALUE | ✓. The wide `Log S1` button is gone (it overflowed its 28px track
+    and squeezed the weight/reps fields), so the tick is the only completion
+    action and the set number is a quiet 44px sheet opener.
+  - PREVIOUS is a real column showing the same-index set from last time
+    (`60×8`), or an em dash when there is no honest prior. Comparison glyphs
+    come from one `compareWithPrevious` helper shared by the template and the
+    in-place refresh after a tick, so `↑` appears without a full re-render.
+  - The inline `⋯` panel (eight equally-loud pills) moved to a managed per-set
+    bottom sheet: set type, value shape, load, weight meaning, rest, effort,
+    note and remove. It opens from the set number or the PREVIOUS column and
+    closes cleanly (the sheet's `.active` class is cleared on close — leaving it
+    made the modal stack re-open the sheet on the next mutation).
+  - The append row is one filled `+ Add set` plus quiet warm-up / drop / swap
+    links. The value column says REPS, TIME, DISTANCE or VALUE so a plank card
+    never claims reps.
+  - Fixed a stale CSS override that silently restated the old column template
+    and squeezed the reps field to 44px, and the row's rest label now updates
+    from `set-mutations` instead of a button that no longer exists.
+  - Validation: 2,031 node tests, typecheck, smoke, and the set-row,
+    rest-timer and core-ergonomics browser checks (the last now selects Dips on
+    Thursday — Pull-Ups live on Tuesday, so the old assertion depended on a
+    "first card with a load choice" shortcut).
+  - Next: Phase B, a compact sticky session header (stats + clock + day rail in
+    one band), then the floating rest pill with −15/+15/pause/skip.
+
 - **2026-11-22 — Roadmap restructured into a gated capability backlog.**
   - This file now carries the active plan, the rules and the last ten entries.
     Everything older moved verbatim to `docs/ROADMAP_ARCHIVE.md`, which is

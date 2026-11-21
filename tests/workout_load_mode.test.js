@@ -52,20 +52,21 @@ test('switching to Weighted clears bodyweight/assistance metadata and auto-load'
   assert.deepEqual(weighted, { loadMode: 'weighted', w: '', r: '8' });
 });
 
-test('Pull-Up renderer exposes direct modes and a labelled keyboard quick-log button', () => {
+test('Pull-Up renderer stamps its bodyweight load mode and opens the set sheet from the number', () => {
   const html = buildSetRow({}, 0, 'Pull-Ups', { r: '8' }, 'kg', 'Pull-Ups', 82);
-  assert.match(html, /role="group" aria-label="Load mode for set 1"/);
-  assert.match(html, /data-mode="bodyweight"[\s\S]*aria-pressed="true"/);
-  assert.match(html, /<button type="button" class="set-num-lbl/);
-  assert.match(html, /aria-label="Log set 1 at target"/);
-  assert.match(html, />\s*Log S1\s*<\/button>/);
+  assert.match(html, /data-load-mode="bodyweight"/, 'the tick path reads this');
+  assert.match(html, /<button type="button" class="set-num-lbl"/);
+  assert.match(html, /data-action="open-set-sheet"/);
+  assert.match(html, /aria-haspopup="dialog"/);
   assert.match(html, /value="82"/);
+  assert.doesNotMatch(html, /quick-log/, 'the tick is the only completion action');
 });
 
-test('a normal barbell row does not receive irrelevant bodyweight mode controls', () => {
+test('a normal barbell row stays weighted and renders no inline load choices', () => {
   const html = buildSetRow({}, 0, 'Bench Press', null, 'kg', 'Bench Press', 82);
+  assert.match(html, /data-load-mode="weighted"/);
   assert.doesNotMatch(html, /set-load-choice/);
-  assert.match(html, /Log S1/);
+  assert.doesNotMatch(html, /data-action="cycle-load"/);
 });
 
 test('set rows display authored rep ranges without auto-logging a fake rep count', () => {

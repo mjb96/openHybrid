@@ -49,10 +49,19 @@ const fixture = (theme) => ({
   weeks: {},
 });
 
+/** Enter the cockpit deterministically. The landing's primary CTA is a
+ *  wellness check-in on a rest day, so pick a training day from the week rail
+ *  first — a browser check must not depend on which weekday it runs. */
 async function enterCockpit(page) {
   await page.click('.nav-item[data-target="workout"]');
   await page.waitForSelector('#trainLanding .tl-today__primary');
-  await page.click('#trainLanding .tl-today__primary');
+  if (await page.locator('#trainLanding [data-action="select-program-workout"][data-day="thu"]').count()) {
+    await page.click('#trainLanding [data-action="select-program-workout"][data-day="thu"]');
+    await page.waitForTimeout(400);
+  }
+  if (!(await page.locator('#trainCockpit:not([hidden])').count())) {
+    await page.click('#trainLanding .tl-today__primary');
+  }
   await page.waitForSelector('#trainCockpit:not([hidden])');
   await page.click('#cockpitDaySelectorBar .day-pill[data-day="thu"]');
   await page.waitForSelector('#cockpitExercisesContainer .cockpit-exercise');
@@ -101,30 +110,42 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await enterCockpit(page);
 
-    // ---- completion is the strongest row action ----------------------------
-    // Quick-log and the tick both complete a set; the tick is the primary one.
+    // ---- the tick is the ONLY completion action ---------------------------
+    // The row used to carry a second, louder completion button ("Log S1").
+    // That is gone: the set number now opens the set sheet, and the check is
+    // the single way to finish a set. A quiet number must still be a real 44px
+    // target, because it is the only route to set type/load/rest/note.
     const weight = await page.evaluate(() => {
       const row = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row');
-      const quick = row?.querySelector('.set-num-lbl[data-action="quick-log"]');
+      const number = row?.querySelector('.set-num-lbl');
       const check = row?.querySelector('.gym-check');
       const px = (v) => parseFloat(String(v).replace('px', '')) || 0;
-      const qs = quick && getComputedStyle(quick);
+      const ns = number && getComputedStyle(number);
       const cs = check && getComputedStyle(check);
       return {
-        quickBorder: qs ? px(qs.borderTopWidth) : 0,
+        numberAction: number?.getAttribute('data-action') || '',
+        numberBorder: ns ? px(ns.borderTopWidth) : 0,
         checkBorder: cs ? px(cs.borderTopWidth) : 0,
-        quickFilled: qs ? !/^rgba\(0, 0, 0, 0\)$|transparent/.test(qs.backgroundColor) : false,
-        quickH: quick ? Math.round(quick.getBoundingClientRect().height) : 0,
-        checkH: check ? Math.round(check.getBoundingClientRect().height) : 0,
+        numberFilled: ns ? !/^rgba\(0, 0, 0, 0\)$|transparent/.test(ns.backgroundColor) : false,
+        numberH: number ? Math.round(number.getBoundingClientRect().height) : 0,
+        numberW: number ? Math.round(number.getBoundingClientRect().width) : 0,
+        quickLogButtons: row ? row.querySelectorAll('[data-action="quick-log"]').length : -1,
       };
     });
     console.log(`${tag} prominence:`, JSON.stringify(weight));
-    if (weight.quickFilled) fail(`${tag}: quick-log is still filled — it outshouts the completion tick`);
-    if (weight.checkBorder <= weight.quickBorder) {
-      fail(`${tag}: the completion tick (${weight.checkBorder}px border) is not drawn more strongly than quick-log (${weight.quickBorder}px)`);
+    if (weight.numberAction !== 'open-set-sheet') {
+      fail(`${tag}: the set number should open the set sheet, found data-action="${weight.numberAction}"`);
     }
-    // De-emphasising must not shrink the target.
-    if (weight.quickH < 44) fail(`${tag}: quick-log fell to ${weight.quickH}px, below the 44px target`);
+    if (weight.quickLogButtons !== 0) {
+      fail(`${tag}: a second completion button is back (${weight.quickLogButtons} quick-log controls)`);
+    }
+    if (weight.numberFilled) fail(`${tag}: the set number is filled — it outshouts the completion tick`);
+    if (weight.checkBorder <= weight.numberBorder) {
+      fail(`${tag}: the completion tick (${weight.checkBorder}px border) is not drawn more strongly than the set number (${weight.numberBorder}px)`);
+    }
+    if (weight.numberH < 44 || weight.numberW < 44) {
+      fail(`${tag}: the set number fell to ${weight.numberW}×${weight.numberH}px, below the 44px target`);
+    }
 
     // ---- + Warmup is contextual --------------------------------------------
     // Visibility, not presence: the control is hidden by CSS, so it stays in
@@ -247,16 +268,16 @@ try {
     const drop = await loggedCard.evaluate((card) => {
       const row = card.querySelector('.cockpit-set-row.type-dropset');
       const weight = row?.querySelector('.input-weight-node');
-      const pill = row?.querySelector('.type-pill');
       return {
         weight: parseFloat(weight?.value || '0'),
-        pill: pill?.textContent?.trim() || '',
+        pill: row?.getAttribute('data-set-type') || '',
+        label: row?.querySelector('.set-num-lbl')?.textContent?.trim() || '',
       };
     });
     console.log(`${tag} drop:`, JSON.stringify(drop));
     if (!(drop.weight > 0)) fail(`${tag}: the seeded drop row has no weight`);
     if (!(drop.weight < 60)) fail(`${tag}: the seeded drop row (${drop.weight}) is not lighter than the source set`);
-    if (!/^drop/i.test(drop.pill)) fail(`${tag}: the seeded row is not marked as a drop set ("${drop.pill}")`);
+    if (drop.pill !== 'D' || drop.label !== 'D') fail(`${tag}: the seeded row is not marked as a drop set (${JSON.stringify(drop)})`);
 
     if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
       fail(`${tag}: page-level horizontal overflow`);
