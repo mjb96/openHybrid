@@ -20,6 +20,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { enterCockpit } from './cockpit-entry.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const required = process.argv.includes('--required');
@@ -66,24 +67,6 @@ function fixture(theme) {
       },
     },
   };
-}
-
-/** Enter the cockpit deterministically. The landing's primary CTA is a
- *  wellness check-in on a rest day, so pick a training day from the week rail
- *  first — a browser check must not depend on which weekday it runs. */
-async function enterCockpit(page) {
-  await page.click('.nav-item[data-target="workout"]');
-  await page.waitForSelector('#trainLanding .tl-today__primary');
-  if (await page.locator('#trainLanding [data-action="select-program-workout"][data-day="thu"]').count()) {
-    await page.click('#trainLanding [data-action="select-program-workout"][data-day="thu"]');
-    await page.waitForTimeout(400);
-  }
-  if (!(await page.locator('#trainCockpit:not([hidden])').count())) {
-    await page.click('#trainLanding .tl-today__primary');
-  }
-  await page.waitForSelector('#trainCockpit:not([hidden])');
-  await page.click('#cockpitDaySelectorBar .day-pill[data-day="thu"]');
-  await page.waitForSelector('#cockpitExercisesContainer .cockpit-exercise');
 }
 
 /** Type into the open card's first working row and tick it. */
