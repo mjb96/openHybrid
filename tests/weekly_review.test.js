@@ -62,6 +62,19 @@ function makeState() {
 }
 const PROGRAM = { totalWeeks: 12, days: { mon: { title: 'Squat', runs: 'Rest', lifts: [{ name: 'Back Squat' }] }, wed: { title: 'Run', runs: '5k easy' } } };
 
+// A real five-day week — the shape that produced the "40% · 2/5 planned" defect
+// when a PAST week was scored against the plan the athlete is on today.
+const PROGRAM5 = {
+  totalWeeks: 12,
+  days: {
+    mon: { title: 'Squat', runs: 'Rest', lifts: [{ name: 'Back Squat' }] },
+    tue: { title: 'Run', runs: '5k easy' },
+    wed: { title: 'Press', runs: 'Rest', lifts: [{ name: 'Bench Press' }] },
+    thu: { title: 'Lower', runs: 'Rest', lifts: [{ name: 'Deadlift' }] },
+    fri: { title: 'Upper', runs: 'Rest', lifts: [{ name: 'Barbell Row' }] },
+  },
+};
+
 test('buildWeeklyReview: calendar totals, PR detection, score arc', () => {
   const r = buildWeeklyReview(makeState(), DAYS, PROGRAM, { today: TODAY });
   assert.equal(r.hasData, true);
@@ -196,6 +209,62 @@ test('buildWeeklyReview: empty week degrades honestly', () => {
   const r = buildWeeklyReview({ currentWeek: '1', settings: {}, weeks: {} }, DAYS, null, { today: TODAY });
   assert.equal(r.hasData, false);
   assert.match(reviewToText(r), /no sessions logged/);
+});
+
+test('buildWeeklyReview: a past week is never scored against the ACTIVE plan', () => {
+  // A five-day plan is active TODAY; the reviewed week (week 2) holds two
+  // sessions from an older run. The hub already stopped scoring historical weeks
+  // against the current plan; Review must agree instead of saying "40% · 2/5".
+  const r = buildWeeklyReview(makeState(), DAYS, PROGRAM5, { today: TODAY, weekStart: W2 });
+  assert.equal(r.isCurrentWeek, false);
+  assert.equal(r.label, '9–15 Nov');            // the real calendar range
+  assert.equal(r.totals.sessions, 2);
+  assert.equal(r.consistency.total, null);      // no plan to score against
+  assert.equal(r.consistency.pct, null);
+  assert.equal(r.consistency.done, 2);          // what WAS logged still counts
+  assert.equal(r.focus, null);                  // no advice for a finished week
+  assert.equal(r.arc.hasData, false);           // never the live 7-day score
+  const txt = reviewToText(r);
+  assert.doesNotMatch(txt, /next week/i);
+  assert.doesNotMatch(txt, /Hybrid Score/);
+  assert.doesNotMatch(txt, /planned/);
+  assert.match(txt, /^Week of 9–15 Nov on openHybrid: 1,050 kg lifted · 6 km run · 2 sessions · 1 PR 🏆\.$/);
+
+  // The live week still scores the plan it is actually being trained under.
+  const live = buildWeeklyReview(makeState(), DAYS, PROGRAM5, { today: TODAY, weekStart: W3 });
+  assert.equal(live.isCurrentWeek, true);
+  assert.equal(live.consistency.total, 5);
+  assert.equal(live.consistency.done, 2);
+  assert.equal(live.consistency.pct, 40);
+  assert.ok(live.focus);
+});
+
+test('buildWeeklyReview: an empty past week is honestly empty, not "0 sessions" beside a score', () => {
+  // The state carries a live Hybrid Score history near TODAY. A June week with
+  // no training must still render the empty state — the live arc used to make
+  // `hasData` true, which produced a "0 sessions · 0 PRs" review with a score.
+  const r = buildWeeklyReview(makeState(), DAYS, PROGRAM, { today: TODAY, weekStart: '2026-06-01' });
+  assert.equal(r.hasData, false);
+  assert.equal(r.arc.hasData, false);
+  assert.equal(r.focus, null);
+  assert.equal(r.consistency.total, null);
+  assert.equal(reviewToText(r), 'Week of 1–7 Jun: no sessions logged.');
+});
+
+test('buildWeeklyReview: the live score arc alone does not count as training data', () => {
+  const state = { ...makeState(), weeks: {} };
+  const r = buildWeeklyReview(state, DAYS, PROGRAM, { today: TODAY });
+  assert.equal(r.isCurrentWeek, true);
+  assert.equal(r.arc.hasData, true);   // the score exists …
+  assert.equal(r.hasData, false);      // … but the week logged no training
+  assert.match(reviewToText(r), /no sessions logged yet/);
+});
+
+test('reviewToText: a historical week keeps its numbers and drops the live lines', () => {
+  const r = buildWeeklyReview(makeState(), DAYS, PROGRAM, { today: TODAY, weekStart: W1 });
+  const txt = reviewToText(r);
+  assert.match(txt, /^Week of 2–8 Nov on openHybrid: 1,000 kg lifted · 5 km run · 2 sessions\.$/);
+  assert.doesNotMatch(txt, /Hybrid Score|next week|focus/i);
 });
 
 test('pickWeeklyFocus: priority order', () => {

@@ -17,7 +17,7 @@ import { computeHybridScore } from './brain/hybrid-score/hybrid-score.js';
 import { detailHTML as hybridScoreDetailHTML } from './brain/hybrid-score/ui.js';
 import { shareHybridScoreCard } from './brain/hybrid-score/share-card.js';
 import { showToast } from './toast.js';
-import { renderReview, setReviewTab } from './analytics/views/view-weekly-review.js';
+import { renderReview, setReviewTab, getReviewTab } from './analytics/views/view-weekly-review.js';
 import { renderProjections } from './analytics/views/view-projections.js';
 import { runDaySummary, runSessionsForDay } from './state/run-sessions.js';
 import { analyticsBackDestination } from './analytics/navigation.js';
@@ -333,12 +333,37 @@ function collectAnalyticsData() {
 // ==========================================
 // MASTER ROUTER
 // ==========================================
+
+// Screens whose whole content describes ONE calendar week, so the shared
+// navigator is real there rather than decorative. Review joins them only on its
+// Overview tab — its Stats tab also carries the monthly report, streak, goals
+// and the consistency log, none of which are one calendar week — so the tab is
+// consulted too (the router sets it in the switch below).
+const WEEK_SCOPED_CONTEXTS = [
+  'hub', 'strength', 'strength_pr', 'weekly-volume', 'strength-volume',
+  'strength-volume-trends', 'running', 'muscle',
+];
+
+function applyWeekNavVisibility(context) {
+  const weekNav = document.getElementById('analyticsWeekNav');
+  if (!weekNav) return;
+  const visible = WEEK_SCOPED_CONTEXTS.includes(context)
+    || (context === 'weekly-review' && getReviewTab() === 'overview');
+  weekNav.style.display = visible ? '' : 'none';
+}
+
 export function renderAnalytics() {
   if (!_getState || !_getDays) return;
 
   updateWeekNavDisplay(_getState);
 
   const context = _analyticsContext;
+
+  // Review's Overview is week-scoped and its Stats tab is not. The tab bar
+  // reports every in-screen switch so the navigator is never left stale. Legacy
+  // Stats-entry contexts keep it hidden on both tabs, because a navigator tap
+  // re-runs this router and would bounce the athlete back to Stats.
+  const onReviewTabChange = () => applyWeekNavVisibility(context);
 
   // collectAnalyticsData walks every stored week. Only the screens below read
   // it, so the hub — which re-renders on every week-nav tap — must not pay for
@@ -348,10 +373,6 @@ export function renderAnalytics() {
 
   document.querySelectorAll('.analytics-section').forEach(sec => sec.classList.remove('active'));
 
-  // The hub is week-steppable: its hero and domain cards all describe one
-  // calendar week, so the navigator is real there rather than decorative.
-  const weekNav = document.getElementById('analyticsWeekNav');
-  if (weekNav) weekNav.style.display = ['hub', 'strength', 'strength_pr', 'weekly-volume', 'strength-volume', 'strength-volume-trends', 'running', 'muscle'].includes(context) ? '' : 'none';
   const backBtn = document.querySelector('#view-analytics .subview-back-btn');
   if (backBtn) {
     const destination = analyticsBackDestination(
@@ -417,13 +438,15 @@ export function renderAnalytics() {
     case 'weekly-review':
       setReviewTab('overview');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      renderReview(analyticsData(), _getState, _getDays);
+      // The in-screen Overview | Stats switch can make the navigator irrelevant,
+      // so the tab bar reports back rather than leaving a stale control.
+      renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
     case 'weekly-summary':
     case 'monthly-report':
       setReviewTab('stats');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      renderReview(analyticsData(), _getState, _getDays);
+      renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
     case 'projections':
       document.getElementById('analytics-projections').classList.add('active');
@@ -537,7 +560,7 @@ export function renderAnalytics() {
     case 'goal-progress':
       setReviewTab('stats');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      renderReview(analyticsData(), _getState, _getDays);
+      renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
     // V2 (S2): avg-pace, vdot, run-crossref are absorbed into the Running
     // screen's Stats tab — redirect so deep links still resolve.
@@ -557,4 +580,8 @@ export function renderAnalytics() {
       document.getElementById('analytics-hub').classList.add('active');
       break;
   }
+
+  // Resolved AFTER the switch, because a Review entry sets its tab in there and
+  // the navigator is only truthful once the screen's own tab is known.
+  applyWeekNavVisibility(context);
 }
