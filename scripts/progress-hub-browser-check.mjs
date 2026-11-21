@@ -151,7 +151,7 @@ try {
     if (!seen.sub) failures.push(`${width}px: hub has no subtitle`);
     if (/\d{4}-\d{2}-\d{2}/.test(seen.sub)) failures.push(`${width}px: hub subtitle leaks an ISO date (${seen.sub})`);
     const navDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-    if (!/^\d{1,2} [A-Z][a-z]{2} – \d{1,2} [A-Z][a-z]{2}$/.test(navDates)) {
+    if (!/^(\d{1,2}–\d{1,2} [A-Z][a-z]{2}|\d{1,2} [A-Z][a-z]{2} – \d{1,2} [A-Z][a-z]{2})$/.test(navDates)) {
       failures.push(`${width}px: week navigator does not name a human date range (${navDates})`);
     }
     if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow`);

@@ -183,3 +183,21 @@ export function weekRangeLabel(weekStartISO) {
   const m = MONTH_ABBR[start.getUTCMonth()];
   return `${m} ${start.getUTCDate()}–${end.getUTCDate()}`;
 }
+
+/**
+ * Human Monday–Sunday range for week labels: "23–29 Nov", "30 Nov – 6 Dec",
+ * or "28 Dec 2026 – 3 Jan 2027". Calendar keys only — no Date parsing, so a
+ * timezone can never move the day. Returns '' for an invalid key.
+ * @param {string} startISO
+ * @param {string} endISO
+ */
+export function formatWeekRange(startISO, endISO) {
+  const start = localDayKey(startISO);
+  const end = localDayKey(endISO);
+  if (!start || !end) return '';
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const [ey, em, ed] = end.split('-').map(Number);
+  if (sy !== ey) return `${sd} ${MONTH_ABBR[sm - 1]} ${sy} – ${ed} ${MONTH_ABBR[em - 1]} ${ey}`;
+  if (sm !== em) return `${sd} ${MONTH_ABBR[sm - 1]} – ${ed} ${MONTH_ABBR[em - 1]}`;
+  return `${sd}–${ed} ${MONTH_ABBR[sm - 1]}`;
+}

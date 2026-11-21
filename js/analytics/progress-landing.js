@@ -33,23 +33,11 @@ import { calendarStrengthSummary, calendarWeekE1rmSeriesForLift } from './streng
 import { weightUnitOf } from './utils.js';
 import { moduleEnabled } from '../modules.js';
 import { classifyPlannedSession } from '../workout/completion-policy.js';
+import { formatWeekRange } from '../dates.js';
 
-const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/**
- * A human Monday–Sunday range for week labels and the strip tooltips. Date-only
- * keys are parsed as calendar components, so a timezone can never move the day,
- * and the year is only repeated when the range crosses one.
- * @param {string} startISO
- * @param {string} endISO
- */
-export function formatWeekRange(startISO, endISO) {
-  const [sy, sm, sd] = startISO.split('-').map(Number);
-  const [ey, em, ed] = endISO.split('-').map(Number);
-  if (sy !== ey) return `${sd} ${MONTH_LABELS[sm - 1]} ${sy} – ${ed} ${MONTH_LABELS[em - 1]} ${ey}`;
-  if (sm !== em) return `${sd} ${MONTH_LABELS[sm - 1]} – ${ed} ${MONTH_LABELS[em - 1]}`;
-  return `${sd}–${ed} ${MONTH_LABELS[sm - 1]}`;
-}
+// The date formatter lives in the leaf date module so the week navigator, the
+// hub and the Weekly Review cannot drift into three formats.
+export { formatWeekRange };
 
 /** Days of a Monday-based week that have already elapsed, 1..7. */
 function elapsedDayCount(weekStartISO, todayISO) {

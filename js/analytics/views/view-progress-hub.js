@@ -14,7 +14,7 @@ import { esc, spark } from './screen-kit.js';
 import { icon } from '../../ui/icons.js';
 import { formatDist } from '../utils.js';
 import { addDaysISO } from '../weekly-aggregate.js';
-import { formatWeekRange } from '../progress-landing.js';
+import { formatWeekRange } from '../../dates.js';
 
 const DOMAIN_ICON = {
   consistency: 'calendar',
