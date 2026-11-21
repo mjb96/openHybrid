@@ -28,7 +28,7 @@ function comparisonHTML(model) {
   const tone = comparison.absoluteChange === 0 ? 'neutral' : comparison.favorable ? 'good' : 'caution';
   return `<div class="metric-comparison metric-comparison--${tone}">
     <strong>${arrow} ${pct}%</strong>
-    <span>${esc(comparison.comparisonLabel)} · previous ${esc(String(comparison.previousStart))} – ${esc(String(comparison.previousEnd))}</span>
+    <span>${esc(comparison.comparisonLabel)}</span>
   </div>`;
 }
 
@@ -106,7 +106,7 @@ function evidenceHTML(model, point) {
   const evidence = point ? (point.evidence || []) : model.contributing;
   const period = point ? `${fullDateLabel(point.weekStart)} – ${fullDateLabel(point.weekEnd)}` : model.period.label;
   if (!evidence.length) {
-    return `<div class="metric-evidence-empty"><strong>No contributing activities in ${esc(period)}</strong><p>Choose another chart point or log the required source data.</p></div>`;
+    return `<div class="metric-evidence-empty"><strong>No runs in ${esc(period)}</strong><p>Choose another chart point or log the required source data.</p></div>`;
   }
   return `<div class="metric-evidence-list">
     ${evidence.slice(-50).reverse().map((record) => `<button type="button" class="metric-evidence-row" data-action="open-activity-detail" data-activity-id="${esc(record.activityId)}" aria-label="Open ${esc(record.title)} from ${esc(fullDateLabel(record.date))}">
@@ -154,12 +154,13 @@ export function renderRunningMetricDetail(state, entity = {}) {
       && ['running.average-pace', 'running.best-pace', 'running.vdot', 'running.fitness-trend'].includes(metricId)
       ? [`${model.exclusions.paceIneligible} pace-ineligible`]
       : [];
+    const headline = model.empty ? model.emptyHeadline : model.formattedValue;
 
     container.innerHTML = `
       <header class="metric-detail__header">
         <span class="metric-detail__eyebrow">Running metric</span>
         <h2>${esc(model.definition.label)}</h2>
-        <div class="metric-detail__value" style="color:${model.definition.color}">${esc(model.formattedValue)}</div>
+        <div class="metric-detail__value" style="color:${model.definition.color}">${esc(headline)}</div>
         <div class="metric-detail__period"><strong>${esc(model.period.status)}</strong><span>${esc(model.period.label)}</span></div>
         <p>${esc(model.interpretation)}</p>
       </header>

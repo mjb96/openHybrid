@@ -36,7 +36,7 @@ function weekDates(m) {
   return o;
 }
 
-let vs, vr, vw, ve, vsm, vgp, vsv;
+let vs, vr, vw, ve, vsm, vgp, vsv, vrm, vrc;
 before(async () => {
   globalThis.document = {
     getElementById: getEl, querySelector: () => null, querySelectorAll: () => [],
@@ -48,6 +48,8 @@ before(async () => {
   vw = await import('../js/analytics/views/view-weekly-volume.js');
   ve = await import('../js/analytics/views/view-strength-entity.js');
   vsm = await import('../js/analytics/views/view-strength-metric.js');
+  vrm = await import('../js/analytics/views/view-running-metric.js');
+  vrc = await import('../js/analytics/views/view-recovery-metric.js');
   vgp = await import('../js/analytics/views/view-gym-performance.js');
 });
 
@@ -105,6 +107,16 @@ test('Strength volume cards and details have stable exact destinations', () => {
     assert.doesNotMatch(detail, /NaN|Infinity/);
   }
   assert.match(stats, /data-context="strength-metric"[^>]*data-parent-context="strength_pr"/);
+});
+
+test('empty metric headlines say what is missing instead of a bare em dash', () => {
+  const empty = { settings: { weightUnit: 'kg', distanceUnit: 'km' }, weeks: {}, wellnessLog: [] };
+  vsm.renderStrengthMetricDetail(empty, { id: 'strength.four-week-volume' });
+  assert.match(getEl('strengthMetricDetail').innerHTML, /metric-detail__value[^>]*>No workouts</);
+  vrm.renderRunningMetricDetail(empty, { id: 'running.weekly-distance' });
+  assert.match(getEl('runningMetricDetail').innerHTML, /metric-detail__value[^>]*>No runs</);
+  vrc.renderRecoveryMetricDetail(empty, { id: 'recovery.sleep' });
+  assert.match(getEl('recoveryMetricDetail').innerHTML, /metric-detail__value[^>]*>No check-ins</);
 });
 
 test('completed (navigated) week uses the previous-week label, not the live one', () => {

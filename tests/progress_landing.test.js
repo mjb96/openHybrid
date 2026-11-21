@@ -574,3 +574,113 @@ test('one logical session stored twice is not counted twice', () => {
   }), 'consistency');
   assert.equal(consistency.headline.value, '1', 'a duplicate must not read as two sessions');
 });
+
+// =============================================================================
+// A HISTORICAL WEEK IS NOT TODAY
+//
+// The hub is week-steppable, but a plan and a sentence both belong to the run
+// that produced them. Scoring July's three sessions against today's five-day
+// program invented "3 of 5 planned" and a 0% adherence bar for a week that was
+// never trained under that plan; it also kept calling the selection "this week".
+// =============================================================================
+
+test('a past week is never scored against the active program plan', () => {
+  // The 13 Jul week has three sessions, trained before the current five-day plan.
+  const state = {
+    currentWeek: '4',
+    weeks: {
+      '1': {
+        dates: { mon: WK, wed: '2026-07-15', fri: '2026-07-17' },
+        lifts: {
+          mon: { 'Bench Press': [work(80, 5)] },
+          wed: { 'Back Squat': [work(100, 5)] },
+          fri: { 'Deadlift': [work(140, 5)] },
+        },
+      },
+    },
+  };
+  const past = buildProgressLanding(state, {
+    days: DAYS, program: fiveDayProgram, today: '2026-07-27', weekStart: WK,
+  });
+  const consistency = domainOf(past, 'consistency');
+  assert.equal(consistency.headline.value, '3');
+  assert.equal(consistency.headline.unit, 'sessions', 'no plan belongs to a past calendar week');
+  assert.equal(past.weekSummary.planned, null);
+  assert.equal(past.weekSummary.adherencePct, null);
+  assert.equal(past.weekSummary.sessions, 3);
+});
+
+test('a past week describes itself in the past, not as "this week"', () => {
+  const state = {
+    currentWeek: '4',
+    weeks: {
+      '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } },
+    },
+  };
+  const model = buildProgressLanding(state, {
+    days: DAYS, program: fiveDayProgram, today: '2026-07-27', weekStart: WK,
+    runningMetric: () => ({ empty: true }),
+  });
+
+  const consistency = domainOf(model, 'consistency');
+  assert.match(consistency.interpretation, /that week/);
+  assert.doesNotMatch(consistency.interpretation, /this week/);
+
+  const strength = domainOf(model, 'strength');
+  assert.match(strength.interpretation, /that week/);
+  assert.doesNotMatch(strength.interpretation, /this week/);
+
+  const running = domainOf(model, 'running');
+  assert.match(running.interpretation, /that week/);
+  assert.doesNotMatch(running.interpretation, /this week/);
+});
+
+test('an empty past running week says nothing about "this week"', () => {
+  const running = domainOf(buildProgressLanding({ weeks: {} }, {
+    days: DAYS, today: '2026-07-27', weekStart: WK,
+  }), 'running');
+  assert.match(running.interpretation, /No runs logged that week/);
+  assert.doesNotMatch(running.interpretation, /this week/);
+});
+
+test('a completed running week compares full week against the one before', () => {
+  const running = domainOf(buildProgressLanding({ weeks: {} }, {
+    days: DAYS, today: '2026-07-27', weekStart: WK,
+    runningMetric: () => ({
+      empty: false,
+      formattedValue: '21.0 km',
+      // The engine normally describes a live week; the hub must translate that.
+      interpretation: '3 contributing activities in the current scope.',
+      contributing: [{}, {}, {}],
+      comparison: {
+        isComparable: true, percentageChange: 50, direction: 'up',
+        comparisonLabel: 'vs same point last week',
+      },
+    }),
+  }), 'running');
+  assert.equal(running.delta.text, '+50% vs previous week');
+  assert.doesNotMatch(running.interpretation, /current scope|this week/);
+  assert.match(running.interpretation, /3 contributing activities that week/);
+});
+
+test('the live week still applies the plan and speaks in the present', () => {
+  const state = {
+    currentWeek: '1',
+    weeks: { '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } } },
+  };
+  const live = buildProgressLanding(state, {
+    days: DAYS, program: fiveDayProgram, today: '2026-07-14',
+  });
+  const consistency = domainOf(live, 'consistency');
+  assert.equal(consistency.headline.unit, 'of 5 planned');
+  assert.match(consistency.interpretation, /still to go this week/);
+  assert.equal(live.weekSummary.planned, 5);
+  assert.equal(live.weekSummary.adherencePct, 20);
+});
+
+test('the week range label degrades to empty rather than leaking a null into a template', () => {
+  assert.equal(formatWeekRange('', '2026-07-19'), '');
+  assert.equal(formatWeekRange('not-a-date', '2026-07-19'), '');
+  const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
+  assert.equal(model.weekRangeLabel, '13–19 Jul');
+});

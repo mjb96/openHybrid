@@ -14,6 +14,7 @@ import { statCard } from '../charts/chart-primitives.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
 import { renderProgressAnalytics, renderStreakDetail, renderGoalProgressDetail } from './view-progress.js';
 import { screenTabBar, mountScreenTabs } from './screen-kit.js';
+import { getSelectedWeekStart } from '../week-nav.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KM_TO_MI = 0.621371;
@@ -30,7 +31,10 @@ export function renderReview(data, getState, getDays) {
   if (!section) return;
   const state   = getState();
   const program = getProgramById(state.activeProgramId);
-  const review  = buildWeeklyReview(state, getDays(), program);
+  // Follow the shared calendar-week navigator so the Consistency card opens the
+  // week it was showing. The monthly report / streak / goal sections below are
+  // deliberately NOT week-scoped and stay on their own windows.
+  const review  = buildWeeklyReview(state, getDays(), program, { weekStart: getSelectedWeekStart() });
 
   section.innerHTML = screenTabBar(_reviewTab) + `<div id="review-tab-body"></div>`;
   const body = document.getElementById('review-tab-body');
@@ -87,16 +91,17 @@ export function renderReview(data, getState, getDays) {
 }
 
 function _renderReviewOverview(body, review) {
+  const period = review.isCurrentWeek ? 'this week' : 'that week';
   if (!review.hasData) {
     body.innerHTML = `<article class="card-dark an-hero">
-      <div class="an-hero__k">This week</div>
-      <div class="an-hero__val">—</div>
-      <div class="an-hero__empty">Nothing logged yet — your review builds itself as you train.</div>
+      <div class="an-hero__k">${esc(review.label)}</div>
+      <div class="an-hero__val">No sessions</div>
+      <div class="an-hero__empty">Nothing logged ${review.isCurrentWeek ? 'yet' : 'that week'} — your review builds itself as you train.</div>
     </article>`;
     return;
   }
   const hero = `<article class="card-dark an-hero">
-      <div class="an-hero__k">This week</div>
+      <div class="an-hero__k">${esc(review.label)}</div>
       <div class="an-hero__val">${review.totals.sessions}</div>
       <div class="an-hero__empty">${review.totals.sessions === 1 ? 'session' : 'sessions'} logged · ${review.totals.prCount} PR${review.totals.prCount === 1 ? '' : 's'}</div>
     </article>`;
@@ -104,7 +109,7 @@ function _renderReviewOverview(body, review) {
   body.innerHTML = `
     ${hero}
     <div class="grid-2-col gap-2 mb-2">
-      ${statCard({ label: 'Sessions', value: String(review.totals.sessions), sub: 'logged this week', color: '#3b82f6' })}
+      ${statCard({ label: 'Sessions', value: String(review.totals.sessions), sub: `logged ${period}`, color: '#3b82f6' })}
       ${statCard({ label: 'Adherence', value: review.consistency.total > 0 ? review.consistency.pct + '%' : '—', sub: review.consistency.total > 0 ? `${review.consistency.done}/${review.consistency.total} planned` : 'no plan set', color: '#10b981' })}
     </div>
     <article class="card-dark p-3 mb-3" style="border-left:3px solid var(--color-blue);">
@@ -128,7 +133,7 @@ export function renderWeeklyReview(review, state) {
   if (!review.hasData) {
     el.innerHTML = `<article class="card-dark p-4 text-center">
       <div style="font-size:2rem;margin-bottom:8px;">📭</div>
-      <p style="color:var(--text-muted);font-size:0.85rem;line-height:1.5;">Nothing logged this week yet.<br>Your review builds itself as you train.</p>
+      <p style="color:var(--text-muted);font-size:0.85rem;line-height:1.5;">Nothing logged ${review.isCurrentWeek ? 'this week yet' : 'that week'}.<br>Your review builds itself as you train.</p>
     </article>`;
     return;
   }
@@ -170,7 +175,7 @@ export function renderWeeklyReview(review, state) {
       <div style="font-weight:800;color:var(--color-blue);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">${esc(review.focus.area)}</div>
       <p style="color:var(--text-secondary);font-size:0.84rem;line-height:1.5;margin:0;">${esc(review.focus.text)}</p>
     </article>
-    <button id="wrevShareBtn" class="btn-action-block btn-ghost" aria-label="Share this week's review as text">📤 Share as text</button>
+    <button id="wrevShareBtn" class="btn-action-block btn-ghost" aria-label="Share week review as text">📤 Share as text</button>
   `;
 
   const btn = el.querySelector('#wrevShareBtn');

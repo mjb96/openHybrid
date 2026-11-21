@@ -100,10 +100,10 @@ function weekHero(model) {
     ? ''
     : `<div class="ph-week__adherence"><span style="width:${week.adherencePct}%"></span></div>
        <p class="ph-week__adherence-label">${week.adherencePct}% of planned sessions</p>`;
-  return `<section class="ph-week" aria-label="This week">
+  return `<section class="ph-week" aria-label="${esc(`${model.periodLabel} overview`)}">
     <div class="ph-week__head">
       <div>
-        <span class="ph-week__eyebrow">${esc(model.periodLabel)}</span>
+        <span class="ph-week__eyebrow">${esc(model.weekRangeLabel || model.periodLabel)}</span>
         <h2 class="ph-week__title">${esc(sessions)} session${week.sessions === 1 ? '' : 's'}</h2>
       </div>
       <button type="button" class="ph-week__link" data-action="open-activities" data-view="calendar">History →</button>
@@ -125,15 +125,22 @@ function recentWeeksStrip(model) {
   // to encode volume, which painted a running-only week as an empty dash even
   // though it had training in it.
   const max = Math.max(1, ...weeks.map((week) => week.sessions || 0));
-  return `<section class="ph-weeks" aria-label="Sessions in the last 12 calendar weeks">
-    <div class="ph-weeks__head"><span>Last 12 weeks</span><span>Sessions</span></div>
+  const busiest = Math.max(0, ...weeks.map((week) => week.sessions || 0));
+  const period = String(model.periodLabel || 'the selected week').toLowerCase();
+  // The window ends on whatever week the navigator selected, so the heading has
+  // to move with it — "last 12 weeks" was a claim about today, not this window.
+  const windowLabel = `${weeks.length} weeks ending ${period}`;
+  const summary = `${total} session${total === 1 ? '' : 's'} in the ${windowLabel}; busiest week ${busiest}.`;
+  return `<section class="ph-weeks" aria-label="${esc(`Sessions per calendar week over the ${windowLabel}`)}">
+    <div class="ph-weeks__head"><span>${esc(windowLabel)}</span><span>Sessions</span></div>
+    <p class="sr-only">${esc(summary)}</p>
     <div class="ph-weeks__bars">
       ${weeks.map((week) => {
         const height = week.sessions > 0 ? Math.max(12, Math.round((week.sessions / max) * 100)) : 4;
-        return `<span class="ph-weeks__bar${week.sessions > 0 ? ' is-trained' : ''}" style="height:${height}%" title="${esc(formatWeekRange(week.weekStart, addDaysISO(week.weekStart, 6)))}: ${week.sessions} session${week.sessions === 1 ? '' : 's'}"></span>`;
+        return `<span class="ph-weeks__bar${week.sessions > 0 ? ' is-trained' : ''}" style="height:${height}%" aria-hidden="true" title="${esc(formatWeekRange(week.weekStart, addDaysISO(week.weekStart, 6)))}: ${week.sessions} session${week.sessions === 1 ? '' : 's'}"></span>`;
       }).join('')}
     </div>
-    <div class="ph-weeks__scale"><span>Oldest</span><span>${esc(model.periodLabel)}</span></div>
+    <div class="ph-weeks__scale"><span>Oldest</span><span>${esc(model.weekRangeLabel || model.periodLabel)}</span></div>
   </section>`;
 }
 

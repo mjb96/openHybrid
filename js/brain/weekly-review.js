@@ -26,7 +26,7 @@ import { bestE1rmByLiftForWeek, liftE1rmByCalendarWeek } from '../analytics/stre
 import { collectCalendarWeek, weekStartOf, addDaysISO, localDayKey, DAY_KEYS } from '../analytics/weekly-aggregate.js';
 import { isE1rmPr } from '../strength/e1rm.js';
 import { isProgramDeloadWeek } from './day-verdict.js';
-import { todayKey } from '../dates.js';
+import { todayKey, formatWeekRange } from '../dates.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -34,13 +34,6 @@ const round1 = (n) => Math.round(n * 10) / 10;
 function pctDelta(current, prev) {
   if (!prev || prev <= 0) return null;
   return Math.round(((current - prev) / prev) * 100);
-}
-
-function shortDate(dateISO) {
-  const [y, m, d] = String(dateISO || '').split('-').map(Number);
-  if (!y || !m || !d) return dateISO || '';
-  return new Date(Date.UTC(y, m - 1, d, 12))
-    .toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
 // Lifts whose best estimated 1RM this CALENDAR week beats their best in ALL
@@ -203,7 +196,9 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
     wkNum,
     isCurrentWeek,
     weekStart,
-    label: isCurrentWeek ? 'This week' : `Week of ${shortDate(weekStart)}`,
+    // A past selection names its REAL Monday–Sunday range ("9–15 Nov"); only the
+    // live calendar week may claim "This week".
+    label: isCurrentWeek ? 'This week' : formatWeekRange(weekStart, addDaysISO(weekStart, 6)),
     range: { start: weekStart, end: addDaysISO(weekStart, 6) },
     hasData: current.sessions > 0 || current.workingSets > 0 || current.distanceKm > 0 || prs.length > 0 || arc.hasData,
     totals: {
@@ -229,9 +224,12 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
 
 // Share / notification copy. Compact, numbers-first, one focus.
 export function reviewToText(r, distUnit = 'km', weightUnit = 'kg') {
+  // The current week owns the words "This week"; a historical selection is
+  // introduced by its real date range.
+  const headline = r.isCurrentWeek === false ? `Week of ${r.label}` : r.label;
   if (!r.hasData) {
     return r.isCurrentWeek === false
-      ? `${r.label}: no sessions logged.`
+      ? `${headline}: no sessions logged.`
       : 'This week: no sessions logged yet — next week is a fresh start.';
   }
   const dist = distUnit === 'mi' ? `${round1(r.totals.distanceKm * 0.621371)} mi` : `${r.totals.distanceKm} km`;
@@ -241,7 +239,7 @@ export function reviewToText(r, distUnit = 'km', weightUnit = 'kg') {
     `${r.totals.sessions} session${r.totals.sessions === 1 ? '' : 's'}`,
   ];
   if (r.totals.prCount > 0) bits.push(`${r.totals.prCount} PR${r.totals.prCount === 1 ? '' : 's'} 🏆`);
-  let txt = `${r.label} on openHybrid: ${bits.join(' · ')}.`;
+  let txt = `${headline} on openHybrid: ${bits.join(' · ')}.`;
   if (r.arc.hasData) txt += ` Hybrid Score ${r.arc.end}${r.arc.delta !== 0 ? ` (${r.arc.delta > 0 ? '+' : ''}${r.arc.delta} this week)` : ''}.`;
   txt += ` Next week's focus — ${r.focus.area}: ${r.focus.text}`;
   return txt;

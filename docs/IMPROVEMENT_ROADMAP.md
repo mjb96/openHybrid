@@ -647,9 +647,18 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - Empty domain headlines say "No sets", "No runs" and "No signal" instead of a
     lone em dash; a brand-new profile leads with one honest empty state and a
     Start action rather than four dashes.
-  - Validation: 37 progress-landing tests, typecheck, smoke, precache/workflow
-    checks and the 320/390/412 px Progress hub browser contract, including
-    stepping back and returning to the live week.
+  - The Running card now anchors on the selected week's Sunday (the live week
+    keeps today, so its comparison stays elapsed-matched). A historical week is
+    never scored against the active programme's plan: it reports the sessions
+    that were logged instead of inventing "0 of 6 planned" for an old
+    programme. Review and Strength follow the same navigator, and the metric
+    detail screens use human dates instead of raw ISO keys.
+  - Accessibility: the light-mode empty-state CTA measures 5.46:1 (was 1.49:1),
+    and "Return to this week" keeps its 28px pill with a 44px hit area.
+  - Validation: 2,045 node tests, typecheck, smoke, precache/workflow, the
+    320/390/412 px Progress hub contract (including two step-backs and the
+    Running-card value), the Strength Volume contract and the 2,242-control
+    touch-target check.
   - Next: Progress domain detail hierarchy, then the Home hierarchy (demote the
     program week, one Start, collapse bodyweight).
 

@@ -6,13 +6,19 @@ import { getSelectedWeekStart } from '../week-nav.js';
 import { MUSCLE_LABELS } from '../calculations/volume-landmarks.js';
 import { esc } from './screen-kit.js';
 import { weightUnitOf } from '../utils.js';
+import { formatWeekRange } from '../../dates.js';
 
 let _activeBreakdown = 'days';
 let _selectedDay = null;
 
-const fmtDate = (iso, year = false) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, {
-  day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}),
-});
+const fmtDate = (iso, year = false) => {
+  if (!iso) return 'Date unavailable';
+  const parsed = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return 'Date unavailable';
+  return parsed.toLocaleDateString(undefined, {
+    day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}),
+  });
+};
 const fmtVolume = (value, unit) => `${Math.round(value).toLocaleString()} ${unit}`;
 const fmtDuration = (seconds) => {
   if (!seconds) return '—';
@@ -136,7 +142,7 @@ export function renderWeeklyVolumeBody(root, state) {
   root.innerHTML = `<div class="an-detail-substatus">
       <span class="an-period-status ${model.isCurrentWeek ? 'is-live' : ''}">${model.status}</span>
     </div>
-    <p class="an-detail-period">${fmtDate(model.weekStart, true)} – ${fmtDate(model.weekEnd, true)}${model.isCurrentWeek ? ` · through ${fmtDate(model.today)}` : ''}</p>
+    <p class="an-detail-period">${formatWeekRange(model.weekStart, model.weekEnd) || 'Date unavailable'}${model.isCurrentWeek ? ` · through ${fmtDate(model.today)}` : ''}</p>
     <section class="an-volume-summary" aria-label="Weekly strength summary">
       <article><span>Total tonnage</span><strong>${fmtVolume(model.totals.volumeKg, unit)}</strong></article>
       <article><span>Working sets</span><strong>${model.totals.workingSets}</strong></article>

@@ -44,9 +44,12 @@ function comparisonHTML(model) {
   // Tone comes from `favourable`, never from direction — down is GOOD for
   // resting HR and soreness, and colouring by direction would invert them.
   const tone = c.favourable == null ? 'neutral' : c.favourable ? 'good' : 'caution';
+  // The window is fixed by the range selector above; repeating its two ISO
+  // dates here made the sentence unreadable.
+  const previousLabel = model.rangeOptions.find((entry) => entry.id === model.range)?.label;
   return `<div class="metric-comparison metric-comparison--${tone}">
     <strong>${arrow} ${pct}%</strong>
-    <span>vs previous ${esc(String(c.previousStart))} – ${esc(String(c.previousEnd))}</span>
+    <span>vs previous ${esc((previousLabel || 'period').toLowerCase())}</span>
   </div>`;
 }
 
@@ -124,12 +127,13 @@ export function renderRecoveryMetricDetail(state, entity) {
     const extraExclusions = model.exclusions.implausible
       ? [`${model.exclusions.implausible} outside a plausible range`]
       : [];
+    const headline = model.empty ? model.emptyHeadline : formatRecoveryValue(model.definition, model.value);
 
     container.innerHTML = `
       <header class="metric-detail__header">
         <span class="metric-detail__eyebrow">Recovery metric</span>
         <h2>${esc(model.definition.label)}</h2>
-        <div class="metric-detail__value" style="color:${esc(model.definition.color)}">${esc(formatRecoveryValue(model.definition, model.value))}</div>
+        <div class="metric-detail__value" style="color:${esc(model.definition.color)}">${esc(headline)}</div>
         <div class="metric-detail__period"><strong>${model.readingCount} reading${model.readingCount === 1 ? '' : 's'}</strong><span>${esc(model.period.label)}</span></div>
         <p>${esc(model.interpretation)}</p>
       </header>

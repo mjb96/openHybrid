@@ -158,6 +158,16 @@ const mean = (rows) => (rows.length
   ? Math.round((rows.reduce((sum, row) => sum + row.value, 0) / rows.length) * 10) / 10
   : null);
 
+const MONTH_ABBR = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
+
+/** "22 Nov" for an intentional calendar key. Never an ISO string in copy. */
+function formatDayMonthLong(iso) {
+  const key = localDayKey(iso);
+  if (!key) return '';
+  const [, month, day] = key.split('-').map(Number);
+  return `${day} ${MONTH_ABBR[month - 1]}`;
+}
+
 /**
  * Build one recovery metric's detail model.
  *
@@ -218,7 +228,7 @@ export function buildRecoveryMetricDetail(state, metricId, options = {}) {
     range,
     rangeOptions: RECOVERY_RANGE_OPTIONS,
     value,
-    period: { start: periodStart, end: today, label: `${days} days to ${today}` },
+    period: { start: periodStart, end: today, label: `Last ${days} days · through ${formatDayMonthLong(today)}` },
     comparison,
     // Oldest → newest, one point per real reading. No zero-filling: a day
     // without a reading is missing data, not a zero-hour night.
@@ -227,6 +237,9 @@ export function buildRecoveryMetricDetail(state, metricId, options = {}) {
     readingCount: current.length,
     recordCount: usable.length,
     empty: value == null,
+    // Self-reported metrics have "check-ins"; device metrics have "readings".
+    // The visible headline names the missing evidence instead of a bare dash.
+    emptyHeadline: definition.sourceKind === SOURCE_KIND.SELF ? 'No check-ins' : 'No readings',
     exclusions: { future, implausible },
     interpretation: interpretationFor(definition, value, current.length, comparison),
   };

@@ -66,6 +66,7 @@ test('4-Week Volume and progression share the same trailing calendar evidence', 
 
   assert.equal(fourWeek.value, 1500);
   assert.equal(fourWeek.formattedValue, '1,500 kg');
+  assert.equal(fourWeek.period.label, 'Trailing 28 days · through 22 Jul');
   assert.equal(fourWeek.comparison.previousTotal, 1000);
   assert.equal(fourWeek.comparison.percentageChange, 50);
   assert.equal(progression.value, 50);
@@ -84,7 +85,7 @@ test('Muscle Set Credits use the live calendar week and elapsed-matched comparis
   const model = buildStrengthMetricDetail(fixture(), 'strength.muscle-set-credits', { today: '2026-07-22' });
   assert.equal(model.value, 1.75);
   assert.equal(model.formattedValue, '1.8 credits');
-  assert.equal(model.period.label, '2026-07-20 – 2026-07-26');
+  assert.equal(model.period.label, '20–26 Jul');
   assert.equal(model.contributing.length, 1);
   assert.equal(model.contributing[0].activityId, 'strength:current-week');
   assert.equal(model.comparison.comparisonLabel, 'vs same point last week');
@@ -95,6 +96,8 @@ test('registered Strength details have honest empty states and never emit invali
     const model = buildStrengthMetricDetail({ settings: { weightUnit: 'kg' }, weeks: {} }, metric.id, { today: '2026-07-22' });
     assert.equal(model.empty, true, metric.id);
     assert.equal(model.formattedValue, '—', metric.id);
+    assert.equal(model.emptyHeadline, 'No workouts', metric.id);
+    assert.doesNotMatch(model.period.label, /\d{4}-\d{2}-\d{2}/, `${metric.id} period label must not be ISO`);
     if (model.comparison) assert.equal(model.comparison.message, 'Not enough previous data to compare', metric.id);
     assert.ok(!JSON.stringify(model).match(/NaN|Infinity/), metric.id);
   }

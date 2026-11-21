@@ -27,7 +27,8 @@ import { resolveProgramForState, saveStateToLocalStorage } from '../../state.js'
 import { esc, screenTabBar, mountScreenTabs, spark as _spark } from './screen-kit.js';
 import { formatWeight, weightUnitOf } from '../utils.js';
 import { getCalendarWeekOffset, getSelectedWeekStart } from '../week-nav.js';
-import { collectCalendarWeek, weekStartOf, localDayKey } from '../weekly-aggregate.js';
+import { collectCalendarWeek, weekStartOf, localDayKey, addDaysISO } from '../weekly-aggregate.js';
+import { formatWeekRange } from '../../dates.js';
 import { calendarStrengthSummary, calendarWeekE1rmSeriesForLift, bestE1rmByLiftForWeek } from '../../metrics/metrics-strength.js';
 import { canonicalExerciseId } from '../../exercises/catalog.js';
 import { estimatedE1rmForSet } from '../../strength/e1rm.js';
@@ -45,6 +46,13 @@ function fmtWeight(v, unit, opts) { return formatWeight(v, unit, opts); }
 function fmtPct(v)  { if (v === null || !isFinite(v)) return ''; return (v >= 0 ? '+' : '') + v.toFixed(0) + '%'; }
 function fmtWeightWk(v, unit) { if (!v || !isFinite(v)) return ''; return (v >= 0 ? '+' : '') + v.toFixed(1) + ` ${unit}/wk`; }
 function tone(pct)  { return pct > 0 ? '#10b981' : pct < 0 ? '#ef4444' : 'rgba(255,255,255,0.4)'; }
+
+// The navigator can select any past calendar week, so copy must not claim "this
+// week" for it. These two helpers are the single place that decides the word.
+function _weekIsCurrent(weekStart) {
+  return weekStart === weekStartOf(localDayKey(new Date()));
+}
+function _periodWord(weekStart) { return _weekIsCurrent(weekStart) ? 'this week' : 'that week'; }
 
 
 // ---- Training Load Dashboard -------------------------------------------
@@ -411,7 +419,7 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
     // Hero is the ALL-TIME top lift; the spark is its best e1RM by CALENDAR week.
     const series = calendarWeekE1rmSeriesForLift(appState, top.name, { weeks: 12 });
     const prChip = cs.prCount > 0
-      ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} this week</span>`
+      ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} ${_periodWord(cs.weekKey)}</span>`
       : '';
     hero = `<article class="card-dark an-hero">
       <div class="an-hero__k">All-time est. 1RM · ${esc(top.name)}</div>
@@ -422,7 +430,7 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
   } else {
     hero = `<article class="card-dark an-hero">
       <div class="an-hero__k">Estimated 1RM</div>
-      <div class="an-hero__val">—</div>
+      <div class="an-hero__val">No sets</div>
       <div class="an-hero__empty">Log working sets to see your top lift.</div>
     </article>`;
   }
@@ -433,10 +441,10 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
     ? [deloadInsight()] : insights.slice(0, 1);
 
   body.innerHTML = `
-    ${_thisWeekSessionsStripHTML(appState, days)}
+    ${strengthSessionsStripHTML(appState, days)}
     ${hero}
     <div class="grid-2-col gap-2 mb-2">
-      ${statCard(_weeklyE1rmCard(cs, unit))}
+      ${statCard(weeklyE1rmCard(cs, unit))}
       ${statCard({ label: 'Weekly Volume', value: fmtWeight(volCur, unit), delta: volCmp.deltaPct, sub: volCmp.sub, color: '#8b5cf6', action: 'open-analytics', context: 'strength-volume', parentContext: 'strength', preserveWeek: true })}
     </div>
     ${shownInsights[0] ? renderInsightsHTML(shownInsights, 1) : ''}
@@ -444,10 +452,12 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
 }
 
 // The "e1RM change" card params, calendar-correct + honest about missing data.
-// Never compares two different lifts and never reads a stale program week.
-function _weeklyE1rmCard(cs, unit) {
+// Never compares two different lifts and never reads a stale program week. The
+// card follows the navigator, so its copy is "this week" only for the live week.
+export function weeklyE1rmCard(cs, unit) {
+  const period = _periodWord(cs.weekKey);
   if (!cs.hasCurrentWork) {
-    return { label: 'e1RM Change', value: '—', sub: 'No strength work logged this week', color: '#64748b' };
+    return { label: 'e1RM Change', value: 'No sets', sub: `No strength work logged ${period}`, color: '#64748b' };
   }
   if (cs.topChange) {
     const d = Math.round(cs.topChange.deltaKg);
@@ -458,25 +468,35 @@ function _weeklyE1rmCard(cs, unit) {
       color: d > 0 ? '#10b981' : d < 0 ? '#ef4444' : '#94a3b8',
     };
   }
-  // Trained this week, but no same-exercise result last week to compare against.
+  // Trained in the selected week, but no same-exercise result the week before.
   return {
-    label: 'e1RM This Week',
+    label: 'Best e1RM',
     value: `${Math.round(cs.bestThisWeek.e1rm)} ${unit}`,
     sub: `Best ${cs.bestThisWeek.exerciseName} · no prior week`,
     color: '#3b82f6',
   };
 }
 
-// "This week's sessions" strip — a tappable chip per trained day this week, in
-// weekday order, opening the session-detail modal (which shows a vs-last-week
+// Sessions strip — a tappable chip per trained day in the SELECTED calendar week,
+// in weekday order, opening the session-detail modal (which shows a vs-last-week
 // comparison). The one-tap route from Strength insights into "last week's Push
 // vs this week's Push".
 const _DAY_ABBR = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
-function _thisWeekSessionsStripHTML(appState, days) {
-  const chips = strengthSessionChipModels(appState, days);
+
+// The title names the real period: "This week's sessions" only for the live week,
+// "Previous week's sessions" one step back, otherwise the Mon–Sun range.
+function _sessionsStripTitle(weekStart) {
+  if (_weekIsCurrent(weekStart)) return "This week's sessions";
+  if (weekStart === addDaysISO(weekStartOf(localDayKey(new Date())), -7)) return "Previous week's sessions";
+  return `${formatWeekRange(weekStart, addDaysISO(weekStart, 6))} sessions`;
+}
+
+export function strengthSessionsStripHTML(appState, days, opts = {}) {
+  const weekStart = opts.weekStart || getSelectedWeekStart();
+  const chips = strengthSessionChipModels(appState, days, { weekStart });
   if (!chips.length) return '';
   return `<div class="sw-sessions">
-    <div class="sw-sessions__title">This week's sessions</div>
+    <div class="sw-sessions__title">${esc(_sessionsStripTitle(weekStart))}</div>
     <div class="sw-sessions__row">${chips.map(chip => `<button class="sw-session-chip" data-action="open-session-detail" data-week="${esc(chip.weekKey)}" data-day="${esc(chip.sourceDay)}" data-datelabel="${esc(chip.title)}">
       <span class="sw-session-chip__day">${_DAY_ABBR[chip.calendarDay] || esc(chip.calendarDay)}</span>
       <span class="sw-session-chip__title">${esc(chip.title)}</span>
@@ -492,11 +512,11 @@ function _thisWeekSessionsStripHTML(appState, days) {
  * Monday as its prescription/detail identity.
  */
 export function strengthSessionChipModels(appState, days, opts = {}) {
-  // "This week" = the current CALENDAR week. Assemble it from real stamped dates
-  // (a day may live in any program-week slot) so the strip can never echo a
-  // frozen program week's stale sessions. Each chip also keeps its SOURCE
+  // The strip follows the SELECTED calendar week. Assemble it from real stamped
+  // dates (a day may live in any program-week slot) so the strip can never echo
+  // a frozen program week's stale sessions. Each chip also keeps its SOURCE
   // program/week/day so a rescheduled workout is named and opened correctly.
-  const weekStart = opts.weekStart || weekStartOf(localDayKey(new Date()));
+  const weekStart = opts.weekStart || getSelectedWeekStart();
   const weekData = collectCalendarWeek(appState, weekStart);
   const activeProgram = resolveProgramForState(appState, appState.activeProgramId);
   const unit = appState.settings?.weightUnit || 'kg';
@@ -549,6 +569,8 @@ function _renderStrengthStats(body, data, sa, la, appState) {
     curByLift:  bestE1rmByLiftForWeek(appState, { weekStart: cs.weekKey }),
     prevByLift: bestE1rmByLiftForWeek(appState, { weekStart: cs.prevWeekKey }),
     prSet:      new Set(cs.prLifts),
+    // Drives "this week" vs "that week" copy in the list below.
+    isCurrentWeek: _weekIsCurrent(cs.weekKey),
   };
   render1RMList(qs('allLiftsRmContainer'), data.dynamicStats, calStats, unit);
 }
@@ -568,6 +590,8 @@ export function render1RMList(container, dynamicStats, calStats = null, unit = '
 
   const cal = calStats || { curByLift: {}, prevByLift: {}, prSet: new Set() };
   const prCount  = cal.prSet.size;
+  const period   = cal.isCurrentWeek === false ? 'that week' : 'this week';
+  const Period   = cal.isCurrentWeek === false ? 'That week' : 'This week';
   const maxAllTime = entries[0][1].allTimeMax;
 
   const rows = entries.map(([name, statData]) => {
@@ -587,7 +611,7 @@ export function render1RMList(container, dynamicStats, calStats = null, unit = '
       const col   = delta > 0 ? '#10b981' : delta < 0 ? '#ef4444' : 'var(--text-muted)';
       deltaHtml   = `<span style="font-size:0.72rem;color:${col};margin-left:6px;">${sign}${Math.round(delta)} ${unit} vs last wk</span>`;
     } else if (cur > 0) {
-      deltaHtml = `<span style="font-size:0.72rem;color:var(--text-muted);margin-left:6px;">This week: ~${Math.round(cur)} ${unit}</span>`;
+      deltaHtml = `<span style="font-size:0.72rem;color:var(--text-muted);margin-left:6px;">${Period}: ~${Math.round(cur)} ${unit}</span>`;
     }
 
     return `<div class="mb-4">
@@ -604,7 +628,7 @@ export function render1RMList(container, dynamicStats, calStats = null, unit = '
 
   const summaryBar = prCount > 0
     ? `<div class="flex-between mb-4 p-3 card-dark" style="border:1px solid rgba(16,185,129,0.3);">
-        <span class="text-sm text-muted">PRs set this week</span>
+        <span class="text-sm text-muted">PRs set ${period}</span>
         <span class="font-heavy" style="color:#10b981;">${prCount} lift${prCount !== 1 ? 's' : ''}</span>
        </div>`
     : '';

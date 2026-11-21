@@ -19,7 +19,7 @@ function comparisonHTML(model) {
   if (!c) return '<p class="metric-detail__muted">This metric already expresses a period comparison.</p>';
   if (!c.isComparable) return `<p class="metric-detail__muted">${esc(c.message || 'Not enough previous data to compare')}.</p>`;
   const arrow = c.absoluteChange > 0 ? '↑' : c.absoluteChange < 0 ? '↓' : '→';
-  return `<div class="metric-comparison metric-comparison--neutral"><strong>${arrow} ${Math.abs(c.percentageChange || 0)}%</strong><span>${esc(c.comparisonLabel)} · ${esc(c.previousStart)} – ${esc(c.previousEnd)}</span></div>`;
+  return `<div class="metric-comparison metric-comparison--neutral"><strong>${arrow} ${Math.abs(c.percentageChange || 0)}%</strong><span>${esc(c.comparisonLabel)}</span></div>`;
 }
 
 function chartHTML(model, selectedKey) {
@@ -62,7 +62,7 @@ function chartHTML(model, selectedKey) {
 }
 
 function evidenceHTML(records, periodLabel, unit) {
-  if (!records.length) return `<div class="metric-evidence-empty"><strong>No contributing workouts in ${esc(periodLabel)}</strong><p>Choose another chart point or log a dated strength workout.</p></div>`;
+  if (!records.length) return `<div class="metric-evidence-empty"><strong>No workouts in ${esc(periodLabel)}</strong><p>Choose another chart point or log a dated strength workout.</p></div>`;
   return `<div class="metric-evidence-list">${[...records].reverse().slice(0, 50).map((record) =>
     `<button type="button" class="metric-evidence-row" data-action="open-activity-detail" data-activity-id="${esc(record.activityId)}" aria-label="Open ${esc(record.title)} from ${esc(dateLabel(record.date, true))}">
       <span class="metric-evidence-row__main"><strong>${esc(record.title)}</strong><small>${esc(dateLabel(record.date, true))} · ${record.workingSets} working sets</small></span>
@@ -92,10 +92,11 @@ export function renderStrengthMetricDetail(state, entity = {}) {
     const selected = model.series.find((point) => point.key === selectedKey) || null;
     const evidence = selected?.evidence || model.contributing;
     const periodLabel = selected ? `week of ${dateLabel(selected.weekStart, true)}` : model.period.label;
+    const headline = model.empty ? model.emptyHeadline : model.formattedValue;
     container.innerHTML = `
       <header class="metric-detail__header"><span class="metric-detail__eyebrow">Strength metric</span><h2>${esc(model.definition.label)}</h2>
-        <div class="metric-detail__value" style="color:${model.definition.color}">${esc(model.formattedValue)}</div>
-        <div class="metric-detail__period"><strong>${esc(model.period.status)}</strong><span>${esc(model.period.label)}</span></div><p>${esc(model.interpretation)}</p></header>
+        <div class="metric-detail__value" style="color:${model.definition.color}">${esc(headline)}</div>
+        <div class="metric-detail__period"><strong>${esc(model.period.status)}</strong><span>${esc(model.period.label)}</span></div>${model.interpretation ? `<p>${esc(model.interpretation)}</p>` : ''}</header>
       ${comparisonHTML(model)}
       <section class="metric-detail__section" aria-labelledby="strengthMetricHistoryTitle"><div class="metric-detail__section-head"><div><span>History</span><h3 id="strengthMetricHistoryTitle">${esc(model.rangeOptions.find((item) => item.id === range)?.label || '12 weeks')}</h3></div>
         <div class="metric-range" role="group" aria-label="History range">${model.rangeOptions.map((item) => `<button type="button" data-strength-metric-range="${item.id}" aria-pressed="${item.id === range}" class="${item.id === range ? 'is-selected' : ''}">${esc(item.label)}</button>`).join('')}</div></div>

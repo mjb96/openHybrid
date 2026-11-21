@@ -32,7 +32,7 @@ import { renderRecoveryPerformance } from './analytics/views/view-recovery-perfo
 import { renderRecoveryMetricDetail } from './analytics/views/view-recovery-metric.js';
 import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progress-landing.js';
 import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
-import { weekStartOf, localDayKey } from './analytics/weekly-aggregate.js';
+import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
@@ -338,8 +338,13 @@ export function renderAnalytics() {
 
   updateWeekNavDisplay(_getState);
 
-  const data    = collectAnalyticsData();
   const context = _analyticsContext;
+
+  // collectAnalyticsData walks every stored week. Only the screens below read
+  // it, so the hub — which re-renders on every week-nav tap — must not pay for
+  // it just to show one calendar week.
+  let analyticsDataCache = null;
+  const analyticsData = () => (analyticsDataCache ??= collectAnalyticsData());
 
   document.querySelectorAll('.analytics-section').forEach(sec => sec.classList.remove('active'));
 
@@ -383,6 +388,10 @@ export function renderAnalytics() {
       const st = _getState();
       const days = _getDays();
       const program = getProgramById(st.activeProgramId);
+      const today = localDayKey(new Date());
+      const weekStart = getSelectedWeekStart(today);
+      const isCurrentWeek = weekStart === weekStartOf(today);
+      const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
       const dashboard = computeDashboardModel(st, days, program, days[0] || 'mon');
       renderProgressHub(hubEl, buildProgressLanding(st, {
         days,
@@ -390,11 +399,16 @@ export function renderAnalytics() {
         readiness: dashboard.ready,
         // One calendar week, selected by the shared navigator. Never
         // state.currentWeek.
-        today: localDayKey(new Date()),
-        weekStart: getSelectedWeekStart(),
+        today,
+        weekStart,
         // Series included: the hub's Running card draws a trend spark from the
         // metric engine's own weekly points rather than computing a second one.
-        runningMetric: (id) => buildRunningMetricDetail(st, id, { range: '12w' }),
+        // The engine reads `today` as its through-date, so a completed week ends
+        // on its Sunday; the live week keeps today and stays elapsed-matched.
+        runningMetric: (id) => buildRunningMetricDetail(st, id, {
+          range: '12w',
+          today: isCurrentWeek ? today : weekEnd,
+        }),
       }), st.settings?.ui?.progress?.hidden || []);
       break;
     }
@@ -403,13 +417,13 @@ export function renderAnalytics() {
     case 'weekly-review':
       setReviewTab('overview');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      renderReview(data, _getState, _getDays);
+      renderReview(analyticsData(), _getState, _getDays);
       break;
     case 'weekly-summary':
     case 'monthly-report':
       setReviewTab('stats');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      renderReview(data, _getState, _getDays);
+      renderReview(analyticsData(), _getState, _getDays);
       break;
     case 'projections':
       document.getElementById('analytics-projections').classList.add('active');
@@ -429,12 +443,12 @@ export function renderAnalytics() {
     case 'strength':
       setStrengthTab('overview');
       document.getElementById('analytics-strength').classList.add('active');
-      renderStrengthAnalytics(data, _getState, _getDays);
+      renderStrengthAnalytics(analyticsData(), _getState, _getDays);
       break;
     case 'strength_pr':
       setStrengthTab('stats');
       document.getElementById('analytics-strength').classList.add('active');
-      renderStrengthAnalytics(data, _getState, _getDays);
+      renderStrengthAnalytics(analyticsData(), _getState, _getDays);
       break;
     // Phase 3B: one Strength Volume destination. The legacy contexts choose
     // the opening tab so every existing entry point still lands correctly.
@@ -486,7 +500,7 @@ export function renderAnalytics() {
     case 'running':
       setRunningTab('overview');
       document.getElementById('analytics-running').classList.add('active');
-      renderRunningAnalytics(data, _getState, _getDays);
+      renderRunningAnalytics(analyticsData(), _getState, _getDays);
       break;
     case 'running-metric':
       document.getElementById('analytics-running-metric').classList.add('active');
@@ -498,7 +512,7 @@ export function renderAnalytics() {
     case 'recovery':
       setRecoveryTab('overview');
       document.getElementById('analytics-recovery').classList.add('active');
-      renderRecoveryLoad(data, _getState, _getDays);
+      renderRecoveryLoad(analyticsData(), _getState, _getDays);
       break;
     case 'recovery-score':
     case 'training-status':
@@ -506,11 +520,11 @@ export function renderAnalytics() {
     case 'stress-balance':
       setRecoveryTab('stats');
       document.getElementById('analytics-recovery').classList.add('active');
-      renderRecoveryLoad(data, _getState, _getDays);
+      renderRecoveryLoad(analyticsData(), _getState, _getDays);
       break;
     case 'bodyweight':
       document.getElementById('analytics-bodyweight').classList.add('active');
-      renderBodyWeightAnalytics(data, _getState);
+      renderBodyWeightAnalytics(analyticsData(), _getState);
       break;
     case 'muscle-load':
       document.getElementById('analytics-muscle-load').classList.add('active');
@@ -523,7 +537,7 @@ export function renderAnalytics() {
     case 'goal-progress':
       setReviewTab('stats');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      renderReview(data, _getState, _getDays);
+      renderReview(analyticsData(), _getState, _getDays);
       break;
     // V2 (S2): avg-pace, vdot, run-crossref are absorbed into the Running
     // screen's Stats tab — redirect so deep links still resolve.
@@ -532,7 +546,7 @@ export function renderAnalytics() {
     case 'avg-pace':
       setRunningTab('stats');
       document.getElementById('analytics-running').classList.add('active');
-      renderRunningAnalytics(data, _getState, _getDays);
+      renderRunningAnalytics(analyticsData(), _getState, _getDays);
       break;
     case 'fasting':
       document.getElementById('analytics-fasting').classList.add('active');

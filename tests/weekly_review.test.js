@@ -93,6 +93,30 @@ test('buildWeeklyReview: the score arc follows the reviewed day, not the system 
   assert.equal(expired.arc.hasData, false);
 });
 
+test('buildWeeklyReview: a selected past week reviews that week, labelled by its real range', () => {
+  // The Progress hub's Consistency card opens Review while the navigator sits on
+  // a historical week. Totals, PR comparison and the label must all belong to
+  // that week — never the live one.
+  const r = buildWeeklyReview(makeState(), DAYS, PROGRAM, { today: TODAY, weekStart: W2 });
+  assert.equal(r.isCurrentWeek, false);
+  assert.equal(r.weekStart, W2);
+  assert.equal(r.label, '9–15 Nov');
+  assert.deepEqual(r.range, { start: W2, end: '2026-11-15' });
+  assert.equal(r.totals.sessions, 2);          // Wed run + Mon lift of week 2
+  assert.equal(r.totals.volume, 105 * 5 * 2);  // NOT week 3's 110 kg
+  assert.equal(r.totals.distanceKm, 6);        // NOT week 3's 7 km
+  assert.equal(r.prs.length, 1);               // 105 beats week 1's 100
+  // Share copy introduces the range instead of claiming "this week".
+  assert.match(reviewToText(r), /^Week of 9–15 Nov on openHybrid: 1,050 kg lifted · 6 km run · 2 sessions · 1 PR/);
+});
+
+test('buildWeeklyReview: the live week keeps the literal "This week" label', () => {
+  const r = buildWeeklyReview(makeState(), DAYS, PROGRAM, { today: TODAY, weekStart: W3 });
+  assert.equal(r.isCurrentWeek, true);
+  assert.equal(r.label, 'This week');
+  assert.match(reviewToText(r), /^This week on openHybrid:/);
+});
+
 test('buildWeeklyReview: adherence counts sessions, not sets', () => {
   // The audit's "6% · 5/81" contradiction: five completed sets in a part-finished
   // session must read as sessions against the plan, the same unit the Progress

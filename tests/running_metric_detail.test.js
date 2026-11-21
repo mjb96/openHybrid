@@ -99,6 +99,25 @@ test('rolling metrics label the actual equal-length comparison window', () => {
   assert.equal(detail.comparison.comparisonLabel, 'vs previous 28 days');
 });
 
+test('every period label is human-readable and never an ISO range', () => {
+  const state = fixture();
+  const expected = [
+    ['running.weekly-distance', '13–19 Jul'],
+    ['running.training-load', 'Trailing 7 days · through 16 Jul'],
+    ['running.four-week-distance', 'Trailing 28 days · through 16 Jul'],
+    ['running.fitness-trend', 'Trailing 12 weeks · through 16 Jul'],
+    ['running.vdot', 'Trailing 8 weeks · through 16 Jul'],
+    ['running.load-ratio', '7-day / 28-day EWMA · through 16 Jul'],
+    ['running.race-projections', 'Current model · through 16 Jul'],
+    ['running.total-distance', 'Since 6 Jul 2026'],
+  ];
+  for (const [id, label] of expected) {
+    const detail = buildRunningMetricDetail(state, id, { today: '2026-07-16' });
+    assert.equal(detail.period.label, label, id);
+    assert.doesNotMatch(detail.period.label, /\d{4}-\d{2}-\d{2}/, `${id} must not show ISO`);
+  }
+});
+
 test('best pace identifies an exact eligible whole-session source activity', () => {
   const detail = buildRunningMetricDetail(fixture(), 'running.best-pace', { today: '2026-07-16' });
   assert.equal(detail.formattedValue, '5:00 /km');
@@ -145,6 +164,7 @@ test('zero activity counts are honest empty states', () => {
   assert.equal(detail.value, 0);
   assert.equal(detail.formattedValue, '—');
   assert.equal(detail.empty, true);
+  assert.equal(detail.emptyHeadline, 'No runs');
 });
 
 test('zero form without eligible load evidence is unavailable, not a recovery claim', () => {

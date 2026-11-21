@@ -155,7 +155,7 @@ function toneFor(direction, inverse = false) {
  * SESSIONS (what "of N planned" is about); the trend counts training days and
  * says so on its own label.
  */
-function consistencyDomain(state, { days, program, todayISO, weekStart }) {
+function consistencyDomain(state, { days, plan, todayISO, weekStart }) {
   // One source for both numbers, and the same deduplicated index In Focus reads,
   // so the headline (sessions) and the trend (training days) can never disagree
   // about whether a week was trained.
@@ -166,7 +166,9 @@ function consistencyDomain(state, { days, program, todayISO, weekStart }) {
 
   const trained = trainedSessionsIn(counts, weekStart, elapsed);
   const previous = trainedSessionsIn(counts, prevWeekStart, elapsed);
-  const planned = plannedTrainingDays(program);
+  const planned = plannedTrainingDays(plan);
+  // The sentence must follow the navigator: a past selection is not "this week".
+  const when = isCurrentWeek ? 'this week' : 'that week';
 
   const comparison = comparePeriodValues({
     currentValue: trained,
@@ -180,19 +182,21 @@ function consistencyDomain(state, { days, program, todayISO, weekStart }) {
       title: 'Consistency',
       context: 'weekly-review',
       headline: { value: '0', unit: planned ? `of ${planned} planned` : 'sessions' },
-      interpretation: 'No training logged this week yet. One session is enough to start the comparison.',
+      interpretation: isCurrentWeek
+        ? 'No training logged this week yet. One session is enough to start the comparison.'
+        : 'No training logged that week, and none the week before.',
       empty: true,
     });
   }
 
   const remaining = planned != null ? Math.max(0, planned - trained) : null;
   const interpretation = planned == null
-    ? `${trained} session${trained === 1 ? '' : 's'} logged this week.`
+    ? `${trained} session${trained === 1 ? '' : 's'} logged ${when}.`
     : remaining === 0
-      ? `You have hit all ${planned} planned session${planned === 1 ? '' : 's'} this week.`
+      ? `You have hit all ${planned} planned session${planned === 1 ? '' : 's'} ${when}.`
       : isCurrentWeek
-        ? `${remaining} of ${planned} planned session${planned === 1 ? '' : 's'} still to go this week.`
-        : `${trained} of ${planned} planned session${planned === 1 ? '' : 's'} completed that week.`;
+        ? `${remaining} of ${planned} planned session${planned === 1 ? '' : 's'} still to go ${when}.`
+        : `${trained} of ${planned} planned session${planned === 1 ? '' : 's'} completed ${when}.`;
 
   return domain({
     id: 'consistency',
@@ -219,8 +223,9 @@ function consistencyDomain(state, { days, program, todayISO, weekStart }) {
  * two different lifts, and says so plainly when there is no prior week to
  * compare the same exercise against.
  */
-function strengthDomain(state, { weekStart, unit }) {
+function strengthDomain(state, { weekStart, unit, isCurrentWeek }) {
   const cs = calendarStrengthSummary(state, { weekStart });
+  const when = isCurrentWeek ? 'this week' : 'that week';
 
   if (!cs.hasCurrentWork) {
     return domain({
@@ -228,13 +233,13 @@ function strengthDomain(state, { weekStart, unit }) {
       title: 'Strength',
       context: 'strength',
       headline: { value: 'No sets', unit: null },
-      interpretation: 'No strength work logged this week. Complete working sets to track estimated 1RM.',
+      interpretation: `No strength work logged ${when}. Complete working sets to track estimated 1RM.`,
       empty: true,
     });
   }
 
   const prSupport = cs.prCount > 0
-    ? `${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} this week`
+    ? `${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} ${when}`
     : cs.improvedCount > 0
       ? `${cs.improvedCount} lift${cs.improvedCount === 1 ? '' : 's'} up on last week`
       : null;
@@ -257,7 +262,7 @@ function strengthDomain(state, { weekStart, unit }) {
         tone: delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat',
       },
       interpretation: delta > 0
-        ? `Your biggest same-exercise gain this week is ${cs.topChange.exerciseName}, up ${delta} kg on its own previous best.`
+        ? `Your biggest same-exercise gain ${when} is ${cs.topChange.exerciseName}, up ${delta} kg on its own previous best.`
         : delta < 0
           ? `${cs.topChange.exerciseName} is ${Math.abs(delta)} kg below last week. One lighter week is normal — check the trend before changing the plan.`
           : `${cs.topChange.exerciseName} matched last week exactly.`,
@@ -275,7 +280,9 @@ function strengthDomain(state, { weekStart, unit }) {
       label: `${cs.bestThisWeek.exerciseName} est. 1RM, last 12 weeks`,
     },
     delta: { text: 'No prior week for the same lift', tone: 'none' },
-    interpretation: `Best estimated 1RM this week is ${cs.bestThisWeek.exerciseName}. Repeat it next week to get a like-for-like comparison.`,
+    interpretation: isCurrentWeek
+      ? `Best estimated 1RM this week is ${cs.bestThisWeek.exerciseName}. Repeat it next week to get a like-for-like comparison.`
+      : `Best estimated 1RM that week is ${cs.bestThisWeek.exerciseName}. No earlier week logged the same lift, so there is nothing to compare it against.`,
   });
 }
 
@@ -285,7 +292,8 @@ function strengthDomain(state, { weekStart, unit }) {
  * that model rather than recomputing distance a second way.
  * @param {(id:string)=>any} runningMetric  injected buildRunningMetricDetail binding
  */
-function runningDomain(runningMetric) {
+function runningDomain(runningMetric, { isCurrentWeek }) {
+  const when = isCurrentWeek ? 'this week' : 'that week';
   const model = runningMetric ? runningMetric('running.weekly-distance') : null;
 
   if (!model || model.empty) {
@@ -297,13 +305,23 @@ function runningDomain(runningMetric) {
       // The metric engine's empty copy is written for a detail screen and can
       // read as jargon here ("0 contributing activities in the current scope").
       // The hub speaks training language, so it states the same fact plainly.
-      interpretation: 'No runs logged in this week yet. A dated run unlocks distance, pace and week-on-week comparison.',
+      interpretation: isCurrentWeek
+        ? 'No runs logged in this week yet. A dated run unlocks distance, pace and week-on-week comparison.'
+        : 'No runs logged that week. A dated run unlocks distance, pace and week-on-week comparison.',
       empty: true,
     });
   }
 
   const comparison = model.comparison;
   const points = Array.isArray(model.series) ? model.series.map((p) => Number(p?.value) || 0) : [];
+  // The engine labels every calendar-week comparison as a live week because it
+  // normally runs against today. A completed selection compares full week with
+  // full week, so the sentence must say so — the value itself is already honest
+  // (analytics.js passes the week's Sunday as the through-date).
+  const comparisonLabel = isCurrentWeek ? comparison?.comparisonLabel : 'vs previous week';
+  const comparisonMessage = !isCurrentWeek && comparison?.message === 'None at this point last week'
+    ? 'None the week before'
+    : comparison?.message;
   return domain({
     id: 'running',
     title: 'Running',
@@ -312,13 +330,15 @@ function runningDomain(runningMetric) {
     trend: points.length > 1 ? { values: points, label: 'Weekly distance' } : null,
     delta: comparison?.isComparable
       ? {
-        text: `${comparison.percentageChange > 0 ? '+' : ''}${comparison.percentageChange}% ${comparison.comparisonLabel}`,
+        text: `${comparison.percentageChange > 0 ? '+' : ''}${comparison.percentageChange}% ${comparisonLabel}`,
         tone: toneFor(comparison.direction),
       }
       : comparison
-        ? { text: comparison.message || comparison.comparisonLabel, tone: 'none' }
+        ? { text: comparisonMessage || comparisonLabel || '', tone: 'none' }
         : null,
-    interpretation: model.interpretation,
+    interpretation: isCurrentWeek
+      ? model.interpretation
+      : String(model.interpretation || '').replace(/\bthis week\b/g, when).replace(/in the current scope/g, when),
   });
 }
 
@@ -452,18 +472,24 @@ export function buildProgressLanding(state, opts = {}) {
   const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
   const isCurrentWeek = weekStart === weekStartOf(todayISO);
 
+  // A program plan describes the ACTIVE run, and plannedTrainingDays() is
+  // date-blind. Scoring a historical week against today's plan would invent an
+  // adherence bar the athlete never had (an old program's week could read
+  // "0 of 6 planned"), so a past selection only reports what was logged.
+  const plan = isCurrentWeek ? opts.program : null;
+
   const unit = weightUnitOf(state);
   const domains = [
-    consistencyDomain(state, { days, program: opts.program, todayISO, weekStart }),
-    strengthDomain(state, { weekStart, unit }),
-    ...(moduleEnabled(state, 'running') ? [runningDomain(opts.runningMetric)] : []),
+    consistencyDomain(state, { days, plan, todayISO, weekStart }),
+    strengthDomain(state, { weekStart, unit, isCurrentWeek }),
+    ...(moduleEnabled(state, 'running') ? [runningDomain(opts.runningMetric, { isCurrentWeek })] : []),
     ...(moduleEnabled(state, 'recovery') ? [recoveryDomain(opts.readiness)] : []),
   ];
 
   const index = indexSlotsByDate(state);
   const recentWeeks = buildRecentWeekSeries(state, weekStart, 12, index);
   const currentWeek = recentWeeks[recentWeeks.length - 1];
-  const plannedSessions = plannedTrainingDays(opts.program);
+  const plannedSessions = plannedTrainingDays(plan);
   const adherencePct = plannedSessions
     ? Math.min(100, Math.round((currentWeek.sessions / plannedSessions) * 100))
     : null;

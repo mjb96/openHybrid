@@ -446,6 +446,12 @@
   z-index: 10;
 }
 
+/* A 28px text pill. It is the primary way back to the live week, so it carries
+   the shared `.hit-target` (css/styles.css) treatment: the pill keeps its
+   measured 28px height and the ::after grows a 44px-tall, full-width tap area.
+   The hit area never exceeds the button's width, so it cannot reach the 44px
+   arrows either side; vertically it runs 8px above and 8px below the pill,
+   which stays inside the bar (2px gap + date line above, 10px padding below). */
 .week-nav-today {
   border: 0;
   background: transparent;
@@ -1658,6 +1664,17 @@ html[data-theme="light"] .ph-card,
 html[data-theme="light"] .ph-empty {
   background: rgba(0,0,0,0.02);
   border-color: rgba(0,0,0,0.08);
+}
+/* The empty-state CTA is the only action on a Progress page with no training,
+   so it must clear AA. The cyan accent (#22d3ee) painted 1.49:1 on this tint,
+   and cyan-700 (#0e7490) tops out around 4.1:1 on the app background (4.48:1
+   even over white), so the text and border are cyan-800 instead: the measured
+   pixel contrast is 5.46:1 on the #f0f4f8 backdrop and 5.98:1 on a white card,
+   with the same 10% tint so the button keeps its soft filled look. */
+html[data-theme="light"] .ph-empty__cta {
+  border-color: rgba(21,94,117,0.36);
+  background: rgba(21,94,117,0.10);
+  color: #155e75;
 }
 html[data-theme="light"] .hub-link--quiet {
   background: transparent;

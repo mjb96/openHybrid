@@ -8,7 +8,7 @@
 // Activity Detail identity. Undated and future records are retained in state but
 // excluded from date analytics rather than guessed into a period.
 // =============================================================================
-import { addDaysISO, localDayKey, todayKey } from '../dates.js';
+import { addDaysISO, formatWeekRange, localDayKey, todayKey } from '../dates.js';
 import { weekStartOf } from './weekly-aggregate.js';
 import { comparePeriodValues } from './period-comparison.js';
 import {
@@ -429,17 +429,27 @@ function evidenceFor(id, records) {
   }
 }
 
+const MONTH_ABBR = Object.freeze(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
+
+/** "22 Jul", or "16 Jul 2026" for a lifetime anchor. Never an ISO string in copy. */
+function formatDayMonthLong(iso, withYear = false) {
+  const key = localDayKey(iso);
+  if (!key) return '';
+  const [year, month, day] = key.split('-').map(Number);
+  return `${day} ${MONTH_ABBR[month - 1]}${withYear ? ` ${year}` : ''}`;
+}
+
 function periodFor(definition, records, today, currentWeek) {
   switch (definition.scope) {
-    case 'calendar-week': return { start: currentWeek, end: today, label: `${currentWeek} – ${addDaysISO(currentWeek, 6)}`, status: 'Live calendar week' };
-    case 'rolling-7d': return { start: addDaysISO(today, -6), end: today, label: `Trailing 7 days · through ${today}`, status: 'Rolling window' };
-    case 'rolling-28d': return { start: addDaysISO(today, -27), end: today, label: `Trailing 28 days · through ${today}`, status: 'Rolling window' };
-    case 'rolling-12w': return { start: addDaysISO(today, -83), end: today, label: `Trailing 12 weeks · through ${today}`, status: 'Rolling window' };
-    case 'recent-8w': return { start: addDaysISO(today, -55), end: today, label: `Trailing 8 weeks · through ${today}`, status: 'Current estimate' };
-    case 'rolling-ewma': return { start: records[0]?.date || today, end: today, label: `7-day / 28-day EWMA · through ${today}`, status: 'Rolling model' };
+    case 'calendar-week': return { start: currentWeek, end: today, label: formatWeekRange(currentWeek, addDaysISO(currentWeek, 6)), status: 'Live calendar week' };
+    case 'rolling-7d': return { start: addDaysISO(today, -6), end: today, label: `Trailing 7 days · through ${formatDayMonthLong(today)}`, status: 'Rolling window' };
+    case 'rolling-28d': return { start: addDaysISO(today, -27), end: today, label: `Trailing 28 days · through ${formatDayMonthLong(today)}`, status: 'Rolling window' };
+    case 'rolling-12w': return { start: addDaysISO(today, -83), end: today, label: `Trailing 12 weeks · through ${formatDayMonthLong(today)}`, status: 'Rolling window' };
+    case 'recent-8w': return { start: addDaysISO(today, -55), end: today, label: `Trailing 8 weeks · through ${formatDayMonthLong(today)}`, status: 'Current estimate' };
+    case 'rolling-ewma': return { start: records[0]?.date || today, end: today, label: `7-day / 28-day EWMA · through ${formatDayMonthLong(today)}`, status: 'Rolling model' };
     case 'configured': return { start: null, end: today, label: 'Current setting', status: 'Current setting' };
-    case 'current-model': return { start: addDaysISO(today, -55), end: today, label: `Current model · through ${today}`, status: 'Modelled estimate' };
-    default: return { start: records[0]?.date || null, end: today, label: records.length ? `${records[0].date} – ${today}` : 'All time', status: 'Lifetime' };
+    case 'current-model': return { start: addDaysISO(today, -55), end: today, label: `Current model · through ${formatDayMonthLong(today)}`, status: 'Modelled estimate' };
+    default: return { start: records[0]?.date || null, end: today, label: records.length ? `Since ${formatDayMonthLong(records[0].date, true)}` : 'All time', status: 'Lifetime' };
   }
 }
 
@@ -612,6 +622,9 @@ export function buildRunningMetricDetail(state, metricId, options = {}) {
     definition, metricId: definition.id, range, rangeOptions: RUNNING_RANGE_OPTIONS,
     value,
     formattedValue: isEmpty && !hasAnyEvidence ? '—' : formatRunningMetricValue(definition, value, state),
+    // A bare em dash as the visible headline says nothing; name the missing
+    // evidence instead. `formattedValue` stays the machine-facing value.
+    emptyHeadline: 'No runs',
     period, comparison, series, dailyBreakdown, contributing,
     empty: isEmpty,
     interpretation: isEmpty && !hasAnyEvidence ? definition.empty : interpretation(definition, value, contributing.length),
