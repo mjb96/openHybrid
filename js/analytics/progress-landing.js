@@ -287,9 +287,9 @@ function strengthDomain(state, { weekStart, unit, isCurrentWeek }) {
 }
 
 /**
- * Running — weekly distance. The running metric engine already owns the honest
- * elapsed-matched comparison, empty states and interpretation, so this reuses
- * that model rather than recomputing distance a second way.
+ * Running — weekly distance. The running metric engine owns the honest
+ * elapsed-matched / completed-week comparison, empty states and interpretation,
+ * so this reuses that model rather than recomputing distance a second way.
  * @param {(id:string)=>any} runningMetric  injected buildRunningMetricDetail binding
  */
 function runningDomain(runningMetric, { isCurrentWeek }) {
@@ -314,14 +314,6 @@ function runningDomain(runningMetric, { isCurrentWeek }) {
 
   const comparison = model.comparison;
   const points = Array.isArray(model.series) ? model.series.map((p) => Number(p?.value) || 0) : [];
-  // The engine labels every calendar-week comparison as a live week because it
-  // normally runs against today. A completed selection compares full week with
-  // full week, so the sentence must say so — the value itself is already honest
-  // (analytics.js passes the week's Sunday as the through-date).
-  const comparisonLabel = isCurrentWeek ? comparison?.comparisonLabel : 'vs previous week';
-  const comparisonMessage = !isCurrentWeek && comparison?.message === 'None at this point last week'
-    ? 'None the week before'
-    : comparison?.message;
   return domain({
     id: 'running',
     title: 'Running',
@@ -330,11 +322,11 @@ function runningDomain(runningMetric, { isCurrentWeek }) {
     trend: points.length > 1 ? { values: points, label: 'Weekly distance' } : null,
     delta: comparison?.isComparable
       ? {
-        text: `${comparison.percentageChange > 0 ? '+' : ''}${comparison.percentageChange}% ${comparisonLabel}`,
+        text: `${comparison.percentageChange > 0 ? '+' : ''}${comparison.percentageChange}% ${comparison.comparisonLabel}`,
         tone: toneFor(comparison.direction),
       }
       : comparison
-        ? { text: comparisonMessage || comparisonLabel || '', tone: 'none' }
+        ? { text: comparison.message || comparison.comparisonLabel || '', tone: 'none' }
         : null,
     interpretation: isCurrentWeek
       ? model.interpretation
@@ -468,9 +460,18 @@ export function buildRecentWeekSeries(state, weekStart, weeks = 12, index = null
 export function buildProgressLanding(state, opts = {}) {
   const days = opts.days && opts.days.length ? opts.days : DAY_KEYS;
   const todayISO = opts.today || /** @type {string} */ (localDayKey(new Date(), opts.tz));
-  const weekStart = opts.weekStart || weekStartOf(todayISO);
+  const currentWeekStart = /** @type {string} */ (weekStartOf(todayISO));
+  // The navigator passes a calendar key and never moves past the live week, but
+  // a non-key value used to survive to the offset maths, where Date.parse
+  // produced NaN and the header read "NaN weeks ago". Validate and clamp here so
+  // every field below describes one real week, and no unreachable "upcoming"
+  // state needs copy of its own.
+  const requestedWeekStart = localDayKey(opts.weekStart);
+  const weekStart = requestedWeekStart && requestedWeekStart < currentWeekStart
+    ? requestedWeekStart
+    : currentWeekStart;
   const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
-  const isCurrentWeek = weekStart === weekStartOf(todayISO);
+  const isCurrentWeek = weekStart === currentWeekStart;
 
   // A program plan describes the ACTIVE run, and plannedTrainingDays() is
   // date-blind. Scoring a historical week against today's plan would invent an
@@ -497,7 +498,6 @@ export function buildProgressLanding(state, opts = {}) {
 
   // The hub is week-steppable. Name the selection in training language — the
   // old header printed the raw ISO range, which read like a database key.
-  const currentWeekStart = weekStartOf(todayISO);
   const weeksAgo = Math.round(
     (Date.parse(`${weekStart}T12:00:00Z`) - Date.parse(`${currentWeekStart}T12:00:00Z`)) / 604800000,
   );
@@ -505,9 +505,7 @@ export function buildProgressLanding(state, opts = {}) {
     ? 'This week'
     : weeksAgo === -1
       ? 'Previous week'
-      : weeksAgo > 0
-        ? 'Upcoming week'
-        : `${Math.abs(weeksAgo)} weeks ago`;
+      : `${Math.abs(weeksAgo)} weeks ago`;
 
   return {
     weekStart,

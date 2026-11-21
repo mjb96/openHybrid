@@ -80,6 +80,44 @@ test('weekly distance is calendar-dated, archive-aware and elapsed-matched', () 
   assert.equal(detail.dailyBreakdown[4].formatted, 'Upcoming');
 });
 
+test('a selected past week reads that week and compares full week with the week before', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      old: { dates: { mon: '2026-07-06' }, runSessions: { mon: [run('prior_week', 8, '40:00')] } },
+      selected: {
+        dates: { mon: '2026-07-13', wed: '2026-07-15' },
+        runSessions: { mon: [run('selected_a', 5, '25:00')], wed: [run('selected_b', 5, '25:00')] },
+      },
+      live: { dates: { mon: '2026-07-20' }, runSessions: { mon: [run('live_week', 7, '35:00')] } },
+    },
+  };
+  // The through-date is the selected week's Sunday, which is how the app frames
+  // a navigated week. The live week's 7 km must not leak into either side.
+  const history = collectRunningHistory(state, { today: '2026-07-19' });
+  const detail = buildRunningMetricDetail(state, 'running.weekly-distance', { history, today: '2026-07-19' });
+  assert.equal(detail.value, 10);
+  assert.equal(detail.period.label, '13–19 Jul');
+  assert.equal(detail.comparison.type, 'completed');
+  assert.equal(detail.comparison.comparisonLabel, 'vs previous week');
+  assert.equal(detail.comparison.percentageChange, 25); // 10 vs 8
+  assert.doesNotMatch(detail.comparison.comparisonLabel, /same point last week/);
+});
+
+test('a completed week with nothing the week before never uses live-week wording', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      selected: { dates: { mon: '2026-07-13' }, runSessions: { mon: [run('only_run', 6, '30:00')] } },
+    },
+  };
+  const history = collectRunningHistory(state, { today: '2026-07-19' });
+  const detail = buildRunningMetricDetail(state, 'running.weekly-distance', { history, today: '2026-07-19' });
+  assert.equal(detail.comparison.isComparable, false);
+  assert.equal(detail.comparison.message, 'None the week before');
+  assert.doesNotMatch(detail.comparison.message, /this point last week/);
+});
+
 test('average pace is distance-weighted and excludes walks and implausible short records', () => {
   const detail = buildRunningMetricDetail(fixture(), 'running.average-pace', { today: '2026-07-16' });
   assert.equal(Math.round(detail.value), 330);

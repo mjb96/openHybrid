@@ -4,19 +4,24 @@
 import { buildRunningMetricDetail, collectRunningHistory } from '../running-detail.js';
 import { esc } from './screen-kit.js';
 import { metricMethodHTML } from './metric-contract.js';
+import { addDaysISO, formatDayMonthShort, localDayKey } from '../../dates.js';
+import { weekStartOf } from '../weekly-aggregate.js';
+import { getSelectedWeekStart } from '../week-nav.js';
 
 const rangeByMetric = new Map();
 const selectedPointByMetric = new Map();
 
-/** @param {string} date @param {Intl.DateTimeFormatOptions} [options] */
-function dateLabel(date, options = { day: 'numeric', month: 'short' }) {
-  if (!date) return 'Date unavailable';
-  const parsed = new Date(`${date}T12:00:00`);
-  return Number.isNaN(parsed.getTime()) ? date : parsed.toLocaleDateString(undefined, options);
-}
+/** "22 Nov" / "22 Nov 2026" from the shared owner. Never a raw ISO string. */
+const dateLabel = (date, withYear = false) => formatDayMonthShort(date, { year: withYear }) || 'Date unavailable';
+const fullDateLabel = (date) => dateLabel(date, true);
 
-function fullDateLabel(date) {
-  return dateLabel(date, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+// The selected week's breakdown is a Monday–Sunday rail, so its seven labels are
+// weekdays rather than dates. Derived from the canonical key at UTC noon, which
+// keeps the weekday stable on any device timezone.
+const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function weekdayLabel(date) {
+  const key = localDayKey(date);
+  return key ? WEEKDAY_ABBR[new Date(`${key}T12:00:00Z`).getUTCDay()] : 'Date unavailable';
 }
 
 function comparisonHTML(model) {
@@ -38,7 +43,7 @@ function dailyBreakdownHTML(model) {
     <div class="metric-detail__section-head"><div><span>Selected week</span><h3 id="runningMetricDailyTitle">Daily breakdown</h3></div></div>
     <div class="metric-daily-strip" role="list">
       ${model.dailyBreakdown.map((day) => `<div class="metric-daily-strip__day${day.upcoming ? ' is-upcoming' : ''}" role="listitem">
-        <span>${esc(dateLabel(day.date, { weekday: 'short' }))}</span>
+        <span>${esc(weekdayLabel(day.date))}</span>
         <strong>${esc(day.formatted)}</strong>
       </div>`).join('')}
     </div>
@@ -128,11 +133,19 @@ export function renderRunningMetricDetail(state, entity = {}) {
   const container = document.getElementById('runningMetricDetail');
   if (!container) return;
   const metricId = entity.id || '';
-  const history = collectRunningHistory(state);
+  // Follow the shared calendar-week navigator exactly like renderRunningAnalytics:
+  // the live week ends today (comparison stays elapsed-matched), a past selection
+  // ends on its own Sunday. Rebuilding the HISTORY with that through-date is what
+  // matters — the metric model prefers `history.throughDate` over `options.today`,
+  // so passing the date alone would still describe the live week.
+  const today = localDayKey(new Date());
+  const weekStart = getSelectedWeekStart(today);
+  const through = weekStart === weekStartOf(today) ? today : addDaysISO(weekStart, 6);
+  const history = collectRunningHistory(state, { today: through });
   let range = rangeByMetric.get(metricId) || '12w';
 
   const paint = () => {
-    const model = buildRunningMetricDetail(state, metricId, { range, history });
+    const model = buildRunningMetricDetail(state, metricId, { range, history, today: through });
     if (!model) {
       container.innerHTML = '<div class="metric-chart-empty"><strong>Metric unavailable</strong><p>This running metric is not registered.</p></div>';
       return;

@@ -583,6 +583,12 @@ export function buildRunningMetricDetail(state, metricId, options = {}) {
   const today = history.throughDate || localDayKey(options.today || todayKey(options.tz), options.tz);
   const records = history.records || [];
   const currentWeek = weekStartOf(today);
+  // The through-date decides the framing: a history cut off at today describes
+  // the live week, while a history cut off at a selected week's Sunday describes
+  // a completed one. Reading the clock here instead of the through-date made
+  // every calendar-week comparison claim elapsed-matched live wording.
+  const isCurrentWeek = definition.scope === 'calendar-week'
+    && currentWeek === weekStartOf(localDayKey(new Date()));
   const period = periodFor(definition, records, today, currentWeek);
   const currentRecords = period.start ? within(records, period.start, period.end) : records;
   const value = aggregate(definition.id, currentRecords, state, { allRecords: records, endDate: period.end });
@@ -593,7 +599,7 @@ export function buildRunningMetricDetail(state, metricId, options = {}) {
   const previous = previousPeriod(definition, records, state, period, today, currentWeek);
   const comparison = previous && value != null && previous.value != null
     ? {
-        ...comparePeriodValues({ currentValue: Number(value), previousValue: Number(previous.value), isCurrentWeek: definition.scope === 'calendar-week' }),
+        ...comparePeriodValues({ currentValue: Number(value), previousValue: Number(previous.value), isCurrentWeek }),
         previousValue: previous.value, previousStart: previous.start, previousEnd: previous.end,
         favorable: definition.inverse ? Number(value) < Number(previous.value) : Number(value) > Number(previous.value),
       }
@@ -607,6 +613,14 @@ export function buildRunningMetricDetail(state, metricId, options = {}) {
       'current-model': 'vs previous 8 weeks',
     };
     comparison.comparisonLabel = labels[definition.scope] || comparison.comparisonLabel;
+  }
+  // "None last week" is measured from TODAY, so it names the wrong week once the
+  // athlete has navigated to an older one. A selected completed week is compared
+  // with the week immediately before it; say that in week terms, derived from
+  // the numbers rather than by rewriting another surface's sentence.
+  if (comparison && !isCurrentWeek && definition.scope === 'calendar-week'
+    && !comparison.isComparable && comparison.previousTotal === 0 && Number(value) > 0) {
+    comparison.message = 'None the week before';
   }
   const range = RUNNING_RANGE_OPTIONS.some((entry) => entry.id === options.range) ? options.range : '12w';
   const series = options.includeSeries === false ? [] : seriesFor(definition, records, state, range, today).map((point) => ({

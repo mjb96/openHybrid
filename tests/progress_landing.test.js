@@ -12,8 +12,10 @@ import assert from 'node:assert/strict';
 import {
   buildProgressLanding, plannedTrainingDays, fastingIsEnabled, secondaryDestinations, formatWeekRange,
 } from '../js/analytics/progress-landing.js';
+import { buildRunningMetricDetail, collectRunningHistory } from '../js/analytics/running-detail.js';
 
 const work = (w, r) => ({ c: true, w: String(w), r: String(r) });
+const run = (sessionId, dist, time) => ({ sessionId, dist: String(dist), time, type: 'run', source: 'gps' });
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 // Monday 13 Jul 2026; previous calendar week starts Monday 6 Jul.
@@ -644,23 +646,52 @@ test('an empty past running week says nothing about "this week"', () => {
 });
 
 test('a completed running week compares full week against the one before', () => {
-  const running = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-27', weekStart: WK,
-    runningMetric: () => ({
-      empty: false,
-      formattedValue: '21.0 km',
-      // The engine normally describes a live week; the hub must translate that.
-      interpretation: '3 contributing activities in the current scope.',
-      contributing: [{}, {}, {}],
-      comparison: {
-        isComparable: true, percentageChange: 50, direction: 'up',
-        comparisonLabel: 'vs same point last week',
+  // Real metric engine, not an injected sentence: the hub shows the model's own
+  // completed-week framing instead of translating live-week wording.
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: '2026-07-06' }, runSessions: { mon: [run('week_before', 8, '40:00')] } },
+      '2': {
+        dates: { mon: WK, wed: '2026-07-15', fri: '2026-07-17' },
+        runSessions: {
+          mon: [run('selected_a', 4, '20:00')],
+          wed: [run('selected_b', 4, '20:00')],
+          fri: [run('selected_c', 4, '20:00')],
+        },
       },
-    }),
+    },
+  };
+  const through = '2026-07-19'; // the selected week's Sunday
+  const history = collectRunningHistory(state, { today: through });
+  const runningMetric = (id) => buildRunningMetricDetail(state, id, { history, today: through, range: '12w' });
+  const running = domainOf(buildProgressLanding(state, {
+    days: DAYS, today: '2026-07-27', weekStart: WK, runningMetric,
   }), 'running');
+  assert.equal(running.headline.value, '12.0 km');
   assert.equal(running.delta.text, '+50% vs previous week');
+  assert.equal(running.delta.tone, 'up');
   assert.doesNotMatch(running.interpretation, /current scope|this week/);
   assert.match(running.interpretation, /3 contributing activities that week/);
+});
+
+test('a completed running week with nothing the week before says so in week terms', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '2': { dates: { mon: WK }, runSessions: { mon: [run('only_run', 6, '30:00')] } },
+    },
+  };
+  const through = '2026-07-19';
+  const history = collectRunningHistory(state, { today: through });
+  const runningMetric = (id) => buildRunningMetricDetail(state, id, { history, today: through, range: '12w' });
+  const running = domainOf(buildProgressLanding(state, {
+    days: DAYS, today: '2026-07-27', weekStart: WK, runningMetric,
+  }), 'running');
+  assert.equal(running.headline.value, '6.0 km');
+  assert.equal(running.delta.text, 'None the week before');
+  assert.equal(running.delta.tone, 'none');
+  assert.doesNotMatch(running.delta.text, /same point last week/);
 });
 
 test('the live week still applies the plan and speaks in the present', () => {
@@ -683,4 +714,27 @@ test('the week range label degrades to empty rather than leaking a null into a t
   assert.equal(formatWeekRange('not-a-date', '2026-07-19'), '');
   const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
   assert.equal(model.weekRangeLabel, '13–19 Jul');
+});
+
+test('a non-calendar weekStart falls back to the live week instead of "NaN weeks ago"', () => {
+  const state = { weeks: {} };
+  for (const weekStart of ['not-a-date', '2026-02-31', '', null]) {
+    const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-16', weekStart });
+    assert.equal(model.weekStart, WK, `weekStart ${String(weekStart)} resolves to the live week`);
+    assert.equal(model.weeksAgo, 0);
+    assert.equal(model.periodLabel, 'This week');
+    assert.equal(model.weekRangeLabel, '13–19 Jul');
+  }
+  // The reachable past offsets keep their real wording.
+  const past = buildProgressLanding(state, { days: DAYS, today: '2026-07-30', weekStart: WK });
+  assert.equal(past.weeksAgo, -2);
+  assert.equal(past.periodLabel, '2 weeks ago');
+
+  // A future key is unreachable from the navigator (it never steps forward past
+  // the live week), so it clamps to the live week instead of inventing an
+  // "Upcoming week" surface nothing can navigate to.
+  const future = buildProgressLanding(state, { days: DAYS, today: '2026-07-16', weekStart: '2026-07-20' });
+  assert.equal(future.weekStart, WK);
+  assert.equal(future.isCurrentWeek, true);
+  assert.equal(future.periodLabel, 'This week');
 });
