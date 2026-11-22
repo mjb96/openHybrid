@@ -7,10 +7,11 @@
 // phone, controls sat underneath the status bar.
 //
 // This check publishes a non-zero --app-safe-top the way the Android shell
-// (MainActivity) does and asserts that nothing interactive hides beneath it.
-// It deliberately does NOT set env(safe-area-inset-top) — that is exactly the
-// source Android leaves at 0px on a phone with no display cutout, and relying
-// on it is the bug this check exists to prevent from returning.
+// (MainActivity) does, and a matching --app-safe-bottom so the bottom-anchored
+// Settings scroll surface is measurable too. It deliberately does NOT set
+// env(safe-area-inset-top) — that is exactly the source Android leaves at 0px
+// on a phone with no display cutout, and relying on it is the bug this check
+// exists to prevent from returning.
 //
 // The regression that motivated it: #view-home.view-container consulted env()
 // only, so with a 48px status bar the avatar button — the ONLY route to Profile
@@ -69,6 +70,10 @@ function publishInset(px) {
   const apply = () => {
     if (document.documentElement) {
       document.documentElement.style.setProperty('--app-safe-top', `${px}px`);
+      // The settings panel is a bottom-anchored scroll surface. Publishing the
+      // bottom inset too proves `--safe-bottom` reaches it; the real shell will
+      // publish a gesture-bar value here when it reports one.
+      document.documentElement.style.setProperty('--app-safe-bottom', `${px}px`);
       return true;
     }
     return false;
@@ -112,6 +117,7 @@ const BASELINE_PROBE = () => {
   return {
     viewContainerTop: read('#view-home.view-container', 'paddingTop'),
     settingsHeaderTop: read('.settings-header', 'paddingTop'),
+    settingsBodyBottom: read('.settings-body', 'paddingBottom'),
     modalOverlayTop: read('.modal-overlay', 'paddingTop'),
   };
 };
@@ -157,7 +163,7 @@ try {
     const baseline = await page.evaluate(BASELINE_PROBE);
     console.log('Zero-inset baseline:', JSON.stringify(baseline));
 
-    const EXPECTED = { viewContainerTop: '20px', settingsHeaderTop: '20px', modalOverlayTop: '20px' };
+    const EXPECTED = { viewContainerTop: '20px', settingsHeaderTop: '20px', settingsBodyBottom: '40px', modalOverlayTop: '20px' };
     for (const [key, want] of Object.entries(EXPECTED)) {
       if (baseline[key] !== want) {
         failures.push(`zero-inset baseline changed: ${key} is ${baseline[key]}, expected ${want} (the tokens must not reflow non-inset layouts)`);
@@ -204,6 +210,18 @@ try {
     console.log(`${width}px/${theme} profile: occluded=${profileOffenders.length}`);
     if (profileOffenders.length) {
       failures.push(`${width}px/${theme} profile: ${profileOffenders.length} control(s) under the status bar: ${JSON.stringify(profileOffenders.slice(0, 4))}`);
+    }
+
+    // Settings is a scrolling panel: its last row must clear the gesture bar,
+    // so the bottom padding has to include the same published inset.
+    await page.evaluate(() => {
+      document.querySelector('#view-profile [data-action="open-settings"]')?.click();
+    });
+    await page.waitForSelector('#settingsOverlay.active', { timeout: 5000 }).catch(() => {});
+    const settingsPad = await page.$eval('.settings-body', (el) => parseFloat(getComputedStyle(el).paddingBottom));
+    console.log(`${width}px/${theme} settings body: padBottom=${settingsPad}`);
+    if (Math.abs(settingsPad - (40 + INSET)) > 0.5) {
+      failures.push(`${width}px/${theme}: .settings-body padding-bottom is ${settingsPad}px, expected ${40 + INSET}px with a ${INSET}px inset`);
     }
 
     await context.close();

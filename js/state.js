@@ -934,7 +934,7 @@ export async function pullEngineDataFromStorage() {
   if (!appState.settings.avatarDataUrl && appState.settings.avatarDataUrl !== null) appState.settings.avatarDataUrl = null;
   if (!appState.settings.bandWeights) appState.settings.bandWeights = { L: 10, M: 20, H: 30 };
   if (!appState.settings.restPeriods) appState.settings.restPeriods = { ...DEFAULT_REST_TIERS };
-  if (appState.settings.restPeriods.warmup === undefined) appState.settings.restPeriods.warmup = 45;
+  if (appState.settings.restPeriods.warmup === undefined) appState.settings.restPeriods.warmup = DEFAULT_REST_TIERS.warmup;
   if (appState.settings.restAlertSound === undefined) appState.settings.restAlertSound = true;
   if (appState.settings.restAlertVolume === undefined) appState.settings.restAlertVolume = 0.4;
   if (appState.settings.restTimerEnabled === undefined) appState.settings.restTimerEnabled = true;

@@ -3644,6 +3644,8 @@ html[data-theme="light"] input[type="time"].settings-input { color-scheme: light
   display: flex;
   align-items: center;
   gap: 10px;
+  /* The visible checkbox is 16px; the label row is the hit area. */
+  min-height: var(--touch-target);
   padding: 8px 0;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
