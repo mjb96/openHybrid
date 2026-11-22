@@ -490,6 +490,13 @@
         </div>
         <!-- Pinned: the strip may be hidden in Customize; the decision cannot. -->
         <div id="homeTodayCard"></div>
+        <!-- One coach line lives inside Today's surface: it follows the settled
+             day/week selection and never competes as a separate card. -->
+        <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
+          <span class="home-insight__eyebrow">Coach</span>
+          <span class="home-insight__text" id="homeInsightText"></span>
+          <span class="home-insight__arrow" aria-hidden="true">›</span>
+        </button>
       </section>
 
       <!-- A live fast is status, not a menu: never hide an in-progress timer. -->
@@ -501,12 +508,6 @@
       </div>
 
       <div id="homeBodyweightCard" data-home-card="bodyweight"></div>
-
-      <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
-        <span class="home-insight__eyebrow">Coach</span>
-        <span class="home-insight__text" id="homeInsightText"></span>
-        <span class="home-insight__arrow" aria-hidden="true">›</span>
-      </button>
 
       <!-- One Start lives on the Today decision above. A second "Workout"
            quick start here competed with it, so these three are secondary

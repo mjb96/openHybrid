@@ -164,6 +164,8 @@ try {
         const chip = document.getElementById('homePhaseLabelTag');
         const chipRect = chip?.getBoundingClientRect();
         const metaRect = meta?.getBoundingClientRect();
+        const insight = document.getElementById('homeInsightCard');
+        const todayMount = document.getElementById('homeTodayCard');
         return {
           state: card?.getAttribute('data-today-state'),
           insideWeek: !!card?.closest('#homeWeekStrip'),
@@ -177,6 +179,11 @@ try {
           secondaryHeight: secondary?.getBoundingClientRect().height || 0,
           inFocusCards: document.querySelectorAll('#strengthBarChart, #runBarChart, #homeInFocus').length,
           glanceGrids: document.querySelectorAll('#glanceGrid').length,
+          insightInsideWeek: !!insight?.closest('#homeWeekStrip'),
+          insightAfterToday: !!(insight && todayMount
+            && (todayMount.compareDocumentPosition(insight) & Node.DOCUMENT_POSITION_FOLLOWING)),
+          insightVisible: !!insight && !insight.hidden,
+          insightHeight: insight?.getBoundingClientRect().height || 0,
           overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
         };
       });
@@ -185,6 +192,8 @@ try {
       ok(!/^Week \d/.test(layout.headline), `${theme} ${width}px headline never claims a program week`);
       ok(layout.headerFits, `${theme} ${width}px keeps the week chip inside the header`);
       ok(layout.insideWeek, `${theme} ${width}px keeps Today inside the week surface`);
+      ok(layout.insightInsideWeek && layout.insightAfterToday, `${theme} ${width}px keeps the coach line inside Today's surface`);
+      ok(layout.insightVisible && layout.insightHeight >= 44, `${theme} ${width}px renders the coach line at 44px or taller`);
       ok(layout.collapsed, `${theme} ${width}px starts the ready day compact`);
       ok(layout.primaryCount === 1, `${theme} ${width}px has exactly one Today primary action`);
       ok(layout.primaryHeight >= 44, `${theme} ${width}px Start meets 44px touch target while collapsed`);
@@ -270,12 +279,14 @@ try {
     await page.locator('[data-action="home-week-prev"]').click();
     ok((await page.locator('#homeWeekLabel').textContent())?.trim() === 'Last week', 'previous-week control moves the rail back one week');
     ok(await page.locator('.week-recap').count() === 1, 'a past week renders a recap, not a Today decision');
+    ok(await page.locator('#homeInsightCard').isHidden(), 'a past week hides the coach line');
     ok(await page.locator('#homePrimaryCta').count() === 0, 'a past week does not offer a start action');
     const arrow = await page.locator('[data-action="home-week-prev"]').boundingBox();
     ok(!!arrow && arrow.width >= 44 && arrow.height >= 44, 'week navigation meets the 44px touch target');
     await page.locator('[data-action="home-week-today"]').click();
     ok((await page.locator('#homeWeekLabel').textContent())?.trim() === 'This week', 'Back to this week returns to the decision');
     ok(await page.locator('#homePrimaryCta').isVisible(), 'returning to this week restores the primary action');
+    ok(await page.locator('#homeInsightCard').isVisible(), 'returning to this week restores the coach line');
     for (let i = 0; i < 4; i++) await page.locator('[data-action="home-week-prev"]').click();
     ok(await page.locator('[data-action="home-week-prev"]').isDisabled(), 'week history is bounded at four previous weeks');
     await context.close();
@@ -323,6 +334,7 @@ try {
     await page.waitForSelector('.day-recap');
     ok(await page.locator('#view-home.active').count() === 1, 'a completed date stays on Home');
     ok(await page.locator('.day-recap .session-map svg').count() === 2, 'day recap shows the muscle map');
+    ok(await page.locator('#homeInsightCard').isHidden(), 'a picked day hides the coach line');
     await page.locator('[data-action="home-week-recap"]').click();
     ok(await page.locator('.week-recap').count() === 1, 'back to week restores the weekly recap');
     await context.close();

@@ -359,7 +359,11 @@ function renderHomeInsight(model, state) {
   const card = document.getElementById('homeInsightCard');
   const text = document.getElementById('homeInsightText');
   const insight = model?.topInsight;
-  if (!card || !text || !insight) return;
+  if (!card || !text) return;
+  // The coach line belongs to Today's settled state. A past week or a picked
+  // day owns the surface instead, so the insight yields rather than describing
+  // a different day.
+  if (!insight || _homeWeekOffset < 0 || _homeSelectedDate) { card.hidden = true; return; }
   const nav = String(insight.nav || 'progress');
   if (nav === 'custom:fasting' && state?.settings?.modules?.fasting === false) { card.hidden = true; return; }
   if (nav.startsWith('recovery') && state?.settings?.modules?.recovery === false) { card.hidden = true; return; }
@@ -559,7 +563,6 @@ export function renderHome() {
   renderHomeGreeting(appState);
   renderHomeWeek(appState, activeProgram);
   renderHomeBodyweight(document.getElementById('homeBodyweightCard'), appState);
-  renderHomeInsight(model, appState);
 
   // V2 (S4): engine stall alerts move off Home — the one-hero Home keeps only
   // the recovery flag slot (overtraining/deload). Stall diagnostics still surface
@@ -629,6 +632,9 @@ export function renderHome() {
       _syncTodayCardToggle(card, expanded);
     }
   }
+  // After the Today mount: a selected date with no recap is cleared above, so
+  // the guard here sees the settled surface.
+  renderHomeInsight(model, appState);
   renderHomeSupportingSignals(appState, model);
   renderHomeVolumeGuide(appState, activeProgram);
 

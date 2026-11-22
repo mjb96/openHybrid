@@ -12,6 +12,9 @@ test('This week leads Home, then the compact Today card', () => {
   assert.ok(weekAt > 0, 'Home renders the week strip');
   assert.ok(todayAt > weekAt, 'Today follows the week strip');
   assert.ok(todayAt < weekEnd, 'Today is part of the same week surface');
+  const insightAt = indexHTML.indexOf('id="homeInsightCard"');
+  assert.ok(insightAt > todayAt && insightAt < weekEnd, 'the coach line is part of Today\'s surface');
+  assert.match(indexHTML, /id="homeInsightCard" data-home-card="insight"[^>]*hidden/);
   assert.match(indexHTML, /class="home-week__rail" data-home-card="weekStrip"/);
   assert.match(indexHTML, /Pinned: the strip may be hidden in Customize/);
   assert.match(indexHTML, /id="homeQuickActions"/);

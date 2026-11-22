@@ -2303,6 +2303,21 @@ html[data-theme="light"] .home-insight { background: linear-gradient(135deg, rgb
 .home-week--strip-hidden #homeTodayCard { border-top: 0; }
 .home-week--strip-hidden .today-card { padding-top: 15px; }
 
+/* The coach line is part of Today's surface, not a card of its own: it sits
+   under the decision with a divider and yields whenever Today shows a past
+   week or a picked day. */
+.home-week .home-insight {
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+  border-radius: 0;
+  background: transparent;
+}
+.home-week--strip-hidden .home-insight { border-top: 0; }
+html[data-theme="light"] .home-week .home-insight { background: transparent; }
+
 .today-card__head { position: relative; }
 .today-card.is-collapsible .today-card__head { padding-right: 30px; }
 .today-card__toggle {
