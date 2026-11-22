@@ -130,7 +130,10 @@ Progress. Profile and Settings stay behind the avatar.
 One dominant Today card, planned/rest status, a single Start/Resume/Review
 action, one short coaching sentence, and a compact weekly strip. Hybrid Score,
 readiness, streaks and charts remain available, but below the decision or inside
-Progress. Home never repeats the same metric in two forms.
+Progress. Home never repeats the same metric in two forms. One optional hybrid
+section sits below the week surface (balance, strength this week, endurance this
+week) because nothing else on Home answers "is my training balanced?"; it adds no
+metric Home already shows and is hidden entirely when Hybrid training is off.
 
 ### Train feels physical and immediate
 
@@ -278,6 +281,39 @@ baseline.
 **Acceptance:** a set logged in Phase 1 can answer every Phase 2 and Phase 5
 question without a new field; an export taken before the phase re-imports
 unchanged; all gates green.
+
+### User-directed slice — Hybrid dashboard and training focus (2026-11-23)
+
+**Status: DONE.** **Goal:** answer "is my training balanced?" on Home, and let an
+athlete who trains strength only switch the hybrid surfaces off. Requested by
+the owner; it does not reorder the gated sequence above.
+
+Work:
+
+1. **Calendar-week load split.** `dailyLoadBreakdownTimeline` is the one dated
+   sRPE reader (`metrics/training-load.js`); `analytics/hybrid-balance.js`
+   buckets it into Monday-based weeks and classifies the strength/endurance
+   share, with a pace-matched trend and an honest `unmeasured-strength` state.
+2. **Home hybrid section.** Training balance, Strength this week and Endurance
+   this week below the week surface, each hideable and each linking to the
+   owning Progress surface.
+3. **Hybrid training preference.** `settings.hybridTraining` hides hybrid-only
+   cards and never rewrites the four feature modules.
+4. **Repairs found while wiring it.** Quick-start Run/Walk/Fast now carry
+   `data-module` hooks; the duplicated `#dashboardQuickActions` block is gone;
+   the Home insight uses `moduleEnabled`; Home draws the shared bodyweight chart.
+
+**Data rules:** calendar weeks only; archived activations count; same-day runs
+merge; an in-progress week is compared with the SAME weekdays; missing session
+durations never produce a fabricated ratio.
+
+**Reuse:** `metrics/training-load.js`, `analytics/weekly-aggregate.js`,
+`analytics/strength-calendar.js`, `state/run-sessions.js`, `analytics/charts.js`.
+
+**Acceptance:** `tests/hybrid_balance.test.js`, `tests/home_hybrid.test.js`,
+`tests/modules.test.js`, `tests/state_migrations.test.js` and
+`scripts/hybrid-dashboard-browser-check.mjs` green; Hybrid off keeps the
+strength card, Today and the week surface.
 
 ### Phase 2 — Progress analytics
 
@@ -634,6 +670,28 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — Hybrid week on Home, a Hybrid training switch, and the shared
+  bodyweight chart.**
+  - Home gains one hybrid section below the week surface: a calendar-week
+    strength/endurance sRPE split with a pace-matched 5-week trend, this week's
+    tonnage/e1RM/PRs, and distance/pace. Each card is hideable and links to the
+    owning Progress surface; the endurance card respects the Running module.
+  - `dailyLoadBreakdownTimeline` makes the split and rolling ATL/CTL one formula;
+    sets without a session duration report `unmeasured-strength` rather than a
+    fabricated endurance-only week.
+  - Settings → Modules gains a Hybrid training switch (`settings.hybridTraining`,
+    v14). It hides only hybrid cards and never rewrites the four module switches,
+    so strength-only is a dashboard choice, not a data decision.
+  - The weigh-in sheet no longer autofocuses the weight field (the keyboard used
+    to cover the steppers), and Home draws the same bodyweight chart as Progress.
+  - Fixed while wiring it: quick-start Run/Walk/Fast had no module hooks, a
+    duplicated `#dashboardQuickActions` block, a direct `settings.modules` read in
+    the Home insight, and the floating rest pill's missing CSS (21px pause target).
+  - Verified: 2,053 node tests, typecheck, smoke, precache, and the new
+    `hybrid-dashboard-browser-check` plus home-today, customize, module-toggles,
+    bodyweight, rest-timer and touch-target checks.
+  - Next: return to the gated backlog at Phase 0 (matrix truth) → Phase 1.
 
 - **2026-11-22 — Logger overhaul, Phase A: one line per set.**
   - The strength row is now the five-column contract — SET | PREVIOUS | WEIGHT
