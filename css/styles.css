@@ -10476,6 +10476,7 @@ html[data-module-recovery="off"] [data-module="recovery"] {
 .set-sheet-lbl:first-of-type { margin-top: 4px; }
 .set-sheet-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .set-sheet-seg--rest { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.set-sheet-seg--effort { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .set-sheet-seg button {
   min-height: var(--touch-target);
   border-radius: 11px;
@@ -10490,7 +10491,6 @@ html[data-module-recovery="off"] [data-module="recovery"] {
   border-color: color-mix(in srgb, var(--color-cyan) 48%, transparent);
   color: var(--color-cyan);
 }
-.set-sheet-seg button.is-wide { grid-column: span 2; }
 .set-sheet-seg button[data-failure-toggle].is-active {
   background: rgba(239, 68, 68, 0.16);
   border-color: rgba(239, 68, 68, 0.45);

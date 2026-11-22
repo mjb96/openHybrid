@@ -347,7 +347,7 @@ export const TILE_REGISTRY = [
         let gymTSS = 0, runTSS = 0;
         if (weekData) {
           days.forEach(d => {
-            const gRpe = parseInt(weekData.gymRpe?.[d], 10) || 0;
+            const gRpe = parseFloat(weekData.gymRpe?.[d]) || 0;
             const gymMins = parseStrengthDurationMinutes(weekData.gymStats?.[d]?.time);
             const dayLifts = weekData.lifts?.[d] || {};
             let completedSets = 0;

@@ -23,6 +23,7 @@ import {
   setSetLoadMode, setSetMode, setSetRest, setSetType, toggleSetFailure,
 } from './set-mutations.js';
 import { effectiveSetMode } from './set-shape.js';
+import { normalizeEffortRir } from './effort.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
 import { getSelectedDay, getState } from './context.js';
@@ -100,7 +101,7 @@ function render(liftName, setIndex) {
   markActive(document.getElementById('setSheetBasis'), 'data-basis', basis || '');
   markActive(document.getElementById('setSheetRest'), 'data-rest', set.restSec == null ? '-1' : String(Number(set.restSec)));
   const rir = set.rir != null ? Number(set.rir) : (set.rpe != null ? 10 - Number(set.rpe) : null);
-  markActive(document.getElementById('setSheetRir'), 'data-rir', rir == null ? '' : String(rir));
+  markActive(document.getElementById('setSheetRir'), 'data-rir', String(normalizeEffortRir(rir)));
 
   const loadWrap = document.getElementById('setSheetLoadWrap');
   if (loadWrap) loadWrap.toggleAttribute('hidden', !bodyweightCapable);

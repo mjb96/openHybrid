@@ -248,7 +248,7 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
     // Fallback: strength-session RPE only. A run's effort is a separate signal
     // used by readiness/load analytics, not proof that this lift was too heavy.
     if (rpeCount === 0) {
-      const gymRpe = parseInt(pastWkData.gymRpe?.[sourceDay], 10) || 0;
+      const gymRpe = parseFloat(pastWkData.gymRpe?.[sourceDay]) || 0;
       if (gymRpe > 0) { totalRpeSum += gymRpe; rpeCount++; }
     }
   }

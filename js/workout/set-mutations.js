@@ -22,6 +22,7 @@ import { applyBandLoad, applyLoadMode, bandRole, resolvedLoadMode } from './load
 import {
   defaultBasisForExercise, nextBasis, normalizeBasis,
 } from './load-basis.js';
+import { effortForSet, normalizeEffortRir } from './effort.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import {
   getState as _getState,
@@ -591,8 +592,15 @@ export function setPerSetRir(liftName, setIndex, rir) {
   const weekKey = activeWorkoutWeekKey(appState);
   const sets = appState.weeks[weekKey].lifts?.[day]?.[liftName];
   if (!sets || !sets[setIndex]) return;
-  const cleared = sets[setIndex].rir === rir;
-  sets[setIndex].rir = cleared ? null : rir;
-  sets[setIndex].rpe = cleared ? null : 10 - rir;
+  const next = normalizeEffortRir(rir);
+  // An unrepresentable tap is a no-op, not a silent clear of a real rating.
+  if (next == null) return;
+  // Compare the EFFECTIVE RIR, so a legacy set that stored only `rpe: 8`
+  // clears when its already-active "2" is tapped. Numeric, because a stored
+  // imported value may be the string '2'.
+  const current = effortForSet(sets[setIndex]);
+  const cleared = current.rated && current.rir === next;
+  sets[setIndex].rir = cleared ? null : next;
+  sets[setIndex].rpe = cleared ? null : 10 - next;
   _saveState(true);
 }
