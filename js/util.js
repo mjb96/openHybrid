@@ -17,6 +17,29 @@ export const safeCssColor = (value, fallback = '#3b82f6') => {
 
 export const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
+// A private reference link is the only free-text URL the athlete can store.
+// Normalise and allow ONLY http(s): reject control characters, embedded
+// credentials and every non-web scheme (javascript:, data:, blob:, file:,
+// intent:, mailto: …) so a stored value can never become an execution or
+// local-file primitive. Returns '' for anything unsafe. Never fetches it.
+export const safeExternalHttpUrl = (value) => {
+  const raw = String(value ?? '').trim();
+  if (!raw || raw.length > 2048) return '';
+  if (/[\u0000-\u001f\u007f]/.test(raw)) return '';
+  // Protocol-relative input is not a URL the athlete typed; refuse it rather
+  // than guess which host it was meant to inherit.
+  if (raw.startsWith('//')) return '';
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+  let url;
+  try { url = new URL(candidate); } catch { return ''; }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+  if (url.username || url.password) return '';
+  if (!url.hostname) return '';
+  const href = url.href;
+  if (href.length > 2048) return '';
+  return href;
+};
+
 // Program completion %, by *completed* weeks: in week N you've finished N-1 of
 // `total`. Single source of truth so the library banner and active-plan hero
 // can't drift apart. Clamped to 0–100.

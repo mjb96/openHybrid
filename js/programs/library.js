@@ -467,6 +467,15 @@ function renderRoutineCardNode(routine) {
   if (summary.minutes != null) parts.push(`~${summary.minutes} min`);
   meta.textContent = parts.join(' · ');
   main.append(name, meta);
+  // A routine note is context for starting, not a summary: the card only marks
+  // that one exists. Printing the text would break the compact card contract
+  // and put a paragraph in a list.
+  if (String(routine.note || '').trim()) {
+    const noteFlag = document.createElement('span');
+    noteFlag.className = 'routine-card__note-flag';
+    noteFlag.textContent = 'Note';
+    main.append(noteFlag);
+  }
 
   const actions = document.createElement('div');
   actions.className = 'routine-card__actions';

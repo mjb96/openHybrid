@@ -233,14 +233,24 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
   }
 
   const types = [];
-  if (workingSets > 0 || hasGymStats) types.push('gym');
+  const hasStrengthWork = workingSets > 0 || hasGymStats;
+  if (hasStrengthWork) types.push('gym');
   if (runOut) types.push(runOut.type);
+
+  // The workout note is stored once, in week.notes[day], and written by both the
+  // cockpit and the finish sheet. It is a STRENGTH note: a run-only detail leaves
+  // it blank, and a run detail on a MIXED date must not borrow the strength note
+  // just because the same date also has gym stats. Run notes are a separate field
+  // on the run session (`runs[].notes` / runSessions), owned by the run surface.
+  const notes = activityKind !== 'run' && hasStrengthWork
+    ? String(wd.notes?.[day] || '').trim()
+    : '';
 
   // Insights are NOT hand-rolled here — they come from the shared insight
   // engine (see insightsForSession), so there's one source of truth. This
   // builder only assembles the session's factual summary.
   return {
-    dateISO, types,
+    dateISO, types, notes,
     tonnage: Math.round(tonnage), workingSets, totalReps,
     duration: gymStats.time || '', gymRpe,
     gymHR: gymStats.avgHR || '', gymMaxHR: gymStats.maxHR || '',
@@ -510,6 +520,7 @@ export function renderSessionRecapHTML(r, insights = [], thresholdSec = null, ta
           ? `<div id="recapMapContainer" class="recap-map"></div>`
           : `<div class="recap-no-route">No GPS route recorded for this run.</div>`)
         : ''}
+      ${r.notes ? `<div class="recap-note"><span class="recap-note__label">Workout note</span><span class="recap-note__text">${esc(r.notes)}</span></div>` : ''}
       ${insights.length ? `<div class="recap-section-title">Insights</div>
         <ul class="recap-insights">${insights.map((i) =>
           `<li class="recap-insight--${esc(i.priority || 'info')}">${esc(i.text)}</li>`).join('')}</ul>` : ''}

@@ -39,7 +39,7 @@ import {
   dismissDeloadSuggestion,
   applyDeloadToCurrentWeek,
 } from './state.js';
-import { confirmModal, textPromptModal } from './ui/confirm-modal.js';
+import { confirmModal, multilineTextPromptModal, textPromptModal } from './ui/confirm-modal.js';
 import { paintIcons, icon as svgIcon } from './ui/icons.js';
 import { closeManagedModal, initModalStack, openManagedModal, requestCloseTopModal } from './ui/modal-stack.js';
 import { initSentry } from './monitoring/sentry.js';
@@ -120,8 +120,8 @@ import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/a
 import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
 import {
   createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, hasRoutineCapacity,
-  MAX_ROUTINES, moveFolder, moveRoutineToFolder, orderedFolders, removeRoutine, renameFolder,
-  restoreFolder,
+  MAX_ROUTINE_NOTE, MAX_ROUTINES, moveFolder, moveRoutineToFolder, orderedFolders, removeRoutine,
+  renameFolder, restoreFolder, updateRoutineNote,
 } from './routines/store.js';
 import { showUndo } from './ui/undo-bar.js';
 
@@ -494,6 +494,7 @@ export async function startRoutine(routineId) {
   }
   const session = createOneOffStrengthSession(appState, {
     kind: 'copy', title: routine.name, sourceWeek, sourceDay,
+    sourceRoutineId: routine.id,
   });
   setSelectedDay(session.day);
   // Start means START: the copied session is opened in progress, with the same
@@ -543,6 +544,45 @@ export async function renameRoutine(routineId) {
   }
   renderLibrary();
   showToast('Routine renamed');
+}
+
+/**
+ * Edit the routine's private note. The note is preparation context: it is
+ * shown above the exercises when this routine is started, read by reference
+ * from the library, and never copied into logged history.
+ */
+export async function editRoutineNote(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const previousNote = String(routine.note || '');
+  const previousUpdatedAt = routine.updatedAt;
+  const note = await multilineTextPromptModal({
+    title: 'Routine note',
+    message: 'Shown above the exercises when you start this routine. It stays in the routine and is never copied into logged history.',
+    label: 'Routine note',
+    placeholder: 'Setup, focus, a reminder for next time…',
+    value: previousNote,
+    maxLength: MAX_ROUTINE_NOTE,
+    confirmLabel: 'Save note',
+  });
+  if (note == null) return;
+  if (note === previousNote) return;
+
+  if (!updateRoutineNote(appState, routineId, note)) {
+    showToast('The routine note could not be saved', true);
+    return;
+  }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    // Rollback, exactly like a rename: never claim a save the device rejected.
+    if (previousNote) routine.note = previousNote;
+    else delete routine.note;
+    routine.updatedAt = previousUpdatedAt;
+    showToast('The routine note could not be saved', true);
+    return;
+  }
+  renderLibrary();
+  showToast(note ? 'Routine note saved' : 'Routine note cleared');
 }
 
 export async function deleteRoutine(routineId) {
@@ -1561,6 +1601,7 @@ document.addEventListener('click', (e) => {
       const hasFolders = orderedFolders(appState).length > 0;
       openActionMenu(target, [
         { label: 'Rename', action: 'rename-routine', routineId },
+        { label: 'Routine note', action: 'edit-routine-note', routineId },
         ...(hasFolders ? [{ label: 'Move to folder', action: 'move-routine-to-folder', routineId }] : []),
         { label: 'Delete', action: 'delete-routine', routineId, danger: true },
       ], { label: 'Routine actions' });
@@ -1570,6 +1611,12 @@ document.addEventListener('click', (e) => {
     renameRoutine(target.getAttribute('data-routine-id')).catch((error) => {
       console.warn('Routine rename failed:', error);
       showToast('The routine could not be renamed', true);
+    });
+  }
+  else if (action === 'edit-routine-note') {
+    editRoutineNote(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine note failed:', error);
+      showToast('The routine note could not be saved', true);
     });
   }
   else if (action === 'delete-routine') {

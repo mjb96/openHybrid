@@ -7,7 +7,9 @@
 // has no such action. Plans → My Plans then lists it as a routine card (never a
 // program card), Start opens the cockpit from the routine's own day, rename /
 // delete-with-Undo stay inside the routine library, and folders group routines
-// without ever deleting or duplicating one.
+// without ever deleting or duplicating one. A routine can also carry a private
+// note: the card marks it, the cockpit shows it above the exercises by
+// reference, and finishing/reloading proves History does not retain it.
 // =============================================================================
 import { createServer } from 'node:http';
 import { mkdir, readFile } from 'node:fs/promises';
@@ -111,6 +113,25 @@ async function openRoutineMenu(page, action) {
   await page.click('#progLibraryContent .routine-card [data-action="open-routine-menu"]');
   await page.waitForSelector(`.action-menu [data-action="${action}"]`);
   await page.click(`.action-menu [data-action="${action}"]`);
+}
+
+async function openRoutineMenuById(page, routineId, action) {
+  await page.click(`#progLibraryContent .routine-card[data-routine-id="${routineId}"] [data-action="open-routine-menu"]`);
+  await page.waitForSelector(`.action-menu [data-action="${action}"]`);
+  await page.click(`.action-menu [data-action="${action}"]`);
+}
+
+/** Set a routine note through the real multiline dialog. */
+async function setRoutineNote(page, routineId, text) {
+  await openRoutineMenuById(page, routineId, 'edit-routine-note');
+  await page.waitForSelector('.cmodal-overlay textarea[data-cm="input"]');
+  await page.fill('.cmodal-overlay textarea[data-cm="input"]', text);
+  await page.click('.cmodal-overlay [data-cm="ok"]');
+  await page.waitForFunction(
+    ([key, id, expected]) => (JSON.parse(localStorage.getItem(key) || '{}').routines || [])
+      .find((routine) => routine.id === id)?.note === expected,
+    [STORAGE_KEY, routineId, text],
+  );
 }
 
 async function createFolder(page, name) {
@@ -256,6 +277,26 @@ try {
     `the routine card is inside the 390×844 viewport (y ${cardBox ? Math.round(cardBox.y) : '?'}, h ${cardBox ? Math.round(cardBox.height) : '?'})`);
   await capture(page, 'routine-card.png');
 
+  // ── Routine note: a private prep note, read by reference ────────────────
+  // The card only says a note EXISTS; the text belongs to the cockpit banner.
+  const pushRoutineId = await card.getAttribute('data-routine-id');
+  const noteText = 'Pause every rep; brace hard.';
+  await setRoutineNote(page, pushRoutineId, noteText);
+  const noted = await readState(page);
+  ok(noted.routines.find((routine) => routine.id === pushRoutineId)?.note === noteText,
+    'the routine note is persisted on the routine');
+  ok(await card.locator('.routine-card__note-flag').count() === 1,
+    'the card marks that a routine note exists');
+  ok((await card.locator('.routine-card__note-flag').textContent()).trim() === 'Note',
+    'the card uses the small Note indicator, not the text');
+  ok((await card.locator('.routine-card__meta').innerText()) === '2 exercises · 4 working sets',
+    'the note does not change the compact card summary');
+  ok(!/Pause every rep/.test(await card.innerText()),
+    'the note text never prints on the routine card');
+  const notedCardBox = await card.boundingBox();
+  ok(!!notedCardBox && notedCardBox.y >= 0 && notedCardBox.y + notedCardBox.height <= 844,
+    `the card with its Note indicator stays inside 390×844 (y ${notedCardBox ? Math.round(notedCardBox.y) : '?'}, h ${notedCardBox ? Math.round(notedCardBox.height) : '?'})`);
+
   // Start copies the routine into a one-off session; it never activates a plan.
   await startButton.click();
   await page.waitForFunction(() => !document.getElementById('trainCockpit')?.hidden);
@@ -293,6 +334,19 @@ try {
   ok(chrome.activeSets === '0/4', `the active header counts the routine's sets (${chrome.activeSets})`);
   ok(/one-off/i.test(chrome.statusText), `the cockpit names the one-off session (${chrome.statusText.trim()})`);
 
+  // The routine note appears above the exercises on a routine-started session.
+  await page.waitForSelector('#cockpitExercisesContainer .cockpit-routine-note');
+  const bannerText = await page.locator('#cockpitExercisesContainer .cockpit-routine-note').innerText();
+  ok(/Routine note/i.test(bannerText) && /Pause every rep; brace hard\./.test(bannerText),
+    `the cockpit shows the routine note on start (${JSON.stringify(bannerText)})`);
+  // Let the "Routine saved · Undo" bar finish so the audit shot is the cockpit,
+  // not a transient toast over it.
+  await page.waitForFunction(() => !document.getElementById('activityUndoBar')?.classList.contains('show'), null, { timeout: 12000 });
+  await page.evaluate(() => document.querySelector('#cockpitExercisesContainer .cockpit-routine-note')
+    ?.scrollIntoView({ block: 'center' }));
+  await page.waitForTimeout(300);
+  await capture(page, 'routine-note.png');
+
   await capture(page, 'routine-start.png');
 
   const started = await readState(page);
@@ -327,6 +381,27 @@ try {
   ok(ticked.weeks[oneOffKey].lifts[oneOffDay]['Bench Press'][0].c === true, 'a set can be ticked straight after Start');
   ok((await page.locator('#cockpitActiveSets').innerText()) === '1/4', 'the active header counts the ticked set');
   await capture(page, 'routine-start-active.png');
+
+  // Editing the routine mid-session must change the LIVE banner, because the
+  // cockpit reads the current routine by `sourceRoutineId` rather than a copy.
+  await openPlansMyPlans(page);
+  await setRoutineNote(page, pushRoutineId, 'Updated cue: brace hard and pause.');
+  ok(await card.locator('.routine-card__note-flag').count() === 1,
+    'the edited routine still marks its note');
+  await page.click('.nav-item[data-target="workout"]');
+  await page.waitForSelector('#trainLanding .tl-today__primary');
+  const resumeLabel = (await page.locator('#trainLanding .tl-today__primary').innerText()).trim();
+  ok(/Resume workout/i.test(resumeLabel), `Train leads back to the live session (${resumeLabel})`);
+  await page.click('#trainLanding .tl-today__primary');
+  await page.waitForFunction(() => !document.getElementById('trainCockpit')?.hidden);
+  await page.waitForSelector('#cockpitExercisesContainer .cockpit-routine-note');
+  const updatedBanner = await page.locator('#cockpitExercisesContainer .cockpit-routine-note').innerText();
+  ok(/Updated cue: brace hard and pause\./.test(updatedBanner),
+    `editing the routine updates the live banner (${JSON.stringify(updatedBanner)})`);
+  ok(!/Pause every rep; brace hard\./.test(updatedBanner),
+    'the old routine note is not left behind in the banner');
+  ok((await readState(page)).weeks[oneOffKey].notes[oneOffDay] === '',
+    'editing the routine note never writes into the one-off session note');
 
   // Rename: persisted, and the card re-renders with it.
   await openPlansMyPlans(page);
@@ -556,6 +631,32 @@ try {
     && afterResume.activeProgramId === folderBaseline.activeProgramId
     && afterResume.currentWeek === folderBaseline.currentWeek,
   'no routine, folder or guard action touched the program week');
+
+  // ── The note is preparation, NOT history ─────────────────────────────────
+  // Finish the routine-started session, reload, and prove History shows only
+  // the session record: no routine-note label and no note text.
+  await page.click('.cockpit-active-head__finish');
+  await page.waitForSelector('#summaryModal.active');
+  await page.click('#summarySaveAction');
+  await page.waitForFunction(() => document.getElementById('sessionRecapScreen')?.style.display === 'block');
+  const finishRecapText = await page.locator('#sessionRecapContent').innerText();
+  ok(!/Routine note/i.test(finishRecapText) && !/Updated cue: brace hard/.test(finishRecapText),
+    'the finish recap does not show the routine note');
+  await page.click('#sessionRecapScreen [data-action="close-session-recap"]');
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForFunction(() => document.querySelectorAll('#homeWeekDays .home-week-day').length === 7);
+  await openHistory(page);
+  await page.click('#activitiesContent .activity-history-row--strength');
+  await page.waitForSelector('#activitiesScreen .activity-detail-shell');
+  const historyDetail = await page.locator('#activitiesScreen .activity-detail-shell').innerText();
+  ok(!/Routine note/i.test(historyDetail), 'History has no routine-note label');
+  ok(!/Updated cue: brace hard/.test(historyDetail), 'History does not show the routine note');
+  const finishedState = await readState(page);
+  ok(finishedState.weeks[oneOffKey]?.notes?.[oneOffDay] === '',
+    'the routine note never entered the stored workout note');
+  ok(finishedState.weeks[oneOffKey]?.sourceRoutineId === pushRoutineId,
+    'the finished session still remembers which routine it came from (without copying the note)');
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();

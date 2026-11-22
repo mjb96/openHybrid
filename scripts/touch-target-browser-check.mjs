@@ -70,6 +70,9 @@ const fixture = {
   settings: {
     name: 'A11y', theme: 'dark', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon',
     onboardingComplete: true, fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentTier: 'gym',
+    // The private reference link is a real anchor on the card; give the walk one
+    // so its 44px target is measured instead of only constructed.
+    exercisePrefs: { 'id:barbell_bench_press': { link: 'https://www.youtube.com/watch?v=a11y' } },
   },
   activations: [{ id: 'act1', programId: 'hybrid_engine', startWeek: 1, status: 'active', startedAt: new Date(CLOCK).toISOString() }],
   weeks: {

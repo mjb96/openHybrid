@@ -31,6 +31,10 @@ const HEADER = [
   'Weight', 'Reps', 'Completed', 'RunSessionId', 'RunDist', 'RunTime', 'RunRPE',
   'AvgHR', 'MaxHR', 'ElevGain', 'Calories', 'BodyWeight', 'GymRPE', 'Notes',
 ];
+// The `Notes` column is the WORKOUT note (`week.notes[day]`) — part of the
+// session record and deliberately exported with it. Private scopes are not
+// training history and never reach this file: routine notes, exercise-pinned
+// notes and reference links all live outside `weeks`.
 
 function runValues(run) {
   return [

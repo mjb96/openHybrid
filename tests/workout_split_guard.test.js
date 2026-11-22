@@ -54,7 +54,7 @@ test('the split modules are actually wired in, not orphaned', () => {
   const workout = readFileSync(path.join(ROOT, 'js', 'workout.js'), 'utf8');
   for (const f of [
     'context.js', 'exercise-picker.js', 'clear-log.js', 'run-logging.js',
-    'set-mutations.js', 'units.js',
+    'set-mutations.js', 'units.js', 'reference-link.js',
   ]) {
     assert.ok(workout.includes(`./workout/${f}`), `js/workout.js does not import ./workout/${f}`);
   }

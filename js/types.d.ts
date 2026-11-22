@@ -99,6 +99,8 @@ export interface Routine {
   kind: 'routine';
   id: string;
   name: string;
+  /** Optional private prep note (max 500); absent when empty. */
+  note?: string;
   folderId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -127,7 +129,7 @@ export interface AppSettings {
   restAlertSound?: boolean;
   restAlertVolume?: number;
   restOverrides?: Record<string, number>;
-  exercisePrefs?: Record<string, { warmup?: 'inherit' | 'auto' | 'off'; note?: string; mode?: 'reps' | 'time' | 'distance'; loadMode?: 'weighted' | 'bodyweight' | 'assisted' | 'banded'; basis?: 'total' | 'each' | 'per-side' }>;
+  exercisePrefs?: Record<string, { warmup?: 'inherit' | 'auto' | 'off'; note?: string; link?: string; mode?: 'reps' | 'time' | 'distance'; loadMode?: 'weighted' | 'bodyweight' | 'assisted' | 'banded'; basis?: 'total' | 'each' | 'per-side' }>;
   progressionIncrement?: number;
   fitnessGoal?: string;
   weightGoal?: 'cut' | 'maintain' | 'bulk';

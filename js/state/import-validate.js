@@ -19,9 +19,10 @@
 //   - importCounts() gives accurate numbers for an honest success/preview.
 // =============================================================================
 import {
-  MAX_ROUTINE_FOLDERS, MAX_ROUTINE_LIFTS, MAX_ROUTINES, MAX_ROUTINE_SETS,
+  MAX_ROUTINE_FOLDERS, MAX_ROUTINE_LIFTS, MAX_ROUTINE_NOTE, MAX_ROUTINES, MAX_ROUTINE_SETS,
 } from '../routines/store.js';
 import { isGroupId } from '../workout/superset.js';
+import { safeExternalHttpUrl } from '../util.js';
 
 const MAX_IMPORT_BYTES = 25 * 1024 * 1024; // whole-file guard (snapshots are well under this)
 const MAX_AVATAR_BYTES = 3 * 1024 * 1024;  // a resized avatar is tens of KB; 3 MB is generous
@@ -56,6 +57,25 @@ export function sanitizeImportedState(state) {
     if (s.avatarDataUrl != null && !isSafeImageDataUrl(s.avatarDataUrl)) {
       delete s.avatarDataUrl; // drop hostile/oversized avatar rather than import it
     }
+    // exercisePrefs carries a private reference link that reaches an href. A
+    // stale/hostile value must not ride in; drop ONLY the link and keep the
+    // note and every other preference. The input object is never mutated.
+    // A non-object collection is emptied, and a null-prototype copy means a
+    // `__proto__` key is stored as data instead of hitting the prototype setter.
+    if (s.exercisePrefs != null) {
+      const source = isRecord(s.exercisePrefs) ? s.exercisePrefs : {};
+      const prefs = Object.create(null);
+      for (const [key, value] of Object.entries(source)) {
+        if (!isRecord(value)) {
+          prefs[key] = value;
+          continue;
+        }
+        const entry = { ...value };
+        if (entry.link != null && !safeExternalHttpUrl(entry.link)) delete entry.link;
+        prefs[key] = entry;
+      }
+      s.exercisePrefs = prefs;
+    }
     out.settings = s;
   }
   // Routines are reusable session templates. A malformed record is dropped
@@ -66,7 +86,7 @@ export function sanitizeImportedState(state) {
       ? out.routines
         .filter(isValidRoutine)
         .slice(0, MAX_ROUTINES)
-        .map(sanitizeRoutineGroupIds)
+        .map((routine) => sanitizeRoutineNote(sanitizeRoutineGroupIds(routine)))
       : [];
   }
   if (out.libraryFolders != null) {
@@ -222,6 +242,26 @@ function sanitizeRoutineGroupIds(routine) {
 }
 
 /**
+ * Repair a routine note WITHOUT dropping the routine. An overlong note is
+ * truncated to the store's cap; a non-string note is removed (there is no
+ * honest text to recover from `42` or `{}`). The input is never mutated.
+ * @param {any} routine
+ * @returns {any}
+ */
+function sanitizeRoutineNote(routine) {
+  if (!isRecord(routine) || routine.note == null) return routine;
+  const next = { ...routine };
+  if (typeof routine.note === 'string') {
+    const note = routine.note.trim().slice(0, MAX_ROUTINE_NOTE);
+    if (note) next.note = note;
+    else delete next.note;
+  } else {
+    delete next.note;
+  }
+  return next;
+}
+
+/**
  * A reusable session template must be readable by History, the builder and the
  * cockpit: string id/name, a bounded day record whose lifts are string arrays,
  * and bounded prescriptions. It is NOT a program and is never validated as one.
@@ -234,6 +274,9 @@ export function isValidRoutine(routine) {
   if (routine.kind != null && routine.kind !== 'routine') return false;
   if (routine.folderId != null && typeof routine.folderId !== 'string') return false;
   if (routine.sortOrder != null && !Number.isFinite(Number(routine.sortOrder))) return false;
+  // `note` is optional free text. It is deliberately NOT validated here: a
+  // malformed note must never drop an otherwise valid routine. sanitizeImportedState
+  // repairs it (truncate to MAX_ROUTINE_NOTE / remove a non-string) afterwards.
   if (!isRecord(routine.days)) return false;
   const days = Object.keys(routine.days);
   if (!days.length || days.length > 7) return false;

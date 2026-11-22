@@ -86,6 +86,14 @@ test('an empty session has nothing to share', () => {
   assert.equal(workoutShareCaption(null), '');
 });
 
+test('a private workout note never reaches the shared summary or caption', () => {
+  const note = 'Knee felt off — private note, do not share';
+  const summary = buildWorkoutShareSummary({ ...strengthRecap, notes: note }, { title: 'Upper strength' });
+  assert.equal('notes' in summary, false);
+  assert.ok(!JSON.stringify(summary).includes(note));
+  assert.ok(!workoutShareCaption(summary).includes('Knee felt off'));
+});
+
 test('a bodyweight lift with no load still reports its reps', () => {
   const recap = {
     ...strengthRecap,

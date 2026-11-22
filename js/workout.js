@@ -61,13 +61,14 @@ import {
 import { openExerciseDetail } from './exercises/detail.js';
 import { exerciseLoggerHistory } from './workout/exercise-history.js';
 import {
-  getExerciseNote, preferredLoadBasis, preferredLoadMode, shouldAutoWarmup,
+  getExerciseLink, getExerciseNote, preferredLoadBasis, preferredLoadMode, shouldAutoWarmup,
 } from './workout/exercise-config.js';
+import { createReferenceLink } from './workout/reference-link.js';
 import { openExerciseOptions } from './workout/exercise-options.js';
 import { estimatedE1rmForSet, isE1rmExercise, isE1rmPr } from './strength/e1rm.js';
 import {
   activeOneOffSession, activeWorkoutDay, activeWorkoutWeekKey,
-  clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint,
+  clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
 import { weightUnitLabel } from './workout/units.js';
@@ -507,16 +508,29 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
       ? ({ time: 'Time', distance: 'Distance' }[/** @type {string} */ ([...rowModes][0])] || 'Reps')
       : 'Value';
     exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, ssMemberCount, ssOrdinal, plates, weightUnit: wUnit, weightColumnLabel });
-    // The athlete's own note is inserted as DOM text, never HTML: it is free
-    // text they typed, so it must not be able to become markup.
+    // Free-text note and the private reference link both sit directly under the
+    // history line. The note is DOM text (never HTML); the link is a real anchor
+    // built through DOM APIs — neither value ever touches innerHTML.
+    const insertInBody = (el) => {
+      const history = exCard.querySelector('.cockpit-history-line, .previous-session');
+      if (history) history.insertAdjacentElement('afterend', el);
+      else exCard.querySelector('.cockpit-body')?.prepend(el);
+    };
     const exerciseNote = getExerciseNote(appState, displayLiftName);
+    let noteEl = null;
     if (exerciseNote) {
-      const noteEl = document.createElement('div');
+      noteEl = document.createElement('div');
       noteEl.className = 'cockpit-ex-note';
       noteEl.textContent = exerciseNote;
-      const history = exCard.querySelector('.cockpit-history-line, .previous-session');
-      if (history) history.insertAdjacentElement('afterend', noteEl);
-      else exCard.querySelector('.cockpit-body')?.prepend(noteEl);
+      insertInBody(noteEl);
+    }
+    const exerciseLink = getExerciseLink(appState, displayLiftName);
+    if (exerciseLink) {
+      const linkEl = createReferenceLink(document, exerciseLink, displayLiftName);
+      if (linkEl) {
+        if (noteEl) noteEl.insertAdjacentElement('afterend', linkEl);
+        else insertInBody(linkEl);
+      }
     }
     if (showPlates && plates) applyPlateHint(exCard, plates);
     if (showPlates && resolveExercise(displayLiftName)?.equipment?.includes('barbell')) {
@@ -802,6 +816,26 @@ export function renderWorkout() {
   }
 
   exercisesContainer.innerHTML = '';
+
+  // The routine note is preparation context for a one-off started from the
+  // library. It is read by reference (sourceRoutineId → current routine), so an
+  // edit is reflected on the next render and a deleted routine leaves no stale
+  // copy. A finished session never shows it.
+  const routineNote = routineNoteForSession(appState, weekData, selectedDay);
+  if (routineNote) {
+    // `aside`, not `div`: the exercise cards are divs and existing selectors use
+    // `:first-of-type`, so the banner must not become the first div in here.
+    const banner = document.createElement('aside');
+    banner.className = 'cockpit-routine-note';
+    const label = document.createElement('span');
+    label.className = 'cockpit-routine-note__label';
+    label.textContent = 'Routine note';
+    const text = document.createElement('p');
+    text.className = 'cockpit-routine-note__text';
+    text.textContent = routineNote.note;
+    banner.append(label, text);
+    exercisesContainer.append(banner);
+  }
 
   const loggedLiftsData = weekData.lifts[selectedDay] || {};
 

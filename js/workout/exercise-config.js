@@ -3,12 +3,13 @@
 // EXERCISE CONFIG — durable per-exercise preferences.
 //
 // Rest overrides keep their existing name-keyed `settings.restOverrides` shape
-// because the timer engine already reads it. Warm-up mode and note are new,
-// optional additions under `settings.exercisePrefs`, keyed by canonical ID when
-// the catalogue knows the lift and by a normalised name otherwise. Nothing is
-// rewritten; absence means the old behaviour.
+// because the timer engine already reads it. Warm-up mode, note and a private
+// reference link are new, optional additions under `settings.exercisePrefs`,
+// keyed by canonical ID when the catalogue knows the lift and by a normalised
+// name otherwise. Nothing is rewritten; absence means the old behaviour.
 // =============================================================================
 import { resolveExercise } from '../exercises/catalog.js';
+import { safeExternalHttpUrl } from '../util.js';
 import { isBodyweightExercise, resolvedLoadMode } from './load-mode.js';
 import { defaultBasisForExercise, normalizeBasis } from './load-basis.js';
 
@@ -50,6 +51,26 @@ export function setExercisePref(state, name, patch = {}) {
 
 export function getExerciseNote(state, name) {
   return String(getExercisePrefs(state, name).note || '').trim();
+}
+
+/**
+ * The athlete's private reference URL. Sanitised on READ, so a value that
+ * arrived from an old/imported state can never reach an href.
+ */
+export function getExerciseLink(state, name) {
+  return safeExternalHttpUrl(getExercisePrefs(state, name).link);
+}
+
+/**
+ * Store/clear a reference link. Blank clears it; an invalid non-blank value is
+ * refused and leaves the existing link untouched.
+ */
+export function setExerciseLink(state, name, url) {
+  const raw = String(url ?? '').trim();
+  const safe = safeExternalHttpUrl(raw);
+  if (raw && !safe) return false;
+  setExercisePref(state, name, { link: safe || null });
+  return true;
 }
 
 export function getExerciseWarmupMode(state, name) {
