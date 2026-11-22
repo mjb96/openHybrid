@@ -65,15 +65,18 @@ test('history includes archives and independent same-day sessions but excludes f
   assert.equal(history.records.filter((record) => record.date === '2026-07-15').length, 2);
 });
 
-test('weekly distance is calendar-dated, archive-aware and elapsed-matched', () => {
+test('weekly distance is calendar-dated, archive-aware, RUN-ONLY and elapsed-matched', () => {
   const detail = buildRunningMetricDetail(fixture(), 'running.weekly-distance', { today: '2026-07-16' });
-  assert.equal(detail.value, 17.2);
+  // The 2 km walk is excluded: distance RUN is not distance moved.
+  assert.equal(detail.value, 15.2);
   assert.equal(detail.comparison.previousValue, 10);
-  assert.equal(detail.comparison.percentageChange, 72);
+  assert.equal(detail.comparison.percentageChange, 52);
   assert.equal(detail.period.status, 'Live calendar week');
   assert.deepEqual(detail.contributing.map((record) => record.activityId), [
-    'run:current_5k', 'run:walk_2k', 'run:current_10k', 'run:short_spike',
+    'run:current_5k', 'run:current_10k', 'run:short_spike',
   ]);
+  assert.equal(detail.contributing.some((record) => record.type === 'walk'), false,
+    'a walk is never evidence for a running metric');
   assert.equal(detail.dailyBreakdown.length, 7);
   assert.equal(detail.dailyBreakdown[0].formatted, '5.0 km');
   assert.equal(detail.dailyBreakdown[2].formatted, '10.2 km');
@@ -175,11 +178,12 @@ test('longest run and distance PB evidence identify only the records producing t
 
 test('edits and deletions recalculate from live state without a stale analytics cache', () => {
   const state = fixture();
-  assert.equal(buildRunningMetricDetail(state, 'running.total-distance', { today: '2026-07-16' }).value, 27.2);
+  // Runs only, so the 2 km walk is not in the lifetime total either.
+  assert.equal(buildRunningMetricDetail(state, 'running.total-distance', { today: '2026-07-16' }).value, 25.2);
   state.weeks['1'].runSessions.wed = [state.weeks['1'].runSessions.wed[1]];
-  assert.equal(buildRunningMetricDetail(state, 'running.total-distance', { today: '2026-07-16' }).value, 17.2);
+  assert.equal(buildRunningMetricDetail(state, 'running.total-distance', { today: '2026-07-16' }).value, 15.2);
   state.weeks['1'].runSessions.mon[0].dist = '6';
-  assert.equal(buildRunningMetricDetail(state, 'running.total-distance', { today: '2026-07-16' }).value, 18.2);
+  assert.equal(buildRunningMetricDetail(state, 'running.total-distance', { today: '2026-07-16' }).value, 16.2);
 });
 
 test('range selection changes only the requested metric series', () => {

@@ -24,6 +24,7 @@ import { buildPulseModel } from './pulse.js';
 import { buildBalanceModel } from './balance.js';
 import { buildMuscleModel } from './muscles.js';
 import { buildExerciseSummaryModel } from './exercises-summary.js';
+import { buildEnduranceModel } from './endurance.js';
 
 /**
  * @typedef {'pulse'|'balance'|'muscles'|'exercises'|'endurance'|'body'|'fasting'|'reports'} BandId
@@ -69,6 +70,10 @@ export const BAND_BUILDERS = Object.freeze({
   exercises: (state, ctx) => buildExerciseSummaryModel(state, {
     range: ctx.range,
     unit: ctx.unit,
+  }),
+  endurance: (state, ctx) => buildEnduranceModel(state, {
+    range: ctx.range,
+    previous: ctx.previous,
   }),
 });
 

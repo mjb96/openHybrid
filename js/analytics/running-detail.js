@@ -48,12 +48,12 @@ function metric(id, label, unit, scope, calculation, options = {}) {
 }
 
 export const RUNNING_METRICS = Object.freeze([
-  metric('running.weekly-distance', 'Weekly Distance', 'distance', 'calendar-week', 'Sum of distance from every dated run and walk in the selected Monday–Sunday calendar week.', { color: '#3b82f6' }),
-  metric('running.four-week-distance', '4-Week Distance', 'distance', 'rolling-28d', 'Sum of distance over the trailing 28 calendar days, including every dated run and walk.', { color: '#ec4899', series: 'rolling-4w' }),
-  metric('running.total-distance', 'Total Distance', 'distance', 'lifetime', 'Lifetime sum of distance across dated runs and walks from every program activation.', { color: '#22d3ee', series: 'cumulative' }),
+  metric('running.weekly-distance', 'Weekly Distance', 'distance', 'calendar-week', 'Sum of distance from every dated run in the selected Monday–Sunday calendar week. Walks are counted separately.', { color: '#3b82f6' }),
+  metric('running.four-week-distance', '4-Week Distance', 'distance', 'rolling-28d', 'Sum of run distance over the trailing 28 calendar days. Walks are counted separately.', { color: '#ec4899', series: 'rolling-4w' }),
+  metric('running.total-distance', 'Total Distance', 'distance', 'lifetime', 'Lifetime sum of run distance across every program activation. Walks are counted separately.', { color: '#22d3ee', series: 'cumulative' }),
   metric('running.weekly-duration', 'Weekly Duration', 'duration', 'calendar-week', 'Sum of parsed activity duration in the selected calendar week.', { color: '#22d3ee' }),
-  metric('running.weekly-run-count', 'Weekly Activity Count', 'count', 'calendar-week', 'Count of independent dated runs and walks in the selected calendar week.', { color: '#60a5fa' }),
-  metric('running.total-run-count', 'Total Activities', 'count', 'lifetime', 'Lifetime count of independent dated runs and walks.', { color: '#60a5fa', series: 'cumulative' }),
+  metric('running.weekly-run-count', 'Weekly Run Count', 'count', 'calendar-week', 'Count of independent dated runs in the selected calendar week. Walks are counted separately.', { color: '#60a5fa' }),
+  metric('running.total-run-count', 'Total Runs', 'count', 'lifetime', 'Lifetime count of independent dated runs. Walks are counted separately.', { color: '#60a5fa', series: 'cumulative' }),
   metric('running.average-pace', 'Average Pace', 'pace', 'rolling-28d', 'Distance-weighted mean pace across eligible runs in the trailing 28 days: total moving time divided by total distance.', {
     color: '#f472b6', inverse: true,
     source: 'Dated runs with valid distance and duration; walks are excluded',
@@ -64,7 +64,7 @@ export const RUNNING_METRICS = Object.freeze([
     source: 'Eligible dated run sessions; walks are excluded',
     limitations: ['This is whole-session average pace, not a short GPS spike.', 'Manual logs are shown with lower source confidence.'],
   }),
-  metric('running.longest-run', 'Longest Activity', 'distance', 'lifetime', 'Longest single dated run or walk by recorded distance.', { color: '#14b8a6', series: 'record-progression' }),
+  metric('running.longest-run', 'Longest Activity', 'distance', 'lifetime', 'Longest single dated run by recorded distance.', { color: '#14b8a6', series: 'record-progression' }),
   metric('running.weekly-elevation', 'Weekly Elevation Gain', 'elevation', 'calendar-week', 'Sum of recorded elevation gain in the selected calendar week.', { color: '#a78bfa', empty: 'Import or log elevation gain to build this history.' }),
   metric('running.average-heart-rate', 'Average Heart Rate', 'heart-rate', 'rolling-28d', 'Duration-weighted mean of recorded average heart rate over the trailing 28 days.', {
     color: '#ef4444', source: 'Dated activities with average heart rate', empty: 'Import a heart-rate-enabled activity to build this history.',
@@ -312,6 +312,13 @@ function weeklyPaceValues(records, firstWeek, lastWeek) {
 }
 
 function aggregate(id, records, state, context = {}) {
+  // Every `running.*` metric is RUN-ONLY. A walk is real activity and it is
+  // reported on its own line in the Endurance band, but folding it into a
+  // running distance or pace flatters the number and hides the distinction
+  // the athlete made when they chose "Walk" (plan §7.2).
+  records = records.filter((record) => record.type !== 'walk');
+  const allRecords = (context.allRecords || records).filter((record) => record.type !== 'walk');
+  context = { ...context, allRecords };
   switch (id) {
     case 'running.weekly-distance':
     case 'running.four-week-distance':
@@ -393,6 +400,9 @@ function aggregate(id, records, state, context = {}) {
 }
 
 function evidenceFor(id, records) {
+  // The evidence list must agree with the value: if a walk is not in the
+  // number, it cannot be offered as proof of the number.
+  records = records.filter((record) => record.type !== 'walk');
   switch (id) {
     case 'running.threshold-pace': return [];
     case 'running.weekly-duration': return withField(records, 'durationSec');
