@@ -11,6 +11,7 @@ import { indexSlotsByDate } from '../analytics/weekly-aggregate.js';
 import { runLoadForDay } from '../state/run-sessions.js';
 import { parseStrengthDurationMinutes } from '../strength/duration.js';
 import { isValidWorkingSet } from '../set-utils.js';
+import { effortForSet } from '../workout/effort.js';
 
 export const TRAINING_DAYS = Object.freeze(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 
@@ -29,10 +30,11 @@ function sessionRpe(week, day) {
     if (!Array.isArray(sets)) continue;
     for (const set of sets) {
       if (!isValidWorkingSet(set)) continue;
-      const rpe = parseFloat(set.rpe);
-      const fromRir = set.rir != null && set.rir !== '' ? 10 - (parseFloat(set.rir) || 0) : null;
-      const value = rpe > 0 ? rpe : (fromRir != null && fromRir > 0 && fromRir <= 10 ? fromRir : 0);
-      if (value > 0) { total += value; count++; }
+      // effortForSet reads `rir` first, falls back to `rpe`, and treats an
+      // unrated failed set as RPE 10 — the athlete did go to failure, so a
+      // zero here would make the hardest sets contribute no load at all.
+      const { rpe } = effortForSet(set);
+      if (rpe != null && rpe > 0 && rpe <= 10) { total += rpe; count++; }
     }
   }
   return count ? Math.round((total / count) * 10) / 10 : 0;

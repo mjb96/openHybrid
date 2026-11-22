@@ -1,8 +1,10 @@
 // =============================================================================
 // WEEK NAVIGATOR (analytics/week-nav.js)
 //
-// Selects the CALENDAR week the strength / running detail views display. This is
-// deliberately independent of the program-week counter (`state.currentWeek`):
+// Selects the CALENDAR week the Progress hub, the Review Overview and the
+// strength / running detail views display (Review's Stats tab is not
+// week-scoped, so the navigator is hidden there). This is deliberately
+// independent of the program-week counter (`state.currentWeek`):
 //   • offset 0  = the current calendar week (resolved from today's real date),
 //   • offset -1 = the previous calendar week, and so on.
 // The offset is EPHEMERAL (reset on view entry via resetWeekNav) so "This week"
@@ -13,6 +15,7 @@
 // this module never invents a second date system and never reads program weeks.
 // =============================================================================
 import { weekStartOf, addDaysISO, localDayKey, indexSlotsByDate } from './weekly-aggregate.js';
+import { formatWeekRange } from '../dates.js';
 
 let _calOffset = 0; // 0 = current calendar week, negative = older weeks
 
@@ -63,12 +66,6 @@ export function initWeekNav(getState, onNavigate) {
   });
 }
 
-const _MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-function _fmt(iso) {
-  const [, m, d] = iso.split('-').map(Number);
-  return `${_MONTH[m - 1]} ${d}`;
-}
-
 export function updateWeekNavDisplay(getState) {
   const state = getState();
   const today = localDayKey(new Date());
@@ -91,7 +88,7 @@ export function updateWeekNavDisplay(getState) {
   }
   // The label's date range is the REAL Monday–Sunday span, never derived from the
   // min/max of whatever activity happens to be present.
-  if (datesEl) datesEl.textContent = `${_fmt(start)} – ${_fmt(end)}`;
+  if (datesEl) datesEl.textContent = formatWeekRange(start, end);
 
   if (prevBtn) prevBtn.disabled = !_canGoBack(state, today);
   if (nextBtn) nextBtn.disabled = isCurrent;

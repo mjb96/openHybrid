@@ -39,7 +39,7 @@ import {
   dismissDeloadSuggestion,
   applyDeloadToCurrentWeek,
 } from './state.js';
-import { confirmModal } from './ui/confirm-modal.js';
+import { confirmModal, multilineTextPromptModal, textPromptModal } from './ui/confirm-modal.js';
 import { paintIcons, icon as svgIcon } from './ui/icons.js';
 import { closeManagedModal, initModalStack, openManagedModal, requestCloseTopModal } from './ui/modal-stack.js';
 import { initSentry } from './monitoring/sentry.js';
@@ -52,6 +52,7 @@ import { computeDashboardModel } from './home/dashboard-model.js';
 import { buildTrainLanding } from './train/train-landing.js';
 import { renderTrainLanding } from './train/view-train-landing.js';
 import { initAnalytics, renderAnalytics, saveThresholdPace, saveBodyweightGoal, setBodyweightRangeAction, setAnalyticsContext, shareScoreCard } from './analytics.js';
+import { showMeasurementTrend } from './analytics/views/view-bodyweight.js';
 import { initBodyweightSheet, openBodyweightSheet, closeBodyweightSheet, stepBodyweight, saveBodyweightSheet, deleteBodyweightEntry } from './bodyweight-sheet.js';
 import {
   initMeasurementsSheet, openMeasurementsSheet, closeMeasurementsSheet, saveMeasurementsSheet,
@@ -81,7 +82,6 @@ import {
   initSettings, openSettings, closeSettings,
   saveName, saveBodyWeight, setWeightUnit,
   setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, stepCurrentWeek, setAutoAdvanceWeek,
-  saveThresholdPace as saveSettingsThresholdPace,
   exportData, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
   triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule, toggleHybridTraining,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
@@ -113,9 +113,17 @@ import { initNotifications, requestNotificationPermission, cancelReminders, chec
 import { buildProgramSessionChoices } from './workout/program-session-picker.js';
 import { buildActivityHistory } from './activities/model.js';
 import {
-  clearActiveOneOffSession, createOneOffStrengthSession,
+  clearActiveOneOffSession, createOneOffStrengthSession, activeOneOffSession,
 } from './workout/one-off-session.js';
+import { markSessionInProgress } from './workout/session-status.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
+import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
+import {
+  createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, hasRoutineCapacity,
+  MAX_ROUTINE_NOTE, MAX_ROUTINES, moveFolder, moveRoutineToFolder, orderedFolders, removeRoutine,
+  renameFolder, restoreFolder, updateRoutineNote,
+} from './routines/store.js';
+import { showUndo } from './ui/undo-bar.js';
 
 document.addEventListener('app:modules-changed', () => {
   try { hydrateCurrentView(); } catch (err) { console.warn('Module view refresh failed.', err); }
@@ -274,6 +282,22 @@ export function launchActiveWorkoutCockpit() {
   setCockpitActiveDay(selectedDay);
 }
 
+/**
+ * The ONE tap that turns "a workout is open" into "a session is running".
+ *
+ * The cockpit's own Start button and every programmatic start (a routine) must
+ * run this same sequence: start the session clock for the active session key,
+ * redraw so the Start CTA is replaced by the sticky active header, and bring the
+ * first exercise into view. `startWorkoutTimer` alone is not enough — the very
+ * next workspace render re-evaluates the CTA, so the clock key has to be bound
+ * before that render happens.
+ */
+export function beginActiveWorkoutSession() {
+  startWorkoutTimer(activeWorkoutTimerKey());
+  try { renderWorkout(); } catch (err) { console.warn(err); }
+  try { scrollCockpitToActiveExercise(); } catch (_) { /* best-effort */ }
+}
+
 // Was a local, timezone-naive copy of the same lookup; `todayProgramDay`
 // (js/dates.js) resolves the calendar day first, which is what the rest of the
 // app does.
@@ -372,6 +396,399 @@ export function copyPastWorkout(activityId) {
   saveStateToLocalStorage(true);
   closeProgramWorkoutPicker();
   launchActiveWorkoutCockpit();
+}
+
+// Save a finished strength session as a reusable ROUTINE. A routine is a session
+// template, not a programme: it is appended to its own root array (never
+// customPrograms), writes no week slot, and leaves the active programme and all
+// logged history exactly where they are. History stays open behind the prompt.
+export async function saveActivityAsRoutine(activityId) {
+  const menu = document.getElementById('activityActionMenu');
+  if (menu) menu.hidden = true;
+  document.querySelector('[data-action="toggle-activity-menu"]')?.setAttribute('aria-expanded', 'false');
+
+  if (!hasRoutineCapacity(appState)) {
+    showToast(`Your routine library is full (${MAX_ROUTINES}). Delete a routine to save another.`, true);
+    return;
+  }
+
+  const row = buildActivityHistory(appState).find((item) => item.kind === 'strength' && item.id === activityId);
+  const sourceWeek = row && appState.weeks?.[row.week];
+  if (!row || !sourceWeek) { showToast('That workout could not be found', true); return; }
+
+  // Suggest the program day's real name ("Push A") rather than the generic
+  // "Strength Workout" fallback, then let the athlete name it.
+  const programTitle = getProgramById(sourceWeek.programId || null)?.days?.[row.day]?.title;
+  const suggested = row.title !== 'Strength Workout'
+    ? row.title
+    : (programTitle && programTitle !== 'Rest' ? programTitle : 'My routine');
+  const name = await textPromptModal({
+    title: 'Save as routine',
+    message: 'Keeps this session’s exercises, sets, loads and rest. It is saved to your routine library; your program and logged history stay unchanged.',
+    label: 'Routine name',
+    value: suggested,
+    maxLength: 60,
+    confirmLabel: 'Save routine',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A routine needs a name', true); return; }
+
+  const routine = buildRoutineFromSession(appState, sourceWeek, row.day, {
+    name, activityId: row.id,
+  });
+  if (!routine) { showToast('This workout has no completed working sets to save', true); return; }
+
+  ensureRoutines(appState);
+  appState.routines.push(routine);
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    // Never claim a save that did not reach the device: drop it from memory too,
+    // so no later render can show a routine a reload would not have.
+    removeRoutine(appState, routine.id);
+    showToast('The routine could not be saved', true);
+    return;
+  }
+  showToast(`“${routine.name}” saved to your routine library`);
+  showUndo('Routine saved', async () => {
+    const removed = removeRoutine(appState, routine.id);
+    const undone = await saveStateToLocalStorage(true);
+    if (removed && !undone) {
+      // The device still holds it; put it back so memory and disk agree.
+      appState.routines.push(removed);
+      showToast('The routine could not be removed', true);
+      return;
+    }
+    showToast('Routine removed');
+  }, () => {});
+}
+
+// ── Routine library actions ──────────────────────────────────────────────────
+//
+// A routine is a SESSION template. Starting one copies its source week into an
+// ordinary one-off session and opens the cockpit; it never activates a program,
+// never reseeds a week and never touches activeProgramId/currentWeek.
+
+export async function startRoutine(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  // One live workout owns the session clock and its one-off week. Starting a
+  // routine here would bind the timer to a new key and leave the old session
+  // orphaned, so refuse and offer the session that is already open. Never
+  // auto-discard — only an explicit Finish/Discard in that session may end it.
+  const activeOneOff = activeOneOffSession(appState);
+  if (activeOneOff || activeWorkoutSwitchStatus()?.unresolved) {
+    const resume = await confirmModal({
+      title: 'A workout is already open',
+      message: 'Finish or discard it before starting a routine. Your current session has not been changed.',
+      confirmLabel: 'Resume workout',
+      cancelLabel: 'Not now',
+    });
+    if (resume) launchActiveWorkoutCockpit();
+    return;
+  }
+  const { sourceWeek, sourceDay } = routineSourceWeek(routine);
+  const lifts = sourceDay ? sourceWeek.lifts?.[sourceDay] || {} : {};
+  if (!sourceDay || !Object.keys(lifts).length) {
+    showToast('This routine has no exercises to start', true);
+    return;
+  }
+  const session = createOneOffStrengthSession(appState, {
+    kind: 'copy', title: routine.name, sourceWeek, sourceDay,
+    sourceRoutineId: routine.id,
+  });
+  setSelectedDay(session.day);
+  // Start means START: the copied session is opened in progress, with the same
+  // one-tap sequence the cockpit's Start button uses, so the athlete never lands
+  // on a second "Start Workout" gate. The programme and its weeks are untouched;
+  // the only new week key is this one-off session.
+  markSessionInProgress(session.week, session.day);
+  saveStateToLocalStorage(true);
+  launchActiveWorkoutCockpit();
+  beginActiveWorkoutSession();
+}
+
+export async function renameRoutine(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const previousName = String(routine.name || '');
+  const name = await textPromptModal({
+    title: 'Rename routine',
+    message: 'The saved exercises, sets and loads stay exactly as they are.',
+    label: 'Routine name',
+    value: previousName,
+    maxLength: 60,
+    confirmLabel: 'Save name',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A routine needs a name', true); return; }
+  if (name === previousName) return;
+
+  const dayKeys = routine.days && typeof routine.days === 'object' ? Object.keys(routine.days) : [];
+  const previousTitles = dayKeys.map((day) => routine.days[day]?.title);
+  const previousUpdatedAt = routine.updatedAt;
+  routine.name = name;
+  routine.updatedAt = new Date().toISOString();
+  // The day title was seeded from the routine name; keep the two in step only
+  // where it still matched, so a deliberately different day title survives.
+  dayKeys.forEach((day) => {
+    if (routine.days[day]?.title === previousName) routine.days[day].title = name;
+  });
+
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    routine.name = previousName;
+    routine.updatedAt = previousUpdatedAt;
+    dayKeys.forEach((day, index) => { routine.days[day].title = previousTitles[index]; });
+    showToast('The routine could not be renamed', true);
+    return;
+  }
+  renderLibrary();
+  showToast('Routine renamed');
+}
+
+/**
+ * Edit the routine's private note. The note is preparation context: it is
+ * shown above the exercises when this routine is started, read by reference
+ * from the library, and never copied into logged history.
+ */
+export async function editRoutineNote(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const previousNote = String(routine.note || '');
+  const previousUpdatedAt = routine.updatedAt;
+  const note = await multilineTextPromptModal({
+    title: 'Routine note',
+    message: 'Shown above the exercises when you start this routine. It stays in the routine and is never copied into logged history.',
+    label: 'Routine note',
+    placeholder: 'Setup, focus, a reminder for next time…',
+    value: previousNote,
+    maxLength: MAX_ROUTINE_NOTE,
+    confirmLabel: 'Save note',
+  });
+  if (note == null) return;
+  if (note === previousNote) return;
+
+  if (!updateRoutineNote(appState, routineId, note)) {
+    showToast('The routine note could not be saved', true);
+    return;
+  }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    // Rollback, exactly like a rename: never claim a save the device rejected.
+    if (previousNote) routine.note = previousNote;
+    else delete routine.note;
+    routine.updatedAt = previousUpdatedAt;
+    showToast('The routine note could not be saved', true);
+    return;
+  }
+  renderLibrary();
+  showToast(note ? 'Routine note saved' : 'Routine note cleared');
+}
+
+export async function deleteRoutine(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const confirmed = await confirmModal({
+    title: `Delete “${routine.name}”?`,
+    message: 'The routine leaves your library. Logged training, your program and this week stay untouched.',
+    confirmLabel: 'Delete routine',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  const index = appState.routines.findIndex((entry) => entry?.id === routineId);
+  const removed = removeRoutine(appState, routineId);
+  if (!removed) { renderLibrary(); return; }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    appState.routines.splice(Math.max(0, index), 0, removed);
+    showToast('The routine could not be deleted', true);
+    return;
+  }
+  renderLibrary();
+  showUndo('Routine deleted', async () => {
+    appState.routines.splice(Math.min(Math.max(0, index), appState.routines.length), 0, removed);
+    const restored = await saveStateToLocalStorage(true);
+    renderLibrary();
+    showToast(restored ? 'Routine restored' : 'The routine could not be restored', !restored);
+  }, () => {});
+}
+
+// ── Routine folders ──────────────────────────────────────────────────────────
+//
+// Folders are organisation only. Deleting one moves its routines to Unfiled and
+// never deletes a routine; no folder action reads or writes state.weeks.
+
+let _routineFolderRoutineId = null;
+
+export async function createRoutineFolder() {
+  const name = await textPromptModal({
+    title: 'New folder',
+    message: 'Folders organise routines. Deleting a folder moves its routines to Unfiled — it never deletes them.',
+    label: 'Folder name',
+    placeholder: 'Travel, Home, …',
+    maxLength: 40,
+    confirmLabel: 'Create folder',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A folder needs a name', true); return; }
+  const folder = createFolder(appState, name);
+  if (!folder) { showToast('The folder could not be created', true); return; }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    appState.libraryFolders = appState.libraryFolders.filter((entry) => entry?.id !== folder.id);
+    showToast('The folder could not be saved', true);
+    return;
+  }
+  renderLibrary();
+  showToast(`Folder “${folder.name}” created`);
+}
+
+export async function renameRoutineFolder(folderId) {
+  const folder = findFolder(appState, folderId);
+  if (!folder) { showToast('That folder could not be found', true); return; }
+  const previousName = String(folder.name || '');
+  const name = await textPromptModal({
+    title: 'Rename folder',
+    label: 'Folder name',
+    value: previousName,
+    maxLength: 40,
+    confirmLabel: 'Save name',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A folder needs a name', true); return; }
+  if (name === previousName) return;
+  if (!renameFolder(appState, folderId, name)) {
+    showToast('That folder could not be renamed', true);
+    return;
+  }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    folder.name = previousName;
+    showToast('The folder could not be renamed', true);
+    return;
+  }
+  renderLibrary();
+  showToast('Folder renamed');
+}
+
+export async function deleteRoutineFolder(folderId) {
+  const folder = findFolder(appState, folderId);
+  if (!folder) { showToast('That folder could not be found', true); return; }
+  const count = (appState.routines || []).filter((routine) => routine?.folderId === folderId).length;
+  const confirmed = await confirmModal({
+    title: `Delete “${folder.name}”?`,
+    message: count
+      ? `${count} routine${count === 1 ? '' : 's'} will move to Unfiled and stay in your library. Logged training is untouched.`
+      : 'The empty folder is removed. Logged training is untouched.',
+    confirmLabel: 'Delete folder',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  const snapshot = deleteFolder(appState, folderId);
+  if (!snapshot) return;
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    restoreFolder(appState, snapshot);
+    showToast('The folder could not be deleted', true);
+    return;
+  }
+  renderLibrary();
+  showUndo('Folder deleted', async () => {
+    restoreFolder(appState, snapshot);
+    const restored = await saveStateToLocalStorage(true);
+    renderLibrary();
+    showToast(restored ? 'Folder restored' : 'The folder could not be restored', !restored);
+  }, () => {});
+}
+
+export async function moveRoutineFolder(folderId, direction) {
+  if (!moveFolder(appState, folderId, direction)) return;
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    moveFolder(appState, folderId, Number(direction) === -1 ? 1 : -1);
+    showToast('The folder order could not be saved', true);
+    return;
+  }
+  renderLibrary();
+}
+
+function renderRoutineFolderChoices(routine) {
+  const list = document.getElementById('routineFolderList');
+  if (!list) return;
+  const folders = orderedFolders(appState);
+  // The library files an unknown folderId under Unfiled, so the sheet must use
+  // the same valid-id set for both the current marker and the counts.
+  const validIds = new Set(folders.map((folder) => folder.id));
+  const bucketOf = (entry) => (entry?.folderId && validIds.has(entry.folderId) ? entry.folderId : null);
+  const current = bucketOf(routine);
+  const countIn = (folderId) => (appState.routines || [])
+    .filter((entry) => bucketOf(entry) === folderId).length;
+  const choices = [{ id: null, name: 'Unfiled' }, ...folders];
+  // Folder names are athlete input; escape every one before it reaches HTML.
+  list.innerHTML = choices.map((folder) => {
+    const id = folder.id == null ? null : folder.id;
+    const isCurrent = current === id;
+    const count = countIn(id);
+    return `<button type="button" class="program-workout-choice routine-folder-choice${isCurrent ? ' is-current' : ''}"
+        data-action="choose-routine-folder" data-folder-id="${escapeHtml(id == null ? '' : String(id))}"
+        aria-pressed="${isCurrent}">
+      <span class="program-workout-choice__day" aria-hidden="true">${id == null ? '—' : '📁'}</span>
+      <span class="program-workout-choice__main">
+        <strong>${escapeHtml(String(folder.name || ''))}</strong>
+        <span>${count} routine${count === 1 ? '' : 's'}</span>
+      </span>
+      <span class="program-workout-choice__chev" aria-hidden="true">${isCurrent ? '✓' : '›'}</span>
+    </button>`;
+  }).join('');
+}
+
+export function openRoutineFolderSheet(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const sheet = document.getElementById('routineFolderSheet');
+  const backdrop = document.getElementById('routineFolderBackdrop');
+  if (!sheet || !backdrop) return;
+  _routineFolderRoutineId = routineId;
+  renderRoutineFolderChoices(routine);
+  sheet.classList.add('active');
+  backdrop.classList.add('active');
+  openManagedModal(sheet, { initialFocus: '.routine-folder-choice' });
+}
+
+export function closeRoutineFolderSheet() {
+  const sheet = document.getElementById('routineFolderSheet');
+  const backdrop = document.getElementById('routineFolderBackdrop');
+  sheet?.classList.remove('active');
+  backdrop?.classList.remove('active');
+  if (sheet) closeManagedModal(sheet);
+  _routineFolderRoutineId = null;
+}
+
+export async function chooseRoutineFolder(folderId) {
+  const routineId = _routineFolderRoutineId;
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { closeRoutineFolderSheet(); return; }
+  const targetId = folderId || null;
+  const previousId = routine.folderId || null;
+  if (targetId === previousId) { closeRoutineFolderSheet(); return; }
+  if (!moveRoutineToFolder(appState, routineId, targetId)) {
+    closeRoutineFolderSheet();
+    showToast('That folder could not be found', true);
+    return;
+  }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    moveRoutineToFolder(appState, routineId, previousId);
+    closeRoutineFolderSheet();
+    showToast('The routine could not be moved', true);
+    return;
+  }
+  closeRoutineFolderSheet();
+  renderLibrary();
+  const folder = targetId ? findFolder(appState, targetId) : null;
+  showToast(folder ? `Moved to “${folder.name}”` : 'Moved to Unfiled');
 }
 
 // Quick Start (from Home): begin a GPS walk/run untethered from the program on
@@ -1132,15 +1549,17 @@ document.addEventListener('click', (e) => {
   else if (action === 'show-copy-workouts') showCopyWorkouts();
   else if (action === 'show-program-workouts') openProgramWorkoutPicker();
   else if (action === 'copy-past-workout') copyPastWorkout(target.getAttribute('data-activity-id'));
+  else if (action === 'save-as-routine') {
+    saveActivityAsRoutine(target.getAttribute('data-activity-id')).catch((error) => {
+      console.warn('Save as routine failed:', error);
+      showToast('That routine could not be saved', true);
+    });
+  }
   else if (action === 'coach-ask') answerCoachOnHome(target.getAttribute('data-q'));
   else if (action === 'switch-browser-tab') switchBrowserSectionTab(target.getAttribute('data-tab'));
   
   // Timers
-  else if (action === 'start-timer') {
-    startWorkoutTimer(activeWorkoutTimerKey());
-    try { renderWorkout(); } catch (err) { console.warn(err); }
-    try { scrollCockpitToActiveExercise(); } catch (_) { /* best-effort */ }
-  }
+  else if (action === 'start-timer') beginActiveWorkoutSession();
   else if (action === 'dismiss-rest') dismissRestTimer();
   else if (action === 'rest-pause') toggleRestPause();
 
@@ -1166,6 +1585,98 @@ document.addEventListener('click', (e) => {
   else if (action === 'duplicate-program') executeDuplicateProgram(progId);
   else if (action === 'customize-program') customizeProgram(progId);
   else if (action === 'edit-active-program') editActiveProgram();
+  // Routine library actions. They are routed HERE rather than through
+  // handleLibraryAction, which is only called for the library-local whitelist
+  // below and cannot launch a session or own a destructive Undo.
+  else if (action === 'start-routine') {
+    startRoutine(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine start failed:', error);
+      showToast('The routine could not be started', true);
+    });
+  }
+  else if (action === 'open-routine-menu') {
+    const routineId = target.getAttribute('data-routine-id');
+    if (isActionMenuOpen()) closeActionMenu();
+    else if (routineId) {
+      const hasFolders = orderedFolders(appState).length > 0;
+      openActionMenu(target, [
+        { label: 'Rename', action: 'rename-routine', routineId },
+        { label: 'Routine note', action: 'edit-routine-note', routineId },
+        ...(hasFolders ? [{ label: 'Move to folder', action: 'move-routine-to-folder', routineId }] : []),
+        { label: 'Delete', action: 'delete-routine', routineId, danger: true },
+      ], { label: 'Routine actions' });
+    }
+  }
+  else if (action === 'rename-routine') {
+    renameRoutine(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine rename failed:', error);
+      showToast('The routine could not be renamed', true);
+    });
+  }
+  else if (action === 'edit-routine-note') {
+    editRoutineNote(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine note failed:', error);
+      showToast('The routine note could not be saved', true);
+    });
+  }
+  else if (action === 'delete-routine') {
+    deleteRoutine(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine delete failed:', error);
+      showToast('The routine could not be deleted', true);
+    });
+  }
+  else if (action === 'move-routine-to-folder') openRoutineFolderSheet(target.getAttribute('data-routine-id'));
+  else if (action === 'choose-routine-folder') {
+    chooseRoutineFolder(target.getAttribute('data-folder-id') || null).catch((error) => {
+      console.warn('Routine move failed:', error);
+      showToast('The routine could not be moved', true);
+    });
+  }
+  else if (action === 'close-routine-folder-sheet') closeRoutineFolderSheet();
+  else if (action === 'create-routine-folder') {
+    createRoutineFolder().catch((error) => {
+      console.warn('Folder create failed:', error);
+      showToast('The folder could not be created', true);
+    });
+  }
+  else if (action === 'open-routine-folder-menu') {
+    const folderId = target.getAttribute('data-folder-id');
+    if (isActionMenuOpen()) closeActionMenu();
+    else if (folderId) {
+      const folders = orderedFolders(appState);
+      const index = folders.findIndex((folder) => folder.id === folderId);
+      openActionMenu(target, [
+        { label: 'Rename', action: 'rename-routine-folder', folderId },
+        ...(index > 0 ? [{ label: 'Move up', action: 'move-routine-folder-up', folderId }] : []),
+        ...(index >= 0 && index < folders.length - 1 ? [{ label: 'Move down', action: 'move-routine-folder-down', folderId }] : []),
+        { label: 'Delete', action: 'delete-routine-folder', folderId, danger: true },
+      ], { label: 'Folder actions' });
+    }
+  }
+  else if (action === 'rename-routine-folder') {
+    renameRoutineFolder(target.getAttribute('data-folder-id')).catch((error) => {
+      console.warn('Folder rename failed:', error);
+      showToast('The folder could not be renamed', true);
+    });
+  }
+  else if (action === 'delete-routine-folder') {
+    deleteRoutineFolder(target.getAttribute('data-folder-id')).catch((error) => {
+      console.warn('Folder delete failed:', error);
+      showToast('The folder could not be deleted', true);
+    });
+  }
+  else if (action === 'move-routine-folder-up') {
+    moveRoutineFolder(target.getAttribute('data-folder-id'), -1).catch((error) => {
+      console.warn('Folder reorder failed:', error);
+      showToast('The folder order could not be saved', true);
+    });
+  }
+  else if (action === 'move-routine-folder-down') {
+    moveRoutineFolder(target.getAttribute('data-folder-id'), 1).catch((error) => {
+      console.warn('Folder reorder failed:', error);
+      showToast('The folder order could not be saved', true);
+    });
+  }
   else if (action === 'open-program-menu') {
     // Toggle a compact overflow menu of secondary program actions.
     if (isActionMenuOpen()) closeActionMenu();
@@ -1185,7 +1696,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'close-compare') closeCompareModal();
 
   // New Program Library actions
-  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all'].includes(action)) {
+  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage'].includes(action)) {
     handleLibraryAction(action, target, e);
   }
   else if (['close-program-detail', 'make-active-from-detail', 'view-active-program', 'open-day-preview', 'preview-week-step', 'close-day-preview', 'detail-toggle-bookmark', 'mark-program-complete', 'detail-week-step', 'detail-week-current'].includes(action)) {
@@ -1352,6 +1863,7 @@ else if (action === 'export-bodyweight-csv') triggerBodyweightCSVExport();
   else if (action === 'edit-ms-row') openMeasurementsSheet(target.getAttribute('data-date') || undefined);
   else if (action === 'delete-ms-row') deleteMeasurementEntry(target.getAttribute('data-date') || '');
   else if (action === 'measurement-unit') setMeasurementUnit(target.getAttribute('data-unit') || 'cm');
+  else if (action === 'measurement-site') showMeasurementTrend(target.getAttribute('data-site') || '');
   else if (action === 'export-measurements-csv') triggerMeasurementsCSVExport();
   else if (action === 'bw-range') setBodyweightRangeAction(target.getAttribute('data-days'));
   else if (action === 'save-bw-goal') saveBodyweightGoal();
@@ -1436,6 +1948,7 @@ document.addEventListener('change', (e) => {
   if (target.id === 'settingsNotifWeeklySummary')   { setNotifToggle('weeklySummary', target.checked); return; }
   if (target.id === 'settingsNotifStreak')          { setNotifToggle('streak', target.checked); return; }
   if (target.id === 'settingsNotifMissedWorkout')   { setNotifToggle('missed', target.checked); return; }
+  if (target.id === 'settingsNotifFastingStage')    { setNotifToggle('fasting', target.checked); return; }
   if (target.id === 'settingsEquipmentProfile')     { selectEquipmentProfile(target.value); return; }
   if (target.id === 'settingsEquipmentProfileName') { saveEquipmentProfileName(); return; }
   const eqKey = target.getAttribute?.('data-equipment');
@@ -1481,7 +1994,10 @@ document.addEventListener('blur', (e) => {
   const id = e.target.id;
   if (id === 'settingsNameInput') saveName();
   else if (id === 'settingsBodyWeight') saveBodyWeight();
-  else if (id === 'settingsThresholdPace') saveSettingsThresholdPace();
+  else if (id === 'settingsThresholdPace') {
+    const saved = saveThresholdPace(e.target.value);
+    showToast(saved ? 'Threshold pace saved' : 'Enter pace as mm:ss', !saved);
+  }
   else if (id === 'settingsStepGoal') saveStepGoal();
   else if (id === 'settingsReminderTime')    saveReminderTime();
   else if (id === 'settingsStreakAlertTime') saveStreakAlertTime();

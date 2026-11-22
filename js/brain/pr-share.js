@@ -20,7 +20,10 @@ export function prShareCaption(pr, state) {
 
 /** Pick the biggest PR (highest e1RM) from a recap's lifts, or null. */
 export function topPR(lifts) {
-  const prs = (lifts || []).filter(l => l && l.pr && l.e1rm != null);
+  // The share card draws an estimated 1RM, so only an e1RM record is shareable.
+  // Hold/carry/rep records are real achievements but have no weight to draw; the
+  // recap keeps their badges without offering a card that would invent a load.
+  const prs = (lifts || []).filter(l => l && l.pr && l.e1rm > 0 && l.e1rmPr !== false);
   if (!prs.length) return null;
   return prs.reduce((a, b) => (b.e1rm > a.e1rm ? b : a));
 }

@@ -13,6 +13,7 @@
 // scheduling — a follow-up, same as the daily reminder.
 // =============================================================================
 import { getFastingContext, FASTING_ZONES } from '../fasting.js';
+import { moduleEnabled } from '../modules.js';
 
 // Short, forward-looking one-liners per stage (not the long clinical description).
 const STAGE_BLURB = {
@@ -59,6 +60,12 @@ function _freshMarker(startTime) {
  * @param {{ notifyFn?: Function, granted?: boolean, saveFn?: Function }} [opts]
  */
 export function maybePushFastingNudge(state, { notifyFn, granted, saveFn } = {}) {
+  // A module the athlete switched off must not talk to them. Fasting can stay
+  // active in state while hidden, so the session alone is not permission.
+  if (!moduleEnabled(state, 'fasting')) return null;
+  // The Notifications → Fasting toggle is the athlete's narrower choice; it is
+  // checked here so every caller is gated, not only the notifications wrapper.
+  if (state?.settings?.notifFastingStage === false) return null;
   const fs = state && state.fastingSession;
   if (!fs || !fs.active || !granted) return null;
   const ctx = getFastingContext(state);

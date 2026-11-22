@@ -13,7 +13,8 @@
 // Both were good screens presenting the same facts at different scopes, with
 // no route between them — so the same question had two answers depending on
 // which entry point you happened to use. They are now two tabs of one screen:
-// "This week" (depth) and "Trends" (period explorer).
+// "Week" (depth, following the shared week navigator) and "Trends" (period
+// explorer).
 //
 // Deep links are preserved: the `weekly-volume` and `gym-performance` contexts
 // both resolve here and choose the opening tab, so existing entry points, Back
@@ -32,7 +33,7 @@ export function setStrengthVolumeTab(tab) { _tab = tab === 'trends' ? 'trends' :
 export function getStrengthVolumeTab() { return _tab; }
 
 const TABS = Object.freeze([
-  ['week', 'This week', 'One calendar week in depth'],
+  ['week', 'Week', 'One calendar week in depth'],
   ['trends', 'Trends', '7D · 4W · 1Y across sets, time and volume'],
 ]);
 

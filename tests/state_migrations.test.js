@@ -157,9 +157,25 @@ test('v13 seeds an empty measurement log and a unit from the weight choice', () 
   assert.deepEqual(chosen.bodyMeasurements, [{ date: '2026-11-01', waist: 84 }]);
 });
 
-test('v14 seeds hybrid training on and leaves every module choice untouched', () => {
-  const legacy = {
+test('v13→v14 seeds the routine library and folder arrays without touching programs', () => {
+  const state = {
     schemaVersion: 13,
+    settings: {},
+    routines: { corrupt: true },
+    libraryFolders: 'corrupt',
+    customPrograms: [{ id: 'prog_user', name: 'Custom', days: {}, totalWeeks: 1 }],
+  };
+  const programsBefore = JSON.stringify(state.customPrograms);
+  migrateState(state);
+  assert.equal(state.schemaVersion, CURRENT_SCHEMA_VERSION);
+  assert.deepEqual(state.routines, [], 'a non-array routine library is repaired, not trusted');
+  assert.deepEqual(state.libraryFolders, []);
+  assert.equal(JSON.stringify(state.customPrograms), programsBefore, 'programs are untouched');
+});
+
+test('v14→v15 seeds hybrid training on and leaves every module choice untouched', () => {
+  const legacy = {
+    schemaVersion: 14,
     settings: { modules: { running: false, health: true } },
     weekStartedAt: '2026-11-16',
   };
@@ -169,7 +185,7 @@ test('v14 seeds hybrid training on and leaves every module choice untouched', ()
   assert.deepEqual(legacy.settings.modules, { running: false, health: true });
 
   // An athlete who already turned it off keeps that choice.
-  const chosen = { schemaVersion: 13, settings: { hybridTraining: false }, weekStartedAt: '2026-11-16' };
+  const chosen = { schemaVersion: 14, settings: { hybridTraining: false }, weekStartedAt: '2026-11-16' };
   migrateState(chosen);
   assert.equal(chosen.settings.hybridTraining, false);
 });

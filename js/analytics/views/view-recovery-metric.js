@@ -15,6 +15,7 @@
 
 import { esc } from './screen-kit.js';
 import { metricMethodHTML } from './metric-contract.js';
+import { formatDayMonthShort } from '../../dates.js';
 import {
   buildRecoveryMetricDetail, formatRecoveryValue, RECOVERY_RANGE_OPTIONS,
 } from '../recovery-detail.js';
@@ -22,16 +23,8 @@ import {
 /** @type {Map<string,string>} */
 const ranges = new Map();
 
-/** @type {Intl.DateTimeFormatOptions} */
-const SHORT_DATE = { day: 'numeric', month: 'short' };
-/** @type {Intl.DateTimeFormatOptions} */
-const FULL_DATE = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
-
-/** @param {string} iso @param {Intl.DateTimeFormatOptions} [opts] */
-const dateLabel = (iso, opts = SHORT_DATE) => {
-  const value = new Date(`${iso}T12:00:00`);
-  return Number.isNaN(value.getTime()) ? String(iso) : value.toLocaleDateString(undefined, opts);
-};
+/** "22 Nov" / "22 Nov 2026". An unreadable key says so instead of echoing ISO. */
+const dateLabel = (iso, withYear = false) => formatDayMonthShort(iso, { year: withYear }) || 'Date unavailable';
 
 function comparisonHTML(model) {
   const c = model.comparison;
@@ -44,9 +37,12 @@ function comparisonHTML(model) {
   // Tone comes from `favourable`, never from direction — down is GOOD for
   // resting HR and soreness, and colouring by direction would invert them.
   const tone = c.favourable == null ? 'neutral' : c.favourable ? 'good' : 'caution';
+  // The window is fixed by the range selector above; repeating its two ISO
+  // dates here made the sentence unreadable.
+  const previousLabel = model.rangeOptions.find((entry) => entry.id === model.range)?.label;
   return `<div class="metric-comparison metric-comparison--${tone}">
     <strong>${arrow} ${pct}%</strong>
-    <span>vs previous ${esc(String(c.previousStart))} – ${esc(String(c.previousEnd))}</span>
+    <span>vs previous ${esc((previousLabel || 'period').toLowerCase())}</span>
   </div>`;
 }
 
@@ -97,7 +93,7 @@ function evidenceHTML(model) {
     ${model.contributing.slice(0, 30).map((row) => `<div class="metric-evidence-row metric-evidence-row--static">
       <span class="metric-evidence-row__main">
         <strong>${esc(formatRecoveryValue(model.definition, row.value))}</strong>
-        <small>${esc(dateLabel(row.date, FULL_DATE))} · ${esc(row.sourceLabel)}</small>
+        <small>${esc(dateLabel(row.date, true))} · ${esc(row.sourceLabel)}</small>
       </span>
     </div>`).join('')}
     ${model.contributing.length > 30 ? `<p class="metric-detail__muted">Showing the 30 most recent of ${model.contributing.length} readings.</p>` : ''}
@@ -124,12 +120,13 @@ export function renderRecoveryMetricDetail(state, entity) {
     const extraExclusions = model.exclusions.implausible
       ? [`${model.exclusions.implausible} outside a plausible range`]
       : [];
+    const headline = model.empty ? model.emptyHeadline : formatRecoveryValue(model.definition, model.value);
 
     container.innerHTML = `
       <header class="metric-detail__header">
         <span class="metric-detail__eyebrow">Recovery metric</span>
         <h2>${esc(model.definition.label)}</h2>
-        <div class="metric-detail__value" style="color:${esc(model.definition.color)}">${esc(formatRecoveryValue(model.definition, model.value))}</div>
+        <div class="metric-detail__value" style="color:${esc(model.definition.color)}">${esc(headline)}</div>
         <div class="metric-detail__period"><strong>${model.readingCount} reading${model.readingCount === 1 ? '' : 's'}</strong><span>${esc(model.period.label)}</span></div>
         <p>${esc(model.interpretation)}</p>
       </header>

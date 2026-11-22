@@ -10,6 +10,7 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 import { RUNNING_METRICS } from '../js/analytics/running-detail.js';
 import { STRENGTH_METRICS } from '../js/analytics/strength-detail.js';
+import { addDaysISO, dateKey, formatWeekRange, todayProgramDay } from '../js/dates.js';
 
 const noop = () => {};
 const store = new Map();
@@ -36,7 +37,7 @@ function weekDates(m) {
   return o;
 }
 
-let vs, vr, vw, ve, vsm, vgp, vsv;
+let vs, vr, vw, ve, vsm, vgp, vsv, vrm, vrc;
 before(async () => {
   globalThis.document = {
     getElementById: getEl, querySelector: () => null, querySelectorAll: () => [],
@@ -48,6 +49,8 @@ before(async () => {
   vw = await import('../js/analytics/views/view-weekly-volume.js');
   ve = await import('../js/analytics/views/view-strength-entity.js');
   vsm = await import('../js/analytics/views/view-strength-metric.js');
+  vrm = await import('../js/analytics/views/view-running-metric.js');
+  vrc = await import('../js/analytics/views/view-recovery-metric.js');
   vgp = await import('../js/analytics/views/view-gym-performance.js');
 });
 
@@ -105,6 +108,98 @@ test('Strength volume cards and details have stable exact destinations', () => {
     assert.doesNotMatch(detail, /NaN|Infinity/);
   }
   assert.match(stats, /data-context="strength-metric"[^>]*data-parent-context="strength_pr"/);
+});
+
+test('empty metric headlines say what is missing instead of a bare em dash', () => {
+  const empty = { settings: { weightUnit: 'kg', distanceUnit: 'km' }, weeks: {}, wellnessLog: [] };
+  vsm.renderStrengthMetricDetail(empty, { id: 'strength.four-week-volume' });
+  assert.match(getEl('strengthMetricDetail').innerHTML, /metric-detail__value[^>]*>No workouts</);
+  vrm.renderRunningMetricDetail(empty, { id: 'running.weekly-distance' });
+  assert.match(getEl('runningMetricDetail').innerHTML, /metric-detail__value[^>]*>No runs</);
+  vrc.renderRecoveryMetricDetail(empty, { id: 'recovery.sleep' });
+  assert.match(getEl('recoveryMetricDetail').innerHTML, /metric-detail__value[^>]*>No check-ins</);
+});
+
+test('metric detail dates render in words on every domain, never a raw ISO fallback', () => {
+  // The three metric views used to fall back to String(iso) when a key did not
+  // parse, so an unreadable date surfaced as a database key on screen. Dates now
+  // come from the one date owner; this drives a real value through each domain.
+  const today = dateKey(new Date());
+  const slot = todayProgramDay();
+  const state = {
+    settings: { weightUnit: 'kg', distanceUnit: 'km' },
+    weeks: {
+      '1': {
+        dates: { [slot]: today },
+        lifts: { [slot]: { 'Bench Press': [work(100, 5)] } },
+        runs: { [slot]: { dist: '5', time: '25:00' } },
+      },
+    },
+    wellnessLog: [{ date: today, sleep: 7.5 }, { date: addDaysISO(today, -1), sleep: 8 }],
+  };
+
+  vsm.renderStrengthMetricDetail(state, { id: 'strength.four-week-volume' });
+  const strength = getEl('strengthMetricDetail').innerHTML;
+  assert.match(strength, /working sets/);
+  assert.match(strength, /Week of \d{1,2} [A-Z][a-z]{2} \d{4}/);
+  assert.doesNotMatch(strength, /Invalid Date|>\d{4}-\d{2}-\d{2}</);
+
+  vrm.renderRunningMetricDetail(state, { id: 'running.weekly-distance' });
+  const running = getEl('runningMetricDetail').innerHTML;
+  // The selected-week strip labels its seven days by weekday, not by raw key.
+  assert.match(running, />\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*</);
+  assert.doesNotMatch(running, /Invalid Date|>\d{4}-\d{2}-\d{2}</);
+
+  vrc.renderRecoveryMetricDetail(state, { id: 'recovery.sleep' });
+  const recovery = getEl('recoveryMetricDetail').innerHTML;
+  assert.match(recovery, /\d{1,2} [A-Z][a-z]{2} \d{4}/);
+  assert.doesNotMatch(recovery, /Invalid Date|>\d{4}-\d{2}-\d{2}</);
+});
+
+test('a stepped-back week shows that week\'s running metric, not the live one', async () => {
+  // The Running DETAIL screen must follow the shared week navigator like the
+  // Running screen does. Collecting the history without a through-date left the
+  // detail on the live week no matter which week was selected.
+  const nav = await import('../js/analytics/week-nav.js');
+  const { weekStartOf } = await import('../js/analytics/weekly-aggregate.js');
+  const today = dateKey(new Date());
+  const thisWeek = weekStartOf(today);
+  const lastWeek = addDaysISO(thisWeek, -7);
+  const run = (sessionId, dist) => ({ sessionId, dist: String(dist), time: '25:00', type: 'run', source: 'gps' });
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: lastWeek }, runSessions: { mon: [run('last_week_run', 5)] } },
+      '2': { dates: { mon: thisWeek }, runSessions: { mon: [run('this_week_run', 9)] } },
+    },
+  };
+
+  // Step the real navigator back one calendar week.
+  const harness = globalThis.document;
+  const listeners = {};
+  const navRoot = makeEl('view-analytics');
+  navRoot.addEventListener = (type, fn) => { listeners[type] = fn; };
+  globalThis.document = { ...harness, getElementById: (id) => (id === 'view-analytics' ? navRoot : getEl(id)) };
+  nav.initWeekNav(() => state, () => {});
+  listeners.click({ target: { closest: (sel) => (sel === '#weekNavPrev' ? {} : null) } });
+  globalThis.document = harness;
+  assert.equal(nav.getSelectedWeekStart(), lastWeek);
+
+  vrm.renderRunningMetricDetail(state, { id: 'running.weekly-distance' });
+  const historical = getEl('runningMetricDetail').innerHTML;
+  assert.match(historical, /metric-detail__value[^>]*>5\.0 km</, 'selected week distance');
+  assert.doesNotMatch(historical, /metric-detail__value[^>]*>9\.0 km</, 'live week must not leak in');
+  assert.ok(
+    historical.includes(formatWeekRange(lastWeek, addDaysISO(lastWeek, 6))),
+    'the period names the selected Monday–Sunday range',
+  );
+
+  // Returning to the live week restores the live metric.
+  nav.resetWeekNav();
+  vrm.renderRunningMetricDetail(state, { id: 'running.weekly-distance' });
+  const live = getEl('runningMetricDetail').innerHTML;
+  assert.match(live, /metric-detail__value[^>]*>9\.0 km</);
+  assert.doesNotMatch(live, /metric-detail__value[^>]*>5\.0 km</);
 });
 
 test('completed (navigated) week uses the previous-week label, not the live one', () => {
@@ -204,4 +299,82 @@ test('the tab selection survives a re-render so a deep link opens where it says'
   // An unknown value falls back to the safe default rather than blanking.
   vsv.setStrengthVolumeTab('nonsense');
   assert.equal(vsv.getStrengthVolumeTab(), 'week');
+});
+
+// ---- Training Report: name the window it actually measured -------------------
+
+test('the Strength hero spark is anchored on the selected week, like the PR chip', async () => {
+  // The PR chip counts the navigator's week, so the spark beside it must end on
+  // that week too — a live-week spark next to "that week" described two periods.
+  const nav = await import('../js/analytics/week-nav.js');
+  const { spark } = await import('../js/analytics/views/screen-kit.js');
+  const { calendarWeekE1rmSeriesForLift } = await import('../js/analytics/strength-calendar.js');
+  const { weekStartOf } = await import('../js/analytics/weekly-aggregate.js');
+
+  const today = dateKey(new Date());
+  const thisWeek = weekStartOf(today);
+  const lastWeek = addDaysISO(thisWeek, -7);
+  const state = {
+    settings: { weightUnit: 'kg' },
+    weeks: {
+      '1': { dates: { mon: lastWeek }, lifts: { mon: { 'Bench Press': [work(80, 5)] } } },
+      '2': { dates: { mon: thisWeek }, lifts: { mon: { 'Bench Press': [work(90, 5)] } } },
+    },
+  };
+
+  // Step the shared navigator back one calendar week through its real listener.
+  const harness = globalThis.document;
+  const listeners = {};
+  const navRoot = makeEl('view-analytics');
+  navRoot.addEventListener = (type, fn) => { listeners[type] = fn; };
+  globalThis.document = { ...harness, getElementById: (id) => (id === 'view-analytics' ? navRoot : getEl(id)) };
+  nav.initWeekNav(() => state, () => {});
+  listeners.click({ target: { closest: (sel) => (sel === '#weekNavPrev' ? {} : null) } });
+  globalThis.document = harness;
+
+  const selected = nav.getSelectedWeekStart();
+  assert.equal(selected, lastWeek);
+  vs.setStrengthTab('overview');
+  vs.renderStrengthAnalytics(
+    { weekLabels: ['W1'], dynamicStats: { 'Bench Press': { allTimeMax: 100 } } },
+    () => state,
+    () => DAYS,
+  );
+  const html = getEl('strength-tab-body').innerHTML;
+  const expected = spark(calendarWeekE1rmSeriesForLift(state, 'Bench Press', { weeks: 12, today: selected }), '#3b82f6');
+  const live = spark(calendarWeekE1rmSeriesForLift(state, 'Bench Press', { weeks: 12 }), '#3b82f6');
+  assert.ok(html.includes(expected), 'hero spark follows the selected week');
+  assert.ok(!html.includes(live), 'hero spark is not the live-week series');
+  nav.resetWeekNav();
+});
+
+test('the Training Report labels its real 28-day window, never "30 days"', async () => {
+  const { renderMonthlyReport } = await import('../js/analytics/views/view-monthly-report.js');
+  const today = dateKey(new Date());
+  const state = {
+    currentWeek: '1',
+    settings: { distanceUnit: 'km', weightUnit: 'kg' },
+    weeks: {
+      '1': { dates: { mon: today }, lifts: { mon: { Squat: [work(100, 5)] } } },
+      // One session in the prior window so the comparison sentence has a value.
+      '2': { dates: { mon: addDaysISO(today, -30) }, lifts: { mon: { Squat: [work(80, 5)] } } },
+    },
+  };
+  const el = getEl('monthlyReportContainer');
+  assert.doesNotThrow(() => renderMonthlyReport(() => state, () => DAYS, () => null));
+  const html = el.innerHTML;
+  assert.match(html, /data-report-period="month"[^>]*>4 weeks</);
+  assert.match(html, /data-report-period="year"[^>]*>12 months</);
+  // The comparison names the same 28 days the report measured.
+  assert.match(html, /vs prior 28 days/);
+  assert.doesNotMatch(html, /30[- ]day/i);
+  // Real dates come from the shared formatter: "26 Oct – 22 Nov · 1 active day".
+  assert.match(html, /an-detail-period">\d{1,2} [A-Z][a-z]{2} – \d{1,2} [A-Z][a-z]{2} · \d+ active day/);
+  assert.doesNotMatch(html, /Invalid Date|\d{4}-\d{2}-\d{2}/);
+
+  // An empty report names the same 28-day window instead of 30.
+  renderMonthlyReport(() => ({ weeks: {} }), () => DAYS, () => null);
+  const empty = el.innerHTML;
+  assert.match(empty, /Your 28-day report builds itself as you train/);
+  assert.doesNotMatch(empty, /30[- ]day/i);
 });

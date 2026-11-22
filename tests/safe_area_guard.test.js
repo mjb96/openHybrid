@@ -156,6 +156,19 @@ test('settings header still pads its top by the safe-area inset', () => {
   );
 });
 
+test('the settings body keeps the bottom inset with an env() fallback first', () => {
+  const body = rule(STYLES, '.settings-body');
+  const paddings = [...body.matchAll(/padding(?:-bottom)?:\s*([^;]+);/g)].map(m => m[1].trim());
+  assert.ok(paddings.length >= 2, '.settings-body must keep an env() fallback before the token line');
+  assert.match(paddings[0], /env\(safe-area-inset-bottom/, 'the first bottom padding must be the env() fallback');
+  assert.doesNotMatch(paddings[0], /--safe-bottom/, 'the fallback must not reference the Android token');
+  assert.match(
+    paddings[paddings.length - 1],
+    /calc\([^;]*var\(--safe-bottom\)/,
+    '.settings-body must pad its bottom from var(--safe-bottom)',
+  );
+});
+
 test('the close button is not individually offset off the status bar', () => {
   // The header owns the inset. A margin/top on the button itself would decouple
   // it from the avatar row — exactly the one-off hack this system avoids.

@@ -11,8 +11,8 @@ import {
   big3Maxes,
   weeklyVolumeByMuscle,
   calendarVolumeByMuscle,
-  isWeeklyPR,
 } from '../js/metrics/metrics-strength.js';
+import { estimatedE1rm } from '../js/strength/e1rm.js';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -309,27 +309,20 @@ test('big3Maxes returns flat all-time maxes', () => {
   assert.equal(result.deadlift, prog.deadlift.allTime);
 });
 
-// ── isWeeklyPR — a baseline is not a PR ────────────────────────────────────────
-// Regression: the Strength leaf counted first-ever logs as "PRs this week / lifts
-// at a new best", contradicting the cockpit's "Baseline set, not a trophy" rule.
-// A real PR needs prior history (priorBestMax > 0) that this week beat/holds.
+// ── priorMax — the baseline a "new PR" must beat ──────────────────────────────
+// The old isWeeklyPR helper (and its two competing thresholds) is gone. The one
+// rule lives in isE1rmPr; this stat supplies the prior best it compares against.
 
-test('isWeeklyPR treats a first-ever baseline (no prior history) as NOT a PR', () => {
-  // First log: this week's max is the all-time max, but there is no prior best.
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 63, allTimeMax: 63, priorBestMax: 0 }), false);
-});
-
-test('isWeeklyPR counts a genuine new best that beats prior history', () => {
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 110, allTimeMax: 110, priorBestMax: 100 }), true);
-});
-
-test('isWeeklyPR is false when this week did not reach the all-time best', () => {
-  // Prior weeks hold the record; this week is lower → not a PR this week.
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 90, allTimeMax: 110, priorBestMax: 110 }), false);
-});
-
-test('isWeeklyPR is false with no current-week lifting', () => {
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 0, allTimeMax: 110, priorBestMax: 110 }), false);
-  assert.equal(isWeeklyPR(null), false);
-  assert.equal(isWeeklyPR({}), false);
+test('allLiftsStats.priorMax excludes the current program week but keeps archived runs', () => {
+  const state = fixture();
+  state.weeks['arch:old:1'] = {
+    lifts: { mon: { 'Back Squat': [{ w: '120', r: '3', c: true }] } }, // e1RM 132
+  };
+  const stats = allLiftsStats(state, DAYS);
+  assert.equal(Math.round(stats['Back Squat'].priorMax), 132, 'archived work is still a best to beat');
+  assert.equal(Math.round(stats['Back Squat'].currentWeekMax), Math.round(estimatedE1rm(105, 5)), 'this week is 105×5');
+  assert.equal(Math.round(stats['Back Squat'].allTimeMax), 132);
+  // With the current week excluded from priorMax, a tie with this week's own
+  // best can never be presented as a new record.
+  assert.equal(stats['Conventional Deadlift'].priorMax, 0, 'a first-ever lift has no prior best');
 });

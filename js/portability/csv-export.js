@@ -4,7 +4,7 @@
 
 import { runSessionsForDay } from '../state/run-sessions.js';
 import { normalizeWeighIns } from '../metrics/bodyweight.js';
-import { MEASUREMENT_SITES, normalizeMeasurements } from '../metrics/measurements.js';
+import { MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, normalizeMeasurements } from '../metrics/measurements.js';
 
 export function csvCell(value) {
   const text = value == null ? '' : String(value);
@@ -31,6 +31,10 @@ const HEADER = [
   'Weight', 'Reps', 'Completed', 'RunSessionId', 'RunDist', 'RunTime', 'RunRPE',
   'AvgHR', 'MaxHR', 'ElevGain', 'Calories', 'BodyWeight', 'GymRPE', 'Notes',
 ];
+// The `Notes` column is the WORKOUT note (`week.notes[day]`) — part of the
+// session record and deliberately exported with it. Private scopes are not
+// training history and never reach this file: routine notes, exercise-pinned
+// notes and reference links all live outside `weeks`.
 
 function runValues(run) {
   return [
@@ -49,14 +53,20 @@ export function buildBodyweightCsv(state) {
 }
 
 /**
- * Body measurements, canonical centimetres, one row per date. Blank sites are
- * empty cells rather than zeros.
+ * Body measurements and an entered body-fat percentage, canonical centimetres,
+ * one row per date. The 14 bilateral labels come first, then the historical
+ * single `Arm`/`Thigh` columns so an old reading survives the round trip.
+ * Blank sites are empty cells rather than zeros.
  * @param {any} state
  */
 export function buildMeasurementsCsv(state) {
-  let csv = row(['Date', ...MEASUREMENT_SITES.map((site) => `${site.label} (cm)`)]);
+  const sites = [
+    ...MEASUREMENT_SITES.map((site) => ({ key: site.key, label: site.label })),
+    ...LEGACY_MEASUREMENT_SITES.map((site) => ({ key: site.key, label: site.csvLabel })),
+  ];
+  let csv = row(['Date', ...sites.map((site) => `${site.label} (cm)`), 'Body fat (%)']);
   for (const entry of normalizeMeasurements(state?.bodyMeasurements)) {
-    csv += row([entry.date, ...MEASUREMENT_SITES.map((site) => entry[site.key] ?? '')]);
+    csv += row([entry.date, ...sites.map((site) => entry[site.key] ?? ''), entry.bodyFat ?? '']);
   }
   return csv;
 }

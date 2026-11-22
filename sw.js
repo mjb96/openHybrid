@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-haf3aed1c3751';
+const CACHE_NAME = 'openhybrid-v122-hccd0c50f722b';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -93,6 +93,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/views/view-strength.js",
   "./js/analytics/views/view-weekly-review.js",
   "./js/analytics/views/view-weekly-volume.js",
+  "./js/analytics/views/view-year-review.js",
   "./js/analytics/volume-guide.js",
   "./js/analytics/week-chart-model.js",
   "./js/analytics/week-nav.js",
@@ -123,6 +124,7 @@ const REQUIRED_ASSETS = [
   "./js/brain/risk.js",
   "./js/brain/streak.js",
   "./js/brain/weekly-review.js",
+  "./js/brain/year-review.js",
   "./js/constants.js",
   "./js/dashboard.js",
   "./js/dates.js",
@@ -207,6 +209,7 @@ const REQUIRED_ASSETS = [
   "./js/programs/detail-fit.js",
   "./js/programs/detail.js",
   "./js/programs/editor-model.js",
+  "./js/programs/exercise-row.js",
   "./js/programs/jt-shed-model.js",
   "./js/programs/library.js",
   "./js/programs/opengym-plan.js",
@@ -222,11 +225,15 @@ const REQUIRED_ASSETS = [
   "./js/programs/search.js",
   "./js/programs/shed-pplul-model.js",
   "./js/programs/timeline.js",
+  "./js/routines/model.js",
+  "./js/routines/store.js",
   "./js/run-logger.js",
   "./js/schema.js",
   "./js/session-recap.js",
   "./js/set-utils.js",
   "./js/settings.js",
+  "./js/settings/nav.js",
+  "./js/settings/rest-presets.js",
   "./js/share/workout-share.js",
   "./js/state.js",
   "./js/state/activation-identity.js",
@@ -243,6 +250,8 @@ const REQUIRED_ASSETS = [
   "./js/state/run-sessions.js",
   "./js/strength/duration.js",
   "./js/strength/e1rm.js",
+  "./js/strength/pr-labels.js",
+  "./js/strength/records.js",
   "./js/sw-reload.js",
   "./js/templates.js",
   "./js/theme.js",
@@ -278,6 +287,7 @@ const REQUIRED_ASSETS = [
   "./js/workout/context.js",
   "./js/workout/delete-day.js",
   "./js/workout/edit-saved.js",
+  "./js/workout/effort.js",
   "./js/workout/exercise-config.js",
   "./js/workout/exercise-history.js",
   "./js/workout/exercise-options.js",
@@ -286,8 +296,12 @@ const REQUIRED_ASSETS = [
   "./js/workout/load-mode.js",
   "./js/workout/one-off-session.js",
   "./js/workout/plate-hint-dom.js",
+  "./js/workout/plate-sheet-model.js",
+  "./js/workout/plate-sheet.js",
   "./js/workout/plates.js",
   "./js/workout/program-session-picker.js",
+  "./js/workout/reference-link.js",
+  "./js/workout/rest-duration.js",
   "./js/workout/run-logging.js",
   "./js/workout/run-type.js",
   "./js/workout/run-units.js",
@@ -301,6 +315,7 @@ const REQUIRED_ASSETS = [
   "./js/workout/set-shape.js",
   "./js/workout/set-sheet.js",
   "./js/workout/substitutions.js",
+  "./js/workout/superset.js",
   "./js/workout/units.js",
   "./js/workout/warmup-ramp.js",
   "./manifest.json",

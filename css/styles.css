@@ -2020,13 +2020,13 @@ body.sheet-scroll-locked {
     var(--bg-card);
   overflow: hidden;
 }
-.home-week__rail { padding: 15px 14px 13px; }
+.home-week__rail { padding: 11px 12px 10px; }
 .home-week__head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 11px;
+  margin-bottom: 8px;
 }
 .home-week__nav {
   display: flex;
@@ -2091,7 +2091,7 @@ body.sheet-scroll-locked {
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(7, minmax(44px, 1fr));
-  gap: 3px;
+  gap: 2px;
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
@@ -2102,10 +2102,10 @@ body.sheet-scroll-locked {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
-  min-height: 66px;
-  padding: 7px 2px;
+  min-height: 48px;
+  padding: 5px 2px;
   border: 1px solid var(--border-default);
   border-radius: 11px;
   color: var(--text-secondary);
@@ -2116,19 +2116,21 @@ body.sheet-scroll-locked {
 .home-week-day:active { transform: scale(0.97); }
 .home-week-day:disabled { cursor: default; opacity: 0.62; }
 .home-week-day__name {
-  font-size: 0.58rem;
+  font-size: 0.55rem;
+  line-height: 1;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .home-week-day__dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-faint);
 }
 .home-week-day__date {
-  font-size: 0.54rem;
+  font-size: 0.52rem;
+  line-height: 1;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -2333,6 +2335,21 @@ html[data-theme="light"] .home-insight { background: linear-gradient(135deg, rgb
 .home-week .today-card::after { display: none; }
 .home-week--strip-hidden #homeTodayCard { border-top: 0; }
 .home-week--strip-hidden .today-card { padding-top: 15px; }
+
+/* The coach line is part of Today's surface, not a card of its own: it sits
+   under the decision with a divider and yields whenever Today shows a past
+   week or a picked day. */
+.home-week .home-insight {
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+  border-radius: 0;
+  background: transparent;
+}
+.home-week--strip-hidden .home-insight { border-top: 0; }
+html[data-theme="light"] .home-week .home-insight { background: transparent; }
 
 .today-card__head { position: relative; }
 .today-card.is-collapsible .today-card__head { padding-right: 30px; }
@@ -2729,7 +2746,7 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   outline: none;
 }
 
-/* ---- Superset groups ---- */
+/* ---- Superset / circuit groups ---- */
 .superset-group {
   border-left: 3px solid var(--ss-color, var(--color-blue));
   padding-left: 8px;
@@ -2737,9 +2754,16 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   cursor: grab;
 }
 .superset-group.is-dragging { opacity: 0.45; }
+/* Derived from the sets themselves, never a stored flag: a finished circuit
+   keeps its last member's RPE pad reachable but reads as done. Never dim the
+   text — 0.78 opacity pushed muted labels below AA contrast. */
+.superset-group.is-complete { border-left-width: 4px; }
+.superset-group.is-complete .superset-badge::before { content: '✓ '; }
 .superset-group-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 4px;
   padding: 5px 4px 8px;
 }
 .superset-badge {
@@ -2751,6 +2775,18 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   border-radius: 20px;
   background: var(--ss-color, var(--color-blue));
   color: #fff;
+  white-space: nowrap;
+}
+.superset-group-meta {
+  margin-left: 8px;
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+}
+.superset-group-progress {
+  margin-left: auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ss-color, var(--color-blue));
   white-space: nowrap;
 }
 .superset-connector {
@@ -2851,6 +2887,57 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   font-style: italic;
   line-height: 1.45;
 }
+/* Private reference link on the exercise card. A real anchor with a full 44px
+   hit area; it is a shortcut, so it reads as a quiet accessory row. */
+.cockpit-ex-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 0 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--color-cyan, #22d3ee);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.cockpit-ex-link::before { content: '↗'; font-size: 0.9rem; line-height: 1; }
+.cockpit-ex-link:active { background: rgba(34, 211, 238, 0.16); }
+/* Cyan (#22d3ee) fails on a light card (~1.6:1). The darker teal keeps the
+   link readable while staying in the cyan family. */
+html[data-theme="light"] .cockpit-ex-link { color: #0e7490; }
+/* Routine note on a one-off started from the library. Preparation context, so
+   it sits above the exercise cards and reads by reference from the routine. */
+.cockpit-routine-note {
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #8b5cf6) 34%, transparent);
+  border-left: 3px solid var(--accent-purple, #8b5cf6);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-purple, #8b5cf6) 9%, var(--bg-card, #161b22));
+}
+.cockpit-routine-note__label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-purple, #8b5cf6);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* Violet #8b5cf6 is ~3.6:1 on the light tinted card. Darken it for light. */
+html[data-theme="light"] .cockpit-routine-note__label { color: #5b21b6; }
+.cockpit-routine-note__text {
+  margin: 0;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 .exercise-config-overlay {
   position: fixed;
   inset: 0;
@@ -2916,15 +3003,25 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
 .exercise-config__custom { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-muted); font-size: 0.72rem; }
 .exercise-config__custom input { width: 100px; min-height: 44px; }
 .exercise-config__note { width: 100%; min-height: 80px; resize: vertical; }
+.exercise-config__link { margin-top: 2px; }
+.exercise-config__link.is-invalid { border-color: rgba(239, 68, 68, 0.65); }
+.exercise-config__error {
+  margin: 7px 0 0;
+  color: #f87171;
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
 .ss-link-panel {
   padding: var(--space-3) var(--space-4);
   background: rgba(0,0,0,0.35);
   border-bottom: 1px solid var(--glass-border);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
-  align-items: flex-start;
+  align-items: stretch;
 }
+.ss-link-panel .btn-pad { min-height: var(--touch-target); }
 .ss-panel-title {
   font-size: 0.7rem;
   font-weight: 700;
@@ -2933,6 +3030,61 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   letter-spacing: 0.08em;
   width: 100%;
   margin-bottom: 4px;
+}
+.ss-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.ss-panel-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ss-panel-note {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.ss-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+}
+.ss-member-name {
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ss-member-remove,
+.ss-unlink {
+  flex: 0 0 auto;
+  color: var(--color-red);
+  border-color: rgba(239,68,68,0.35);
+}
+.ss-unlink { align-self: flex-start; }
+.ss-candidate-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ss-candidate-row.is-blocked { opacity: 0.65; }
+.ss-candidate-note {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.ss-candidate-row .btn-pad:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ==========================================================================
@@ -3228,6 +3380,10 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   flex: 1;
   overflow-y: auto;
   padding: 14px 0 calc(40px + env(safe-area-inset-bottom, 0px));
+  /* The Android WebView only reports env(safe-area-inset-bottom) for a display
+     cutout; the shell publishes --app-safe-bottom instead. The env-only line
+     above stays first as the engine fallback, as everywhere else. */
+  padding-bottom: calc(40px + var(--safe-bottom));
 }
 
 /* Settings search + section tabs */
@@ -3521,6 +3677,8 @@ html[data-theme="light"] input[type="time"].settings-input { color-scheme: light
   display: flex;
   align-items: center;
   gap: 10px;
+  /* The visible checkbox is 16px; the label row is the hit area. */
+  min-height: var(--touch-target);
   padding: 8px 0;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
@@ -3598,6 +3756,10 @@ html[data-theme="light"] input[type="time"].settings-input { color-scheme: light
   position: relative;
   display: inline-flex;
   align-items: center;
+  /* The track stays 42×24: growing the paint would redesign the component.
+     The label is the hit area, and it must be a 44px square. */
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
   cursor: pointer;
 }
 .settings-switch input[type="checkbox"] {
@@ -3919,7 +4081,11 @@ html[data-theme="light"] .global-timer-bar {
 .pr-badge {
   position: absolute;
   top: 4px;
-  right: 4px;
+  /* Left of the tick. The DONE column is 44px plus an 8px gap, so `right: 4px`
+     sat on top of the ✓; 34px still overlapped it by 14px at 320/390. 56px puts
+     the badge's right edge 4px clear of the column. It overlays only the TOP of
+     the value cell — the number is vertically centred, below the badge. */
+  right: 56px;
   font-size: 0.52rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -3929,6 +4095,7 @@ html[data-theme="light"] .global-timer-bar {
   color: #000;
   pointer-events: none;
   z-index: 2;
+  white-space: nowrap;
   box-shadow: 0 2px 8px rgba(251, 191, 36, 0.40);
   animation: prBadgePop 0.5s var(--ease-bounce, cubic-bezier(0.34,1.56,0.64,1)) forwards;
 }
@@ -5043,11 +5210,12 @@ h2.section-header {
 }
 h2.section-header::after { display: none; }
 
-/* --- Home header (app name + week) --- */
+/* --- Home header (day headline + week chip) --- */
 .home-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
   margin-bottom: 20px;
   margin-top: 6px;
 }
@@ -5077,6 +5245,7 @@ h2.section-header::after { display: none; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .home-app-label {
   font-size: 0.6rem;
@@ -5085,20 +5254,32 @@ h2.section-header::after { display: none; }
   letter-spacing: 0.14em;
   color: var(--text-faint);
 }
+/* Calendar-day headline. It can wrap inside a narrow header instead of
+   pushing the avatar off-screen, and 200% text must not overflow sideways. */
 .home-week-label {
-  font-size: 1.5rem;
+  font-size: clamp(1.15rem, 5.2vw, 1.5rem);
   font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.04em;
-  line-height: 1;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
   margin: 0;
 }
+/* "Week N of M · Phase" is a compact status pill, not a second headline. */
 .home-phase-label {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 999px;
   font-size: 0.62rem;
-  font-weight: 600;
+  font-weight: 700;
   color: rgba(99,102,241,0.75);
   letter-spacing: 0.04em;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* --- Weekly completion widget (home header, right) --- */
@@ -5665,6 +5846,11 @@ html[data-theme="light"] .btn-pad {
 html[data-theme="light"] .btn-pad:hover {
   background: rgba(0, 0, 0, 0.09) !important;
   color: rgba(0, 0, 0, 0.85) !important;
+}
+html[data-theme="light"] .ss-member-remove,
+html[data-theme="light"] .ss-unlink {
+  color: #b91c1c !important;
+  border-color: rgba(185, 28, 28, 0.35) !important;
 }
 
 /* "Add set / Add warm-up" dashed append button */
@@ -9270,6 +9456,32 @@ html[data-theme="light"] .activity-filter--active { color: #07566b; }
 .recap-stat__v { display: block; font-size: 1.12rem; font-weight: 800; color: var(--text-primary, #fff); }
 .recap-stat__l { display: block; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted, #94a3b8); margin-top: 3px; }
 .recap-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted, #94a3b8); font-weight: 700; margin: 20px 0 10px; }
+/* The note the athlete already wrote in the cockpit / finish sheet. Tokens flip
+   with the theme, so one block serves dark and light. It is rendered as TEXT
+   (never innerHTML) and keeps the athlete's own line breaks. */
+.recap-note {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default, #23272e);
+  border-left: 3px solid var(--accent-blue, #3b82f6);
+  border-radius: 12px;
+  background: var(--bg-card, #161b22);
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.recap-note__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+}
+.recap-note__text { display: block; }
 .recap-quality { padding: 14px; border: 1px solid var(--border, #23272e); border-left: 3px solid var(--accent-blue, #3b82f6); border-radius: 12px; background: var(--bg-card, #161b22); }
 .recap-quality--low, .recap-quality--insufficient { border-left-color: var(--accent-orange, #f97316); }
 .recap-quality__head { display: flex; justify-content: space-between; gap: 12px; color: var(--text-primary, #fff); font-size: 0.86rem; }
@@ -9454,6 +9666,7 @@ html[data-theme="light"] .activity-filter--active { color: #07566b; }
 .settings-toggle-btn,
 .settings-action-btn,
 .settings-input,
+.settings-switch,
 .ob-toggle-btn,
 .ob-input,
 .ob-cta,
@@ -9590,6 +9803,26 @@ input[type="checkbox"].gym-check {
 }
 .cockpit-set-row input { min-width: 0; }
 .cockpit-set-row input { min-height: var(--touch-target); }
+/* The VALUE track is a fixed 54px and time/reps/distance all render through
+   `.input-set-value-node`. The global input rule above 380px keeps 12px of
+   inline padding each side, leaving no content box at all — a two-digit number
+   overflowed on Linux Chromium while the 320px media query below (4px) hid the
+   defect on macOS. Give the value field its own 4px padding; the weight field
+   keeps its roomier padding because its track is flexible. */
+.cockpit-set-row .input-set-value-node { padding-inline: 4px; }
+/* Touch-first row: a platform number spinner would steal the same 54px
+   content box. Hide the inner/outer buttons; arrow-key stepping still works. */
+.cockpit-set-row input[type="number"] {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.cockpit-set-row input[type="number"]::-webkit-inner-spin-button,
+.cockpit-set-row input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
 .set-entry { min-width: 0; display: grid; gap: 3px; }
 .set-entry small {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -9880,7 +10113,7 @@ html[data-theme="light"] .cockpit-exercise-rail__item { background: rgba(0,0,0,.
 
 .tl-exercises { margin: 12px 0 4px; border-top: 1px solid var(--border-subtle, rgba(255,255,255,.07)); }
 .tl-exercise {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   min-height: 36px;
   border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,.07));
 }
@@ -9897,6 +10130,15 @@ html[data-theme="light"] .cockpit-exercise-rail__item { background: rgba(0,0,0,.
   color: var(--text-primary, #f8fafc); font-size: .74rem; font-weight: 650;
 }
 .tl-exercise__target { flex: 0 0 auto; color: var(--text-muted, #94a3b8); font-size: .64rem; font-weight: 800; }
+.tl-exercise__note {
+  flex: 1 0 100%;
+  margin: 0 0 6px 26px;
+  color: var(--text-secondary, #94a3b8);
+  font-size: .66rem;
+  line-height: 1.4;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 
 .tl-section { margin-bottom: 18px; }
 .tl-section__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
@@ -10263,14 +10505,46 @@ html[data-hybrid="off"] [data-hybrid] {
 .bw-ms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
 .bw-ms-site {
   display: flex; flex-direction: column; gap: 2px;
+  width: 100%; min-height: var(--touch-target); margin: 0;
   padding: 8px 10px; border-radius: 12px;
   border: 1px solid var(--border-subtle); background: var(--overlay-md);
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
 }
+.bw-ms-site.active { border-color: var(--color-cyan); box-shadow: inset 0 0 0 1px var(--color-cyan); }
+.bw-ms-site:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; }
 .bw-ms-site span { color: var(--text-muted); font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .bw-ms-site strong { color: var(--text-primary); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .bw-ms-site small { color: var(--text-muted); font-size: .66rem; font-weight: 700; }
+/* An entered percentage lives beside the tape sites but is not one of them. */
+.bw-ms-site--bodyfat { border-left: 3px solid var(--color-cyan); }
+.bw-ms-site--bodyfat strong small { color: var(--color-cyan); }
 .bw-ms-delta { color: var(--color-cyan); font-size: .68rem; font-style: normal; font-weight: 700; }
 .bw-ms-delta--none { color: var(--text-muted); font-weight: 600; }
+/* One site's history, drawn directly under the grid after a tap. */
+.bw-ms-trend {
+  margin: -2px 0 12px; padding: 8px 8px 2px;
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  background: var(--overlay-md);
+}
+.bw-ms-trend[hidden] { display: none; }
+.bw-ms-trend svg { display: block; width: 100%; height: auto; }
+.bw-ms-trend text { fill: var(--text-secondary); }
+.bw-ms-trend .bw-site-grid { stroke: var(--border-subtle); stroke-width: 1; }
+.bw-ms-trend .bw-site-line { stroke: var(--color-cyan); stroke-width: 2; }
+.bw-ms-trend .bw-site-dot { fill: var(--color-cyan); }
+.bw-ms-trend-note { color: var(--text-muted); font-size: .76rem; line-height: 1.4; margin: 4px 2px 8px; }
+/* Cyan is a dark-surface accent: on the light sheet/card it falls under 2:1.
+   #155e75 measures >5.7:1 on the card's composited surface and >6.9:1 on white,
+   keeping every delta and the body-fat accent legible. */
+html[data-theme="light"] .bw-ms-delta:not(.bw-ms-delta--none),
+html[data-theme="light"] .bw-ms-site--bodyfat strong small,
+html[data-theme="light"] .ms-sheet-field--bodyfat > span { color: #155e75; }
+html[data-theme="light"] .bw-ms-site--bodyfat { border-left-color: #155e75; }
+html[data-theme="light"] .bw-ms-site.active,
+html[data-theme="light"] .bw-ms-site:focus-visible { border-color: #155e75; box-shadow: inset 0 0 0 1px #155e75; outline-color: #155e75; }
+html[data-theme="light"] .bw-ms-trend .bw-site-line { stroke: #155e75; }
+html[data-theme="light"] .bw-ms-trend .bw-site-dot { fill: #155e75; }
 .ms-sheet-unit { color: var(--text-muted); font-size: .72rem; font-weight: 800; margin-left: auto; margin-right: 8px; }
 .ms-sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 4px 0 10px; }
 .ms-sheet-field { display: flex; flex-direction: column; gap: 4px; }
@@ -10280,6 +10554,36 @@ html[data-hybrid="off"] [data-hybrid] {
   background: var(--bg-input); color: var(--text-primary); font-size: 1rem; font-weight: 700;
   padding: 0 10px; font-variant-numeric: tabular-nums;
 }
+/* Body fat is a percentage, not a tape length: it spans the whole grid and gets
+   its own divider so it never reads like a seventh centimetre site. */
+.ms-sheet-field--full { grid-column: 1 / -1; }
+/* Bilateral sites live behind one disclosure: six primary fields stay scannable,
+   and a 14-field wall never greets someone who only measures their waist. */
+.ms-sheet-more {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  background: var(--overlay-md); padding: 0 10px;
+}
+.ms-sheet-more summary {
+  display: flex; align-items: center; gap: 8px;
+  min-height: var(--touch-target); cursor: pointer;
+  color: var(--text-secondary); font-size: .7rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  list-style: none;
+}
+.ms-sheet-more summary::-webkit-details-marker { display: none; }
+.ms-sheet-more summary::after {
+  content: '⌄'; margin-left: auto; font-size: .9rem; line-height: 1;
+  transition: transform .16s ease;
+}
+.ms-sheet-more[open] summary::after { transform: rotate(180deg); }
+.ms-sheet-more .ms-sheet-hint { margin: 0 0 8px; }
+.ms-sheet-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-bottom: 10px; }
+.ms-sheet-field--bodyfat {
+  border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 2px;
+}
+.ms-sheet-field--bodyfat > span { color: var(--color-cyan); }
+.ms-sheet-hint { color: var(--text-muted); font-size: .66rem; font-weight: 600; line-height: 1.35; }
 
 /* ============================================================================
    PER-SET SHEET
@@ -10287,7 +10591,7 @@ html[data-hybrid="off"] [data-hybrid] {
    than expanding inside the row. Every control is a 44px target and every
    segment states the CURRENT stored value.
    ========================================================================== */
-.set-sheet { max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; }
+.set-sheet { max-height: 88vh; overflow-y: auto; overflow-x: auto; overscroll-behavior: contain; }
 .set-sheet-sub {
   margin: -4px 0 12px; color: var(--text-secondary);
   font-size: 0.72rem; font-weight: 650; line-height: 1.4;
@@ -10299,6 +10603,7 @@ html[data-hybrid="off"] [data-hybrid] {
 .set-sheet-lbl:first-of-type { margin-top: 4px; }
 .set-sheet-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .set-sheet-seg--rest { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.set-sheet-seg--effort { grid-template-columns: repeat(5, minmax(44px, 1fr)); }
 .set-sheet-seg button {
   min-height: var(--touch-target);
   border-radius: 11px;
@@ -10313,7 +10618,6 @@ html[data-hybrid="off"] [data-hybrid] {
   border-color: color-mix(in srgb, var(--color-cyan) 48%, transparent);
   color: var(--color-cyan);
 }
-.set-sheet-seg button.is-wide { grid-column: span 2; }
 .set-sheet-seg button[data-failure-toggle].is-active {
   background: rgba(239, 68, 68, 0.16);
   border-color: rgba(239, 68, 68, 0.45);
@@ -10337,6 +10641,98 @@ html[data-theme="light"] .set-sheet-seg button { background: rgba(15, 23, 42, 0.
 html[data-theme="light"] .set-sheet-seg button.is-active {
   background: color-mix(in srgb, var(--color-cyan) 18%, transparent);
 }
+.set-sheet-btn--wide { grid-column: 1 / -1; }
+
+/* ============================================================================
+   PLATE CALCULATOR SHEET
+   Stacked ABOVE the per-set sheet it opens from: the backdrop and the sheet
+   each sit one level higher, and the sheet follows its sibling in the DOM so
+   an equal z-index still paints on top. Everything except the target field is
+   read-only text; "Use this weight" is the sole write and states why it is off
+   when the set cannot take a plate total.
+   ========================================================================== */
+.sheet-backdrop--plate { z-index: 999; }
+.plate-sheet {
+  z-index: 1000;
+  max-height: 90vh;
+  max-height: 90dvh;
+}
+.plate-sheet-field { display: block; margin: 2px 0 10px; }
+.plate-sheet-lbl { display: block; margin: 0 0 6px; }
+.plate-sheet-input {
+  width: 100%;
+  min-height: var(--touch-target);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--overlay-sm);
+  color: var(--text-primary);
+  font: inherit; font-size: 1.05rem; font-weight: 800;
+  padding: 0 12px;
+}
+.plate-sheet-input.is-invalid { border-color: rgba(239, 68, 68, 0.55); }
+.plate-sheet-kit {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  font-size: 0.68rem; font-weight: 650; color: var(--text-muted);
+  line-height: 1.5;
+}
+.plate-sheet-result {
+  margin-top: 14px; padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--overlay-sm);
+}
+.plate-sheet-headline {
+  font-size: 1.4rem; font-weight: 850; line-height: 1.15;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.plate-sheet-note {
+  margin: 8px 0 0;
+  font-size: 0.72rem; font-weight: 650; line-height: 1.45;
+  color: var(--text-secondary);
+}
+.plate-sheet-note.is-warn { color: var(--color-amber); }
+.plate-sheet-group { margin-top: 10px; }
+.plate-sheet-group .set-sheet-lbl { margin: 0 0 6px; }
+.plate-sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.plate-sheet-chip {
+  display: inline-flex; align-items: center;
+  min-height: 30px; padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--glass-border);
+  background: var(--overlay-md);
+  color: var(--text-primary);
+  font-size: 0.72rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.plate-sheet-use {
+  width: 100%; min-height: 48px; margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-cyan) 48%, transparent);
+  background: color-mix(in srgb, var(--color-cyan) 16%, transparent);
+  color: var(--color-cyan);
+  font: inherit; font-size: 0.82rem; font-weight: 850;
+}
+.plate-sheet-use:disabled {
+  opacity: 0.45;
+  border-color: var(--glass-border);
+  background: var(--overlay-sm);
+  color: var(--text-muted);
+}
+.plate-sheet-reason {
+  margin: 8px 0 0; min-height: 1.2em;
+  font-size: 0.7rem; font-weight: 650; line-height: 1.4;
+  color: var(--text-muted);
+}
+html[data-theme="light"] .plate-sheet-input,
+html[data-theme="light"] .plate-sheet-result,
+html[data-theme="light"] .plate-sheet-chip {
+  background: rgba(15, 23, 42, 0.03);
+}
+/* Amber (#f59e0b) is only ~2.2:1 on white. #b45309 measures 5.02:1 on white
+   and 4.54:1 on this light card, so a shortfall or limited-rack caveat stays
+   legible in light theme. */
+html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
 
 /* ============================================================================
    THEME PALETTES
@@ -10436,30 +10832,44 @@ html[data-theme="dark"][data-palette="ember"] {
 .customize-row__label { color: var(--text-primary); font-size: .82rem; font-weight: 750; }
 .customize-row__note { color: var(--text-muted); font-size: .7rem; line-height: 1.35; }
 
-/* Home bodyweight card — compact chart + one-tap prefilled log. */
+/* Home bodyweight card — one 44px row: latest value, 30-day spark, Log. */
 .home-bw {
-  margin: 12px 0 16px; padding: 14px 16px 12px;
-  border: 1px solid var(--border-light); border-radius: 16px;
+  margin: 10px 0 14px; padding: 10px 14px;
+  border: 1px solid var(--border-light); border-radius: 14px;
 }
-.home-bw__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.home-bw__eyebrow { display: block; color: var(--text-muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.home-bw__title { display: block; margin-top: 2px; color: var(--text-primary); font-size: 1.22rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-bw__line {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 44px; padding: 0; border: 0;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.home-bw__line:active { transform: scale(.995); }
+.home-bw__line:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; }
+.home-bw__copy { display: grid; align-content: center; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.home-bw__eyebrow { display: block; color: var(--text-muted); font-size: .58rem; line-height: 1.1; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.home-bw__title { display: block; color: var(--text-primary); font-size: 1.05rem; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-bw__meta {
+  display: block; overflow: hidden;
+  color: var(--text-muted); font-size: .62rem; line-height: 1.2;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.home-bw__chart { display: flex; align-items: center; flex: 0 0 96px; min-height: 28px; }
+.home-bw__spark { display: block; width: 100%; height: 28px; }
+.home-bw__empty { display: block; overflow: hidden; color: var(--text-muted); font-size: .6rem; line-height: 1.15; }
 .home-bw__log {
-  min-height: 44px; min-width: 64px; padding: 0 14px; border-radius: 11px;
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 46px; height: 26px; padding: 0 10px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-cyan) 45%, transparent);
   background: color-mix(in srgb, var(--color-cyan) 14%, transparent);
-  color: var(--color-cyan); font: inherit; font-size: .78rem; font-weight: 800;
+  color: var(--color-cyan); font-size: .68rem; font-weight: 800;
 }
+/* The chart block below the summary row: the SAME chart Progress draws, so the
+   aspect ratio comes from the viewBox; a fixed height would squash the labels. */
 .home-bw__chart {
   display: block; width: 100%; min-height: 64px; margin: 6px 0 2px; padding: 0;
   border: 0; background: none; color: inherit; text-align: left;
 }
-/* The card draws the SAME chart as Progress, so the aspect ratio comes from the
-   viewBox; a fixed height would squash the axis labels. */
 .home-bw__spark { display: block; width: 100%; height: auto; max-height: 168px; }
 .home-bw__empty { display: flex; align-items: center; min-height: 96px; color: var(--text-muted); font-size: .74rem; }
-.home-bw__meta { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: .68rem; }
-.home-bw__trend { margin-top: 4px; color: var(--text-secondary); font-size: .7rem; }
 
 /* ---- Hybrid section: balance + the two week summaries -------------------- */
 .home-hybrid { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }

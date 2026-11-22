@@ -344,9 +344,9 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
 
 // ---------------------------------------------------------------------------
 // The single most important thing to surface right now. Priority-ordered.
-// NOTE: no longer rendered on Home (the Morning Briefing replaced the insight
-// banner) — kept as tested model intelligence and the intended copy source for
-// the future morning notification (roadmap R3).
+// Rendered as the one coach line inside Home's Today surface
+// (renderHomeInsight in js/home.js), so it always describes the settled day. It
+// also remains the intended copy source for the morning notification (R3).
 // ---------------------------------------------------------------------------
 function pickTopInsight(m) {
   // Once today's planned session is logged, don't nudge the athlete to go hard —

@@ -11,6 +11,9 @@ import {
 import { compareWithPrevious, previousSetCompact, setRowNumberLabel } from './workout/set-entry.js';
 import { effectiveSetMode } from './workout/set-shape.js';
 import { formatDistance, formatDuration, setModeOf } from './set-utils.js';
+// Leaf import: the row template needs the label only. Importing the records
+// model here pulled the exercise catalogue and history scan into every render.
+import { prKindLabel } from './strength/pr-labels.js';
 
 export function buildEmptyWorkoutCard() {
   return '<div class="card-dark text-xs-muted empty-state-card">No lifting scheduled today.</div>';
@@ -86,10 +89,21 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   const noteHtml = sData.note
     ? `<div class="set-note">${escapeHtml(String(sData.note))}</div>`
     : '';
+  // Stored set fields arrive from imported state (CSV rows, plan/backup JSON),
+  // and `rir`/`type` are copied verbatim by an import. Every dynamic value in
+  // the row's start tag is therefore escaped — including the ones whose current
+  // writers only ever produce a closed vocabulary.
+  //
+  // `data-rir` is not read by the app: the set sheet renders its active cell
+  // from stored state. It stays as a read-only inspection mirror AND as the
+  // imported-content contract's canary for hostile stored RIR escaping
+  // (tests/imported_content_rendering.test.js), which no other row attribute
+  // covers.
+  const rirAttr = sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '');
 
-  return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${mode}" data-load-mode="${directMode}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${type}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '')}">
+  return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${escapeHtml(String(mode))}" data-load-mode="${escapeHtml(String(directMode))}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${escapeHtml(String(type))}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${escapeHtml(String(rirAttr))}"${sData.prKind ? ` data-pr-kind="${escapeHtml(String(sData.prKind))}"` : ''}>
     ${roleTagHtml}
-    ${sData.isPR ? '<span class="pr-badge">PR</span>' : ''}
+    ${sData.isPR ? `<span class="pr-badge">${escapeHtml(prKindLabel(sData.prKind))}</span>` : ''}
     <button type="button" class="set-num-lbl" data-action="open-set-sheet"
          data-liftname="${safeLiftName}" data-sidx="${sIdx}"
          aria-haspopup="dialog"
@@ -119,12 +133,21 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   </div>`;
 }
 
-export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
+export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, ssMemberCount = 0, ssOrdinal = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
   const stalledBadge = diagnostic.isStalled ? `<span class="badge-stall-indicator">PROGRESS CHECK</span>` : '';
   const targetStyle  = diagnostic.isStalled ? 'color: var(--color-amber); font-weight: 800;' : '';
   const ssBtnClass   = groupId ? 'btn-ss-link ss-active' : 'btn-ss-link';
   const ssBtnStyle   = groupId ? `style="--ss-color:${ssColor};"` : '';
-  const ssBtnLabel   = groupId ? `SS ${groupId}` : 'SS+';
+  // The button carries the group size so an athlete can tell a pair from a
+  // three-exercise circuit without opening the panel. The accessible name adds
+  // this member's place in the round.
+  const memberCount = Number(ssMemberCount) > 0 ? Math.round(Number(ssMemberCount)) : 0;
+  const ssBtnLabel   = groupId
+    ? `SS ${escapeHtml(String(groupId))}${memberCount > 1 ? ` · ${memberCount}` : ''}`
+    : 'SS+';
+  const ssBtnAria    = groupId
+    ? `Circuit ${escapeHtml(String(groupId))}${memberCount > 1 ? `, ${memberCount} exercises` : ''}${ssOrdinal ? `, exercise ${ssOrdinal.index} of ${ssOrdinal.total}` : ''}. Edit circuit`
+    : 'Add this exercise to a superset circuit';
 
   return `<div class="cockpit-header">
     <div class="drag-handle-grip">☰</div>
@@ -134,11 +157,11 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
           <span class="cockpit-ex-name">${displaySafeName}</span>
           ${stalledBadge}
         </div>
-        <div class="cockpit-ex-target" style="${targetStyle}" data-target-label="${escapeHtml(String(targetLabel || blueprintLabel))}">${blueprintLabel}</div>
+        <div class="cockpit-ex-target" style="${targetStyle}" data-target-label="${escapeHtml(String(targetLabel || blueprintLabel))}">${escapeHtml(blueprintLabel)}</div>
       </div>
       <div class="cockpit-ex-status">${isCompleted ? 'DONE' : 'LOG'}</div>
     </div>
-    <button class="${ssBtnClass}" ${ssBtnStyle} data-action="show-ss-panel" data-liftname="${safeLiftName}">${ssBtnLabel}</button>
+    <button class="${ssBtnClass}" ${ssBtnStyle} data-action="show-ss-panel" data-liftname="${safeLiftName}" aria-label="${ssBtnAria}" title="${ssBtnAria}">${ssBtnLabel}</button>
     <button type="button" class="btn-ex-config tactile-scale" data-action="open-exercise-options" data-liftname="${safeLiftName}" aria-label="Settings for ${displaySafeName}" title="Exercise settings">⚙</button>
   </div>
   <div class="cockpit-body">

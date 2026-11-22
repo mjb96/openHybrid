@@ -90,7 +90,7 @@ test('the summary view carries stats, an accessible map and the licence credit',
   assert.match(html, /Duration/);
   assert.match(html, /1,?360 kg/);
   assert.match(html, /Sets/);
-  assert.match(html, /1 PR/);
+  assert.match(html, /1 e1RM PR/);
   assert.match(html, /Front body map/);
   assert.match(html, /Back body map/);
   assert.match(html, /Body map © Ivan Vulović/);

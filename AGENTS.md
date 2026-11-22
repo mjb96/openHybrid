@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 43 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 45 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -58,9 +58,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   Train quick starts/recent runs, Progress domains and Home insight/running cards
   filter through `moduleEnabled`; analytics sections carry `data-module` hooks so a
   deep link cannot reopen a hidden module. Settings must reflect the switches. Data is
-  never deleted, and stored history remains readable. The quick-start sheet's
-  Run/Walk/Fast carry the same hooks, so a disabled module cannot offer a start.
-- Hybrid training: `settings.hybridTraining` (default on, v13→v14 seeds it) is a
+  never deleted, and stored history remains readable. Fasting stage nudges are
+  gated by `moduleEnabled(state,'fasting')` AND the athlete's
+  `settings.notifFastingStage` (default on), so a hidden module can never notify;
+  there is no separate `settings.fastingEnabled` flag. The quick-start sheet's
+  Run/Walk/Fast carry the same `data-module` hooks, so a disabled module cannot
+  offer a start.
+- Hybrid training: `settings.hybridTraining` (default on, v14→v15 seeds it) is a
   PRESENTATION preference, **not a fifth module**. `hybridTrainingEnabled` /
   `setHybridTraining` live in `js/modules.js` and `applyModuleVisibility` publishes
   `<html data-hybrid="on|off">`; CSS hides only `[data-hybrid]` surfaces (the Home
@@ -68,10 +72,24 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   NEVER rewrites the four module switches, so Running/Recovery/Health/Fasting stay
   the athlete's own choices. It is deliberately separate from
   `settings.fitnessGoal`, which drives recommendations and Hybrid Score weights.
-- Settings navigation: `js/settings.js` groups the former long scroll into
-  Profile / Training / Health / Appearance / Data tabs, with a global search and
-  an explicit no-results state. Existing checks select the Training tab before
-  touching equipment/modules.
+- Settings navigation: `js/settings/nav.js` is the pure navigation model — five
+  fixed destinations (Profile / Training / Health / Appearance / Data), the
+  card-label → group map (`settingsGroupForLabel`; unknown and
+  Object.prototype labels land in Training) and `sectionMatchesQuery` (visible
+  text + `aria-label`/`title`/option text, skipping any subtree whose
+  `[data-module]` is disabled). `js/settings.js` renders the filters as a
+  `role="group"` of `aria-pressed` buttons (never a fake tablist), clears the
+  query on open/close, resets scroll on search and announces no-results with
+  `role="status"`; the visible count ignores cards hidden by a module switch.
+  Training order is Training (units) → Logging (rest tiers/presets/sound,
+  progression, previous values, warm-up, plate hints) → Program Week → Equipment
+  → Modules. `.settings-switch` is a 44px hit area around the unchanged 42×24
+  track, every switch has an accessible name, `.hc-data-toggle` is a 44px row,
+  and `.settings-body` pads with `--safe-bottom` after the env() fallback.
+  Threshold pace accepts strict `mm:ss` (60–3600 s) or legacy seconds and leaves
+  the stored value untouched on invalid input. `tests/settings_wiring.test.js`
+  ratchets the STATIC settings input/select/textarea ids to a handler (not
+  buttons or JS-rendered controls); add a real handler rather than a sixth tab.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can
@@ -80,6 +98,23 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   stamps filled new sets completed and refreshes the finished summary's set
   count. Programme scaffolding that landed on the same day later is preserved
   but is not presented as part of the historical session.
+- Note scopes and private links: `week.notes[day]` is the WORKOUT note — shown
+  by the cockpit, finish recap and History and exported as the CSV `Notes`
+  column. It is strength-only: `buildSessionRecap` gates it on
+  `activityKind !== 'run'` (plus real strength work), so a run detail on a
+  mixed date never borrows it; run notes stay on the run session
+  (`runs[].notes`). Exercise notes and reference links live in
+  `settings.exercisePrefs`, keyed by `exerciseConfigKey` (canonical id; aliases
+  share one entry): `note` (140 chars) and `link` (only via
+  `safeExternalHttpUrl` — http(s), no credentials/control chars). They are
+  shown in the cockpit, the program-builder row (which opens the exercise
+  options sheet) and the Train/plan previews read-only; they never enter
+  History, share cards or CSV. A routine note is `routine.note` (≤500, absent
+  when empty). Starting a routine stores only `week.sourceRoutineId`; the
+  cockpit banner calls `routineNoteForSession` → `findRoutine` on every render,
+  so edits are live and deleting the routine removes it. Import clones
+  `exercisePrefs` on a null prototype, repairs links, and truncates routine
+  notes instead of dropping them.
 - History (formerly Activities): `js/activities.js` + `js/activities/model.js` +
   `js/activities/calendar.js` own the record/action destination — Calendar | List,
   search, month headers, provenance, source filter (Logged in app / Imported),
@@ -95,6 +130,37 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   into a fresh one-off session (values kept, completion cleared) via
   `createOneOffStrengthSession`. Train and Progress link here; they do not keep
   a competing calendar. The old `js/home/activity-calendar.js` was removed.
+- Routines: `js/routines/store.js` owns the root `state.routines` /
+  `state.libraryFolders` arrays (v13→v14 seeds them) and mints `rtn_`/`fld_` ids;
+  `js/routines/model.js` builds a routine from a finished History session
+  (`buildRoutineFromSession`) and returns a copyable week for
+  `createOneOffStrengthSession` (`routineSourceWeek`). A routine is a reusable
+  SESSION TEMPLATE, never a program: it must never enter `customPrograms`, resolve
+  through `getProgramById`/`resolveProgramForState`, render as a `.prog-card`, or
+  call `startProgramActivation`/`reseedActiveProgramIntoWeek`; it writes no
+  `state.weeks`, `currentWeek` or `activeProgramId`. `prescriptions` is
+  authoritative for sets/reps/load/rest while `days[].lifts` stays bare strings.
+  Only completed working sets are saved — never completion flags, PR badges,
+  warm-ups, role stamps, effort, notes or gym stats. Load IDENTITY is preserved
+  (`bw`/`band`/`loadMode`): a bodyweight or assisted set stores no derived
+  weight, so the next session uses today's bodyweight, and a legacy dumbbell set
+  records `basis:'total'` so the pair is not re-read as one bell. Records carry
+  `kind:'routine'`; `js/state/import-validate.js` bounds and repairs the library
+  on import. History's action menu owns "Save as routine"; Plans → My Plans leads
+  with the routine list (`routine-card`, never `.prog-card`), where Start copies
+  `routineSourceWeek` into a one-off `session:` week and Rename/Move/Delete
+  (+Undo) live in the `•••` menu. Start is a real start: `startRoutine` marks the
+  one-off `in_progress`, binds the session clock and opens the active cockpit
+  through `beginActiveWorkoutSession`, the same sequence the cockpit Start button
+  uses; while another workout is open it refuses and offers Resume instead of
+  replacing or orphaning that session. `libraryFolders`
+  (`{id,name,sortOrder,createdAt}`) group routines with ONE-WAY membership on
+  `routine.folderId`; a folder never stores a member list, deleting one moves its
+  routines to Unfiled and never deletes a routine (Undo restores the folder at its
+  display index and the membership). Folder order is display-based (`sortOrder`,
+  then name) and renormalised on every create/delete/restore/move; a routine has no
+  ordering field of its own. `js/app.js` owns those actions; they never activate
+  or reseed a program.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported
@@ -115,10 +181,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   The view lives in `js/analytics/views/view-bodyweight.js`, the SVG chart in
   `js/analytics/charts.js`, and the prefilled weigh-in sheet (steppers, date,
   recent edit/delete) in `js/bodyweight-sheet.js`. Home and Progress draw the SAME
-  chart through `bodyWeightChartSVG` (the Home card passes compact geometry);
-  `renderBodyWeightWithMA` delegates to it, so there is never a second sparkline
-  implementation. The sheet focuses its CLOSE BUTTON, not the number field —
-  autofocusing `#bwSheetWeight` raised the mobile keyboard over the steppers.
+  chart through `bodyWeightChartSVG` (the Home card passes compact geometry and
+  keeps the summary row above it); `renderBodyWeightWithMA` delegates to it, so
+  there is never a second sparkline implementation. The sheet focuses its CLOSE
+  BUTTON, not the number field — autofocusing `#bwSheetWeight` raised the mobile
+  keyboard over the steppers.
 - Hybrid week on Home: `js/analytics/hybrid-balance.js` buckets
   `dailyLoadBreakdownTimeline` (the one dated sRPE reader in
   `js/metrics/training-load.js`) into Monday-based calendar weeks and classifies
@@ -133,18 +200,53 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `effectiveVdot` ALWAYS labelled `(est.)` (the app has no measured VO₂ max
   source), and the card disappears when the Running module is off.
 - Body measurements: `js/metrics/measurements.js` is the pure model behind the
-  Measurements card beside the bodyweight trend — waist, chest, hips, arm,
-  thigh and neck, stored canonically in CENTIMETRES with one record per date
-  and any site optional (`bodyMeasurements: [{ date, waist?, … }]`). A unit
+  Measurements card beside the bodyweight trend — 14 canonical length sites
+  (neck, shoulders, chest, waist, hips, glutes, arm_l/r, forearm_l/r,
+  thigh_l/r, calf_l/r), stored canonically in CENTIMETRES with one record per
+  date and any site optional (`bodyMeasurements: [{ date, neck?, … }]`). A unit
   toggle reads cm/in without rewriting stored values; `settings.measurementUnit`
   is seeded by v12→v13 from the existing weight unit. The sheet
-  (`js/measurements-sheet.js`) prefills an existing date exactly and leaves a
-  new date blank (the last reading is only a placeholder) — changing the date
-  must reload the fields. `buildMeasurementsCsv` exports the raw centimetres
-  from Settings → Data, and `js/portability/import-measurements-csv.js` reads
-  that shape back (`date,waist_cm,…`, `_in` columns converted): rows for the
-  same date merge site by site, implausible readings are skipped, and an
-  existing date is never overwritten.
+  (`js/measurements-sheet.js`) shows six primary fields and puts the eight
+  bilateral fields behind “Arms, thighs and calves”. It prefills an existing
+  date exactly and leaves a new date blank (each placeholder is that site's
+  latest reading ON OR BEFORE the chosen date, tape and body fat alike) —
+  changing the date must reload the fields. Editing a date with bilateral
+  readings opens the disclosure and echoes the count; a new or legacy-only date
+  keeps it closed. The pre-14-site single `arm`/`thigh` readings are
+  `LEGACY_MEASUREMENT_SITES` (“Arm (old)”/“Thigh (old)”): readable, shown on the
+  card and exported, never an input, and `preserveLegacySites` carries them
+  across an edit so adding a waist cannot drop them. A wrong old reading can
+  only be removed by deleting the whole date; the sheet hint says so. Every
+  measured cell is a 44px button: `showMeasurementTrend` opens one site at a time
+  in `#bwMsTrend` from the last rendered model (a second tap collapses it) and
+  `renderSiteTrend` draws a dependency-free SVG line oldest → newest,
+  min/mid/max and date labels, body fat on a percentage scale, and a note rather
+  than a line under two readings. The view converts stored centimetres to the
+  display unit before calling the chart (site points and deltas); `renderSiteTrend`
+  never converts, and its `role="img"` label carries the unit, first/latest
+  readings, dates and change. A cm/in toggle repaints the open trend in the new
+  unit. Light mode overrides the line/dot to `#155e75` (5.76:1 measured).
+  `buildMeasurementsCsv` exports the raw centimetres (14 canonical columns, then
+  Arm/Thigh, then body fat) from Settings → Data, and
+  `js/portability/import-measurements-csv.js` reads that shape back
+  (`date,waist_cm,…`, `_in` columns converted): all 14 canonical keys and the
+  legacy arm/thigh import, old six-site files still work, rows for the same date
+  merge site by site, implausible readings are skipped, and an existing date is
+  never overwritten. Body fat is an ENTERED reading (scale,
+  calipers, DEXA), never estimated — there is no height/sex/age in state, so a
+  formula would fabricate data. It is an additive `bodyFat` percentage on the
+  same records (2–70, one decimal, `bodyFatPercent`), deliberately NOT a
+  `MEASUREMENT_SITES` entry (that set is cm-validated) and never changed by the
+  cm/in toggle; `bodyFatTrend` reports percentage-point deltas and the card
+  renders it only when measured (a body-fat-only record still counts as an
+  entry). The sheet's full-width `msSheet_bodyFat` field replaces the record, so
+  editing another site cannot drop the stored percentage. The measurements CSV
+  has a `Body fat (%)` column, and imports accept `body_fat`, `bodyfat`,
+  `body_fat_pct` or `body_fat_percent` as a percentage (never cm/in; semicolon
+  files accept a decimal comma). Its dark cyan accent has a light-mode override
+  (`#155e75`) measured in the bodyweight browser check. Known limitation: a
+  combined weigh-in + body-fat CSV belongs to the bodyweight reader, so body fat
+  from that file is not imported; the weigh-in confirm now names that omission.
 - Warm-up ramp: `js/workout/warmup-ramp.js` builds editable warm-up rows above
   the working weight. Barbells ramp 40/60/80% above the bar, rounded to the
   active profile's plates and pair counts; dumbbells have no bar, so each rung
@@ -161,9 +263,26 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - Progress overview: `buildProgressLanding` returns `weekSummary`, `units` and
   `recentWeeks`; `buildRecentWeekSeries` and `buildCalendarTrainingWeeks`
   (`js/analytics/training-calendar.js`) are date-strict, so imported/archived
-  sessions appear in the real week. The hub leads with a this-week hero and a
-  12-week strip before the domain cards. Review Stats' Training Calendar and
-  Consistency Log use the same calendar weeks (no `W1..Wn` program grid).
+  sessions appear in the real week. The hub leads with a hero for the SELECTED
+  calendar week (eyebrow and aria-label are the Mon–Sun range, never a relative
+  "N weeks ago") and a 12-week strip before the domain cards. An untrained
+  selected week renders an honest `0 sessions · <range>` hero rather than
+  vanishing, and a historical week is never scored against the active plan —
+  "of N planned" and the adherence bar appear only for the live week. Review
+  Stats leads with the seasonal **Year in Review** (`js/brain/year-review.js` +
+  `views/view-year-review.js`): December recaps the current partial year, January
+  the year just ended, and the section is absent in every other month. The
+  heading lives inside `#yearReviewContainer` because `.section-header` is
+  `display:flex !important`, so only hiding the container hides both. It counts
+  distinct sessions by stamped date (one strength session + each run), and
+  reports totals, best month, the in-year consecutive-day run, per-DATE annual
+  e1RM PR events and top exercises. Volume goes through the shared
+  `formatVolume` (`js/analytics/utils.js`), which LABELS the athlete's stored
+  unit and never converts it — kg keeps its `t` compaction, lbs stays lbs.
+  Bodyweight is deliberately omitted because weigh-ins are stored in the
+  athlete's then-current unit. Review
+  Stats' Training Calendar and Consistency Log use the same calendar weeks (no
+  `W1..Wn` program grid).
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
   run — not slots, so a strength+run day is two sessions. The Training Report
   (`js/brain/monthly-report.js`) uses the same rule through
@@ -511,6 +630,22 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   both surfaces. `shareImageCanvas` (pr-share.js) is the single
   navigator.share → download path for every card; run distance/pace formatting
   lives in `js/workout/run-units.js` so the recap and card cannot drift.
+- Circuits / supersets: `js/workout/superset.js` is the pure group model — any
+  pair or circuit of three or more same-day lifts sharing a non-empty
+  `liftMeta[day][lift].groupId`, rendered in `liftOrder`, with A…Z then AA…ZZ
+  ids and stable A–F colours (the palette continues beyond F). Adding a lift to
+  an existing circuit JOINS its letter instead of minting a new one; a
+  cross-group merge is refused. The in-place panel adds, removes one member (a
+  lone remaining tag is cleared) and unlinks all, with 44px controls. One
+  **group rest** is resolved through `js/workout/rest-duration.js` (longest
+  member wins; per-set rest still wins outright) and starts only after the last
+  member catches up. Warm-up ticks keep the warm-up tier; drop rows never start
+  a rest or advance a round. `prescriptions[day][lift].groupId` carries a
+  circuit through routines and copies; a malformed imported routine tag is
+  dropped rather than the routine, and copies carry only `{groupId}`. A lone tag
+  is pruned on read, on last-set removal and in copied/restored sessions (Undo
+  snapshots liftMeta). Values live in existing `liftMeta`/`prescriptions`
+  fields — no schema migration.
 - Bands do TWO opposite jobs (`js/workout/load-mode.js`): on a bodyweight movement a
   band ASSISTS (`w = bodyweight − band`, `loadMode: 'assisted'`); on anything else the
   band IS the load (`w = band`, `loadMode: 'banded'`). `bandRole()` decides from the
@@ -532,7 +667,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   detection. Tick, quick-log and log-all share the PR + per-set comparison
   (`↑`/`=`/`↓` vs the same set index last session). `set.failure` is an
   independent flag — `type:'F'` stays AMRAP — and the draft/prescription
-  predicates recognise it. `set.basis` (`each`, `per-side`, absent/`total`)
+  predicates recognise it. Per-set effort is RIR 0–4 in half steps
+  (`js/workout/effort.js`; `setPerSetRir` stores `rir` + `rpe = 10 - rir`), the
+  previous-workout panel and sRPE read through `effortForSet`, and the load-memo
+  signature includes `failure` so toggling it refreshes ATL/CTL.
+  `set.basis` (`each`, `per-side`, absent/`total`)
   affects VOLUME only: `each` doubles a dumbbell pair, `per-side` and legacy
   sets count once, and e1RM stays per-implement. Blank dumbbell rows default to
   Each (Per side when unilateral); legacy completed sets read as Both and are

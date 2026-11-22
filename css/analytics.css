@@ -446,6 +446,12 @@
   z-index: 10;
 }
 
+/* A 28px text pill. It is the primary way back to the live week, so it carries
+   the shared `.hit-target` (css/styles.css) treatment: the pill keeps its
+   measured 28px height and the ::after grows a 44px-tall, full-width tap area.
+   The hit area never exceeds the button's width, so it cannot reach the 44px
+   arrows either side; vertically it runs 8px above and 8px below the pill,
+   which stays inside the bar (2px gap + date line above, 10px padding below). */
 .week-nav-today {
   border: 0;
   background: transparent;
@@ -1474,6 +1480,26 @@ html[data-theme="light"] .hub-link__icon {
   padding: 14px;
   margin: 0 0 14px;
 }
+.ph-empty p { margin: 0 0 12px; }
+.ph-empty__cta {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid rgba(34,211,238,0.35);
+  border-radius: 10px;
+  background: rgba(34,211,238,0.10);
+  color: var(--color-cyan, #22d3ee);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.ph-weeks__scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+}
+.ph-card--empty .ph-card__value { font-size: 1.15rem; }
 
 .ph-week {
   margin: 0 0 12px;
@@ -1493,6 +1519,24 @@ html[data-theme="light"] .hub-link__icon {
 .ph-week__adherence { height: 6px; margin-top: 14px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; }
 .ph-week__adherence span { display: block; height: 100%; border-radius: inherit; background: var(--color-green, #10b981); }
 .ph-week__adherence-label { margin: 6px 0 0; color: var(--text-muted); font-size: 0.68rem; }
+/* ---- Untrained selected week ---------------------------------------------
+   A week with nothing logged still renders the week card, so it keeps the same
+   rhythm as a trained one. It deliberately drops the indigo reward gradient
+   (there is no progress to celebrate), charts no metric bars and rewards no
+   adherence — one muted line says what is missing. The History shortcut is the
+   only action on the card, so it keeps the 44px target. */
+.ph-week--empty {
+  background: var(--surface-2, rgba(255,255,255,0.04));
+}
+.ph-week--empty .ph-week__link {
+  min-height: 44px;
+}
+.ph-week__empty {
+  margin: 10px 0 0;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
 .ph-weeks {
   margin: 0 0 14px;
   padding: 12px 14px;
@@ -1638,6 +1682,27 @@ html[data-theme="light"] .ph-card,
 html[data-theme="light"] .ph-empty {
   background: rgba(0,0,0,0.02);
   border-color: rgba(0,0,0,0.08);
+}
+/* The empty-state CTA is the only action on a Progress page with no training,
+   so it must clear AA. The cyan accent (#22d3ee) painted 1.49:1 on this tint,
+   and cyan-700 (#0e7490) tops out around 4.1:1 on the app background (4.48:1
+   even over white), so the text and border are cyan-800 instead: the measured
+   pixel contrast is 5.46:1 on the #f0f4f8 backdrop and 5.98:1 on a white card,
+   with the same 10% tint so the button keeps its soft filled look. */
+html[data-theme="light"] .ph-empty__cta {
+  border-color: rgba(21,94,117,0.36);
+  background: rgba(21,94,117,0.10);
+  color: #155e75;
+}
+/* The untrained week drops the reward gradient for the same flat tint as the
+   other hub cards (--surface-2 has no light-theme value), and its History link
+   is the card's only action, so it uses the readable cyan-800 rather than the
+   accent cyan that measured 1.49:1 on a light tint. */
+html[data-theme="light"] .ph-week--empty {
+  background: rgba(0,0,0,0.02);
+}
+html[data-theme="light"] .ph-week--empty .ph-week__link {
+  color: #155e75;
 }
 html[data-theme="light"] .hub-link--quiet {
   background: transparent;

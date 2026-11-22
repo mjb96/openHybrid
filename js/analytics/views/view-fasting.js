@@ -47,6 +47,20 @@ function _fmtHHMMSS(hours) {
   return `${h}:${p(m)}:${p(s)}`;
 }
 
+// Calendar cells carry an intentional `YYYY-MM-DD` key. An ISO string read
+// aloud by a screen reader is not a day, so resolve a human one for the label.
+function _fmtCalendarDay(iso) {
+  const parsed = new Date(`${iso}T12:00:00`);
+  return Number.isNaN(parsed.getTime())
+    ? ''
+    : parsed.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+const CAL_STATUS_WORDS = Object.freeze({
+  completed: 'goal met', partial: 'partial fast', active: 'fasting now',
+  missed: 'no fast', future: 'upcoming', none: 'no fast',
+});
+
 // ── Fasting Score hero ─────────────────────────────────────────────────────────
 
 function _renderFastingScore(el, calcs) {
@@ -344,7 +358,8 @@ function _renderCalendar(el, calcs, appState) {
     const s = statusStyles[d.status] || statusStyles.none;
     const title = d.hours > 0 ? `${fmtHoursLabel(d.hours)} ${d.zoneName ? '· ' + d.zoneName : ''}` : d.status === 'missed' ? 'No fast' : '';
     const pulse = d.status === 'active' ? 'fa-cal-pulse' : '';
-    cells.push(`<div class="fa-cal-cell ${pulse}" style="background:${s.bg};border:1px solid ${s.border};" title="${title}" aria-label="${d.date}: ${d.status}">
+    const dayLabel = _fmtCalendarDay(d.date) || `Day ${d.day}`;
+    cells.push(`<div class="fa-cal-cell ${pulse}" style="background:${s.bg};border:1px solid ${s.border};" title="${title}" aria-label="${dayLabel}: ${CAL_STATUS_WORDS[d.status] || d.status}">
       <span style="color:${s.text};font-size:0.72rem;font-weight:${d.goalMet ? '800' : '500'};">${d.day}</span>
       ${d.hours > 0 ? `<span class="fa-cal-dot" style="background:${s.dot};"></span>` : ''}
     </div>`);

@@ -3,28 +3,63 @@
 // BODY MEASUREMENTS (js/metrics/measurements.js)
 //
 // The scale moves with salt and water; a tape moves in weeks. These are the
-// slow signals the scale hides — waist, chest, hips, arm, thigh, neck — stored
-// canonically in CENTIMETRES with one record per date, exactly like weigh-ins.
-// Display converts to inches when the athlete asks for them; nothing stored is
-// ever rewritten by a unit change.
+// slow signals the scale hides — fourteen length sites from neck to calves —
+// stored canonically in CENTIMETRES with one record per date, exactly like
+// weigh-ins. Display converts to inches when the athlete asks for them; nothing
+// stored is ever rewritten by a unit change. The same record may also carry an
+// ENTERED body-fat percentage (2–70, one decimal): it is not a centimetre site,
+// it is never converted by the cm/in choice, and it is never estimated from the
+// tape.
+//
+// The old six-site sheet had a single unrestricted Arm and Thigh. Those keys
+// stay readable (LEGACY_MEASUREMENT_SITES) so an existing reading is never
+// dropped, but they are not offered as inputs: the sheet and CSV write the
+// bilateral fields. `preserveLegacySites` carries them across an edit.
 //
 // No DOM and no state mutation: the Progress card, the sheet and the tests all
 // share this vocabulary.
 // =============================================================================
 
 export const MEASUREMENT_SITES = Object.freeze([
-  Object.freeze({ key: 'waist', label: 'Waist' }),
-  Object.freeze({ key: 'chest', label: 'Chest' }),
-  Object.freeze({ key: 'hips', label: 'Hips' }),
-  Object.freeze({ key: 'arm', label: 'Arm' }),
-  Object.freeze({ key: 'thigh', label: 'Thigh' }),
   Object.freeze({ key: 'neck', label: 'Neck' }),
+  Object.freeze({ key: 'shoulders', label: 'Shoulders' }),
+  Object.freeze({ key: 'chest', label: 'Chest' }),
+  Object.freeze({ key: 'waist', label: 'Waist' }),
+  Object.freeze({ key: 'hips', label: 'Hips' }),
+  Object.freeze({ key: 'glutes', label: 'Glutes' }),
+  Object.freeze({ key: 'arm_l', label: 'Arm L' }),
+  Object.freeze({ key: 'arm_r', label: 'Arm R' }),
+  Object.freeze({ key: 'forearm_l', label: 'Forearm L' }),
+  Object.freeze({ key: 'forearm_r', label: 'Forearm R' }),
+  Object.freeze({ key: 'thigh_l', label: 'Thigh L' }),
+  Object.freeze({ key: 'thigh_r', label: 'Thigh R' }),
+  Object.freeze({ key: 'calf_l', label: 'Calf L' }),
+  Object.freeze({ key: 'calf_r', label: 'Calf R' }),
 ]);
+
+/**
+ * The pre-14-site readings: one Arm and one Thigh with no side. Readable,
+ * included in the CSV and card, never an input in the new sheet. `csvLabel` is
+ * the historical export header, so a file round-trips to the same columns.
+ */
+export const LEGACY_MEASUREMENT_SITES = Object.freeze([
+  Object.freeze({ key: 'arm', label: 'Arm (old)', csvLabel: 'Arm' }),
+  Object.freeze({ key: 'thigh', label: 'Thigh (old)', csvLabel: 'Thigh' }),
+]);
+
+/** Every stored length key, canonical first. Used by normalization and CSV. */
+const LENGTH_SITES = Object.freeze([...MEASUREMENT_SITES, ...LEGACY_MEASUREMENT_SITES]);
 
 export const CM_PER_INCH = 2.54;
 /** A tape reading outside this range is a typo, not a body. */
 export const MIN_MEASUREMENT_CM = 20;
 export const MAX_MEASUREMENT_CM = 300;
+/**
+ * Body fat is an ENTERED reading (scale, calipers, DEXA), never estimated: there
+ * is no height, sex or age, and inventing them would fabricate a number.
+ */
+export const BODY_FAT_MIN = 2;
+export const BODY_FAT_MAX = 70;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -79,9 +114,25 @@ export function measurementCm(value, unit) {
 }
 
 /**
+ * One entered body-fat reading, one decimal, or null when it is blank,
+ * unparseable or outside a plausible percentage. Always a percentage — a cm/in
+ * toggle must never convert it.
+ * @param {number|string} value
+ * @returns {number|null}
+ */
+export function bodyFatPercent(value) {
+  if (value == null || String(value).trim() === '') return null;
+  const percent = Number(value);
+  if (!Number.isFinite(percent) || percent < BODY_FAT_MIN || percent > BODY_FAT_MAX) return null;
+  return roundDisplay(percent);
+}
+
+/**
  * Valid records, oldest first. Duplicate dates keep the last reading, matching
  * the one-entry-per-day storage rule. Sites are only present when measured, so
- * a waist-only entry is a real record rather than five zeros.
+ * a waist-only entry is a real record rather than five zeros. Body fat is not a
+ * length site: it is retained as its own additive `bodyFat` percentage, and a
+ * body-fat-only record is just as real.
  * @param {any} log
  * @returns {Array<{ date: string } & Record<string, number|string>>}
  */
@@ -93,12 +144,14 @@ export function normalizeMeasurements(log) {
     if (!ISO_DATE.test(date)) continue;
     /** @type {Record<string, number>} */
     const values = {};
-    for (const site of MEASUREMENT_SITES) {
+    for (const site of LENGTH_SITES) {
       const cm = Number(entry?.[site.key]);
       if (Number.isFinite(cm) && cm >= MIN_MEASUREMENT_CM && cm <= MAX_MEASUREMENT_CM) {
         values[site.key] = roundCm(cm);
       }
     }
+    const bodyFat = bodyFatPercent(entry?.bodyFat);
+    if (bodyFat != null) values.bodyFat = bodyFat;
     if (Object.keys(values).length) byDate.set(date, { date, ...values });
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -107,12 +160,17 @@ export function normalizeMeasurements(log) {
 /**
  * Per-site history, latest reading and the change since that site's previous
  * reading. A site nobody measured is returned with `latest: null` so the card
- * can stay quiet instead of showing a zero.
+ * can stay quiet instead of showing a zero. Legacy single Arm/Thigh readings
+ * are opt-in: the card asks for them, analytics defaults to the canonical 14 so
+ * a legacy site never pretends to be a current one. A legacy trend carries
+ * `legacy: true`.
  * @param {any} log
+ * @param {{ includeLegacy?: boolean }} [options]
  */
-export function measurementSiteTrends(log) {
+export function measurementSiteTrends(log, { includeLegacy = false } = {}) {
   const entries = normalizeMeasurements(log);
-  return MEASUREMENT_SITES.map((site) => {
+  const sites = includeLegacy ? LENGTH_SITES : MEASUREMENT_SITES;
+  return sites.map((site) => {
     const points = entries
       .filter((entry) => typeof entry[site.key] === 'number')
       .map((entry) => ({ date: entry.date, cm: /** @type {number} */ (entry[site.key]) }));
@@ -121,6 +179,7 @@ export function measurementSiteTrends(log) {
     const first = points.length ? points[0] : null;
     return {
       ...site,
+      legacy: Boolean(/** @type {any} */ (site).csvLabel),
       points,
       latest,
       previous,
@@ -131,9 +190,34 @@ export function measurementSiteTrends(log) {
 }
 
 /**
- * Build the stored record from raw sheet inputs. `invalid` lists the site
- * labels that were filled but implausible, so the caller can say which field to
- * check instead of silently dropping it.
+ * Body-fat history: the entered percentage per date, latest/previous reading,
+ * the change in PERCENTAGE POINTS since the previous reading and the total
+ * change since the first. A percentage-point delta is what an athlete reads
+ * ("down 1.4 pp"); percent-of-percent would be a different, misleading number.
+ * @param {any} log
+ */
+export function bodyFatTrend(log) {
+  const entries = normalizeMeasurements(log);
+  const points = entries
+    .filter((entry) => typeof entry.bodyFat === 'number')
+    .map((entry) => ({ date: entry.date, value: /** @type {number} */ (entry.bodyFat) }));
+  const latest = points.length ? points[points.length - 1] : null;
+  const previous = points.length > 1 ? points[points.length - 2] : null;
+  const first = points.length ? points[0] : null;
+  return {
+    points,
+    latest,
+    previous,
+    delta: latest && previous ? roundDisplay(latest.value - previous.value) : null,
+    total: latest && first && first.date !== latest.date ? roundDisplay(latest.value - first.value) : null,
+  };
+}
+
+/**
+ * Build the stored record from raw sheet inputs. Canonical sites only: the new
+ * sheet has no single Arm/Thigh input, so those keys are never fabricated from
+ * one side. `invalid` lists the site labels that were filled but implausible,
+ * so the caller can say which field to check instead of silently dropping it.
  * @param {string} date
  * @param {Record<string, string|number>} values
  * @param {'cm'|'in'|string} unit
@@ -150,24 +234,54 @@ export function buildMeasurementRecord(date, values, unit) {
     if (cm == null) { invalid.push(site.label); continue; }
     record[site.key] = cm;
   }
+  const rawBodyFat = values?.bodyFat;
+  if (rawBodyFat != null && String(rawBodyFat).trim() !== '') {
+    const percent = bodyFatPercent(rawBodyFat);
+    if (percent == null) invalid.push('Body fat');
+    else record.bodyFat = percent;
+  }
   return { record, invalid };
 }
 
 /**
- * Everything the Progress measurements card needs.
+ * Carry a date's existing single Arm/Thigh readings into the record that is
+ * about to replace it. The new sheet cannot edit those keys, so without this a
+ * waist-only edit would silently delete a reading the athlete once took. The
+ * record's own value wins; only a missing legacy key is copied, and only when
+ * the stored reading is plausible. Returns the same record.
+ * @param {Record<string, number|string>} record
+ * @param {any} existing
+ * @returns {Record<string, number|string>}
+ */
+export function preserveLegacySites(record, existing) {
+  for (const site of LEGACY_MEASUREMENT_SITES) {
+    if (record?.[site.key] != null) continue;
+    const cm = Number(existing?.[site.key]);
+    if (Number.isFinite(cm) && cm >= MIN_MEASUREMENT_CM && cm <= MAX_MEASUREMENT_CM) {
+      record[site.key] = roundCm(cm);
+    }
+  }
+  return record;
+}
+
+/**
+ * Everything the Progress measurements card needs. The card shows every
+ * measured site — including a preserved legacy Arm/Thigh — but analytics that
+ * ask for `measurementSiteTrends` directly stay canonical unless they opt in.
  * @param {any} state
  * @param {{ recentCount?: number }} [options]
  */
 export function buildMeasurementModel(state, { recentCount = 4 } = {}) {
   const unit = measurementUnit(state);
   const entries = normalizeMeasurements(state?.bodyMeasurements);
-  const sites = measurementSiteTrends(entries);
+  const sites = measurementSiteTrends(entries, { includeLegacy: true });
   const tracked = sites.filter((site) => site.latest);
   return {
     unit,
     entries,
     sites,
     tracked,
+    bodyFat: bodyFatTrend(entries),
     count: entries.length,
     latestDate: entries.length ? entries[entries.length - 1].date : null,
     recent: [...entries].reverse().slice(0, recentCount),

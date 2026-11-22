@@ -5,6 +5,7 @@
 // No DOM, no side effects.
 // ==========================================
 import { pctChange } from '../calculations/math-utils.js';
+import { isE1rmPr } from '../../strength/e1rm.js';
 
 // Format a percentage cleanly.
 function fmtPct(pct, decimals = 0) {
@@ -91,7 +92,11 @@ export function generateStrengthInsights({
   for (const [lift, prog] of Object.entries(liftProgression || {})) {
     if (!prog.hasData) continue;
 
-    if (prog.currentWeekPR > 0 && prog.currentWeekPR >= prog.lifetimePR * 0.995) {
+    // Same rule as the cockpit, recap and Strength list: prior history is
+    // required and the new best must clear the shared epsilon. The old
+    // `currentWeekPR >= lifetimePR * 0.995` test fired on a repeat of the
+    // lifetime best (and on a 0.5% regression).
+    if (isE1rmPr(prog.currentWeekPR, prog.priorBestMax)) {
       insights.push({ text: `New estimated 1RM on ${lift}: ${Math.round(prog.currentWeekPR)} ${unit}.`, priority: 'good', category: 'strength' });
     }
 

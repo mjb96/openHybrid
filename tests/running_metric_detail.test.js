@@ -80,6 +80,44 @@ test('weekly distance is calendar-dated, archive-aware and elapsed-matched', () 
   assert.equal(detail.dailyBreakdown[4].formatted, 'Upcoming');
 });
 
+test('a selected past week reads that week and compares full week with the week before', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      old: { dates: { mon: '2026-07-06' }, runSessions: { mon: [run('prior_week', 8, '40:00')] } },
+      selected: {
+        dates: { mon: '2026-07-13', wed: '2026-07-15' },
+        runSessions: { mon: [run('selected_a', 5, '25:00')], wed: [run('selected_b', 5, '25:00')] },
+      },
+      live: { dates: { mon: '2026-07-20' }, runSessions: { mon: [run('live_week', 7, '35:00')] } },
+    },
+  };
+  // The through-date is the selected week's Sunday, which is how the app frames
+  // a navigated week. The live week's 7 km must not leak into either side.
+  const history = collectRunningHistory(state, { today: '2026-07-19' });
+  const detail = buildRunningMetricDetail(state, 'running.weekly-distance', { history, today: '2026-07-19' });
+  assert.equal(detail.value, 10);
+  assert.equal(detail.period.label, '13–19 Jul');
+  assert.equal(detail.comparison.type, 'completed');
+  assert.equal(detail.comparison.comparisonLabel, 'vs previous week');
+  assert.equal(detail.comparison.percentageChange, 25); // 10 vs 8
+  assert.doesNotMatch(detail.comparison.comparisonLabel, /same point last week/);
+});
+
+test('a completed week with nothing the week before never uses live-week wording', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      selected: { dates: { mon: '2026-07-13' }, runSessions: { mon: [run('only_run', 6, '30:00')] } },
+    },
+  };
+  const history = collectRunningHistory(state, { today: '2026-07-19' });
+  const detail = buildRunningMetricDetail(state, 'running.weekly-distance', { history, today: '2026-07-19' });
+  assert.equal(detail.comparison.isComparable, false);
+  assert.equal(detail.comparison.message, 'None the week before');
+  assert.doesNotMatch(detail.comparison.message, /this point last week/);
+});
+
 test('average pace is distance-weighted and excludes walks and implausible short records', () => {
   const detail = buildRunningMetricDetail(fixture(), 'running.average-pace', { today: '2026-07-16' });
   assert.equal(Math.round(detail.value), 330);
@@ -97,6 +135,25 @@ test('rolling metrics label the actual equal-length comparison window', () => {
   } };
   const detail = buildRunningMetricDetail(state, 'running.average-pace', { today: '2026-07-16' });
   assert.equal(detail.comparison.comparisonLabel, 'vs previous 28 days');
+});
+
+test('every period label is human-readable and never an ISO range', () => {
+  const state = fixture();
+  const expected = [
+    ['running.weekly-distance', '13–19 Jul'],
+    ['running.training-load', 'Trailing 7 days · through 16 Jul'],
+    ['running.four-week-distance', 'Trailing 28 days · through 16 Jul'],
+    ['running.fitness-trend', 'Trailing 12 weeks · through 16 Jul'],
+    ['running.vdot', 'Trailing 8 weeks · through 16 Jul'],
+    ['running.load-ratio', '7-day / 28-day EWMA · through 16 Jul'],
+    ['running.race-projections', 'Current model · through 16 Jul'],
+    ['running.total-distance', 'Since 6 Jul 2026'],
+  ];
+  for (const [id, label] of expected) {
+    const detail = buildRunningMetricDetail(state, id, { today: '2026-07-16' });
+    assert.equal(detail.period.label, label, id);
+    assert.doesNotMatch(detail.period.label, /\d{4}-\d{2}-\d{2}/, `${id} must not show ISO`);
+  }
 });
 
 test('best pace identifies an exact eligible whole-session source activity', () => {
@@ -145,6 +202,7 @@ test('zero activity counts are honest empty states', () => {
   assert.equal(detail.value, 0);
   assert.equal(detail.formattedValue, '—');
   assert.equal(detail.empty, true);
+  assert.equal(detail.emptyHeadline, 'No runs');
 });
 
 test('zero form without eligible load evidence is unavailable, not a recovery claim', () => {

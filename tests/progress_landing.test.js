@@ -10,10 +10,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildProgressLanding, plannedTrainingDays, fastingIsEnabled, secondaryDestinations,
+  buildProgressLanding, plannedTrainingDays, fastingIsEnabled, secondaryDestinations, formatWeekRange,
 } from '../js/analytics/progress-landing.js';
+import { renderProgressHub } from '../js/analytics/views/view-progress-hub.js';
+import { buildRunningMetricDetail, collectRunningHistory } from '../js/analytics/running-detail.js';
 
 const work = (w, r) => ({ c: true, w: String(w), r: String(r) });
+const run = (sessionId, dist, time) => ({ sessionId, dist: String(dist), time, type: 'run', source: 'gps' });
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 // Monday 13 Jul 2026; previous calendar week starts Monday 6 Jul.
@@ -267,7 +270,7 @@ test('a strength week with no logged work is empty, not zero', () => {
     'strength',
   );
   assert.equal(strength.empty, true);
-  assert.equal(strength.headline.value, '—');
+  assert.equal(strength.headline.value, 'No sets');
   assert.equal(strength.delta, null);
 });
 
@@ -289,7 +292,7 @@ test('a strength decline is reported plainly without alarm or a change instructi
 test('running is empty and self-explaining when no metric model is supplied', () => {
   const running = domainOf(buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }), 'running');
   assert.equal(running.empty, true);
-  assert.equal(running.headline.value, '—');
+  assert.equal(running.headline.value, 'No runs');
   assert.match(running.interpretation, /No runs logged/);
 });
 
@@ -352,7 +355,7 @@ test('recovery is empty rather than a confident zero when readiness has no score
     'recovery',
   );
   assert.equal(recovery.empty, true);
-  assert.equal(recovery.headline.value, '—');
+  assert.equal(recovery.headline.value, 'No signal');
 });
 
 test('one signal is described in the singular', () => {
@@ -479,24 +482,29 @@ test('fasting appears only for people who actually fast', () => {
   assert.equal(fastingIsEnabled({ fastingSession: { active: false, history: [] } }), false);
   assert.equal(fastingIsEnabled({ fastingSession: { active: true, history: [] } }), true);
   assert.equal(fastingIsEnabled({ fastingSession: { active: false, history: [{ hours: 16 }] } }), true);
-  // An explicit setting always wins, in both directions.
-  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: true } }), true);
-  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: false }, fastingSession: { active: true } }), false);
+  // A write-less legacy flag is not a signal; real usage is.
+  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: true } }), false);
 
   assert.ok(!secondaryDestinations({}).some((entry) => entry.id === 'fasting'));
   assert.ok(secondaryDestinations({ fastingSession: { active: true } }).some((entry) => entry.id === 'fasting'));
+  assert.ok(!secondaryDestinations({ fastingSession: { active: true }, settings: { modules: { fasting: false } } })
+    .some((entry) => entry.id === 'fasting'), 'a hidden Fasting module removes the destination');
 });
 
 test('the period label describes the real calendar week being viewed', () => {
   const live = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
   assert.equal(live.isCurrentWeek, true);
-  assert.equal(live.periodLabel, 'This week so far');
+  assert.equal(live.periodLabel, 'This week');
+  assert.equal(live.weekRangeLabel, '13–19 Jul');
   assert.equal(live.weekStart, WK);
   assert.equal(live.weekEnd, '2026-07-19');
 
   const past = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-27', weekStart: WK });
   assert.equal(past.isCurrentWeek, false);
-  assert.match(past.periodLabel, /Week of 2026-07-13/);
+  assert.equal(past.periodLabel, '2 weeks ago');
+  assert.equal(past.weekRangeLabel, '13–19 Jul');
+  assert.equal(formatWeekRange('2026-11-30', '2026-12-06'), '30 Nov – 6 Dec');
+  assert.equal(formatWeekRange('2026-12-28', '2027-01-03'), '28 Dec 2026 – 3 Jan 2027');
 });
 
 // =============================================================================
@@ -569,4 +577,198 @@ test('one logical session stored twice is not counted twice', () => {
     days: DAYS, program: fiveDayProgram, today: '2026-07-19', tz: 'UTC',
   }), 'consistency');
   assert.equal(consistency.headline.value, '1', 'a duplicate must not read as two sessions');
+});
+
+// =============================================================================
+// A HISTORICAL WEEK IS NOT TODAY
+//
+// The hub is week-steppable, but a plan and a sentence both belong to the run
+// that produced them. Scoring July's three sessions against today's five-day
+// program invented "3 of 5 planned" and a 0% adherence bar for a week that was
+// never trained under that plan; it also kept calling the selection "this week".
+// =============================================================================
+
+test('a past week is never scored against the active program plan', () => {
+  // The 13 Jul week has three sessions, trained before the current five-day plan.
+  const state = {
+    currentWeek: '4',
+    weeks: {
+      '1': {
+        dates: { mon: WK, wed: '2026-07-15', fri: '2026-07-17' },
+        lifts: {
+          mon: { 'Bench Press': [work(80, 5)] },
+          wed: { 'Back Squat': [work(100, 5)] },
+          fri: { 'Deadlift': [work(140, 5)] },
+        },
+      },
+    },
+  };
+  const past = buildProgressLanding(state, {
+    days: DAYS, program: fiveDayProgram, today: '2026-07-27', weekStart: WK,
+  });
+  const consistency = domainOf(past, 'consistency');
+  assert.equal(consistency.headline.value, '3');
+  assert.equal(consistency.headline.unit, 'sessions', 'no plan belongs to a past calendar week');
+  assert.equal(past.weekSummary.planned, null);
+  assert.equal(past.weekSummary.adherencePct, null);
+  assert.equal(past.weekSummary.sessions, 3);
+});
+
+test('a past week describes itself in the past, not as "this week"', () => {
+  const state = {
+    currentWeek: '4',
+    weeks: {
+      '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } },
+    },
+  };
+  const model = buildProgressLanding(state, {
+    days: DAYS, program: fiveDayProgram, today: '2026-07-27', weekStart: WK,
+    runningMetric: () => ({ empty: true }),
+  });
+
+  const consistency = domainOf(model, 'consistency');
+  assert.match(consistency.interpretation, /that week/);
+  assert.doesNotMatch(consistency.interpretation, /this week/);
+
+  const strength = domainOf(model, 'strength');
+  assert.match(strength.interpretation, /that week/);
+  assert.doesNotMatch(strength.interpretation, /this week/);
+
+  const running = domainOf(model, 'running');
+  assert.match(running.interpretation, /that week/);
+  assert.doesNotMatch(running.interpretation, /this week/);
+});
+
+test('an empty past running week says nothing about "this week"', () => {
+  const running = domainOf(buildProgressLanding({ weeks: {} }, {
+    days: DAYS, today: '2026-07-27', weekStart: WK,
+  }), 'running');
+  assert.match(running.interpretation, /No runs logged that week/);
+  assert.doesNotMatch(running.interpretation, /this week/);
+});
+
+test('a completed running week compares full week against the one before', () => {
+  // Real metric engine, not an injected sentence: the hub shows the model's own
+  // completed-week framing instead of translating live-week wording.
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: '2026-07-06' }, runSessions: { mon: [run('week_before', 8, '40:00')] } },
+      '2': {
+        dates: { mon: WK, wed: '2026-07-15', fri: '2026-07-17' },
+        runSessions: {
+          mon: [run('selected_a', 4, '20:00')],
+          wed: [run('selected_b', 4, '20:00')],
+          fri: [run('selected_c', 4, '20:00')],
+        },
+      },
+    },
+  };
+  const through = '2026-07-19'; // the selected week's Sunday
+  const history = collectRunningHistory(state, { today: through });
+  const runningMetric = (id) => buildRunningMetricDetail(state, id, { history, today: through, range: '12w' });
+  const running = domainOf(buildProgressLanding(state, {
+    days: DAYS, today: '2026-07-27', weekStart: WK, runningMetric,
+  }), 'running');
+  assert.equal(running.headline.value, '12.0 km');
+  assert.equal(running.delta.text, '+50% vs previous week');
+  assert.equal(running.delta.tone, 'up');
+  assert.doesNotMatch(running.interpretation, /current scope|this week/);
+  assert.match(running.interpretation, /3 contributing activities that week/);
+});
+
+test('a completed running week with nothing the week before says so in week terms', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '2': { dates: { mon: WK }, runSessions: { mon: [run('only_run', 6, '30:00')] } },
+    },
+  };
+  const through = '2026-07-19';
+  const history = collectRunningHistory(state, { today: through });
+  const runningMetric = (id) => buildRunningMetricDetail(state, id, { history, today: through, range: '12w' });
+  const running = domainOf(buildProgressLanding(state, {
+    days: DAYS, today: '2026-07-27', weekStart: WK, runningMetric,
+  }), 'running');
+  assert.equal(running.headline.value, '6.0 km');
+  assert.equal(running.delta.text, 'None the week before');
+  assert.equal(running.delta.tone, 'none');
+  assert.doesNotMatch(running.delta.text, /same point last week/);
+});
+
+test('the live week still applies the plan and speaks in the present', () => {
+  const state = {
+    currentWeek: '1',
+    weeks: { '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } } },
+  };
+  const live = buildProgressLanding(state, {
+    days: DAYS, program: fiveDayProgram, today: '2026-07-14',
+  });
+  const consistency = domainOf(live, 'consistency');
+  assert.equal(consistency.headline.unit, 'of 5 planned');
+  assert.match(consistency.interpretation, /still to go this week/);
+  assert.equal(live.weekSummary.planned, 5);
+  assert.equal(live.weekSummary.adherencePct, 20);
+});
+
+test('the week range label degrades to empty rather than leaking a null into a template', () => {
+  assert.equal(formatWeekRange('', '2026-07-19'), '');
+  assert.equal(formatWeekRange('not-a-date', '2026-07-19'), '');
+  const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
+  assert.equal(model.weekRangeLabel, '13–19 Jul');
+});
+
+test('a non-calendar weekStart falls back to the live week instead of "NaN weeks ago"', () => {
+  const state = { weeks: {} };
+  for (const weekStart of ['not-a-date', '2026-02-31', '', null]) {
+    const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-16', weekStart });
+    assert.equal(model.weekStart, WK, `weekStart ${String(weekStart)} resolves to the live week`);
+    assert.equal(model.weeksAgo, 0);
+    assert.equal(model.periodLabel, 'This week');
+    assert.equal(model.weekRangeLabel, '13–19 Jul');
+  }
+  // The reachable past offsets keep their real wording.
+  const past = buildProgressLanding(state, { days: DAYS, today: '2026-07-30', weekStart: WK });
+  assert.equal(past.weeksAgo, -2);
+  assert.equal(past.periodLabel, '2 weeks ago');
+
+  // A future key is unreachable from the navigator (it never steps forward past
+  // the live week), so it clamps to the live week instead of inventing an
+  // "Upcoming week" surface nothing can navigate to.
+  const future = buildProgressLanding(state, { days: DAYS, today: '2026-07-16', weekStart: '2026-07-20' });
+  assert.equal(future.weekStart, WK);
+  assert.equal(future.isCurrentWeek, true);
+  assert.equal(future.periodLabel, 'This week');
+});
+
+test('the hub hero names the real range and survives an untrained week', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: { '1': { dates: { mon: '2026-07-06' }, lifts: { mon: { Bench: [work(100, 5)] } } } },
+  };
+  const container = { innerHTML: '' };
+
+  // Untrained live week: the hero stays on screen and says 0 sessions instead
+  // of removing the whole week surface.
+  renderProgressHub(container, buildProgressLanding(state, { days: DAYS, today: '2026-07-16' }));
+  const empty = container.innerHTML;
+  assert.match(empty, /class="ph-week ph-week--empty"/);
+  assert.match(empty, /ph-week__title">0 sessions</);
+  assert.match(empty, /No training logged this week yet/);
+  assert.match(empty, /aria-label="13–19 Jul overview"/);
+  // The accessible name is the visible range, not the relative period.
+  assert.doesNotMatch(empty, /This week overview/);
+  // The History shortcut must not claim a calendar view open-activities ignores.
+  assert.doesNotMatch(empty, /data-view="calendar"/);
+
+  // Trained historical week: the same hero carries real numbers and the range.
+  renderProgressHub(container, buildProgressLanding(state, {
+    days: DAYS, today: '2026-07-16', weekStart: '2026-07-06',
+  }));
+  const trained = container.innerHTML;
+  assert.match(trained, /class="ph-week"/);
+  assert.match(trained, /ph-week__title">1 session</);
+  assert.match(trained, /ph-week__eyebrow">6–12 Jul</);
+  assert.match(trained, /aria-label="6–12 Jul overview"/);
+  assert.doesNotMatch(trained, /No training logged/);
 });

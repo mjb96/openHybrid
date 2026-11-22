@@ -79,8 +79,11 @@ upgrade have landed:
   defaults, warm-up rest, a rest timer that survives reload/backgrounding, a
   `+ Drop` shortcut that seeds a lighter typed row, and a Last time / Next time
   recap.
-- **Plans** keeps the active plan first, recommends from athlete fit, and has an
-  Overview | Structure | Plan detail with week-stepped targets.
+- **Plans** keeps the active plan first — its Start/Resume is the only primary,
+  with quiet create/import/manage utilities, one "Search plans" field shared
+  by Discover and My Plans, and a three-up fit-tagged recommendation row — it
+  recommends from athlete fit, and has an Overview | Structure | Plan detail
+  with week-stepped targets.
 
 ### What holds the experience back
 
@@ -88,13 +91,14 @@ upgrade have landed:
   decision surface now, but several domains have no comparable long-range view,
   so "is this working?" is answerable for a week and harder for a year.
 - The logging loop is strong for a prescribed lift and thinner for everything
-  around it: notes have no clear scope model, plate maths is a hint rather than
-  a calculator, and RPE entry is not constrained the way the rest of the row is.
+  around it: plate maths is a hint rather than a calculator, and RPE entry is
+  not constrained the way the rest of the row is.
 - Body composition stops at bodyweight plus six tape sites. There is no body fat
   and no visual history, which is the one place a lifter most expects a
   before/after.
-- History can repeat, edit, delete and share a session, but cannot turn one into
-  a reusable routine, and routines have no folders.
+- History can repeat, edit, delete and share a session, and it can save one as a
+  reusable routine; routines can be started and filed into folders, but the
+  routine library has no categories or filters yet.
 - Reports stop at the month. Nothing marks a year.
 - Android has no live activity and no widgets, so the phone's own surfaces are
   blind to a session in progress.
@@ -249,18 +253,27 @@ Features: L3, L9, L10, L12, L13 (see §7).
 2. **RPE constrained.** 6–10 in 0.5 steps, per set and per session, entered
    live, reviewed later, never invented for a set the athlete did not rate.
    Out-of-range legacy values stay readable and are never rewritten.
-3. **Plate calculator.** A sheet from the set row: target total, bar weight,
-   available plate sizes and pair counts, per-side output, and an explicit
-   shortfall when the target is unreachable. It reads the active equipment
-   profile and never invents a plate. The existing inline plate line stays.
+3. **Plate calculator (landed).** A sheet from the set row: target total, bar
+   weight, available plate sizes and pair counts, per-side output, and an
+   explicit shortfall when the target is unreachable. It reads the active
+   equipment profile and never invents a plate. The existing inline plate line
+   stays.
 4. **Warm-up editor.** Editable percentage/reps rows with insert and delete,
    plate and dumbbell rounding through the existing ramp, and per-lift opt-in.
    `liftMeta[...].autoRamp` still prevents resurrection after a dismissal.
-5. **Rest timer polish.** Per-exercise default, ±15 s adjustments, drop-set
-   suppression, inline timer, alert sound/volume, and the existing reload
-   persistence.
-6. **Superset polish.** Rest after the pair rather than after each member,
-   stable colours, persistence in the routine, and an explicit unlink.
+5. **Rest timer polish (landed).** Per-exercise default, ±15 s adjustments,
+   drop-set suppression, inline timer, alert sound/volume, and the existing
+   reload persistence. Drop suppression is GLOBAL: a `type:'D'` row never
+   starts a rest and never advances a circuit round; a warm-up tick keeps its
+   own tier. Circuit rest uses ONE duration resolved across the group’s
+   members (longest wins) instead of the ticked member’s alone.
+6. **Circuit polish (landed).** Same-day lifts share a `groupId`; the group can
+   be a pair or a circuit of three or more. Rest starts after the last member
+   catches up, never after each member, using one governing duration resolved
+   across the group (the longest member wins). A–F keep their colours and later ids
+   continue through a wider palette; ids run A…Z then AA/AB. The panel adds,
+   removes and unlinks members explicitly, and routines/copied sessions keep
+   the membership.
 7. **Previous values scope.** Verify the `last anywhere` / `last in this
    routine` toggle and tap-to-fill, and make the scope visible where it matters.
    Scope limits the panel and the fill action; it never limits PR detection.
@@ -298,8 +311,8 @@ Work:
    this week below the week surface, each hideable and each linking to the
    owning Progress surface. Endurance carries an aerobic-fitness estimate that
    is always labelled as an estimate — there is no measured VO₂ max source.
-3. **Hybrid training preference.** `settings.hybridTraining` hides hybrid-only
-   cards and never rewrites the four feature modules.
+3. **Hybrid training preference.** `settings.hybridTraining` (v14→v15) hides
+   hybrid-only cards and never rewrites the four feature modules.
 4. **Repairs found while wiring it.** Quick-start Run/Walk/Fast now carry
    `data-module` hooks; the duplicated `#dashboardQuickActions` block is gone;
    the Home insight uses `moduleEnabled`; Home draws the shared bodyweight chart.
@@ -390,19 +403,34 @@ what it does not carry.
 
 ### Phase 4 — Organisation
 
-**Status: LATER.** **Goal:** routines become a first-class library, and a good
-session becomes reusable in one action.
+**Status: ACTIVE — routines landed, the routine library remains.** **Goal:**
+routines become a first-class library, and a good session becomes reusable in
+one action.
 
 Features: P11, S5, S6.
 
+Implemented in the routines slice: save a finished History session as a routine
+(`state.routines`, schema v14), list it in Plans → My Plans and Start it as a
+one-off session, and organise routines into ordered folders
+(`state.libraryFolders`) with Undo. What remains is item 4's **routine library**:
+single-routine categories and filters (programme browsing already exists through
+Plans).
+
 1. **Save as routine** from a History detail, building a routine from the
-   session's actual exercises, sets and rest.
+   session's actual exercises, sets and rest. *Landed: History "Save as routine"
+   (root `state.routines`/`state.libraryFolders`, schema v14, Undo) and the
+   Plans → My Plans routine list — Start, Rename, Delete with Undo, a badge that
+   counts routines, and an honest summary line. Categories and filters are next.*
 2. **Copy, edit and delete** with Undo — verify the existing actions and close
    the gaps rather than adding a second action row.
 3. **Routine folders** — create, rename, delete, reorder, assign, undo.
+   *Landed: sortOrder-ordered folder sections plus an Unfiled bucket, a `•••`
+   folder menu with Move up/down, and a Move-to-folder sheet. Deleting a folder
+   files its routines under Unfiled and Undo restores the folder and membership.*
 4. **Routine library** — categories (at home, travel, dumbbells, band,
    cardio/HIIT, gym, bodyweight, suspension), filters, and saving either a whole
-   programme or a single routine.
+   programme or a single routine. *Landed: saving a single routine from History.
+   Remaining: categories and filters for routines.*
 
 **Data rules:** a plan-changing edit snapshots the PLAN only (`days` +
 `weeklyVolModifiers`), never `state.weeks`, so an Undo can never rewrite logged
@@ -424,8 +452,15 @@ Features: P3 (share), P12.
 
 1. **Monthly report share card** built from the Phase 2 model, using the one
    share pipeline.
-2. **Year in Review** — a December entry with annual totals, best month, PRs,
-   longest streak, body-part distribution, top exercises and a share image.
+2. **Year in Review** — *Landed (P12):* a December/January section at the top of
+   Review → Stats with annual totals, best month, the in-year consecutive run,
+   per-date annual e1RM PR events and top exercises. It is seasonal by design:
+   December recaps the current partial year, January the year just ended, and
+   every other month renders nothing. Sessions are counted by identity on their
+   stamped date (a strength + run day is two; a copied slot is one); volume is
+   labelled in the athlete's stored unit and bodyweight is omitted because
+   weigh-ins are stored in the unit the athlete was using then. No share card in
+   this slice.
 
 **Data rules:** date-strict, using the same calendar series as Phase 2. No
 fabricated comparison when the prior period has no data. No "supporters" or
@@ -494,12 +529,17 @@ not rebuild a ✅.
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on a body diagram with a week switcher | ◐ | 2 |
 | P5 | Sets per muscle per week | `analytics/volume-guide.js` | Weekly/monthly/yearly buckets, muscle selection, long ranges | ◐ | 2 |
 | P6 | Muscle distribution | `analytics/muscle-load.js` | Volume share with sessions/time/sets and period comparison | ◐ | 2 |
-| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ◐ | 3 |
+| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ✅ | 3 |
 | P8 | Progress photos | — | Dated photos, timeline, compare, edit/replace/delete, share | ○ | 3 |
 | P9 | Exercise performance | `analytics/exercise-detail.js` | Graph, PR summary, set records by rep target, history | ◐ | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js` | Calendar, consecutive-week streak, rest days, year zoom | ◐ | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
-| P12 | Year in Review | — | December annual recap with totals, best month, PRs, streak | ○ | 5 |
+| P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — |
+
+P7 is complete: the measurements record carries an entered body fat, 14
+canonical bilateral tape sites (pre-14-site single Arm/Thigh readings preserved
+and exported), and each measured cell toggles its own per-site trend below the
+card — body fat on a percentage scale.
 
 ### Workout logging (14)
 
@@ -507,15 +547,15 @@ not rebuild a ✅.
 | --- | --- | --- | --- | --- | --- |
 | L1 | Log and track | `workout.js` | Routines or empty sessions, all variables, save | ✅ | — |
 | L2 | Start empty workout | `workout.js` | Timer, add exercises, finish | ✅ | — |
-| L3 | Exercise notes | `workout/exercise-config.js` | Routine, session and pinned exercise scopes, clickable link | ◐ | 1 |
+| L3 | Exercise notes | `workout/exercise-config.js` | Routine, session and pinned exercise scopes, clickable link | ✅ | 1 |
 | L4 | Rest timer | `timers.js` | Per exercise, 5 s–5 min, ±15 s, drop suppression, sound | ✅ | 1 |
 | L5 | Add/remove sets | `workout/set-mutations.js` | Add, remove, reorder, load/reps/rep-range/time | ✅ | — |
 | L6 | Set types | `workout/set-sheet.js` | Normal, warm-up, failure, drop with volume and PR rules | ✅ | — |
 | L7 | Previous values | `workout.js` | Last anywhere vs last in routine, tap-to-fill | ✅ | 1 |
 | L8 | Warm-up calculator | `workout/warmup-ramp.js` | Percentage rows, plate/dumbbell rounding, insert/delete | ✅ | 1 |
-| L9 | Plate calculator | `workout/plates.js` | Target, bar, plates, counts, per-side, shortfall | ◐ | 1 |
-| L10 | RPE | `workout/set-sheet.js` | 6–10 in half steps, live entry, review later | ◐ | 1 |
-| L11 | Supersets | `workout-order.js` | Pairs and circuits, colours, rest after both | ◐ | 1 |
+| L9 | Plate calculator | `workout/plates.js`, `workout/plate-sheet-model.js` | Target, bar, plates, counts, per-side, shortfall | ✅ | 1 |
+| L10 | RPE | `workout/effort.js`, `workout/set-sheet.js` | 0–4 RIR (6–10 RPE) in half steps, per-set sheet, live entry, review later | ✅ | 1 |
+| L11 | Supersets | `workout/superset.js` | Pairs and circuits, stable colours, rest after the group | ✅ | 1 |
 | L12 | Saving a workout | `workout/session-status.js` | Name, duration, date, notes, summary | ✅ | 1 |
 | L13 | Live PR | `workout.js` | 1RM/weight/volume/reps/duration detection and banner | ◐ | 1 |
 | L14 | Live activity | — | Lock-screen/ongoing notification with set and rest controls | ○ | 6 |
@@ -524,7 +564,7 @@ not rebuild a ✅.
 
 | ID | Feature | Owner | Target behaviour | Status | Phase |
 | --- | --- | --- | --- | --- | --- |
-| S1 | Workout settings | `settings.js` | One panel: sounds, rest, previous values, warm-up, keep awake, plate, RPE, superset scroll, inline timer, live PR | ◐ | 1 |
+| S1 | Workout settings | `settings.js` + `settings/nav.js` | One Logging card: rest tiers/presets/sound, previous values, progression, warm-up, plate hints; keep-awake and explicit live-PR toggles remain | ◐ | 1 |
 | S2 | Adaptive trainer | `programs/progression.js` | Onboarding → plan, performance-adjusted loads, deloads | ◐ | 6 |
 | S3 | AI plan generation | — | Export context, import a plan; no account linking | ○ | 6 |
 | S4 | AI analysis | — | Same surface as S3 | ○ | 6 |
@@ -585,7 +625,7 @@ One definition per term, owned by one module. Phase 0 confirms each against code
 | Active day | A day with at least one session, used by reports | `brain/monthly-report.js` |
 | Streak week | A Monday-based week with at least one session | `analytics/training-calendar.js` |
 | PR | A set that beats every earlier comparable set, all-time | `analytics/exercise-detail.js` |
-| Body reading | One dated record per site, centimetres canonical | `metrics/measurements.js` |
+| Body reading | One dated record per site in canonical centimetres, plus an optional entered body-fat percentage | `metrics/measurements.js` |
 
 ## 10. Definition of done
 
@@ -663,12 +703,12 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Navigation | Four intent-led destinations — Home, Train, Progress, Plans — with stable legacy route IDs and origin-aware drilldown Back behaviour |
 | Home | One week surface: optional rail, pinned Today decision, inline day recaps with heat map, bodyweight, one insight, quick actions |
 | Training | Planned/one-off strength, running, set logging, timers, swaps, supersets, bodyweight modes, session completion, focused live-run surface |
-| History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share |
-| Plans | 58-program catalogue, active-plan lead, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
+| History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share, save as routine |
+| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder, routine list with Start and folders |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
+| Quality | 2,319 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
@@ -684,17 +724,700 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     sets without a session duration report `unmeasured-strength` rather than a
     fabricated endurance-only week.
   - Settings → Modules gains a Hybrid training switch (`settings.hybridTraining`,
-    v14). It hides only hybrid cards and never rewrites the four module switches,
-    so strength-only is a dashboard choice, not a data decision.
+    v14→v15). It hides only hybrid cards and never rewrites the four module
+    switches, so strength-only is a dashboard choice, not a data decision.
   - The weigh-in sheet no longer autofocuses the weight field (the keyboard used
-    to cover the steppers), and Home draws the same bodyweight chart as Progress.
+    to cover the steppers), and Home draws the same bodyweight chart as Progress
+    beneath the compact summary row.
   - Fixed while wiring it: quick-start Run/Walk/Fast had no module hooks, a
     duplicated `#dashboardQuickActions` block, a direct `settings.modules` read in
     the Home insight, and the floating rest pill's missing CSS (21px pause target).
-  - Verified: 2,053 node tests, typecheck, smoke, precache, and the new
+  - Verified: node tests, typecheck, smoke, precache, and the new
     `hybrid-dashboard-browser-check` plus home-today, customize, module-toggles,
     bodyweight, rest-timer and touch-target checks.
-  - Next: return to the gated backlog at Phase 0 (matrix truth) → Phase 1.
+  - Next: the owner's logger note — a logger setting must apply PER EXERCISE,
+    not per set, and must be remembered once chosen. The exact control still
+    needs confirming (rest, effort/RPE, set type or load default), so confirm it
+    before building. Then return to the gated backlog at Phase 0 → Phase 1.
+
+- **2026-11-23 — 14-site review fixes: display units, disclosure, trend labels.**
+  - The per-site chart now receives DISPLAY values: `measurementTrendData`
+    converts stored centimetres with `cmToDisplay` before `renderSiteTrend`, and
+    the chart never converts. A cm→in toggle repaints the open trend at 13.0 in
+    / 13.4 in (fixture) instead of relabelling centimetres as inches. The site
+    delta uses the same boundary, so Arm L reads `+0.4` in inch mode, not `+1`.
+    The SVG `role="img"` label is now
+    `Arm L trend (in): 13.0 in on 10/11, 13.4 in on 19/11, +0.4 in` — unit,
+    first/latest and change — and the one-reading note uses the active unit too.
+  - Tape placeholders now follow the body-fat rule: each site suggests its
+    latest reading ON OR BEFORE the chosen date, so back-dating the 12th shows
+    the 10th's tape rather than the 19th's.
+  - Editing a date with bilateral readings opens the “Arms, thighs and calves”
+    disclosure and echoes `N recorded` in the summary; a new or legacy-only date
+    keeps it closed. The hint now states that a wrong legacy Arm/Thigh can only
+    be removed by deleting the whole date (no half-wired destructive action).
+  - Light mode's existing `#155e75` trend stroke/dot override is measured in the
+    real light card: both 5.76:1 against the composited surface.
+  - Validation: 1 new node test plus the updated chart contract (2,319
+    combined), typecheck, smoke, precache/workflow gates. The bodyweight browser
+    check now covers forearm_l/r render, the `+9 more` recent cap, the
+    one-reading note, cm→in chart + delta conversion, back-dated tape
+    placeholders, disclosure auto-open/count, and light stroke/dot contrast,
+    then the full 45-check browser suite. Screenshots remain untracked:
+    `shots/measurements-14-sites.png`, `shots/measurements-14-sites-sheet.png`,
+    `shots/measurements-trend.png`.
+  - Next: Progress photos (P8), the only remaining body-composition row.
+
+- **2026-11-23 — Year in Review (P12).**
+  - Review → Stats now leads with a seasonal calendar-year recap. In December it
+    recaps the current (partial) year; in January it recaps the year that just
+    ended; in every other month the section is absent. The `<h2>` lives inside
+    `#yearReviewContainer`, because `.analytics-section h2.section-header` is
+    `display:flex !important` and a `hidden` attribute on the heading alone did
+    nothing. A pinned June 2027 context proves the container and heading are
+    both gone while the rest of Stats still renders.
+  - `js/brain/year-review.js` is the pure builder, mounted by
+    `js/analytics/views/view-year-review.js`: a year hero (sessions and the
+    explicit date range), Lifted / Run / Working sets / e1RM PRs, the busiest
+    month, the in-year longest CONSECUTIVE run (worded so it cannot be confused
+    with the freeze-aware Streak card), up to five top exercises and the top
+    five annual PR events.
+  - Sessions are counted by DISTINCT identity on the real stamped date through
+    `indexSlotsByDate(state).allByDate`: one strength session plus every run is
+    two on a strength+run day, two runs are two, a copied slot is one, and two
+    different programmed days completed on one date are two. The best month is
+    chosen by sessions, then volume, then the earlier month. The consecutive run
+    never reaches back before 1 January.
+  - Annual e1RM PRs are now PER-DATE events, not calendar-week events. Every
+    valid set from every deduplicated slot on a date contributes to that date's
+    best for its canonical lift; dates are scanned in order and `isE1rmPr`
+    compares against every earlier date. This is safe at the Dec/Jan boundary (a
+    30 Dec PR and a higher 2 Jan set count in their own years), never emits two
+    PRs from two same-date sessions, and still treats a first-ever lift as a
+    baseline and a tie as no record. The builder returns every event; the view
+    caps the list at five and labels a capped list "Biggest e1RM PRs".
+  - Volume is formatted by the shared `formatVolume` in
+    `js/analytics/utils.js`: kg keeps the existing `14.1t` / `550 kg` output
+    byte-for-byte, while lbs is grouped and labelled `14,050 lb` — never
+    converted, because stored weights are already in the athlete's entered unit.
+    Weekly Review and the Training Report now use the same helper. Top exercises
+    resolve aliases to canonical names, count holds/carries as working sets with
+    zero tonnage, and an unbroken 50-character custom name wraps at 320/412.
+  - Bodyweight is deliberately omitted — a weigh-in is stored in the unit the
+    athlete was using then. No share card, no new route, no schema change, no
+    network surface.
+  - `scripts/progress-hub-browser-check.mjs` gained clock-pinned December
+    contexts over 12 monthly weeks in real numeric/`arch:*` keys: 390 kg, 390
+    light lbs (Lifted/Run asserted in both units), and 320/412 light contexts
+    with the long custom name (no document or container overflow). A pinned
+    June 2027 context proves the off-season section is hidden. The existing
+    three-width and empty-profile assertions are untouched.
+  - Clock guard: the five existing width contexts still derive `today`/`MON`
+    from the wall clock; the new pinned block covers only its own context. The
+    file therefore remains a FILE-LEVEL exemption in
+    `tests/browser_check_clock_guard.test.js` — its `UNPINNED_BACKLOG` entry was
+    removed because the shrink-only rule rejects a check that now contains
+    `pinClock`. The residual risk is recorded here rather than blessing the
+    whole file as fixed.
+  - Validation: 2,309 node tests, typecheck, smoke, precache/workflow gates,
+    progress-hub and all 45 real-browser checks. The 390×844 visual check is
+    reproduced from the pinned December block in
+    `scripts/progress-hub-browser-check.mjs`
+    (`node scripts/progress-hub-browser-check.mjs`); no PNG is committed.
+  - Next: the monthly-report share card, then a Year in Review share image built
+    from the values this screen shows.
+
+- **2026-11-23 — Per-site measurement trend (P7 complete).**
+  - Every measured cell on the Measurements card is now a 44px button
+    (`data-action="measurement-site"`). One tap opens `#bwMsTrend` below the
+    grid, a second tap on the same site collapses it, `aria-pressed` reports the
+    choice, and no analytics re-render or scroll call runs.
+  - `renderSiteTrend` (`js/analytics/charts.js`) is a dependency-free SVG line:
+    readings sort oldest → newest, y labels show the min/mid/max, x labels show
+    the dates, and under two readings it states what is missing instead of
+    drawing a line. Body fat renders on a percentage scale; tape sites use the
+    athlete's chosen unit.
+  - The chart is painted from the last rendered model (`showMeasurementTrend`),
+    so a cm/in toggle keeps the open site open in the new unit. The app router
+    maps `measurement-site` to that function; the card itself does not change.
+  - Validation: 3 new node tests (2,318 combined), typecheck, smoke, precache
+    and workflow gates. The extended bodyweight browser check taps Arm L (SVG
+    with both dots, 390px fit), taps again (collapsed), checks the body-fat
+    percentage scale, measures 44px controls and the trend at 320px, then ran
+    the full 45-check browser suite. Screenshot: `shots/measurements-trend.png`.
+  - Next: Progress photos (P8), the only remaining body-composition row.
+
+
+- **2026-11-23 — Fourteen measurement sites, legacy readings preserved.**
+  - The measurements record now tracks 14 canonical length sites: neck,
+    shoulders, chest, waist, hips, glutes, arm_l/r, forearm_l/r, thigh_l/r and
+    calf_l/r (`MEASUREMENT_SITES`). Left and right are independent readings;
+    nothing derives one side from the other.
+  - The sheet keeps six primary fields visible and puts the eight bilateral
+    fields behind an “Arms, thighs and calves” disclosure, with a hint that
+    earlier single Arm/Thigh readings are preserved and exported. Body fat stays
+    a full-width percentage field.
+  - The old single `arm`/`thigh` keys are `LEGACY_MEASUREMENT_SITES`
+    (“Arm (old)”/“Thigh (old)”). Normalization keeps them, `measurementSiteTrends`
+    returns them only with `{ includeLegacy: true }`, and the card asks for
+    them so no historical reading disappears. `buildMeasurementRecord` is
+    canonical only, and `preserveLegacySites` carries an existing Arm/Thigh into
+    the replacement record, so editing a waist cannot drop them.
+  - CSV columns are the 14 canonical labels, then `Arm (cm)`/`Thigh (cm)`, then
+    `Body fat (%)`. The reader resolves all 16 length keys with `_cm`/`_in`
+    suffixes; old six-site files still import into the legacy keys, and a new
+    export round-trips canonical + legacy + body fat.
+  - Validation: 6 new node tests (2,286 combined), typecheck, smoke, precache
+    and workflow gates. The extended bodyweight browser check seeds a legacy
+    `{2026-11-05, arm 36, thigh 58}`, edits that date (waist 81) and asserts the
+    legacy pair survives, fills shoulders/glutes/arm_l/arm_r/thigh_l/thigh_r/
+    calf_l/calf_r on 2026-11-19 behind the disclosure, and covers stored values,
+    the card, legacy deletion and 320px fit. 390×844 screenshots:
+    `shots/measurements-14-sites.png` (card) and
+    `shots/measurements-14-sites-sheet.png` (details open).
+  - Next: the P7 per-site graph.
+
+- **2026-11-23 — Body fat as an entered reading.**
+  - Body fat joins the body-measurements record as an additive `bodyFat`
+    percentage (2–70, one decimal). There is no height, sex or age in state, so
+    no formula is offered: a scale, caliper or DEXA value is typed in. It is NOT
+    a `MEASUREMENT_SITES` entry, because that set is centimetre-validated, and
+    the cm/in toggle never touches the percentage.
+  - The measurements sheet gains a full-width Body fat (%) field with its own
+    divider and the honest hint "entered, not estimated". An existing date
+    prefills it exactly; a new date starts blank with the last reading only as a
+    placeholder. Save replaces the whole record, so editing another site cannot
+    drop the stored percentage. A body-fat-only record counts as a real entry.
+  - The Measurements card renders a distinct Body fat cell only when measured,
+    with a first-reading state and a delta in PERCENTAGE POINTS (`pp`), never
+    percent-of-percent. A body-fat-only log still renders the card.
+  - CSV: the measurements export gains a `Body fat (%)` column. Imports accept
+    `body_fat`, `bodyfat`, `body_fat_pct` and `body_fat_percent` as percentages,
+    merge same-date rows and still never overwrite an existing date; a
+    body-fat-only file is detected and semicolon files accept a decimal comma.
+    Known limitation: a combined weigh-in + body-fat CSV belongs to the
+    bodyweight reader, so its body fat is not imported (documented in the module
+    header); the weigh-in confirm now says so explicitly.
+  - Review fixes: light mode replaces the cyan body-fat accent and delta with
+    `#155e75` — measured 5.76:1 on the card and 6.58:1 on the sheet in a real
+    390px light context. (The suggested `#0e7490` measured only 4.25:1 on the
+    card's composited surface, so it was darkened.) The "nothing added" import
+    toast now says existing dates are never overwritten instead of claiming the
+    measurements are already logged. Body-fat placeholders use the latest
+    reading ON OR BEFORE the chosen date, never a future one.
+  - Validation: 13 new node tests across the slice (2,280 combined), typecheck,
+    smoke, precache/workflow gates, the extended bodyweight browser check
+    (stored 18.4 and 19.0, `-0.6 pp` with its percentage-point title, exact
+    prefill, blank+on-or-before placeholder, tape edit preserving body fat,
+    unit-toggle isolation, delete, 320px fit, 390px light contrast) and the
+    full 45-check browser suite.
+  - Next: the remaining P7 scope — the 14-site catalogue and per-site graph.
+
+- **2026-11-23 — Shape-aware PRs: one rule, one count.**
+  - `js/strength/records.js` is now the one record model: e1RM (shared
+    eligibility + `E1RM_PR_EPSILON`), hold (`sec`), carry (`dist`) and rep
+    records at the same stored load and load mode. Bodyweight/assisted/banded
+    sets are silent because `w` is mass or assistance, not a comparable load.
+    The rep fallback is also closed to a bodyweight NAME: an imported
+    "Pull Up 80 kg" with no `bw`/`loadMode` is refused instead of becoming a
+    Rep PR, while loaded conditioning work (Sled Push) keeps its rep buckets.
+    `bestRecordBefore` scans every activation including `arch:*` and requires
+    prior history, so a first-ever log stays a baseline.
+  - Rep records are bucketed by `(load, loadMode)` — the shape
+    `bestRecordBefore` already stored. `bestRecordForSession` exposes every
+    bucket (`reps: []`), `recordCandidates` flattens them, and the recap, finish
+    review, exercise drilldown and cockpit detection iterate all of them, so a
+    60×20 record is not hidden by 80×15 in the same session. The recap still
+    shows ONE Rep PR badge (the heaviest earned bucket) and the delta/previous
+    best come from the matched bucket, never `0`.
+  - The cockpit detects every shape at tick, quick-log and completed-row edits
+    (`change`/blur, not per keystroke), persists `prKind`, and synchronises both
+    ways: a corrected-down set or an unticked one loses its class, badge and
+    stored stamp. The baseline toast fires only on the unticked→ticked
+    transition. Untick resolves the week and day as one pair, so it withdraws the
+    stamp the tick wrote even in a one-off session. The recap compares each kind
+    with the all-time prior best derived from its ONE history scan (shared with
+    "Last time"); the share card stays e1RM-only. Holds and carries show their
+    time/distance instead of `0 kg × 0`, and the badge sits left of the ✓ at
+    320/390/412 (measured in the set-row browser check). That check also pins
+    the 54px VALUE track's content box: Linux Chromium exposed the global 12px
+    inline input padding as a zero-width content box, so `.input-set-value-node`
+    now pads 4px and the set-row number spinners are hidden.
+  - PR COUNT POPULATION — Home and Progress agree on **e1RM PR lifts**. Home's
+    session/day recap counts `prKind: 'e1rm'` (a legacy stamp with no `prKind`
+    was always an e1RM and still counts), and Progress counts the same e1RM lifts
+    through `calendarStrengthSummary`. Hold/carry/rep records keep their recap
+    badges but are not counted; the labels say `e1RM PR lifts` / `e1RM PRs` so
+    the population is explicit. The Week in Review uses the same e1RM count and
+    label. A saved edit re-derives the day's stamps against the baseline
+    excluding that week/day, refuses an UNDATED day rather than comparing it with
+    itself, and rebuilds `exerciseStats`.
+  - `PR_KIND_LABELS` moved to the leaf `js/strength/pr-labels.js`, so the set-row
+    template no longer pulls exercise history and the catalogue. The dead
+    `priorBestMax` in `js/analytics.js` was removed; the live baseline is
+    `computeStrengthAnalytics().liftProgression[lift].priorBestMax`.
+  - Validation: 2,247 node tests, typecheck, smoke, precache, finish-review,
+    edit-saved, set-row, workout-history, touch-target and all 45 browser checks.
+    The recap's Hold PR + Carry PR was inspected in a local 390×844 screenshot
+    under the untracked `hevy-audit/shots/pr-types.png` — an inspection artifact,
+    not a committed asset or product dependency.
+  - The superset browser check's fixture is now clock-pinned. Its programme week
+    is anchored at `weekStartedAt: '2026-11-16'`; with an unpinned clock the
+    week-old programme offered "Time to Advance?", whose sheet covered the app
+    and made the nav inert on 2026-11-23. Reproduced on `origin/main`; pinning a
+    time inside that anchored week makes the check assert the circuit, not the
+    date.
+  - Next: Android device checklist and the remaining capability-backlog rows.
+
+- **2026-11-23 — Settings consolidation: one Logging card, honest search, no dead toggles.**
+  - `js/settings/nav.js` now owns the five fixed destinations, the card-label
+    map and search matching; an unknown card label falls back to Training rather
+    than disappearing. `tests/settings_nav.test.js` parses `index.html`, so a new
+    top-level card cannot ship without a group or an unknown tab.
+  - Logging graduated from a buried sub-block to its own card (rest
+    tiers/presets/alert, progression step, previous values, warm-up, plate
+    hints). Training order is Training → Logging → Program Week → Equipment →
+    Modules; every existing control id is unchanged.
+  - Search is honest: it matches visible text, `aria-label`, `title` and option
+    text; resets the panel scroll; announces no-results with `role="status"`;
+    ignores cards hidden by a module switch; and clears on open/close. The
+    filters are buttons with `aria-pressed` in a `role="group"` — the old
+    `role="tab"` claimed tabpanels that never existed.
+  - `.settings-switch` gained a 44px hit area around the unchanged 42×24 track,
+    every switch input has an accessible name, and `.settings-body` now pads
+    with `--safe-bottom` after its env() fallback.
+  - One owner for defaults: `DEFAULT_REST_TIERS` replaced four hardcoded copies;
+    `restPresetFor` derives the active preset from stored tiers (custom values
+    show none); the duplicate Settings `saveThresholdPace` is gone — the field
+    uses the analytics implementation, which parses `mm:ss` strictly (60–3600 s)
+    and rejects empty, `4.30`, `0` or out-of-range input without overwriting the
+    stored baseline. The toast distinguishes "saved" from "Enter pace as mm:ss".
+  - Fasting stage nudges are a persisted toggle under Notifications → Fasting
+    (default on), and the delivery path refuses to fire while the Fasting module
+    is hidden or the toggle is off. The write-less `settings.fastingEnabled`
+    read was deleted: module visibility plus real session history is the honest
+    signal.
+  - `tests/settings_wiring.test.js` ratchets the STATIC settings
+    input/select/textarea ids to an app/settings handler (not buttons or
+    JS-rendered controls), matching exact quoted ids rather than substrings. The
+    four attribute-wired Health Connect toggles are the documented exceptions,
+    each asserted to carry `data-hc-field`; the cap is six and the list may only
+    shrink.
+  - Every `.settings-switch` input has an accessible name, `.hc-data-toggle` is
+    a 44px row with centred content, and the Settings body's bottom padding is
+    asserted statically and in the browser at 40px + the published inset.
+  - Validation: 2,267 node tests, typecheck, smoke, precache, settings-nav,
+    module-toggles, equipment profiles, core ergonomics at 320/360/390/412 and
+    200% text, safe area, touch target, and all 45 browser checks. The 390×844
+    Training/Logging screenshots under the untracked
+    `hevy-audit/shots/settings-logging*.png` (or the local capture command) are
+    inspection artifacts, not committed assets.
+  - Next: keep-awake and an explicit live-PR switch are the only S1 parity
+    toggles still missing; add them only if real use asks. Otherwise continue
+    the capability backlog (Phase 4 plans/routines).
+
+
+- **2026-11-22 — Half-step effort ratings: review fixes.**
+  - Per-set effort is now RIR 0–4 in half steps (0 … 4+, with 4+ stored as 4)
+    beside Failure in a 5×2 grid. `js/workout/effort.js` is the one reader:
+    `normalizeEffortRir` rejects blanks, arrays and out-of-range values,
+    `effortForSet` turns `rir` or a legacy `rpe` into both numbers, and a failed
+    set with no rating counts as RPE 10 without claiming to be rated.
+  - The load-memo signature now hashes `failure` as well as `rpe`/`rir`, so
+    toggling Failure on a completed unrated set invalidates the cache and ATL/CTL
+    refresh immediately instead of waiting for an unrelated save.
+  - Session RPE inputs accept half steps with `step="0.5"`/`inputmode="decimal"`;
+    Dashboard Stress Balance keeps half-step session/run RPE, and the engine
+    fatigue fallback and weekly performance average read RIR-only imports
+    instead of ignoring them. The previous-workout panel and sheet share
+    `effortForSet`.
+  - The effort grid keeps 44px cells at 320/390/412; at 280px the cells hold
+    their 44px minimum (the sheet can scroll horizontally below that) instead of
+    shrinking below the touch target.
+  - Validation: 2,201 node tests, typecheck, smoke, precache, set-row at
+    320/dark + 390/light + 412/dark (including legacy `{rpe:8}` active state and
+    `aria-pressed`), touch-target and all 45 browser checks.
+  - Next: Android device checklist and the remaining capability-backlog rows.
+
+- **2026-11-22 — Plate calculator review fixes.**
+  - **Use this weight refuses what the sheet calls unbuildable.** 101 kg now
+    disables it with `1 kg short — closest 100 kg`, so the one total it cannot
+    load is never written; 100 kg stays enabled and persists.
+  - The solver is an exact bounded search over the active pairs, not greedy:
+    `[25, 20]` with two pairs of each builds 100 as 2×20 a side and 150 as
+    25 + 20 + 20. Greedy is only the display fallback. The inline `plateHint`
+    shares the solver and the bar/plates/counts fallback.
+  - `nearestBuildableTotal` now searches BOTH directions from real reachable
+    sums (`bar + 2 × per-side load`), never from a rounded leftover and never
+    below the bar: 21.5 → 22.5, 48 lb → 50, ties go down.
+  - `limited` is set only when exhausted/zero pair counts are what force the
+    gap; the read-only kit names owned pairs including `×0`. The target ceiling
+    is unit-aware (1500 kg / 3307 lb), and the shortfall/warning ink darkens to
+    `#b45309` in light theme (measured 4.54:1 on the light card).
+  - The target input describes only the headline result; the nested-modal
+    parent `aria-hidden` residual risk is documented in the sheet module.
+  - Validation: 2,180 node tests, typecheck, smoke, precache, set-row at
+    320/dark + 390/light + 412/dark (including the 101 write gate and measured
+    light-theme contrast), touch-target, modal accessibility, equipment
+    profiles and all 45 browser checks (197.4 s, clean run).
+
+- **2026-11-22 — Plate calculator sheet.**
+  - The per-set sheet gains one full-width **Plate calculator**. It opens with
+    the row's typed weight or ghost target and reads the ACTIVE equipment
+    profile, so it can never show a plate the athlete does not own. The result
+    leads with the per-side load, then per-side chips, the pairs off the rack,
+    the total shortfall and the nearest buildable total.
+  - Unreachable and impossible targets are explained instead of rounded away:
+    101 kg on a standard rack reads `25 + 15 · 1 kg short` and names 100 kg; a
+    rack limited to one 25 reports its 40 kg total shortfall; below the bar
+    shows the delta to the empty bar.
+  - **Use this weight** is the only write, and only on a barbell, weighted,
+    unfinished set with a target at or above the bar. It types through the
+    row's existing input/change/blur path (never state directly) and closes the
+    calculator and set sheet; every other set disables it with the reason.
+  - Pure additions: `plateShortfallTotal`, `nearestBuildableTotal` and
+    `platePairs` in `workout/plates.js`, plus `workout/plate-sheet-model.js`.
+    The calculator stacks above the set sheet, returns there on Escape, and is
+    reachable only from the set sheet (no sixth row column, inline plate line
+    unchanged).
+  - Validation: 2,175 node tests (26 plate math/model), typecheck, smoke,
+    precache, set-row at 320/dark + 412/dark with real-profile plate
+    assertions, touch-target (set sheet and plate sheet now measured), modal
+    accessibility, equipment profiles, and all 45 browser checks (245.7 s, one
+    timeout retry).
+
+- **2026-11-22 — Note scopes close the review gaps (`ed459ee`, `78526dc`, `7b3c353`).**
+  - The workout note (`week.notes[day]`) now reaches the finish recap and
+    History detail as text. It is strength-only: a run detail on a mixed date
+    cannot borrow it (`activityKind !== 'run'`), and run notes stay on
+    `runs[].notes`.
+  - Exercise notes and private reference links live in
+    `settings.exercisePrefs` keyed by canonical exercise id. Links pass
+    `safeExternalHttpUrl` (http/https only), are built as real anchors with
+    `noopener noreferrer`, and are never fetched. The cockpit, builder row and
+    Train/plan previews show the note; only the cockpit/builder open settings.
+  - Routine notes (`routine.note`, ≤500) are read by reference through
+    `week.sourceRoutineId`, so edits update the live banner and deletion removes
+    it. Import clones prefs on a null prototype and repairs invalid links/notes
+    instead of dropping the routine.
+  - The CSV `Notes` column remains the workout note only; routine notes,
+    exercise notes and reference links are private scopes and never exported.
+  - Light theme now darkens the cyan link and violet note labels to ≥4.5:1;
+    the builder gained Exercise settings, and the multiline note dialog has a
+    character counter, `aria-describedby` and Enter/Cmd+Enter semantics.
+  - Validation: 2,161 node tests (including a jsdom prompt test), typecheck,
+    smoke, routines, set-row at 390/light + 412/dark with measured contrast,
+    touch-target, core-ergonomics and all 45 browser checks.
+
+- **2026-11-22 — Supersets become circuits (`84aa2d0`, `4e4e723`).**
+  - **The old path was pair-only and lost work.** `pairAsSuperset` always minted
+    a new letter, so adding a third exercise re-lettered the original pair and
+    stranded the previous partner under a dead id; members rendered in
+    object-key order, colours stopped at F, the 27th circuit became `[`, and
+    rest fired after every member instead of after the group. Rest also asked
+    only the ticked member, so a Bench/Curl pair rested 180 s or 90 s depending
+    on tick order.
+  - `js/workout/superset.js` is the pure group model (no DOM, no
+    `../workout.js` import): same-day lifts sharing a non-empty `groupId`,
+    `membersInOrder`, derived `roundState`, join/remove/unlink and the group
+    rest decision. Adding a third JOINS the existing letter; a cross-group merge
+    is refused with an explanation rather than re-lettering either side.
+    Members render in `liftOrder`; the in-place panel adds, removes one member
+    (clearing a lone surviving tag) and unlinks all, with 44px controls.
+  - **One rest per group.** `shouldRestAfterSet` counts only working, non-drop
+    rows and rests only after every other member has done
+    `min(done_ticked, its available rows)`, so an uneven circuit rests once the
+    shorter member catches up. Warm-up ticks keep the warm-up tier; drop ticks
+    never rest, complete a round or change the denominator. Both the manual tick
+    and one-tap quick log gate through it.
+  - `js/workout/rest-duration.js` owns the pure precedence (per-set > warm-up
+    tier > AMRAP > plan > override > tier + RPE), extracted from the timer.
+    `groupRestDuration` resolves every member through that same precedence and
+    takes the longest, so a Bench/Curl pair rests 180 s in both tick orders; a
+    per-set rest on the ticked row still wins outright, including `0`.
+  - **Stable identity.** A–F keep their historic colours and the palette
+    continues beyond F; ids run A…Z then AA…ZZ, so the 27th group is no longer
+    `[` and invalid legacy tags render as `SS+`. The header reads
+    `SS A · 3 exercises · rest after the last`, each member's SS button carries
+    the count, and connectors use `2 of 3` ordinals. Completion adds a wider
+    border and badge tick, never a text dim that breaks AA contrast.
+  - **Routine/copy persistence.** `prescriptions[day][lift].groupId` survives
+    save-as-routine and routine start; `createOneOffStrengthSession` carries
+    only `{groupId}` from live source lifts, and both paths prune a
+    single-member tag. Import drops a malformed optional `groupId` rather than
+    the whole routine. Deleting a partner's last set prunes the survivor's tag;
+    the Undo snapshot carries `liftMeta`, so both tags return. No schema
+    migration: values live in existing `liftMeta`/`prescriptions` fields.
+  - `tests/superset_circuit.test.js` (22) plus 2 logging contracts cover
+    join-not-split, cross-group refusal, remove-one, stable colours, AA ids,
+    uneven/warm-up/drop rounds, both rest orders, routine restore and
+    Copy/Repeat. `scripts/superset-browser-check.mjs` drives the real cockpit at
+    390px (pair → add third → liftOrder → no rest after A1/B1 → rest after C1 →
+    remove one → unlink all) and asserts the same 180 s duration in both tick
+    orders; the rest-timer check covers drop suppression and touch-target
+    measures the SS panel.
+  - Validation: 2,128 node tests, typecheck, smoke, precache and workflow gates,
+    and 45/45 real-Chromium checks. Screenshot:
+    `node scripts/superset-browser-check.mjs --screenshot=shots/superset-circuit.png`.
+  - Next: exercise-level circuit behaviour after a mid-session swap and a
+    second-pass UI review of the panel on a long day.
+
+- **2026-11-22 — Routines: save, start and organise reusable workouts (six
+  commits).**
+  - `8652ec7` **save** — History's action menu saves a finished strength session
+    as a routine: exercises in order, completed working sets, heaviest working
+    load, rep target, set shape and rest. Completion flags, PR badges, warm-ups,
+    role stamps, effort, notes and gym stats are deliberately dropped. Routines
+    live in root `state.routines` / `state.libraryFolders` (schema v14) and are
+    never programmes: they do not enter `customPrograms`, resolve through
+    `getProgramById`, render as `.prog-card` or write a week/activation field.
+  - `a9ae2e9` **load identity + import validation** — a bodyweight or assisted
+    set keeps no derived weight (`bw`/`band`/`loadMode` survive), a banded set
+    keeps the band as its load, and a legacy dumbbell set records its pair basis
+    so the pair is not re-read as one bell. Export/import validates, bounds and
+    repairs routines and folders; the import preview counts them.
+  - `f1e9505` **list and start** — Plans → My Plans leads with routines; Start
+    copies `routineSourceWeek` into a one-off `session:` week without touching
+    `activeProgramId`, `currentWeek` or the logged program week. Rename and
+    Delete (+ Undo) live in the `•••` menu.
+  - `ee0b5be` **one-tap start** — the one-off is stamped `in_progress`, the
+    session clock is bound and running, and the cockpit opens in active mode
+    through `beginActiveWorkoutSession`; there is no second start path.
+  - `b99875e` **folders** — ordered folder sections plus an Unfiled bucket with
+    one-way membership on `routine.folderId`; create, rename, delete, Move
+    up/down and Move to folder, with Undo that restores the folder and every
+    member's membership.
+  - `2f1f0bc` **review fixes** — display-order normalisation, a 60-lift /
+    500-routine bound that import can keep, required prescriptions per listed
+    lift, rep-target/anchor pairing, and a Start guard that refuses while another
+    workout is open and offers Resume instead.
+  - Activation isolation holds throughout: no routine action calls
+    `startProgramActivation` or `reseedActiveProgramIntoWeek`, and logged program
+    weeks stay byte-identical after saving, listing, starting and filing.
+  - Validation: 2,104 node tests, typecheck, smoke, precache and workflow gates,
+    and 44/44 real-Chromium checks. Screenshots come from
+    `scripts/routines-browser-check.mjs --screenshots=<dir>`: `routine-card.png`,
+    `routine-start-active.png`, `routine-folders.png`.
+  - Next: routine-library categories and filters (Phase 4, item 4).
+
+- **2026-11-22 — Folder order, bounds and the active-session guard.**
+  - Folder order is now display order everywhere: `normaliseFolderOrder` sorts by
+    `sortOrder` then name before renumbering, `deleteFolder` snapshots the
+    display index, and `restoreFolder` inserts into the display list at that
+    index and renumbers positionally. Undo restores the exact section order (the
+    browser check asserts the DOM order, not just the count).
+  - A new folder normalises an imported `10,20` library first, so it appends last
+    with the next dense number. The builder clamps to 60 lifts and the save path
+    refuses a 501st routine, so the app cannot write a record its own import
+    drops; the rep target now pairs with its anchor set (`tr` then `r`, then any
+    `tr`, then any `r`); imported routines must have a prescription for every
+    listed lift and at least one lift overall; the move sheet files an unknown
+    `folderId` under Unfiled with the same count/current marker as the library.
+  - Start now refuses while another workout is open and offers Resume instead of
+    replacing the clock or orphaning the one-off. The unused `routine.sortOrder`
+    field is dropped (folder membership is the only grouping this slice needs).
+  - Validation: three-folder reorder/delete/Undo tests, the lift/library bounds
+    round-trip, rep-precedence and import-repair tests, and a 98-assertion browser
+    check covering two routines, folder Undo order, orphaned membership, the
+    active-session guard and the unchanged program weeks.
+
+- **2026-11-22 — Routine folders.**
+  - My Plans groups routines into folders ordered by `sortOrder`, then an
+    **Unfiled** bucket for routines with no folder; empty folders stay visible
+    with a quiet "No routines yet" so they can be filled. With no folders the
+    flat Routines list is unchanged.
+  - A folder is `{ id, name, sortOrder, createdAt }` and membership is ONE-WAY on
+    `routine.folderId` — a folder never stores a member list. Create, rename,
+    delete, Move up/down and the bottom-sheet Move to folder (folders + Unfiled)
+    reuse the existing app action pattern and never touch `state.weeks`,
+    `activeProgramId` or `currentWeek`.
+  - Deleting a folder moves its routines to Unfiled and never deletes one; Undo
+    restores the folder at its position AND every member's `folderId`.
+  - Validation: store-helper tests (create/rename/delete/restore/move/reorder,
+    phantom folder refused), the routines browser check (create → move → reload →
+    reorder → delete → Undo at 390×844), plus typecheck, smoke, precache and the
+    Plans / touch-target / ergonomics gates.
+
+- **2026-11-22 — Routine Start is a real start.**
+  - Plans → My Plans → Start now opens the cockpit already in session: the
+    one-off is stamped `in_progress`, the session clock is bound and running, the
+    sticky active header replaces the big Start CTA, and the first exercise is
+    scrolled into view. It reuses the cockpit Start button's own sequence
+    (`beginActiveWorkoutSession`) — there is no second start path.
+  - `renderWorkout` treated a timer as running only once a whole second had
+    elapsed, so the first render after Start (at 0s) put the Start CTA straight
+    back. A bound timer is now a running session.
+  - Validation: the routines browser check asserts no Start CTA, the active clock
+    bar, an in-progress one-off, a clock bound to that session's key, and a set
+    ticked immediately after Start.
+
+- **2026-11-22 — Routines slice 2: list and start them from Plans.**
+  - My Plans now leads with a **Routines** section (Your plans follows). Each
+    `routine-card` shows the name and `N exercises · M working sets`, plus
+    `~N min` only when every prescription's rest is known — never an invented
+    estimate. Start is a 44px target; the quiet `•••` menu renames or deletes,
+    and the My Plans badge counts routines alongside plans.
+  - Start copies `routineSourceWeek` into an ordinary one-off `session:` week and
+    opens the cockpit with the routine's exercises, loads and rep targets. It
+    never activates or reseeds a program: `activeProgramId`, `currentWeek` and
+    the logged program week stay byte-identical.
+  - Delete asks once, then offers Undo that restores the record at its position;
+    rename updates the routine name, its day title and `updatedAt` without
+    rewriting the saved prescriptions. A routine never renders as `.prog-card`
+    and never enters `customPrograms`.
+  - Empty My Plans keeps "Nothing here yet" and now names saving a routine from
+    History; the Routines section itself is hidden when there are none.
+  - Validation: 2,099 node tests (routine summary), typecheck, smoke, the routines
+    browser check (save → list → start → rename → delete/Undo at 390×844) and the
+    plans-json / plans-active-banner / touch-target / core-ergonomics checks.
+
+- **2026-11-22 — Routines slice 1: save a workout as a routine.**
+  - A finished strength session can now be saved as a reusable routine from
+    History's action menu. It keeps the session's exercises in order, the count
+    of completed working sets, the heaviest working load, the rep target, the
+    shape (reps / hold / carry) and the rest — and deliberately drops completion
+    flags, PR badges, warm-ups, role stamps, effort, notes and gym stats.
+  - Routines live in new root `routines`/`libraryFolders` arrays (schema v14)
+    and are not programs: they never enter `customPrograms`, never resolve
+    through `getProgramById`, and write no week slot, so saving one cannot touch
+    logged training or the active program. `routineSourceWeek` turns a routine
+    back into the copy shape `createOneOffStrengthSession` already consumes.
+  - The action suggests the program day's name, saves immediately and offers
+    Undo. There is no Plans routine surface yet.
+  - Validation: 11 routine-model tests (exercise order, working-set count,
+    tr→r fallback, rest precedence, shape round-trip, exclusions, zero-set
+    refusal, one-off copy, store repair, full export/import round-trip), a v14
+    migration test, the full node suite, typecheck, smoke, precache and workflow
+    gates.
+  - Review follow-up: load identity now survives the round trip (bodyweight and
+    assisted sets store no derived weight and keep their `bw`/`band` flag; a
+    banded set keeps the band as its load), a legacy dumbbell set keeps its pair
+    basis (Both), the copy source returns its day with the week, records carry
+    `kind:'routine'`, and imported routines/folders are validated, bounded and
+    counted in the import preview. A real-browser check covers the History
+    action, persistence, Undo and run-detail isolation.
+  - Next: a routine list and "Start routine", then folders.
+
+- **2026-11-22 — Plans hierarchy: active plan first, one search, real card art.**
+  - One session, four commits: the search-heading security fix, the active-plan
+    hierarchy, the quiet utility/tab chrome, and the three-up recommendation
+    row. Plans now reads top to bottom as active plan → plan utilities →
+    Discover | My Plans → search → content.
+  - **Security:** the results heading is pure `searchResultsHeading(query,
+    count)` in `js/programs/search.js`, which entity-escapes the query once and
+    normalises the count. Typing `<img src=x onerror="alert(1)">` into
+    `#progSearchInput` renders as text (`&lt;img`) instead of executing, while
+    `3 results for "bench"` still reads naturally; a hostile-query test locks
+    both.
+  - The running plan's Start/Resume is the only primary action, and its badge
+    reads `ACTIVE PLAN` (was `NOW TRAINING`; copy only — no state, attribute or
+    action changed). Beneath the card sits one quiet 44px utility row:
+    `+ New plan`, `Import plan (.json)` and — only while a plan is actually
+    running — `Manage plan`.
+  - Manage only VIEWS the active plan: it dispatches `library:view-active` and
+    never activates, switches or restarts anything. Activation remains the
+    plan's own confirmed action and the banner's Continue is untouched.
+  - One search: the field is visible on both tabs with placeholder/accessible
+    name "Search plans", a query is checked before the tab, and its order is
+    tabs above search, so the whole order is Discover | My Plans → search →
+    content. My Plans no longer hides search or loses catalogue search.
+  - The utility row is inline text — no border, fill or shadow, 44px targets,
+    2px side padding, muted `.74rem`/700; only Manage carries accent text, so
+    New plan is no longer a competing filled primary. The library tabs are a
+    text bar: transparent, no segmented card, 22px gap, a 2px cyan underline on
+    the active tab, `--text-primary` against muted and a quiet grey count pill.
+  - Vertical stack: utility margin 4px; tabs 44px plus a 1px subtle rule with
+    4px below; search margin 8px; the recommendation section's outer gaps
+    collapse (header 0, basis 0, 2px before All programs) because its heading,
+    44px basis summary and cards carry their own internal padding. All programs
+    moved 711px → 639px at 390×844 against the 640px target; cards, art and the
+    44px controls are untouched. The three-up row below then took it to 605px.
+  - "Recommended For You" is one 3-up tile grid (request 3) instead of a
+    horizontal rail, so all three cards sit fully inside 390px at rest —
+    16–130 / 138–252 / 260–374, with no clipped third card. New `tile` size in
+    `program-card.js` (and its DOM mirror): accent-tinted gradient from
+    `accentColor`/`coverGradient[1]`, 1:1 cover, 44px glyph bottom-left, 44px
+    bookmark top-right, name + reason only. `small` and `large` are untouched,
+    so detail Similar programs keeps its rail card.
+  - Cover glyphs stop treating every athletic category as the flame:
+    hyrox→trophy, functional→activity, tactical→gauge, conditioning→flame,
+    triathlon→activity; hybrid keeps bolt. Search's popularity tiebreaker now
+    reads `Number(program.popularity) || 0`, so a custom/imported plan without
+    that catalogue field cannot score NaN and disappear from results.
+  - 390×844 audit (same seed/clock as the quiet-row shot): All programs is
+    605px, inside the 620px target and down from 639px; the recommendation
+    check's own fixture measures 598px. Screenshots `shots/plans-after-quiet.png`
+    and `shots/plans-after-art.png`.
+  - Validation: 2,081 node tests (hostile-query heading, tile glyph/markup and
+    no-popularity search probes added), typecheck, smoke, precache/workflow, and
+    the Plans active-banner, Plans JSON, plan-recommendations,
+    program-detail-viewport, core-ergonomics and touch-target browser checks.
+  - Next: Progress domain detail hierarchy. The recommendation reasons are
+    still identical for athletes who share a goal ("Matches your strength goal"
+    three times) and should name level or equipment next.
+
+- **2026-11-22 — Home hierarchy: date headline, week chip, one Start; compact
+  rail; one-line bodyweight; insight inside Today.**
+  - Home's `h1` is the real calendar day ("Mon 3 Aug"), not the program week, so
+    a cold boot can never flash "Week 1" as the screen's name. The week moved to
+    the compact chip beneath it: "Week 1 of 4 · Working Sets".
+  - The chip only claims a range when the active plan has a `totalWeeks` and the
+    current week is inside it — a legacy or unknown plan renders "Week N"
+    instead of inventing "of 4". With no active program the phase is omitted
+    rather than falling back to the resolver's "Training" placeholder.
+  - Removed the duplicate Home "Workout" quick action. Start on the Today
+    decision is the only strength start; the secondary row keeps Weight, Run and
+    History, and the Today card's meta no longer repeats the week a third time.
+  - Header CSS: the meta column gets `min-width: 0`, the headline uses
+    `clamp(1.15rem, 5.2vw, 1.5rem)` with `overflow-wrap: anywhere`, and the
+    phase label is a compact single-line pill (bordered, 999px radius,
+    ellipsis). No brand-token changes; the palette and type scale are untouched.
+  - Week rail: every cell is a 48px target (was 66px) with tighter padding,
+    gaps and type. Done, today, planned, missed and rest all keep their own
+    label, dot and colour — the states are compressed, not removed.
+  - Bodyweight: one 44px row (measured 64px card) with the latest value, a
+    one-line meta and a 28px 30-day spark. The whole row opens the prefilled
+    weigh-in sheet, so the card no longer carries a separate chart button and a
+    separate Log button.
+  - Coach insight moved from a standalone card below the week surface into
+    Today's own surface, rendered after the Today mount so it always describes
+    the settled day. It hides on a past-week recap or a picked day, and
+    Customize still controls it as `data-home-card="insight"`.
+  - Validation: 2,074 node tests, typecheck, smoke, precache/workflow, 43/43
+    real-browser checks, and the 2,240-control touch-target check. Two browser
+    contracts were adjusted to the new intent: the bodyweight check asserts one
+    ≤100px row with a single opener and a 24–32px spark rather than the old
+    chart/Log split, and the Home Today check asserts the coach line sits inside
+    `#homeWeekStrip` after `#homeTodayCard`, is at least 44px tall, and is
+    hidden on a past week or picked day.
+  - Next: Progress domain detail hierarchy.
+
+- **2026-11-22 — Progress hub: calendar-week control and honest empty states.**
+  - The hub now shows the shared calendar-week navigator and rebuilds the hero,
+    all four domain cards and the 12-week strip for the selected Monday–Sunday
+    week. It still never reads `state.currentWeek`.
+  - Dates are human ("This week", "Previous week", "2 weeks ago"; "23–29 Nov"),
+    never ISO keys. The weekday navigator uses the same day-first format.
+  - The 12-week strip encodes **sessions** (its label) instead of volume, so a
+    running-only week is no longer drawn as an empty dash. It names the oldest
+    and selected week and carries a range tooltip per bar.
+  - Empty domain headlines say "No sets", "No runs" and "No signal" instead of a
+    lone em dash; a brand-new profile leads with one honest empty state and a
+    Start action rather than four dashes.
+  - The Running card now anchors on the selected week's Sunday (the live week
+    keeps today, so its comparison stays elapsed-matched). A historical week is
+    never scored against the active programme's plan: it reports the sessions
+    that were logged instead of inventing "0 of 6 planned" for an old
+    programme. Review and Strength follow the same navigator, and the metric
+    detail screens use human dates instead of raw ISO keys.
+  - Accessibility: the light-mode empty-state CTA measures 5.46:1 (was 1.49:1),
+    and "Return to this week" keeps its 28px pill with a 44px hit area.
+  - Validation: 2,045 node tests, typecheck, smoke, precache/workflow, the
+    320/390/412 px Progress hub contract (including two step-backs and the
+    Running-card value), the Strength Volume contract and the 2,242-control
+    touch-target check.
+  - Next: Progress domain detail hierarchy, then the Home hierarchy (demote the
+    program week, one Start, collapse bodyweight).
 
 - **2026-11-22 — Logger overhaul, Phase A: one line per set.**
   - The strength row is now the five-column contract — SET | PREVIOUS | WEIGHT

@@ -4,6 +4,9 @@
 // shape without ever completing or overwriting a programmed day.
 import { dateKey } from '../dates.js';
 import { secureRandomSuffix } from '../util/secure-id.js';
+import { findRoutine, MAX_ROUTINE_NOTE } from '../routines/store.js';
+import { explicitSessionStatus, SESSION_STATUS } from './session-status.js';
+import { normaliseGroupId, pruneSingleMemberGroups } from './superset.js';
 
 const PREFIX = 'session:';
 const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -35,6 +38,24 @@ export function activeWorkoutDay(state, fallbackDay) {
   return activeOneOffSession(state)?.week?.sessionDay || fallbackDay;
 }
 
+/**
+ * The day that belongs to an explicitly resolved workout week.
+ *
+ * The cockpit reads the week and the day as one pair. Resolving the day from
+ * `activeWorkoutDay()` alone ignores which week the caller already chose, so a
+ * one-off session and a programme day can be paired wrongly and a tick and its
+ * untick can touch different stored slots. Both paths resolve through this.
+ *
+ * @param {any} state
+ * @param {string|number|null|undefined} weekKey
+ * @param {string|null|undefined} fallbackDay
+ */
+export function activeWorkoutDayForWeek(state, weekKey, fallbackDay) {
+  const active = activeOneOffSession(state);
+  if (active && String(active.key) === String(weekKey)) return active.week.sessionDay || fallbackDay;
+  return fallbackDay;
+}
+
 export function clearActiveOneOffSession(state) {
   if (state && state.activeStrengthSessionKey) delete state.activeStrengthSessionKey;
 }
@@ -54,6 +75,7 @@ function blankCopiedSet(set) {
   const next = clone(set) || {};
   next.c = false;
   delete next.isPR;
+  delete next.prKind;
   return next;
 }
 
@@ -65,7 +87,7 @@ function weekdayForDateKey(localDate) {
 /**
  * @param {any} state
  * @param {{ kind?:'empty'|'copy', title?:string, sourceWeek?:any, sourceDay?:string,
- * sourceActivityId?:string, now?:Date, tz?:string }} [options]
+ * sourceActivityId?:string, sourceRoutineId?:string, now?:Date, tz?:string }} [options]
  */
 export function createOneOffStrengthSession(state, options = {}) {
   if (!state.weeks || typeof state.weeks !== 'object') state.weeks = {};
@@ -83,6 +105,21 @@ export function createOneOffStrengthSession(state, options = {}) {
   const liftOrder = Array.isArray(sourceOrder)
     ? sourceOrder.filter((name) => Object.hasOwn(lifts, name))
     : Object.keys(lifts);
+  // Only circuit membership travels with a copied workout. Planned-set counts,
+  // swap origins and warm-up-ramp stamps belong to the source session, not to a
+  // fresh one — cloning the whole liftMeta made a copy inherit decisions it
+  // never made. Filtering to live lifts and pruning a lone tag keeps a deleted
+  // partner from recreating a one-member circuit.
+  const sourceMeta = options.sourceWeek?.liftMeta?.[options.sourceDay];
+  /** @type {Record<string, {groupId: string}>} */
+  const liftMeta = {};
+  if (sourceMeta && typeof sourceMeta === 'object') {
+    for (const name of Object.keys(lifts)) {
+      const groupId = normaliseGroupId(sourceMeta[name]?.groupId);
+      if (groupId) liftMeta[name] = { groupId };
+    }
+  }
+  pruneSingleMemberGroups(liftMeta);
   const kind = options.kind === 'copy' ? 'copy' : 'empty';
   state.weeks[key] = {
     sessionId,
@@ -90,13 +127,17 @@ export function createOneOffStrengthSession(state, options = {}) {
     sessionTitle: String(options.title || (kind === 'copy' ? 'Copied Workout' : 'Empty Workout')),
     sessionDay: day,
     sourceActivityId: options.sourceActivityId || null,
+    // A routine-started session remembers only WHERE the note lives. The note
+    // itself is never copied, so editing/deleting the routine is reflected on
+    // the next cockpit render instead of showing a stale snapshot.
+    sourceRoutineId: options.sourceRoutineId || null,
     startedAt: now.toISOString(),
     programId: null,
     dates: { [day]: localDate },
     runs: {}, runSessions: {},
     lifts: { [day]: lifts },
     liftOrder: { [day]: liftOrder },
-    liftMeta: { [day]: {} },
+    liftMeta: { [day]: liftMeta },
     notes: { [day]: '' },
     gymRpe: { [day]: '' },
     bodyWeight: {},
@@ -104,6 +145,30 @@ export function createOneOffStrengthSession(state, options = {}) {
   };
   state.activeStrengthSessionKey = key;
   return { key, day, sessionId, week: state.weeks[key] };
+}
+
+/**
+ * The CURRENT routine note for a one-off session started from a routine.
+ *
+ * Read by reference on every render (`sourceRoutineId` is the only thing stored
+ * on the week): editing the routine changes what this returns, and deleting the
+ * routine returns null. A finished session hides the banner — the note belongs
+ * to preparation, not to the historical record.
+ *
+ * @param {any} state
+ * @param {any} week
+ * @param {string|null|undefined} [day]
+ * @returns {{ note:string }|null}
+ */
+export function routineNoteForSession(state, week, day = null) {
+  const routineId = week?.sourceRoutineId;
+  if (!routineId) return null;
+  const sessionDay = day || week?.sessionDay || null;
+  if (explicitSessionStatus(week, sessionDay) === SESSION_STATUS.FINISHED) return null;
+  const routine = findRoutine(state, routineId);
+  const note = String(routine?.note || '').trim().slice(0, MAX_ROUTINE_NOTE);
+  if (!note) return null;
+  return { note };
 }
 
 export function oneOffBlueprint(state, fallback = null) {

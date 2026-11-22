@@ -13,9 +13,16 @@
 //     malformed file, so the caller can refuse without touching current state.
 //   - sanitizeImportedState() drops an unsafe avatar (the one imported field
 //     that reaches an HTML/CSS sink) losslessly — a real avatar is a
-//     data:image;base64 URL and survives.
+//     data:image;base64 URL and survives. It also repairs the routine library:
+//     a routine that fails the shape/bounds contract is dropped rather than
+//     letting an absurd set count or a non-array lift list into the app.
 //   - importCounts() gives accurate numbers for an honest success/preview.
 // =============================================================================
+import {
+  MAX_ROUTINE_FOLDERS, MAX_ROUTINE_LIFTS, MAX_ROUTINE_NOTE, MAX_ROUTINES, MAX_ROUTINE_SETS,
+} from '../routines/store.js';
+import { isGroupId } from '../workout/superset.js';
+import { safeExternalHttpUrl } from '../util.js';
 
 const MAX_IMPORT_BYTES = 25 * 1024 * 1024; // whole-file guard (snapshots are well under this)
 const MAX_AVATAR_BYTES = 3 * 1024 * 1024;  // a resized avatar is tens of KB; 3 MB is generous
@@ -50,7 +57,42 @@ export function sanitizeImportedState(state) {
     if (s.avatarDataUrl != null && !isSafeImageDataUrl(s.avatarDataUrl)) {
       delete s.avatarDataUrl; // drop hostile/oversized avatar rather than import it
     }
+    // exercisePrefs carries a private reference link that reaches an href. A
+    // stale/hostile value must not ride in; drop ONLY the link and keep the
+    // note and every other preference. The input object is never mutated.
+    // A non-object collection is emptied, and a null-prototype copy means a
+    // `__proto__` key is stored as data instead of hitting the prototype setter.
+    if (s.exercisePrefs != null) {
+      const source = isRecord(s.exercisePrefs) ? s.exercisePrefs : {};
+      const prefs = Object.create(null);
+      for (const [key, value] of Object.entries(source)) {
+        if (!isRecord(value)) {
+          prefs[key] = value;
+          continue;
+        }
+        const entry = { ...value };
+        if (entry.link != null && !safeExternalHttpUrl(entry.link)) delete entry.link;
+        prefs[key] = entry;
+      }
+      s.exercisePrefs = prefs;
+    }
     out.settings = s;
+  }
+  // Routines are reusable session templates. A malformed record is dropped
+  // (repaired array) so it cannot reach the cockpit with an absurd set count or
+  // a non-array lift list; a non-array collection is emptied, never trusted.
+  if (out.routines != null) {
+    out.routines = Array.isArray(out.routines)
+      ? out.routines
+        .filter(isValidRoutine)
+        .slice(0, MAX_ROUTINES)
+        .map((routine) => sanitizeRoutineNote(sanitizeRoutineGroupIds(routine)))
+      : [];
+  }
+  if (out.libraryFolders != null) {
+    out.libraryFolders = Array.isArray(out.libraryFolders)
+      ? out.libraryFolders.filter(isValidRoutineFolder).slice(0, MAX_ROUTINE_FOLDERS)
+      : [];
   }
   return out;
 }
@@ -90,6 +132,8 @@ export function importCounts(state) {
   return {
     weeks: Object.keys(weeks).length,
     programs: Array.isArray(state && state.customPrograms) ? state.customPrograms.length : 0,
+    routines: Array.isArray(state && state.routines) ? state.routines.length : 0,
+    folders: Array.isArray(state && state.libraryFolders) ? state.libraryFolders.length : 0,
     bodyWeights: Array.isArray(state && state.bodyWeightLog) ? state.bodyWeightLog.length : 0,
     runs,
     loggedDays,
@@ -109,6 +153,7 @@ export function importPreviewMessage(counts, routeCount = 0) {
   return [
     `${c.loggedDays || 0} logged day${c.loggedDays === 1 ? '' : 's'} · ${c.runs || 0} run${c.runs === 1 ? '' : 's'}`,
     `${c.programs || 0} custom program${c.programs === 1 ? '' : 's'} · ${c.bodyWeights || 0} body-weight entr${c.bodyWeights === 1 ? 'y' : 'ies'}`,
+    `${c.routines || 0} routine${c.routines === 1 ? '' : 's'} · ${c.folders || 0} routine folder${c.folders === 1 ? '' : 's'}`,
     `${routes} GPS route${routes === 1 ? '' : 's'}`,
     '',
     'This replaces the data currently on this device. A local backup is created first.',
@@ -151,6 +196,135 @@ function isValidCustomProgram(program) {
   return true;
 }
 
+const ROUTINE_MODES = ['reps', 'time', 'distance'];
+const ROUTINE_BASES = ['total', 'each', 'per-side'];
+const LOAD_MODES = ['weighted', 'bodyweight', 'assisted', 'banded'];
+const BAND_SIZES = ['L', 'M', 'H'];
+
+/** A prescription must be a bounded, finite set of fields the cockpit can read. */
+function isValidRoutinePrescription(prescription) {
+  if (!isRecord(prescription)) return false;
+  const sets = Number(prescription.sets);
+  if (!Number.isInteger(sets) || sets < 1 || sets > MAX_ROUTINE_SETS) return false;
+  for (const field of ['reps', 'weight', 'sec', 'dist', 'restSec']) {
+    if (prescription[field] != null && prescription[field] !== ''
+      && !Number.isFinite(Number(prescription[field]))) return false;
+  }
+  if (prescription.mode != null && !ROUTINE_MODES.includes(prescription.mode)) return false;
+  if (prescription.basis != null && !ROUTINE_BASES.includes(prescription.basis)) return false;
+  if (prescription.loadMode != null && !LOAD_MODES.includes(prescription.loadMode)) return false;
+  if (prescription.band != null && !BAND_SIZES.includes(prescription.band)) return false;
+  if (prescription.bw != null && prescription.bw !== true) return false;
+  // `groupId` is optional and sanitized separately: one malformed circuit tag
+  // must not throw away an otherwise valid routine.
+  return true;
+}
+
+/**
+ * Drop malformed circuit tags from a routine WITHOUT mutating the imported
+ * object or rejecting the routine. `isValidRoutine` deliberately ignores the
+ * field, so this is the one place the A…Z / AA…ZZ contract is enforced.
+ * @param {any} routine
+ * @returns {any}
+ */
+function sanitizeRoutineGroupIds(routine) {
+  if (!isRecord(routine?.prescriptions)) return routine;
+  const next = JSON.parse(JSON.stringify(routine));
+  for (const byLift of Object.values(next.prescriptions)) {
+    if (!isRecord(byLift)) continue;
+    for (const prescription of Object.values(byLift)) {
+      if (isRecord(prescription) && prescription.groupId != null && !isGroupId(prescription.groupId)) {
+        delete prescription.groupId;
+      }
+    }
+  }
+  return next;
+}
+
+/**
+ * Repair a routine note WITHOUT dropping the routine. An overlong note is
+ * truncated to the store's cap; a non-string note is removed (there is no
+ * honest text to recover from `42` or `{}`). The input is never mutated.
+ * @param {any} routine
+ * @returns {any}
+ */
+function sanitizeRoutineNote(routine) {
+  if (!isRecord(routine) || routine.note == null) return routine;
+  const next = { ...routine };
+  if (typeof routine.note === 'string') {
+    const note = routine.note.trim().slice(0, MAX_ROUTINE_NOTE);
+    if (note) next.note = note;
+    else delete next.note;
+  } else {
+    delete next.note;
+  }
+  return next;
+}
+
+/**
+ * A reusable session template must be readable by History, the builder and the
+ * cockpit: string id/name, a bounded day record whose lifts are string arrays,
+ * and bounded prescriptions. It is NOT a program and is never validated as one.
+ * @param {any} routine
+ */
+export function isValidRoutine(routine) {
+  if (!isRecord(routine)) return false;
+  if (typeof routine.id !== 'string' || !routine.id.trim()) return false;
+  if (typeof routine.name !== 'string' || !routine.name.trim()) return false;
+  if (routine.kind != null && routine.kind !== 'routine') return false;
+  if (routine.folderId != null && typeof routine.folderId !== 'string') return false;
+  if (routine.sortOrder != null && !Number.isFinite(Number(routine.sortOrder))) return false;
+  // `note` is optional free text. It is deliberately NOT validated here: a
+  // malformed note must never drop an otherwise valid routine. sanitizeImportedState
+  // repairs it (truncate to MAX_ROUTINE_NOTE / remove a non-string) afterwards.
+  if (!isRecord(routine.days)) return false;
+  const days = Object.keys(routine.days);
+  if (!days.length || days.length > 7) return false;
+  if (!isRecord(routine.prescriptions)) return false;
+  let liftCount = 0;
+  for (const day of days) {
+    const entry = routine.days[day];
+    if (!isRecord(entry)) return false;
+    if (!Array.isArray(entry.lifts)) return false;
+    if (entry.lifts.length > MAX_ROUTINE_LIFTS) return false;
+    if (entry.lifts.some((lift) => typeof lift !== 'string' || !lift.trim())) return false;
+    for (const field of ['title', 'badge', 'color', 'desc', 'runs']) {
+      if (entry[field] != null && typeof entry[field] !== 'string') return false;
+    }
+    // Every listed lift needs its own prescription. A routine with a lift but no
+    // sets/reps is a "0 exercises" record the Start action cannot open, and one
+    // missing prescription would seed an empty card — refuse the routine whole.
+    if (entry.lifts.length) {
+      const dayPrescriptions = routine.prescriptions[day];
+      if (!isRecord(dayPrescriptions)) return false;
+      for (const lift of entry.lifts) {
+        if (!isValidRoutinePrescription(dayPrescriptions[lift])) return false;
+      }
+      liftCount += entry.lifts.length;
+    }
+  }
+  if (!liftCount) return false;
+  for (const byLift of Object.values(routine.prescriptions)) {
+    if (!isRecord(byLift)) return false;
+    for (const [lift, prescription] of Object.entries(byLift)) {
+      if (!lift.trim() || !isValidRoutinePrescription(prescription)) return false;
+    }
+  }
+  return true;
+}
+
+/** A routine folder is metadata only: a string id/name and an optional order. */
+export function isValidRoutineFolder(folder) {
+  if (!isRecord(folder)) return false;
+  if (typeof folder.id !== 'string' || !folder.id.trim()) return false;
+  if (typeof folder.name !== 'string' || !folder.name.trim()) return false;
+  if (folder.sortOrder != null && !Number.isFinite(Number(folder.sortOrder))) return false;
+  for (const field of ['createdAt', 'updatedAt']) {
+    if (folder[field] != null && typeof folder[field] !== 'string') return false;
+  }
+  return true;
+}
+
 /**
  * Deep-validate a parsed import BEFORE it may replace live state. Returns a
  * discriminated result: `{ ok:false, reason }` (caller refuses, current state
@@ -171,6 +345,8 @@ export function validateImport(parsed, { currentSchemaVersion = Infinity, rawTex
     return { ok: false, reason: 'bad-program' };
   }
   if (parsed.bodyWeightLog != null && !Array.isArray(parsed.bodyWeightLog)) return { ok: false, reason: 'bad-bodyweight' };
+  if (parsed.routines != null && !Array.isArray(parsed.routines)) return { ok: false, reason: 'bad-routines' };
+  if (parsed.libraryFolders != null && !Array.isArray(parsed.libraryFolders)) return { ok: false, reason: 'bad-routine-folders' };
   if (parsed.settings != null && (typeof parsed.settings !== 'object' || Array.isArray(parsed.settings))) return { ok: false, reason: 'bad-settings' };
   // Future schema: refuse rather than run partial/unknown migrations. (migrateState
   // also guards this; refusing here keeps current state untouched with a clear message.)

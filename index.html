@@ -427,7 +427,10 @@
       <header class="home-header">
         <div class="home-header-meta">
           <span class="home-greeting" id="homeGreeting">Good morning</span>
-          <h1 id="homeWeekBlockIndicator" class="home-week-label">Week 1</h1>
+          <!-- The headline is the calendar day; the chip underneath carries the
+               program week. The fallback must never claim "Week 1" before the
+               first render, which is why it is a neutral day word. -->
+          <h1 id="homeWeekBlockIndicator" class="home-week-label">Today</h1>
           <span class="home-phase-label" id="homePhaseLabelTag"></span>
         </div>
         <div class="home-header-actions">
@@ -487,6 +490,13 @@
         </div>
         <!-- Pinned: the strip may be hidden in Customize; the decision cannot. -->
         <div id="homeTodayCard"></div>
+        <!-- One coach line lives inside Today's surface: it follows the settled
+             day/week selection and never competes as a separate card. -->
+        <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
+          <span class="home-insight__eyebrow">Coach</span>
+          <span class="home-insight__text" id="homeInsightText"></span>
+          <span class="home-insight__arrow" aria-hidden="true">›</span>
+        </button>
       </section>
 
       <!-- Hybrid section: only the metrics Home does not already show. The
@@ -502,20 +512,13 @@
 
       <div id="homeBodyweightCard" data-home-card="bodyweight"></div>
 
-      <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
-        <span class="home-insight__eyebrow">Coach</span>
-        <span class="home-insight__text" id="homeInsightText"></span>
-        <span class="home-insight__arrow" aria-hidden="true">›</span>
-      </button>
-
+      <!-- One Start lives on the Today decision above. A second "Workout"
+           quick start here competed with it, so these three are secondary
+           destinations only. -->
       <div class="home-quick-actions" id="homeQuickActions" aria-label="Quick actions">
         <button class="home-quick-btn" data-action="open-analytics" data-context="bodyweight">
           <span class="home-quick-btn__icon">⚖️</span>
           <span>Weight</span>
-        </button>
-        <button class="home-quick-btn" data-action="open-quick-start">
-          <span class="home-quick-btn__icon">⚡</span>
-          <span>Workout</span>
         </button>
         <button class="home-quick-btn" data-action="open-run-logger" data-module="running">
           <span class="home-quick-btn__icon">🏃</span>
@@ -698,7 +701,7 @@
         <div class="run-grid-inputs mb-2">
           <label><span class="set-num-lbl block mb-1" id="runDistUnitLabel">Dist KM</span><input type="number" step="0.01" id="runInputDist" aria-label="Run distance" placeholder="0.00"></label>
           <label><span class="set-num-lbl block mb-1">Time</span><input type="text" id="runInputTime" aria-label="Run time" placeholder="00:00"></label>
-          <label><span class="set-num-lbl block mb-1">RPE</span><input type="number" id="runInputRpeCockpit" aria-label="Run effort (RPE 1-10)" placeholder="1-10" max="10"></label>
+          <label><span class="set-num-lbl block mb-1">RPE</span><input type="number" id="runInputRpeCockpit" aria-label="Run effort (RPE 1-10)" placeholder="1-10" min="1" max="10" step="0.5" inputmode="decimal"></label>
         </div>
 
         <div class="run-pace-row mb-3" id="runPaceRow">
@@ -785,7 +788,7 @@
         </div>
 
         <div class="flex gap-2 mb-2">
-          <input type="number" id="sessionGymRpeCockpit" placeholder="Overall Gym RPE (1-10)" max="10" aria-label="Overall Gym RPE">
+          <input type="number" id="sessionGymRpeCockpit" placeholder="Overall Gym RPE (1-10)" min="1" max="10" step="0.5" inputmode="decimal" aria-label="Overall Gym RPE">
         </div>
         <textarea id="sessionNotesInput" placeholder="How did today feel? Sleep? Energy?" aria-label="Session Notes"></textarea>
 
@@ -816,9 +819,9 @@
         <button id="weekNavPrev" class="week-nav-arrow" aria-label="Previous week" disabled>&#8592;</button>
         <div class="week-nav-center">
           <span class="week-nav-eyebrow">Viewing</span>
-          <span id="weekNavLabel" class="week-nav-label">Week 1 · Current</span>
-          <span id="weekNavDates" class="week-nav-dates"></span>
-          <button id="weekNavToday" class="week-nav-today" hidden>Return to this week</button>
+          <span id="weekNavLabel" class="week-nav-label" aria-live="polite">Week 1 · Current</span>
+          <span id="weekNavDates" class="week-nav-dates" aria-live="polite"></span>
+          <button id="weekNavToday" class="week-nav-today hit-target" hidden>Return to this week</button>
         </div>
         <button id="weekNavNext" class="week-nav-arrow" aria-label="Next week" disabled>&#8594;</button>
       </div>
@@ -1060,26 +1063,24 @@
       <!-- ═══════ LIBRARY SCREEN (default entry) ═══════ -->
       <div id="programLibraryScreen">
 
-        <!-- Active Program Banner -->
+        <!-- Active plan first: the card for the plan that is actually running. -->
         <div id="activeProgBanner" class="mb-4" style="display:none;"></div>
 
-        <!-- Plan actions: create, or bring a portable plan file in. -->
-        <div class="plans-actions">
-          <button type="button" class="plans-action-btn" data-action="open-create-program">+ New plan</button>
-          <button type="button" class="plans-action-btn" data-action="import-plan-json">Import plan (.json)</button>
-          <input type="file" id="planImportFile" accept=".json,application/json" class="hidden-input" aria-label="Choose an openHybrid plan JSON file">
-        </div>
+        <!-- Plan utility row: create, import, or open the active plan. The active
+             plan's own action stays the only primary on this screen. -->
+        <div id="plansUtilityRow" class="plans-utility"></div>
+        <input type="file" id="planImportFile" accept=".json,application/json" class="hidden-input" aria-label="Choose an openHybrid plan JSON file">
 
         <!-- Library Tabs: Discover / My Plans -->
         <div id="progLibraryTabs"></div>
 
-        <!-- Search Bar -->
+        <!-- Search Bar — one search across both tabs -->
         <div class="prog-search-bar mb-3">
           <div class="prog-search-input-wrap">
             <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input type="text" id="progSearchInput" aria-label="Search programs" placeholder="Search programs, goals, coaches..." autocomplete="off" autocorrect="off" spellcheck="false">
+            <input type="text" id="progSearchInput" aria-label="Search plans" placeholder="Search plans" autocomplete="off" autocorrect="off" spellcheck="false">
             <button id="progSearchClear" aria-label="Clear search">✕</button>
           </div>
         </div>
@@ -1471,7 +1472,7 @@
           <span class="settings-search__icon" data-icon="search" aria-hidden="true"></span>
           <input type="search" id="settingsSearch" placeholder="Search settings" aria-label="Search settings" autocomplete="off">
         </label>
-        <nav class="settings-tabs" id="settingsTabs" aria-label="Settings sections"></nav>
+        <div class="settings-tabs" id="settingsTabs" role="group" aria-label="Settings filters"></div>
       </div>
 
       <div class="settings-body">
@@ -1533,36 +1534,53 @@
               <button class="settings-toggle-btn" data-action="set-dist-unit" data-unit="mi">miles</button>
             </div>
           </div>
-          <div class="settings-row" style="display:block;">
-            <div class="settings-section-label settings-section-label--sub">Logging</div>
-            <label class="hc-data-toggle"><input type="checkbox" id="settingsRestEnabled" checked><span>Auto rest timer between sets</span></label>
-            <label class="hc-data-toggle"><input type="checkbox" id="settingsAutoWarmup"><span>Auto warm-up ramp</span></label>
-            <div class="settings-hint">After you enter the first working weight, add editable 40/60/80% warm-up sets. Only for barbell lifts; never added twice.</div>
-            <div class="settings-hint">Rest by exercise type. These are the defaults; the timer's ± buttons remember a per-exercise override.</div>
-            <div class="settings-toggle-group" style="margin:8px 0;">
-              <button class="settings-toggle-btn" data-action="rest-preset" data-preset="efficient">Efficient</button>
-              <button class="settings-toggle-btn" data-action="rest-preset" data-preset="hypertrophy">Standard</button>
-              <button class="settings-toggle-btn" data-action="rest-preset" data-preset="strength">Strength</button>
+          <div class="settings-row" data-module="running">
+            <label class="settings-row-label">Threshold Pace</label>
+            <div class="settings-input-unit-row">
+              <input type="text" class="settings-input settings-input-short" id="settingsThresholdPace" placeholder="4:30" maxlength="5">
+              <span class="settings-unit-badge">min/km</span>
             </div>
-            <div class="settings-row">
-              <label class="settings-row-label" for="settingsRestWarmup">Warm-up rest</label>
-              <input type="text" class="settings-input settings-input-short" id="settingsRestWarmup" inputmode="numeric" placeholder="0:45" style="text-align:center;">
-            </div>
-            <div class="run-grid-inputs" style="grid-template-columns: repeat(3, 1fr);">
-              <label><span class="set-num-lbl block mb-1 text-accent-red">Compound</span><input type="text" id="settingsRestCompound" inputmode="numeric" placeholder="3:00" style="text-align:center;"></label>
-              <label><span class="set-num-lbl block mb-1 text-accent-amber">Accessory</span><input type="text" id="settingsRestAccessory" inputmode="numeric" placeholder="2:00" style="text-align:center;"></label>
-              <label><span class="set-num-lbl block mb-1 text-accent-green">Isolation</span><input type="text" id="settingsRestIsolation" inputmode="numeric" placeholder="1:30" style="text-align:center;"></label>
-            </div>
-            <label class="hc-data-toggle"><input type="checkbox" id="settingsRestAlertSound" checked><span>Rest alert sound</span></label>
-            <div class="settings-row">
-              <label class="settings-row-label" for="settingsRestAlertVolume">Alert volume</label>
-              <div class="settings-input-unit-row">
-                <input type="range" id="settingsRestAlertVolume" min="0" max="100" step="5" value="40" style="flex:1;">
-                <span class="settings-unit-badge" id="settingsRestAlertVolumeValue">40%</span>
-              </div>
-            </div>
-            <button class="settings-toggle-btn" data-action="reset-rest-overrides">Reset remembered rests</button>
           </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Week Starts On</label>
+            <div class="settings-toggle-group">
+              <button class="settings-toggle-btn active" data-action="set-week-start" data-day="mon">Monday</button>
+              <button class="settings-toggle-btn" data-action="set-week-start" data-day="sun">Sunday</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logging -->
+        <div class="settings-section">
+          <div class="settings-section-label">Logging</div>
+          <div class="settings-hint">How sets are logged and what the logger remembers between sessions.</div>
+          <label class="hc-data-toggle"><input type="checkbox" id="settingsRestEnabled" checked><span>Auto rest timer between sets</span></label>
+          <label class="hc-data-toggle"><input type="checkbox" id="settingsAutoWarmup"><span>Auto warm-up ramp</span></label>
+          <div class="settings-hint">After you enter the first working weight, add editable 40/60/80% warm-up sets. Only for barbell lifts; never added twice.</div>
+          <div class="settings-hint">Rest by exercise type. These are the defaults; the timer's ± buttons remember a per-exercise override.</div>
+          <div class="settings-toggle-group" style="margin:8px 0;">
+            <button class="settings-toggle-btn" data-action="rest-preset" data-preset="efficient">Efficient</button>
+            <button class="settings-toggle-btn" data-action="rest-preset" data-preset="hypertrophy">Standard</button>
+            <button class="settings-toggle-btn" data-action="rest-preset" data-preset="strength">Strength</button>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label" for="settingsRestWarmup">Warm-up rest</label>
+            <input type="text" class="settings-input settings-input-short" id="settingsRestWarmup" inputmode="numeric" placeholder="0:45" style="text-align:center;">
+          </div>
+          <div class="run-grid-inputs" style="grid-template-columns: repeat(3, 1fr);">
+            <label><span class="set-num-lbl block mb-1 text-accent-red">Compound</span><input type="text" id="settingsRestCompound" inputmode="numeric" placeholder="3:00" style="text-align:center;"></label>
+            <label><span class="set-num-lbl block mb-1 text-accent-amber">Accessory</span><input type="text" id="settingsRestAccessory" inputmode="numeric" placeholder="2:00" style="text-align:center;"></label>
+            <label><span class="set-num-lbl block mb-1 text-accent-green">Isolation</span><input type="text" id="settingsRestIsolation" inputmode="numeric" placeholder="1:30" style="text-align:center;"></label>
+          </div>
+          <label class="hc-data-toggle"><input type="checkbox" id="settingsRestAlertSound" checked><span>Rest alert sound</span></label>
+          <div class="settings-row">
+            <label class="settings-row-label" for="settingsRestAlertVolume">Alert volume</label>
+            <div class="settings-input-unit-row">
+              <input type="range" id="settingsRestAlertVolume" min="0" max="100" step="5" value="40" style="flex:1;">
+              <span class="settings-unit-badge" id="settingsRestAlertVolumeValue">40%</span>
+            </div>
+          </div>
+          <button class="settings-toggle-btn" data-action="reset-rest-overrides">Reset remembered rests</button>
           <div class="settings-row">
             <label class="settings-row-label">Progression Step</label>
             <div class="settings-toggle-group">
@@ -1580,46 +1598,9 @@
             </div>
             <div class="settings-hint">Applies to the Last performed panel and Use previous values. PR detection always checks all history.</div>
           </div>
-          <div class="settings-row" data-module="running">
-            <label class="settings-row-label">Threshold Pace</label>
-            <div class="settings-input-unit-row">
-              <input type="text" class="settings-input settings-input-short" id="settingsThresholdPace" placeholder="4:30" maxlength="5">
-              <span class="settings-unit-badge">min/km</span>
-            </div>
-          </div>
           <div class="settings-row">
-            <label class="settings-row-label">Week Starts On</label>
-            <div class="settings-toggle-group">
-              <button class="settings-toggle-btn active" data-action="set-week-start" data-day="mon">Monday</button>
-              <button class="settings-toggle-btn" data-action="set-week-start" data-day="sun">Sunday</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Modules -->
-        <div class="settings-section" id="settingsModules">
-          <div class="settings-section-label">Modules</div>
-          <div class="settings-row">
-            <label class="settings-row-label">Hybrid training</label>
-            <label class="settings-switch"><input type="checkbox" data-hybrid-toggle checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-hint">Off gives you a strength-only dashboard: the balance and endurance cards disappear. Running, Health Connect and the others stay exactly as you set them below.</div>
-          <div class="settings-hint">Hide parts of openHybrid you do not use. Your data stays on this device and can be shown again at any time.</div>
-          <div class="settings-row">
-            <label class="settings-row-label">Running &amp; GPS</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="running" checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-row-label">Fasting</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="fasting" checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-row-label">Health Connect</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="health" checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-row-label">Recovery &amp; Load</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="recovery" checked><span class="settings-switch-track"></span></label>
+            <label class="settings-row-label" for="settingsShowPlateHints">Show plate hints in workouts</label>
+            <label class="settings-switch"><input type="checkbox" id="settingsShowPlateHints"><span class="settings-switch-track"></span></label>
           </div>
         </div>
 
@@ -1637,7 +1618,7 @@
           <div class="settings-row">
             <label class="settings-row-label">Auto-advance week</label>
             <label class="settings-switch">
-              <input type="checkbox" id="settingsAutoAdvance" checked>
+              <input type="checkbox" id="settingsAutoAdvance" aria-label="Auto-advance week" checked>
               <span class="settings-switch-track"></span>
             </label>
           </div>
@@ -1689,10 +1670,6 @@
               <div class="settings-hint">Optional. Leave a size blank for unlimited; enter 0 if you have none.</div>
               <div class="settings-plate-counts" id="settingsPlateCounts"></div>
             </div>
-            <div class="settings-row">
-              <label class="settings-row-label" for="settingsShowPlateHints">Show hints in workouts</label>
-              <label class="settings-switch"><input type="checkbox" id="settingsShowPlateHints"><span class="settings-switch-track"></span></label>
-            </div>
             <button type="button" class="settings-text-btn" data-action="equipment-plates-reset">Reset to standard plates</button>
           </div>
 
@@ -1736,6 +1713,33 @@
           </div>
         </div>
 
+        <!-- Modules -->
+        <div class="settings-section" id="settingsModules">
+          <div class="settings-section-label">Modules</div>
+          <div class="settings-row">
+            <label class="settings-row-label">Hybrid training</label>
+            <label class="settings-switch"><input type="checkbox" data-hybrid-toggle aria-label="Hybrid training" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-hint">Off gives you a strength-only dashboard: the balance and endurance cards disappear. Running, Health Connect and the others stay exactly as you set them below.</div>
+          <div class="settings-hint">Hide parts of openHybrid you do not use. Your data stays on this device and can be shown again at any time.</div>
+          <div class="settings-row">
+            <label class="settings-row-label">Running &amp; GPS</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="running" aria-label="Running &amp; GPS module" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Fasting</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="fasting" aria-label="Fasting module" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Health Connect</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="health" aria-label="Health Connect module" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Recovery &amp; Load</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="recovery" aria-label="Recovery &amp; Load module" checked><span class="settings-switch-track"></span></label>
+          </div>
+        </div>
+
         <!-- Fasting -->
         <div class="settings-section" data-module="fasting">
           <div class="settings-section-label">Fasting</div>
@@ -1756,7 +1760,7 @@
           <div class="settings-row">
             <label class="settings-row-label">Workout Reminder</label>
             <label class="settings-switch">
-              <input type="checkbox" id="settingsNotifications">
+              <input type="checkbox" id="settingsNotifications" aria-label="Workout reminder">
               <span class="settings-switch-track"></span>
             </label>
           </div>
@@ -1771,21 +1775,21 @@
           <div class="settings-row">
             <label class="settings-row-label">Missed Session Alert</label>
             <label class="settings-switch">
-              <input type="checkbox" id="settingsNotifMissedWorkout">
+              <input type="checkbox" id="settingsNotifMissedWorkout" aria-label="Missed session alert">
               <span class="settings-switch-track"></span>
             </label>
           </div>
           <div class="settings-row">
             <label class="settings-row-label">Weekly Summary</label>
             <label class="settings-switch">
-              <input type="checkbox" id="settingsNotifWeeklySummary">
+              <input type="checkbox" id="settingsNotifWeeklySummary" aria-label="Weekly summary">
               <span class="settings-switch-track"></span>
             </label>
           </div>
           <div class="settings-row">
             <label class="settings-row-label">Streak Alert</label>
             <label class="settings-switch">
-              <input type="checkbox" id="settingsNotifStreak">
+              <input type="checkbox" id="settingsNotifStreak" aria-label="Streak alert">
               <span class="settings-switch-track"></span>
             </label>
           </div>
@@ -1793,6 +1797,12 @@
             <label class="settings-row-label">Alert Time</label>
             <input type="time" class="settings-input settings-input-short" id="settingsStreakAlertTime" value="20:00">
           </div>
+          <div class="settings-section-label settings-section-label--sub" data-module="fasting" style="margin-top:8px;">Fasting</div>
+          <div class="settings-row" data-module="fasting">
+            <label class="settings-row-label" for="settingsNotifFastingStage">Stage nudges</label>
+            <label class="settings-switch"><input type="checkbox" id="settingsNotifFastingStage" aria-label="Fasting stage nudges" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-hint" data-module="fasting">Notify when an active fast crosses into a new stage or reaches its goal. Delivered when the app is next opened, not while it is closed.</div>
           <div class="text-xs text-muted" style="padding: 0 4px 8px;" id="settingsNotifStatus">Enable to receive daily training reminders.</div>
         </div>
 
@@ -2052,11 +2062,11 @@
           <div class="summary-effort__body">
             <div id="summaryGymRpeBlock">
               <label for="summaryGymRPE" class="text-xs-bold block mb-1 text-muted">Gym effort (RPE 1–10)</label>
-              <input type="number" id="summaryGymRPE" min="1" max="10" placeholder="e.g. 7" class="mb-4">
+              <input type="number" id="summaryGymRPE" min="1" max="10" step="0.5" inputmode="decimal" placeholder="e.g. 7" class="mb-4">
             </div>
             <div id="summaryRunRpeBlock">
               <label for="summaryRunRPE" class="text-xs-bold block mb-1 text-muted">Run effort (RPE 1–10)</label>
-              <input type="number" id="summaryRunRPE" min="1" max="10" placeholder="e.g. 6" class="mb-4">
+              <input type="number" id="summaryRunRPE" min="1" max="10" step="0.5" inputmode="decimal" placeholder="e.g. 6" class="mb-4">
             </div>
             <label for="summaryNotes" class="text-xs-bold block mb-1 text-muted">Session notes</label>
             <textarea id="summaryNotes" rows="2" placeholder="Anything worth remembering next time"></textarea>
@@ -2228,6 +2238,20 @@
     <div id="programWorkoutPickerList" class="program-workout-picker__list"></div>
   </div>
 
+  <!-- Routine folder picker — move a routine between folders, no drag required. -->
+  <div id="routineFolderBackdrop" class="sheet-backdrop" data-action="close-routine-folder-sheet"></div>
+  <div id="routineFolderSheet" class="bottom-sheet routine-folder-sheet" role="dialog" aria-labelledby="routineFolderTitle" data-modal-root data-modal-close-action="close-routine-folder-sheet" data-modal-companion="#routineFolderBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <div>
+        <h3 id="routineFolderTitle" class="bottom-sheet-title">Move to folder</h3>
+        <p class="routine-folder-sheet__sub">Folders only organise routines. Your program and logged training stay untouched.</p>
+      </div>
+      <button class="sheet-close-btn" data-action="close-routine-folder-sheet" aria-label="Close">✕</button>
+    </div>
+    <div id="routineFolderList" class="routine-folder-sheet__list"></div>
+  </div>
+
   <!-- Weigh-in sheet — prefilled with the last weight; steppers make the common edits one tap. -->
   <div id="bwSheetBackdrop" class="sheet-backdrop" data-action="close-bw-sheet"></div>
   <div id="bwSheet" class="bottom-sheet" role="dialog" aria-labelledby="bwSheetTitle" data-modal-root data-modal-close-action="close-bw-sheet" data-modal-companion="#bwSheetBackdrop" inert aria-hidden="true">
@@ -2269,12 +2293,31 @@
       <button class="sheet-close-btn" data-action="close-measurements-sheet" aria-label="Close">✕</button>
     </div>
     <div class="ms-sheet-grid">
-        <label class="ms-sheet-field"><span>Waist</span><input id="msSheet_waist" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Waist"></label>
-        <label class="ms-sheet-field"><span>Chest</span><input id="msSheet_chest" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Chest"></label>
-        <label class="ms-sheet-field"><span>Hips</span><input id="msSheet_hips" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Hips"></label>
-        <label class="ms-sheet-field"><span>Arm</span><input id="msSheet_arm" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm"></label>
-        <label class="ms-sheet-field"><span>Thigh</span><input id="msSheet_thigh" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh"></label>
         <label class="ms-sheet-field"><span>Neck</span><input id="msSheet_neck" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Neck"></label>
+        <label class="ms-sheet-field"><span>Shoulders</span><input id="msSheet_shoulders" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Shoulders"></label>
+        <label class="ms-sheet-field"><span>Chest</span><input id="msSheet_chest" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Chest"></label>
+        <label class="ms-sheet-field"><span>Waist</span><input id="msSheet_waist" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Waist"></label>
+        <label class="ms-sheet-field"><span>Hips</span><input id="msSheet_hips" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Hips"></label>
+        <label class="ms-sheet-field"><span>Glutes</span><input id="msSheet_glutes" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Glutes"></label>
+        <details class="ms-sheet-more">
+          <summary>Arms, thighs and calves</summary>
+          <p class="ms-sheet-hint">Earlier single Arm and Thigh readings are preserved and exported as “Arm” and “Thigh”. A wrong one can only be removed by deleting that whole date.</p>
+          <div class="ms-sheet-more-grid">
+            <label class="ms-sheet-field"><span>Arm L</span><input id="msSheet_arm_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm L"></label>
+            <label class="ms-sheet-field"><span>Arm R</span><input id="msSheet_arm_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm R"></label>
+            <label class="ms-sheet-field"><span>Forearm L</span><input id="msSheet_forearm_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Forearm L"></label>
+            <label class="ms-sheet-field"><span>Forearm R</span><input id="msSheet_forearm_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Forearm R"></label>
+            <label class="ms-sheet-field"><span>Thigh L</span><input id="msSheet_thigh_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh L"></label>
+            <label class="ms-sheet-field"><span>Thigh R</span><input id="msSheet_thigh_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh R"></label>
+            <label class="ms-sheet-field"><span>Calf L</span><input id="msSheet_calf_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Calf L"></label>
+            <label class="ms-sheet-field"><span>Calf R</span><input id="msSheet_calf_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Calf R"></label>
+          </div>
+        </details>
+        <label class="ms-sheet-field ms-sheet-field--full ms-sheet-field--bodyfat">
+          <span>Body fat (%)</span>
+          <input id="msSheet_bodyFat" type="number" step="0.1" min="2" max="70" inputmode="decimal" aria-label="Body fat (%)" aria-describedby="msSheet_bodyFatHint">
+          <small id="msSheet_bodyFatHint" class="ms-sheet-hint">From a scale, calipers or DEXA — entered, not estimated.</small>
+        </label>
     </div>
     <div class="settings-row">
       <label class="settings-row-label" for="msSheetDate">Date</label>
@@ -2343,21 +2386,73 @@
     </div>
 
     <p class="set-sheet-lbl">Effort</p>
-    <div class="set-sheet-seg" id="setSheetRir" role="group" aria-label="Reps in reserve">
-      <button type="button" data-action="set-sheet-rir" data-rir="0">0</button>
-      <button type="button" data-action="set-sheet-rir" data-rir="1">1</button>
-      <button type="button" data-action="set-sheet-rir" data-rir="2">2</button>
-      <button type="button" data-action="set-sheet-rir" data-rir="3">3</button>
-      <button type="button" data-action="set-sheet-rir" data-rir="4">4+</button>
-      <button type="button" class="is-wide" data-action="toggle-set-failure" data-failure-toggle>Failure</button>
+    <div class="set-sheet-seg set-sheet-seg--effort" id="setSheetRir" role="group" aria-label="Reps in reserve">
+      <button type="button" data-action="set-sheet-rir" data-rir="0" aria-label="0 reps in reserve">0</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="0.5" aria-label="0.5 reps in reserve">½</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="1" aria-label="1 rep in reserve">1</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="1.5" aria-label="1.5 reps in reserve">1½</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="2" aria-label="2 reps in reserve">2</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="2.5" aria-label="2.5 reps in reserve">2½</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="3" aria-label="3 reps in reserve">3</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="3.5" aria-label="3.5 reps in reserve">3½</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="4" aria-label="4 or more reps in reserve">4+</button>
+      <button type="button" data-action="toggle-set-failure" data-failure-toggle>Failure</button>
     </div>
 
     <div class="set-sheet-actions">
       <button type="button" class="set-sheet-btn" data-action="set-sheet-note">Note <span id="setSheetNoteState"></span></button>
       <button type="button" class="set-sheet-btn" data-action="set-sheet-custom-rest">Custom rest…</button>
+      <button type="button" class="set-sheet-btn set-sheet-btn--wide" data-action="set-sheet-plates">Plate calculator</button>
     </div>
 
     <button type="button" class="set-sheet-remove" data-action="set-sheet-remove">Remove set</button>
+  </div>
+
+  <!-- Plate calculator — opened from the per-set sheet. It reads the ACTIVE
+       equipment profile, so it can never show a plate the athlete does not
+       own. Stacked above the set sheet: Escape closes it back to the set
+       sheet, and "Use this weight" is the only path that writes anything.
+       The set sheet deliberately stays exposed to assistive technology behind
+       this dialog (the stack keeps it non-inert); see the nested-modal note in
+       js/workout/plate-sheet.js for the residual aria-modal caveat. -->
+  <div id="plateSheetBackdrop" class="sheet-backdrop sheet-backdrop--plate" data-action="close-plate-sheet"></div>
+  <div id="plateSheet" class="bottom-sheet plate-sheet" role="dialog" aria-labelledby="plateSheetTitle" data-modal-root data-modal-close-action="close-plate-sheet" data-modal-companion="#plateSheetBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="plateSheetTitle" class="bottom-sheet-title">Plate calculator</h3>
+      <button class="sheet-close-btn" data-action="close-plate-sheet" aria-label="Close">✕</button>
+    </div>
+    <p id="plateSheetSub" class="set-sheet-sub"></p>
+
+    <label class="plate-sheet-field" for="plateTarget">
+      <span class="set-sheet-lbl plate-sheet-lbl">Target total</span>
+      <input id="plateTarget" class="plate-sheet-input" type="number" inputmode="decimal"
+             step="any" min="0" autocomplete="off"
+             aria-describedby="plateSheetHeadline plateUseReason" aria-invalid="false">
+    </label>
+
+    <div class="plate-sheet-kit">
+      <span id="plateSheetBar" class="plate-sheet-kit__item"></span>
+      <span id="plateSheetPlates" class="plate-sheet-kit__item"></span>
+    </div>
+
+    <div id="plateSheetResult" class="plate-sheet-result" role="status" aria-live="polite">
+      <div id="plateSheetHeadline" class="plate-sheet-headline"></div>
+      <p id="plateSheetShortfall" class="plate-sheet-note is-warn" hidden></p>
+      <p id="plateSheetBelowBar" class="plate-sheet-note is-warn" hidden></p>
+      <p id="plateSheetLimited" class="plate-sheet-note is-warn" hidden></p>
+      <div class="plate-sheet-group" id="plateSheetPerSideGroup" hidden>
+        <p class="set-sheet-lbl">Per side</p>
+        <div class="plate-sheet-chips" id="plateSheetPerSide"></div>
+      </div>
+      <div class="plate-sheet-group" id="plateSheetPairsGroup" hidden>
+        <p class="set-sheet-lbl">From the rack · both sides</p>
+        <div class="plate-sheet-chips" id="plateSheetPairs"></div>
+      </div>
+    </div>
+
+    <button type="button" id="plateUseWeight" class="plate-sheet-use" data-action="plate-use-weight" aria-describedby="plateUseReason">Use this weight</button>
+    <p id="plateUseReason" class="plate-sheet-reason" aria-live="polite"></p>
   </div>
 
   <!-- Quick-start sheet — opened from Train; start another workout, run, walk or fast. -->

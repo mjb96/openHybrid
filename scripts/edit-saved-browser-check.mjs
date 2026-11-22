@@ -121,6 +121,7 @@ try {
   const detail = await page.locator('#activitiesScreen .activity-detail-shell').innerText();
   ok(/105/.test(detail) && /4/.test(detail), 'the open recap shows the corrected set');
   ok(/Back Squat/.test(detail) && /140/.test(detail), 'the open recap shows the added exercise');
+  ok(/Corrected after review/.test(detail), 'the saved workout note is shown in the History detail');
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 } finally {

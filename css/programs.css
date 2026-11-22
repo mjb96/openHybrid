@@ -8,6 +8,7 @@
 .prog-search-bar {
   position: relative;
   z-index: 2;
+  margin-bottom: 8px;
 }
 
 .prog-search-input-wrap {
@@ -40,7 +41,8 @@
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 500;
-  padding: 13px 0;
+  line-height: 1.3;
+  padding: 10px 0;
   letter-spacing: -0.01em;
 }
 
@@ -136,6 +138,10 @@
   background: #0d0f1a;
   transition: border-color 0.2s, transform 0.15s;
 }
+
+/* The active card is the plan surface; the utility row beneath it is quiet, so
+   this gap stays compact (12px, matching the plan hero in the mock). */
+#activeProgBanner { margin-bottom: 12px; }
 
 /* The card holds two targets (open the plan / act on the session), so the press
    response belongs to the row being pressed, not to the whole card. */
@@ -440,6 +446,13 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 
 .collection-row {}
 
+/* The first rail is the recommendation section. With the compact three-up tile
+   grid its header, basis and bottom gaps can use normal spacing and still keep
+   All programs above the 620px target; the cards carry their own padding. */
+#progLibraryContent > .collection-row:first-child { margin-bottom: 12px; }
+#progLibraryContent > .collection-row:first-child .collection-header { margin-bottom: 4px; }
+#progLibraryContent > .collection-row:first-child .prog-basis { margin-bottom: 4px; }
+
 .collection-header {
   display: flex;
   align-items: flex-start;
@@ -555,6 +568,81 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 .prog-card--small .prog-card-diff {
   font-size: 0.5rem;
   letter-spacing: 2px;
+}
+
+/* Three-up recommendation tiles. At 390 the row is 358px wide, so each tile is
+   (358 - 2×8) / 3 ≈ 114px; at 320 it is ≈90px. Columns are minmax(0, 1fr) with
+   no min-width, which is what keeps the third tile inside the viewport. */
+.prog-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.prog-card--tile {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+}
+.prog-card--tile .prog-card-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+}
+.prog-card--tile .prog-card-info {
+  flex: 1 1 auto;
+  padding: 7px 8px 8px;
+  background: #0d1020;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.prog-card--tile .prog-card-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #f1f5f9;
+  letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.prog-card--tile .prog-card-reason {
+  font-size: 0.56rem;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--color-cyan, #22d3ee);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.prog-card--tile .prog-card-glyph {
+  left: 6px;
+  right: auto;
+  bottom: 6px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,0.94);
+}
+.prog-card--tile .prog-card-glyph__svg { width: 44px; height: 44px; }
+.prog-card--tile .prog-card-bookmark {
+  top: 4px;
+  right: 4px;
+  width: var(--touch-target, 44px);
+  height: var(--touch-target, 44px);
+}
+/* At 320px a tile is ~90px wide; two 44px targets only fit if they sit flush to
+   opposite corners. At 390px the normal 4–6px insets have 26px of clearance. */
+@media (max-width: 340px) {
+  .prog-card--tile .prog-card-glyph { left: 0; bottom: 0; }
+  .prog-card--tile .prog-card-bookmark { top: 0; right: 0; }
 }
 
 /* What the recommendations were actually built on. An upgrading athlete never
@@ -1649,12 +1737,23 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 
 .sample-exercise-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   padding: 7px 0;
   border-bottom: 1px solid var(--border-subtle);
 }
 .sample-exercise-row:last-of-type { border-bottom: none; }
+
+.sample-ex-note {
+  flex: 1 0 100%;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 
 .sample-ex-name {
   font-size: 0.75rem;
@@ -1853,6 +1952,17 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   padding-right: 8px;
   overflow-wrap: anywhere;   /* a long unbroken name wraps rather than overflowing */
 }
+
+.wpm-ex-note {
+  grid-column: 1 / -1;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  line-height: 1.4;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.wpm-exercise-item .wpm-ex-note { flex: 1 0 100%; }
 
 .wpm-ex-val {
   font-size: 0.75rem;
@@ -2271,16 +2381,21 @@ html[data-theme="light"] .prog-card {
   box-shadow: 0 2px 8px rgba(0,0,0,0.07) !important;
 }
 html[data-theme="light"] .prog-card--small .prog-card-info,
-html[data-theme="light"] .prog-card--large .prog-card-info {
+html[data-theme="light"] .prog-card--large .prog-card-info,
+html[data-theme="light"] .prog-card--tile .prog-card-info {
   background: #ffffff !important;
 }
 html[data-theme="light"] .prog-card--small .prog-card-name,
-html[data-theme="light"] .prog-card--large .prog-card-name {
+html[data-theme="light"] .prog-card--large .prog-card-name,
+html[data-theme="light"] .prog-card--tile .prog-card-name {
   color: #0f172a !important;
 }
 html[data-theme="light"] .prog-card--small .prog-card-meta,
 html[data-theme="light"] .prog-card--large .prog-card-meta {
   color: rgba(0,0,0,0.40) !important;
+}
+html[data-theme="light"] .prog-card--tile .prog-card-reason {
+  color: #0e7490;
 }
 html[data-theme="light"] .prog-card--active {
   border-color: rgba(99,102,241,0.35) !important;
@@ -2505,15 +2620,41 @@ html[data-theme="light"] .create-cta-inner {
 .program-editor__list-heading small { color: var(--text-muted); font-size: .68rem; }
 .program-editor__add { min-height: 44px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--accent-blue) 38%, transparent); border-radius: 10px; background: color-mix(in srgb, var(--accent-blue) 10%, transparent); color: var(--accent-blue); font-size: .72rem; font-weight: 800; }
 .program-editor__exercise-list { display: grid; gap: 8px; }
-.program-editor__exercise-row { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px; gap: 7px; align-items: stretch; min-height: 91px; }
+.program-editor__exercise-row { display: grid; grid-template-columns: 44px minmax(0,1fr) 44px 44px; gap: 7px; align-items: stretch; min-height: 91px; }
 .program-editor__order-controls { display: grid; grid-template-rows: 44px 44px; gap: 3px; }
 .program-editor__order-controls button,
+.program-editor__exercise-settings,
 .program-editor__remove { border: 1px solid var(--border-light); border-radius: 8px; background: var(--bg-input); color: var(--text-secondary); font-weight: 800; }
 .program-editor__order-controls button:disabled { opacity: .28; }
+.program-editor__exercise-settings { color: var(--accent-cyan); font-size: 1rem; }
 .program-editor__remove { color: var(--color-red); font-size: 1.2rem; }
 .program-editor__exercise-name { display: grid; justify-items: start; align-content: center; gap: 3px; min-width: 0; padding: 9px 12px; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-input); color: var(--text-primary); text-align: left; }
 .program-editor__exercise-name strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .79rem; }
 .program-editor__exercise-name span { color: var(--text-muted); font-size: .63rem; }
+.program-editor__exercise-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0 2px;
+  color: var(--text-secondary);
+  font-size: .68rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.program-editor__exercise-link {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 44px;
+  color: var(--accent-blue);
+  font-size: .7rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.program-editor__exercise-link::before { content: '↗'; }
+html[data-theme="light"] .program-editor__exercise-link { color: #0e7490; }
 .program-editor__empty { width: 100%; min-height: 92px; display: grid; place-items: center; align-content: center; gap: 4px; border: 1px dashed color-mix(in srgb, var(--accent-blue) 45%, var(--border-light)); border-radius: 12px; background: color-mix(in srgb, var(--accent-blue) 5%, transparent); color: var(--text-primary); }
 .program-editor__empty span { color: var(--text-muted); font-size: .72rem; }
 .program-editor__copy-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 9px; align-items: end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-light); }
@@ -3313,39 +3454,47 @@ html[data-theme="light"] .hero-badge {
 ============================================================================= */
 #progLibraryTabs {
   display: flex;
-  gap: 4px;
-  padding: 0 16px 12px;
-  border-bottom: 1px solid var(--border-default);
-  margin-bottom: 4px;
+  align-items: stretch;
+  gap: 22px;
+  /* The screen already sits inside .view-container's horizontal padding; a
+     second 16px here indented the tabs from everything above and below. */
+  padding: 0;
+  min-height: var(--touch-target, 44px);
+  border-bottom: 1px solid var(--border-subtle);
+  margin: 0 0 4px;
 }
 
+/* Inline tab text with a 2px underline, not a segmented card: the active tab is
+   the only one that reads as selected, and the row borrows the screen's width. */
 .lib-tab {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: var(--touch-target, 44px);
-  padding: 9px 12px;
-  border-radius: 10px;
+  padding: 0 1px 10px;
   border: none;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  letter-spacing: 0.01em;
-  display: flex;
+  letter-spacing: 0.005em;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: color 0.15s, box-shadow 0.15s;
 }
 
 .lib-tab.active {
-  background: rgba(37,99,235,0.15);
-  color: var(--accent-purple, var(--color-violet));
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--color-cyan);
 }
 
 .lib-tab-count {
-  background: var(--accent-purple, var(--color-violet));
-  color: #fff;
+  background: rgba(148,163,184,0.14);
+  color: var(--text-muted);
   font-size: 0.68rem;
   font-weight: 700;
   padding: 1px 6px;
@@ -3354,7 +3503,7 @@ html[data-theme="light"] .hero-badge {
   text-align: center;
 }
 
-html[data-theme="light"] .lib-tab.active { background: rgba(37,99,235,0.08); color: #1d4ed8; }
+html[data-theme="light"] .lib-tab.active { background: transparent; color: var(--text-primary); }
 
 /* =============================================================================
    LIBRARY EMPTY STATES (Saved / Completed)
@@ -3405,6 +3554,273 @@ html[data-theme="light"] .lib-tab.active { background: rgba(37,99,235,0.08); col
   transition: opacity 0.15s;
 }
 .lib-empty-cta:active { opacity: 0.8; }
+
+/* =============================================================================
+   ROUTINE CARDS (My Plans)
+   A routine is a saved SESSION, not a programme: the card starts a one-off
+   session and never offers activation. Tokens flip for the light theme.
+============================================================================= */
+.routine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.routine-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-xs);
+}
+
+.routine-card__main {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.routine-card__name {
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.routine-card__meta {
+  margin-top: 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* A note EXISTS; the text does not belong on a compact library card. */
+.routine-card__note-flag {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--accent-purple) 42%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-purple) 13%, transparent);
+  color: var(--accent-purple);
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.5;
+}
+/* The light card needs a darker violet (~9:1) than the dark-theme accent. */
+html[data-theme="light"] .routine-card__note-flag {
+  border-color: rgba(91, 33, 182, 0.4);
+  background: rgba(91, 33, 182, 0.09);
+  color: #5b21b6;
+}
+
+.routine-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.routine-card__start {
+  min-height: var(--touch-target, 44px);
+  padding: 0 18px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: var(--accent-blue);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease;
+}
+
+.routine-card__start:active { transform: scale(0.97); filter: brightness(1.06); }
+
+.routine-card__menu {
+  width: var(--touch-target, 44px);
+  height: var(--touch-target, 44px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--overlay-sm);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.routine-card__menu:active { background: var(--overlay-md); }
+
+.routine-card__start:focus-visible,
+.routine-card__menu:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+html[data-theme="light"] .routine-card {
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+html[data-theme="light"] .routine-card__start {
+  background: #2563eb;
+}
+
+/* =============================================================================
+   ROUTINE FOLDERS (My Plans)
+   Folders are organisation only; their headers stay quiet so routine cards and
+   Start remain the primary content. Tokens flip for the light theme.
+============================================================================= */
+.routine-library-head {
+  gap: 10px;
+}
+
+.routine-library-head__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.routine-folder-create {
+  flex-shrink: 0;
+  min-height: var(--touch-target, 44px);
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--overlay-sm);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.routine-folder-create:active { background: var(--overlay-md); }
+
+.routine-folder-create:focus-visible,
+.routine-folder__menu:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+.routine-folder {
+  margin-bottom: 14px;
+}
+
+.routine-folder__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px 4px;
+}
+
+.routine-folder__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.routine-folder__name {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+
+.routine-folder__count {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.routine-folder__menu {
+  width: var(--touch-target, 44px);
+  height: var(--touch-target, 44px);
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.routine-folder__menu:active { background: var(--overlay-sm); }
+
+.routine-folder__empty {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-default);
+  border-radius: 12px;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.routine-folder--unfiled {
+  margin-top: 4px;
+}
+
+.routine-folder--unfiled .routine-folder__name {
+  color: var(--text-muted);
+}
+
+/* Move-to-folder sheet (mirrors the program workout picker). */
+.routine-folder-sheet {
+  max-height: min(70vh, 560px);
+  max-height: min(70dvh, 560px);
+}
+
+.routine-folder-sheet__sub {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.routine-folder-sheet__list {
+  display: grid;
+  gap: 8px;
+  padding: 4px 0;
+  overflow-y: auto;
+}
+
+/* The header's long sub copy squeezes a flex child; keep the 44px close target. */
+.routine-folder-sheet .sheet-close-btn {
+  flex-shrink: 0;
+}
+
+.routine-folder-choice.is-current {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.08);
+}
+
+html[data-theme="light"] .routine-folder-choice.is-current {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: rgba(37, 99, 235, 0.07);
+}
+
 
 /* =============================================================================
    PROGRAM CARD — Bookmark button
@@ -3756,33 +4172,36 @@ html[data-theme="light"] .prog-phase { background: rgba(0,0,0,0.02); }
   line-height: 1.5;
 }
 
-/* Simplified Plans landing */
-.plans-actions {
-  display: flex; gap: 8px; margin: 2px 0 12px;
+/* Simplified Plans landing — plan utilities are inline text, not buttons:
+   the active plan's own action is the only primary on this screen. */
+.plans-utility {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 0 0 4px;
 }
-.plans-action-btn {
-  flex: 1 1 0; min-height: 44px; padding: 0 12px;
-  border: 1px solid var(--border-default); border-radius: 11px;
-  background: var(--overlay-sm, rgba(255,255,255,.04));
-  color: var(--text-secondary); font: inherit; font-size: .72rem; font-weight: 750;
+.plans-utility-btn {
+  flex: 0 0 auto;
+  min-height: var(--touch-target, 44px);
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: .74rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
-.plans-action-btn:first-child {
-  border-color: transparent;
-  background: var(--brand-gradient, var(--color-blue));
-  color: #04121a;
+.plans-utility-btn--accent {
+  color: var(--color-cyan);
 }
 .lib-empty-cta + .lib-empty-cta { margin-top: 8px; }
 
-/* Plans selection follows the icon palette, not leftover purple chrome. */
-.lib-tab.active {
-  background: color-mix(in srgb, var(--brand-cobalt, #22d3ee) 14%, transparent);
-  color: var(--brand-ice, var(--color-cyan));
-}
-.lib-tab-count {
-  background: var(--brand-gradient, var(--color-blue));
-  color: #04121a;
-}
 html[data-theme="dark"] .active-prog-continue-btn:not(.active-prog-continue-btn--quiet) {
   border-color: transparent;
   background: var(--brand-gradient);

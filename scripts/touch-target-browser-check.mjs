@@ -70,6 +70,9 @@ const fixture = {
   settings: {
     name: 'A11y', theme: 'dark', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon',
     onboardingComplete: true, fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentTier: 'gym',
+    // The private reference link is a real anchor on the card; give the walk one
+    // so its 44px target is measured instead of only constructed.
+    exercisePrefs: { 'id:barbell_bench_press': { link: 'https://www.youtube.com/watch?v=a11y' } },
   },
   activations: [{ id: 'act1', programId: 'hybrid_engine', startWeek: 1, status: 'active', startedAt: new Date(CLOCK).toISOString() }],
   weeks: {
@@ -123,6 +126,11 @@ const MEASURE = () => {
   const out = [];
   for (const el of document.querySelectorAll(SEL)) {
     if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
+    // A backdrop is a full-screen dismissal surface, not a labelled control:
+    // it carries `data-action` for the router but no role and no accessible
+    // name. It is exactly as wide and tall as the viewport, so measuring it as
+    // a control can only ever report a missing name.
+    if (el.classList.contains('sheet-backdrop')) continue;
     const view = el.closest('.view-container');
     if (view && !view.classList.contains('active')) continue;
     // Bring it on screen BEFORE probing. elementFromPoint only answers for the
@@ -299,6 +307,39 @@ try {
   await page.waitForTimeout(400);
   await snap('cockpit-expanded');
 
+  // The circuit panel is an in-place editor, not a modal: it renders between
+  // the card header and its body. Its member Remove buttons and candidate rows
+  // are real controls in the densest session surface.
+  {
+    const opened = await page.evaluate(() => {
+      const button = document.querySelector('#cockpitExercisesContainer [data-action="show-ss-panel"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    });
+    if (!opened) fail('superset-panel: no SS button on any cockpit exercise');
+    try {
+      await page.waitForSelector('.ss-link-panel', { timeout: 6000 });
+    } catch {
+      fail('superset-panel did not open — the check is not measuring it');
+    }
+    // Form a pair so the panel's member Remove rows are measured too, not just
+    // the candidate buttons.
+    const candidate = page.locator('.ss-link-panel [data-action="link-superset"]:not([disabled])').first();
+    if (await candidate.count()) {
+      await candidate.click();
+      await page.waitForSelector('.superset-group', { timeout: 6000 });
+      await page.waitForTimeout(250);
+      await page.evaluate(() => document.querySelector('#cockpitExercisesContainer .superset-group [data-action="show-ss-panel"]')?.click());
+      await page.waitForSelector('.ss-link-panel', { timeout: 6000 });
+    }
+    await page.waitForTimeout(300);
+    await snap('superset-panel');
+    // Clicking elsewhere is the panel's own dismissal path.
+    await page.evaluate(() => document.body.click());
+    await page.waitForTimeout(150);
+  }
+
   // Each modal must actually OPEN before it is measured — a selector that never
   // matches would silently contribute nothing and still let the check pass, so
   // every one of these is asserted rather than best-effort.
@@ -320,6 +361,39 @@ try {
   await openModal('add-exercise', '[data-action="open-add-exercise"]', '#addExerciseModal.active');
   await openModal('exercise-detail', '[data-action="el-info"]', '#exerciseDetailModal.active');
   await openModal('clear-log', '[data-action="open-reset-modal"]', '#confirmResetModal.active');
+
+  // ---- The per-set sheet and its stacked plate calculator -----------------
+  // Both were previously unmeasured: the set sheet is where rest, effort and
+  // the note live, and the calculator is the densest text surface in the
+  // logger. Open from a real set number so every opener is asserted.
+  {
+    const openSetSheet = async () => {
+      await page.evaluate(() => document.querySelector('#cockpitExercisesContainer .cockpit-set-row .set-num-lbl')?.click());
+      try {
+        await page.waitForSelector('#setSheet.active', { timeout: 6000 });
+      } catch {
+        fail('set-sheet did not open from a set number — the check is not measuring it');
+        return false;
+      }
+      await page.waitForTimeout(400);
+      return true;
+    };
+    if (await openSetSheet()) {
+      await snap('set-sheet');
+      await page.evaluate(() => document.querySelector('#setSheet [data-action="set-sheet-plates"]')?.click());
+      try {
+        await page.waitForSelector('#plateSheet.active', { timeout: 6000 });
+        await page.waitForTimeout(400);
+        await snap('plate-sheet');
+      } catch {
+        fail('plate-sheet did not open from the set sheet — the check is not measuring it');
+      }
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(300);
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(300);
+    }
+  }
 
   // ---- The LIVE run --------------------------------------------------------
   // The one surface operated while the athlete is moving, and the only one whose

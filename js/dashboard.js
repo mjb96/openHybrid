@@ -347,7 +347,7 @@ export const TILE_REGISTRY = [
         let gymTSS = 0, runTSS = 0;
         if (weekData) {
           days.forEach(d => {
-            const gRpe = parseInt(weekData.gymRpe?.[d], 10) || 0;
+            const gRpe = parseFloat(weekData.gymRpe?.[d]) || 0;
             const gymMins = parseStrengthDurationMinutes(weekData.gymStats?.[d]?.time);
             const dayLifts = weekData.lifts?.[d] || {};
             let completedSets = 0;
@@ -358,7 +358,7 @@ export const TILE_REGISTRY = [
             else if (completedSets > 0) gymTSS += completedSets * (gRpe > 0 ? gRpe : 6) * 4;
             runSessionsForDay(weekData, d).forEach(run => {
               const rDist = parseFloat(run.dist) || 0;
-              const rRpe = parseInt(run.rpe, 10) || 0;
+              const rRpe = parseFloat(run.rpe) || 0;
               const rMins = parseTimeToMinutes(run.time);
               if (rMins > 0 && rRpe > 0) runTSS += rMins * rRpe;
               else if (rDist > 0) runTSS += rDist * (rRpe > 0 ? rRpe : 6) * 8;

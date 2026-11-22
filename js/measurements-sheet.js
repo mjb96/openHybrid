@@ -1,10 +1,13 @@
 // =============================================================================
 // MEASUREMENTS SHEET (js/measurements-sheet.js)
 //
-// The tape is a slow signal, so the sheet asks for six optional fields and
-// saves whatever was actually measured. Prefilling a NEW date with last month's
-// numbers would invite saving stale data unknowingly, so the last reading is
-// only a placeholder and an existing date is prefilled exactly.
+// The tape is a slow signal, so the sheet asks for 14 optional sites (six
+// primary fields plus eight bilateral fields behind a disclosure) and an
+// entered body-fat reading, then saves whatever was actually measured.
+// Prefilling a NEW date with last month's numbers would invite saving stale data
+// unknowingly, so the last reading is only a placeholder and an existing date is
+// prefilled exactly. Pre-14-site single Arm/Thigh readings have no inputs here;
+// `preserveLegacySites` carries them across an edit instead of dropping them.
 //
 // Storage stays canonical centimetres; the sheet writes display-unit values
 // back through the model, so a cm/in toggle never rewrites stored data.
@@ -15,11 +18,14 @@ import { confirmModal } from './ui/confirm-modal.js';
 import { formatDayMonth, todayKey } from './dates.js';
 import { showToast } from './toast.js';
 import {
-  MEASUREMENT_SITES, buildMeasurementRecord, cmToDisplay, measurementUnit,
-  normalizeMeasurements, roundDisplay,
+  MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, buildMeasurementRecord, cmToDisplay,
+  measurementUnit, normalizeMeasurements, preserveLegacySites, roundDisplay,
 } from './metrics/measurements.js';
 
 let _render = () => {};
+
+/** The eight sites inside the disclosure; used for the auto-open count. */
+const BILATERAL_SITES = MEASUREMENT_SITES.filter((site) => site.key.endsWith('_l') || site.key.endsWith('_r'));
 
 /** @param {() => void} render */
 export function initMeasurementsSheet(render) {
@@ -53,7 +59,6 @@ function inputFor(key) {
 function fillSheet(chosen) {
   const newest = entries();
   const existing = newest.find((entry) => entry.date === chosen);
-  const latest = newest[0];
   const unit = measurementUnit(appState);
 
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('msSheetDate'));
@@ -67,12 +72,42 @@ function fillSheet(chosen) {
     const input = inputFor(site.key);
     if (!input) continue;
     const own = existing?.[site.key];
-    const last = latest?.[site.key];
+    // The last reading ON OR BEFORE the chosen date, never a future one: a
+    // back-dated entry must not be suggested this week's tape.
+    const last = newest.find((entry) => entry.date <= chosen && typeof entry[site.key] === 'number')?.[site.key];
     input.value = typeof own === 'number' ? String(roundDisplay(cmToDisplay(own, unit), unit)) : '';
     input.placeholder = typeof last === 'number'
       ? String(roundDisplay(cmToDisplay(last, unit), unit))
       : unit;
     input.setAttribute('aria-label', `${site.label} (${unit})`);
+  }
+
+  // Stored bilateral values are behind the disclosure; opening it on an edit
+  // makes them visible instead of silently hiding half the record.
+  const details = /** @type {HTMLDetailsElement|null} */ (document.querySelector('#measurementsSheet .ms-sheet-more'));
+  if (details) {
+    const recorded = BILATERAL_SITES.filter((site) => typeof existing?.[site.key] === 'number').length;
+    details.open = recorded > 0;
+    const summary = details.querySelector('summary');
+    if (summary) {
+      summary.textContent = recorded
+        ? `Arms, thighs and calves · ${recorded} recorded`
+        : 'Arms, thighs and calves';
+    }
+  }
+
+  // Body fat is a percentage, so it is neither converted by the cm/in toggle
+  // nor prefilled onto a new date — only the latest reading ON OR BEFORE the
+  // chosen date is a placeholder. A future reading would suggest a measurement
+  // that did not exist yet, and body fat may be measured less often than the
+  // tape, so search the history rather than only `latest`.
+  const bodyFatInput = inputFor('bodyFat');
+  if (bodyFatInput) {
+    const own = existing?.bodyFat;
+    const lastBodyFat = newest.find((entry) => entry.date <= chosen && typeof entry.bodyFat === 'number')?.bodyFat;
+    bodyFatInput.value = typeof own === 'number' ? String(roundDisplay(own)) : '';
+    bodyFatInput.placeholder = typeof lastBodyFat === 'number' ? String(roundDisplay(lastBodyFat)) : '%';
+    bodyFatInput.setAttribute('aria-label', 'Body fat (%)');
   }
 
   renderRecent(newest.filter((entry) => entry.date !== chosen).slice(0, 3), unit);
@@ -91,6 +126,38 @@ export function openMeasurementsSheet(date) {
   sheet.classList.add('active');
   backdrop?.classList.add('active');
   openManagedModal(sheet, { initialFocus: '#msSheet_waist' });
+}
+
+/**
+ * One readable value per measured field: the 14 canonical sites, a preserved
+ * single Arm/Thigh, then body fat. Recent rows and delete confirmations share
+ * this order.
+ * @param {Record<string, any>} entry
+ * @param {'cm'|'in'} unit
+ */
+function entryValues(entry, unit) {
+  /** @type {string[]} */
+  const values = [];
+  for (const site of [...MEASUREMENT_SITES, ...LEGACY_MEASUREMENT_SITES]) {
+    if (typeof entry[site.key] !== 'number') continue;
+    values.push(`${site.label} ${roundDisplay(cmToDisplay(entry[site.key], unit), unit)} ${unit}`);
+  }
+  if (typeof entry.bodyFat === 'number') values.push(`Body fat ${roundDisplay(entry.bodyFat)}%`);
+  return values;
+}
+
+/**
+ * Keep a summary row scannable: four values plus an honest "+N more" instead of
+ * a paragraph of measurements.
+ * @param {Record<string, any>} entry
+ * @param {'cm'|'in'} unit
+ * @param {number} [max]
+ */
+function summariseEntry(entry, unit, max = 4) {
+  const values = entryValues(entry, unit);
+  const shown = values.slice(0, max);
+  if (values.length > max) shown.push(`+${values.length - max} more`);
+  return shown.join(' · ');
 }
 
 /**
@@ -115,14 +182,11 @@ function renderRecent(recent, unit) {
     const when = document.createElement('span');
     when.textContent = formatDayMonth(entry.date);
 
-    const values = MEASUREMENT_SITES
-      .filter((site) => typeof entry[site.key] === 'number')
-      .map((site) => `${site.label} ${roundDisplay(cmToDisplay(entry[site.key], unit), unit)}`)
-      .join(' · ');
+    const summary = summariseEntry(entry, unit);
 
     const right = document.createElement('span');
     const value = document.createElement('strong');
-    value.textContent = `${values} ${unit}`;
+    value.textContent = summary;
 
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -175,12 +239,13 @@ export function saveMeasurementsSheet() {
   /** @type {Record<string, string>} */
   const values = {};
   for (const site of MEASUREMENT_SITES) values[site.key] = inputFor(site.key)?.value ?? '';
+  values.bodyFat = inputFor('bodyFat')?.value ?? '';
   const { record, invalid } = buildMeasurementRecord(date, values, unit);
   if (invalid.length) {
     showToast(`Check ${invalid.join(', ')} — that reading is outside a plausible range.`, true);
     return;
   }
-  const measured = MEASUREMENT_SITES.some((site) => record[site.key] != null);
+  const measured = record.bodyFat != null || MEASUREMENT_SITES.some((site) => record[site.key] != null);
   if (!measured) {
     showToast('Enter at least one measurement');
     return;
@@ -189,7 +254,9 @@ export function saveMeasurementsSheet() {
   const index = appState.bodyMeasurements.findIndex((entry) => entry?.date === date);
   if (index >= 0) {
     // Replace rather than merge: clearing a field is a correction, not a reason
-    // to keep the old number.
+    // to keep the old number. The exception is a pre-14-site Arm/Thigh reading:
+    // the sheet has no input for it, so carry it across explicitly.
+    preserveLegacySites(record, appState.bodyMeasurements[index]);
     appState.bodyMeasurements[index] = record;
   } else {
     appState.bodyMeasurements.push(record);
@@ -204,10 +271,7 @@ export async function deleteMeasurementEntry(date) {
   const entry = entries().find((row) => row.date === date);
   if (!entry) return;
   const unit = measurementUnit(appState);
-  const summary = MEASUREMENT_SITES
-    .filter((site) => typeof entry[site.key] === 'number')
-    .map((site) => `${site.label} ${roundDisplay(cmToDisplay(entry[site.key], unit), unit)} ${unit}`)
-    .join(' · ');
+  const summary = summariseEntry(entry, unit);
   const confirmed = await confirmModal({
     title: 'Delete measurements?',
     message: `${date}${summary ? ` · ${summary}` : ''}`,

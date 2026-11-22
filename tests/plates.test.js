@@ -4,7 +4,10 @@
 // ==========================================
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computePlateBreakdown, formatPlates, plateHint } from '../js/workout/plates.js';
+import {
+  KG_PLATES, LB_PLATES, computePlateBreakdown, formatPlates, nearestBuildableTotal,
+  plateHint, platePairs, plateShortfallTotal,
+} from '../js/workout/plates.js';
 import { applyPlateHint } from '../js/workout/plate-hint-dom.js';
 import { buildExerciseCard } from '../js/templates.js';
 
@@ -62,6 +65,98 @@ test('owned plate counts limit the breakdown instead of inventing plates', () =>
   assert.equal(bd.leftover, 20);
   assert.deepEqual(bd.perSide, [{ plate: 25, count: 1 }]);
   assert.match(plateHint(110, 'kg', { bar: 20, plates: [25, 20], counts: { 25: 1, 20: 0 } }), /20 short/);
+});
+
+test('reports a shortfall for BOTH sides, not just one end', () => {
+  // 110 kg, one 25 and no 20s: per side 45 is capped at 25, so 20 is missing
+  // per side and 40 kg in total. The closest buildable total is 70 (one 25 a
+  // side on the 20 kg bar), not 90 or 110.
+  const bd = computePlateBreakdown(110, 20, [25, 20], { 25: 1, 20: 0 });
+  assert.equal(bd.leftover, 20);
+  assert.equal(plateShortfallTotal(bd), 40);
+  assert.equal(nearestBuildableTotal(110, { bar: 20, plates: [25, 20], counts: { 25: 1, 20: 0 } }), 70);
+});
+
+test('an exact bounded solve beats greedy on a two-size rack', () => {
+  // Greedy took one 25 and declared 15 kg short; 2×20 a side builds 100.
+  const counts = { 25: 2, 20: 2 };
+  const hundred = computePlateBreakdown(100, 20, [25, 20], counts);
+  assert.equal(hundred.exact, true);
+  assert.equal(hundred.leftover, 0);
+  assert.deepEqual(hundred.perSide, [{ plate: 20, count: 2 }]);
+  assert.equal(plateHint(100, 'kg', { bar: 20, plates: [25, 20], counts }), '20 + 20 / side');
+
+  // 150 → 65 a side → 25 + 20 + 20, again not the greedy 25 + 25 + short.
+  const hundredFifty = computePlateBreakdown(150, 20, [25, 20], counts);
+  assert.equal(hundredFifty.exact, true);
+  assert.deepEqual(hundredFifty.perSide, [
+    { plate: 25, count: 1 }, { plate: 20, count: 2 },
+  ]);
+});
+
+test('limited is set when an exhausted or zero-cap size explains the gap', () => {
+  // Unlimited, 2×20 a side builds 100 and is 1 kg from 101. With no 20s owned
+  // the best is 70, so the empty 20 rack — not the plate sizes — is the reason.
+  const bd = computePlateBreakdown(101, 20, [25, 20], { 25: 1, 20: 0 });
+  assert.equal(bd.exact, false);
+  assert.equal(bd.limited, true);
+  assert.equal(plateShortfallTotal(bd), 31);
+  assert.equal(nearestBuildableTotal(101, { bar: 20, plates: [25, 20], counts: { 25: 1, 20: 0 } }), 70);
+});
+
+test('nearest buildable searches BOTH directions and never names an unbuildable total', () => {
+  // 101's closest is 100, one kg down.
+  assert.equal(nearestBuildableTotal(101, { bar: 20, plates: KG_PLATES }), 100);
+  // 21.5 is 0.5 above 20 but 1.0 below 22.5; the upward build is closer.
+  assert.equal(nearestBuildableTotal(21.5, { bar: 20, plates: KG_PLATES }), 22.5);
+  // 48 lb is 3 lb above 45 and 2 lb below 50.
+  assert.equal(nearestBuildableTotal(48, { bar: 45, plates: LB_PLATES }), 50);
+
+  // Exact and below-bar targets have no "nearest" to offer.
+  assert.equal(nearestBuildableTotal(100, { bar: 20, plates: KG_PLATES }), null);
+  assert.equal(nearestBuildableTotal(15, { bar: 20, plates: KG_PLATES }), null);
+  assert.equal(nearestBuildableTotal('nonsense', { bar: 20, plates: KG_PLATES }), null);
+
+  // Whatever it names must be a real exact solve at or above the bar.
+  for (const target of [21, 21.5, 48, 101, 137]) {
+    const setup = { bar: 20, plates: KG_PLATES };
+    const nearest = nearestBuildableTotal(target, setup);
+    assert.ok(nearest == null || nearest >= 20);
+    if (nearest != null) {
+      assert.equal(computePlateBreakdown(nearest, 20, KG_PLATES).exact, true,
+        `${target} named ${nearest}, which is not buildable`);
+    }
+  }
+});
+
+test('pairs count every plate on both ends of the bar', () => {
+  assert.deepEqual(platePairs(computePlateBreakdown(62.5, 20)), [
+    { plate: 20, count: 2 }, { plate: 1.25, count: 2 },
+  ]);
+  assert.deepEqual(platePairs(computePlateBreakdown(100, 20)), [
+    { plate: 25, count: 2 }, { plate: 15, count: 2 },
+  ]);
+  assert.deepEqual(platePairs(computePlateBreakdown(20, 20)), []);
+  assert.deepEqual(platePairs(null), []);
+});
+
+test('a below-bar load has no shortfall and no nearest total', () => {
+  const bd = computePlateBreakdown(15, 20);
+  assert.equal(bd.belowBar, true);
+  assert.equal(plateShortfallTotal(bd), 0);
+  assert.equal(nearestBuildableTotal(15, { bar: 20, plates: KG_PLATES }), null);
+  assert.deepEqual(platePairs(bd), []);
+});
+
+test('lb targets use the lb bar and plates', () => {
+  const exact = computePlateBreakdown(135, 45, LB_PLATES);
+  assert.deepEqual(exact.perSide, [{ plate: 45, count: 1 }]);
+  assert.deepEqual(platePairs(exact), [{ plate: 45, count: 2 }]);
+  assert.equal(plateShortfallTotal(exact), 0);
+
+  const short = computePlateBreakdown(137, 45, LB_PLATES); // 46 per side
+  assert.equal(plateShortfallTotal(short), 2);
+  assert.equal(nearestBuildableTotal(137, { bar: 45, plates: LB_PLATES }), 135);
 });
 
 test('blank or absent counts keep the historical unlimited behaviour', () => {

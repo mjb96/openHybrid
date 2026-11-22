@@ -20,6 +20,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { enterCockpit } from './cockpit-entry.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const required = process.argv.includes('--required');
@@ -48,24 +49,6 @@ const fixture = (theme) => ({
   settings: { name: 'Rest', theme, weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon', onboardingComplete: true },
   weeks: {},
 });
-
-/** Enter the cockpit deterministically. The landing's primary CTA is a
- *  wellness check-in on a rest day, so pick a training day from the week rail
- *  first — a browser check must not depend on which weekday it runs. */
-async function enterCockpit(page) {
-  await page.click('.nav-item[data-target="workout"]');
-  await page.waitForSelector('#trainLanding .tl-today__primary');
-  if (await page.locator('#trainLanding [data-action="select-program-workout"][data-day="thu"]').count()) {
-    await page.click('#trainLanding [data-action="select-program-workout"][data-day="thu"]');
-    await page.waitForTimeout(400);
-  }
-  if (!(await page.locator('#trainCockpit:not([hidden])').count())) {
-    await page.click('#trainLanding .tl-today__primary');
-  }
-  await page.waitForSelector('#trainCockpit:not([hidden])');
-  await page.click('#cockpitDaySelectorBar .day-pill[data-day="thu"]');
-  await page.waitForSelector('#cockpitExercisesContainer .cockpit-exercise');
-}
 
 /** Log the open card's set at `index`, which is what starts a rest period. */
 const logSet = (page, index) => page.evaluate((i) => {
@@ -286,6 +269,67 @@ try {
     if (!(drop.weight > 0)) fail(`${tag}: the seeded drop row has no weight`);
     if (!(drop.weight < 60)) fail(`${tag}: the seeded drop row (${drop.weight}) is not lighter than the source set`);
     if (drop.pill !== 'D' || drop.label !== 'D') fail(`${tag}: the seeded row is not marked as a drop set (${JSON.stringify(drop)})`);
+
+    // ---- a drop row never starts a rest / advances a round -----------------
+    // Global rule (not just circuits): a drop is part of the set just done.
+    const dropRow = loggedCard.locator('.cockpit-set-row.type-dropset');
+    await dropRow.locator('.gym-check').click();
+    await page.waitForTimeout(350);
+    let dropState = await readTimer(page);
+    if (dropState.active) fail(`${tag}: ticking a drop row started a rest`);
+
+    // Untick so the circuit round test can use the same row from a clean state.
+    await dropRow.locator('.gym-check').click();
+    await page.waitForTimeout(200);
+
+    const pair = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.cockpit-exercise')];
+      const first = cards.find((card) => card.classList.contains('has-logged-work'));
+      const second = cards.find((card) => card !== first && card.getAttribute('data-liftname'));
+      return {
+        first: first?.getAttribute('data-liftname') || '',
+        second: second?.getAttribute('data-liftname') || '',
+      };
+    });
+    if (!pair.first || !pair.second) {
+      fail(`${tag}: could not find two exercises to form a circuit`);
+    } else {
+      await page.evaluate((name) => {
+        const card = [...document.querySelectorAll('.cockpit-exercise')]
+          .find((candidate) => candidate.getAttribute('data-liftname') === name);
+        card?.querySelector('[data-action="show-ss-panel"]')?.click();
+      }, pair.first);
+      await page.waitForSelector('.ss-link-panel');
+      const joined = await page.evaluate((partner) => {
+        const button = [...document.querySelectorAll('.ss-link-panel [data-action="link-superset"]')]
+          .find((candidate) => candidate.getAttribute('data-partner') === partner);
+        if (!button) return false;
+        button.click();
+        return true;
+      }, pair.second);
+      if (!joined) fail(`${tag}: the circuit panel did not offer the partner`);
+      await page.waitForSelector('.superset-group');
+      await page.waitForTimeout(250);
+
+      const progressBefore = await page.evaluate(() => document.querySelector('.superset-group-progress')?.textContent?.trim() || '');
+      await page.evaluate((name) => {
+        const card = [...document.querySelectorAll('.cockpit-exercise')]
+          .find((candidate) => candidate.getAttribute('data-liftname') === name);
+        card?.querySelector('.cockpit-set-row.type-dropset .gym-check')?.click();
+      }, pair.first);
+      await page.waitForTimeout(400);
+      const circuitDrop = await page.evaluate(() => ({
+        active: !!document.getElementById('cockpitTimerBar')?.classList.contains('active'),
+        complete: !!document.querySelector('.superset-group')?.classList.contains('is-complete'),
+        progress: document.querySelector('.superset-group-progress')?.textContent?.trim() || '',
+      }));
+      console.log(`${tag} drop-in-circuit:`, JSON.stringify({ progressBefore, ...circuitDrop }));
+      if (circuitDrop.active) fail(`${tag}: ticking a drop row in a circuit started a rest`);
+      if (circuitDrop.complete) fail(`${tag}: a drop row marked the circuit complete`);
+      if (circuitDrop.progress !== progressBefore) {
+        fail(`${tag}: a drop row advanced the circuit round (${progressBefore} -> ${circuitDrop.progress})`);
+      }
+    }
 
     if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
       fail(`${tag}: page-level horizontal overflow`);

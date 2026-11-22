@@ -23,9 +23,11 @@ import {
   setSetLoadMode, setSetMode, setSetRest, setSetType, toggleSetFailure,
 } from './set-mutations.js';
 import { effectiveSetMode } from './set-shape.js';
+import { effortForSet, normalizeEffortRir } from './effort.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
 import { getSelectedDay, getState } from './context.js';
+import { openPlateSheet } from './plate-sheet.js';
 
 /** The set the sheet is currently editing, so a redraw can refresh in place. */
 let _open = /** @type {{ liftName: string, setIndex: number } | null} */ (null);
@@ -59,7 +61,9 @@ function previousLabel(liftName, setIndex) {
 
 function markActive(container, attribute, value) {
   container?.querySelectorAll('button').forEach((button) => {
-    button.classList.toggle('is-active', button.getAttribute(attribute) === value);
+    const active = button.getAttribute(attribute) === value;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
 }
 
@@ -98,8 +102,11 @@ function render(liftName, setIndex) {
   markActive(document.getElementById('setSheetLoad'), 'data-mode', resolvedLoadMode(set, liftName));
   markActive(document.getElementById('setSheetBasis'), 'data-basis', basis || '');
   markActive(document.getElementById('setSheetRest'), 'data-rest', set.restSec == null ? '-1' : String(Number(set.restSec)));
-  const rir = set.rir != null ? Number(set.rir) : (set.rpe != null ? 10 - Number(set.rpe) : null);
-  markActive(document.getElementById('setSheetRir'), 'data-rir', rir == null ? '' : String(rir));
+  const effort = effortForSet(set);
+  // Only a recorded rating lights a cell. A `''` RIR stays unselected instead
+  // of coercing to 0, and an inferred failure keeps its own Failure button.
+  const shownRir = effort.rated ? normalizeEffortRir(effort.rir) : null;
+  markActive(document.getElementById('setSheetRir'), 'data-rir', shownRir == null ? '' : String(shownRir));
 
   const loadWrap = document.getElementById('setSheetLoadWrap');
   if (loadWrap) loadWrap.toggleAttribute('hidden', !bodyweightCapable);
@@ -165,6 +172,12 @@ export async function handleSetSheetAction(target, action, liftName, sIdx) {
   const index = Number.isFinite(sIdx) ? sIdx : _open.setIndex;
 
   if (action === 'close-set-sheet') { closeSetSheet(); return; }
+  if (action === 'set-sheet-plates') {
+    // The set sheet stays open underneath, so Escape on the calculator comes
+    // back here; the callback closes it only after a real weight was applied.
+    openPlateSheet(name, index, { onApplied: closeSetSheet });
+    return;
+  }
   if (action === 'set-sheet-type') {
     setSetType(name, index, /** @type {any} */ (target.getAttribute('data-type') || ''));
     refreshSetSheet();
@@ -197,7 +210,7 @@ export async function handleSetSheetAction(target, action, liftName, sIdx) {
     return;
   }
   if (action === 'set-sheet-rir') {
-    setPerSetRir(name, index, Number(target.getAttribute('data-rir')));
+    setPerSetRir(name, index, target.getAttribute('data-rir'));
     refreshSetSheet();
     return;
   }

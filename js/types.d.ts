@@ -59,6 +59,66 @@ export interface ProgramLibrary {
   activeFilters: Record<string, any>;
 }
 
+/**
+ * One exercise's prescription inside a routine. Authoritative for sets, reps,
+ * load and rest; the routine day's `lifts` array stays bare strings.
+ */
+export interface RoutinePrescription {
+  sets: number;
+  /** Rep target, or '' when the exercise is prescribed as a hold or carry. */
+  reps: number | '';
+  weight: number | null;
+  restSec: number | null;
+  mode?: 'reps' | 'time' | 'distance';
+  sec?: number;
+  dist?: number;
+  basis?: 'total' | 'each' | 'per-side';
+  loadMode?: 'weighted' | 'bodyweight' | 'assisted' | 'banded';
+  /** Bodyweight identity: the load comes from the athlete, never a stored number. */
+  bw?: boolean;
+  /** Band size for assisted/banded work; the effective weight is derived. */
+  band?: 'L' | 'M' | 'H';
+}
+
+export interface RoutineDay {
+  title: string;
+  badge: string;
+  color: string;
+  desc: string;
+  runs: string;
+  lifts: string[];
+}
+
+/**
+ * A reusable SESSION TEMPLATE. Deliberately not a program: it never enters
+ * `customPrograms`, never resolves through `getProgramById`, and never owns a
+ * week slot.
+ */
+export interface Routine {
+  /** Discriminator: a routine is a session template, never a program. */
+  kind: 'routine';
+  id: string;
+  name: string;
+  /** Optional private prep note (max 500); absent when empty. */
+  note?: string;
+  folderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  source: { activityId: string | null; programId: string | null; day: string; date: string | null };
+  days: Record<string, RoutineDay>;
+  prescriptions: Record<string, Record<string, RoutinePrescription>>;
+  totalWeeks: number;
+  weeklyVolModifiers: Record<string, { sets: number; reps: number; intensityLabel: string }>;
+}
+
+export interface RoutineFolder {
+  id: string;
+  name: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppSettings {
   name?: string;
   weightUnit?: 'kg' | 'lbs';
@@ -69,7 +129,7 @@ export interface AppSettings {
   restAlertSound?: boolean;
   restAlertVolume?: number;
   restOverrides?: Record<string, number>;
-  exercisePrefs?: Record<string, { warmup?: 'inherit' | 'auto' | 'off'; note?: string; mode?: 'reps' | 'time' | 'distance'; loadMode?: 'weighted' | 'bodyweight' | 'assisted' | 'banded'; basis?: 'total' | 'each' | 'per-side' }>;
+  exercisePrefs?: Record<string, { warmup?: 'inherit' | 'auto' | 'off'; note?: string; link?: string; mode?: 'reps' | 'time' | 'distance'; loadMode?: 'weighted' | 'bodyweight' | 'assisted' | 'banded'; basis?: 'total' | 'each' | 'per-side' }>;
   progressionIncrement?: number;
   fitnessGoal?: string;
   weightGoal?: 'cut' | 'maintain' | 'bulk';
@@ -91,9 +151,19 @@ export interface AppState {
   exerciseStats: Record<string, any>;
   customExercises: any[];
   customPrograms: any[];
+  /** Reusable session templates (never programs). Seeded by ensureRoutines. */
+  routines?: Routine[];
+  /** Routine folders; metadata only, routines never leave appState. */
+  libraryFolders?: RoutineFolder[];
   bodyWeightLog: Array<{ weight: number; date?: string }>;
-  /** Canonical centimetres, one record per date; any site may be absent. */
-  bodyMeasurements: Array<{ date: string; waist?: number; chest?: number; hips?: number; arm?: number; thigh?: number; neck?: number }>;
+  /** Canonical centimetres, one record per date; any site and `bodyFat` may be absent. `arm`/`thigh` are pre-14-site readings, preserved but not editable. */
+  bodyMeasurements: Array<{
+    date: string;
+    neck?: number; shoulders?: number; chest?: number; waist?: number; hips?: number; glutes?: number;
+    arm_l?: number; arm_r?: number; forearm_l?: number; forearm_r?: number;
+    thigh_l?: number; thigh_r?: number; calf_l?: number; calf_r?: number;
+    arm?: number; thigh?: number; bodyFat?: number;
+  }>;
   thresholdPaceSeconds: number | null;
   deloadApplied: any;
   _deloadDismissedWeek: string | null;

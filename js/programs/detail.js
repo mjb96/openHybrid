@@ -32,6 +32,7 @@ function jtSpecLabel(ctx, name) {
 import { isBookmarked, toggleBookmark, isProgramCompleted, markProgramCompleted, getProgramById, getPersonalRating, isCustomProgram } from '../state.js';
 import { escapeHtml, safeCssColor } from '../util.js';
 import { evaluateSessionCompletion } from '../workout/completion-policy.js';
+import { getExerciseNote } from '../workout/exercise-config.js';
 
 let _currentProgramId = null;
 let _appState = null;
@@ -364,7 +365,7 @@ function renderFocusBars(metrics) {
   `;
 }
 
-function renderSampleWorkout(program, programData, wod = false) {
+export function renderSampleWorkout(program, programData, wod = false, state = _appState) {
   const days = program.days || programData?.days;
   if (!days) return '';
 
@@ -408,10 +409,12 @@ function renderSampleWorkout(program, programData, wod = false) {
       <div class="sample-exercise-list">
         ${shown.map(name => {
           const t = liftTarget(chosenDay.desc, name, mod1);
+          const note = getExerciseNote(state, name);
           return `
           <div class="sample-exercise-row">
             <span class="sample-ex-name">${escapeHtml(name)}</span>
             <span class="sample-ex-prescription">${t.sets} × ${t.reps}</span>
+            ${note ? `<span class="sample-ex-note">${escapeHtml(note)}</span>` : ''}
           </div>`;
         }).join('')}
         ${extra > 0 ? `<div class="sample-ex-more">+${extra} more exercises</div>` : ''}
@@ -1092,8 +1095,10 @@ function renderFallbackPreview(day, mod, ctx) {
           const jt = jtSpecLabel(ctx, name);
           const t = liftTarget(day.desc, name, mod || {});
           const spec = jt || `${t.sets} × ${t.reps}`;
-          return `<div class="wpm-exercise-item" style="display:flex;justify-content:space-between;gap:10px;">
+          const note = getExerciseNote(_appState, name);
+          return `<div class="wpm-exercise-item" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;">
             <span>${escapeHtml(name)}</span><span style="font-family:ui-monospace,monospace;color:var(--text-secondary);flex-shrink:0;">${escapeHtml(spec)}</span>
+            ${note ? `<span class="wpm-ex-note">${escapeHtml(note)}</span>` : ''}
           </div>`;
         }).join('')}
       </div>
@@ -1148,11 +1153,13 @@ function renderStrengthPreview(day, mod, fallbackExercises) {
       </div>
       ${names.map(name => {
         const t = liftTarget(day?.desc, name, mod || {});
+        const note = getExerciseNote(_appState, name);
         return `
         <div class="wpm-grid-row">
           <span class="wpm-ex-name">${escapeHtml(name)}</span>
           <span class="wpm-ex-val">${t.sets}</span>
           <span class="wpm-ex-val">${t.reps}</span>
+          ${note ? `<span class="wpm-ex-note">${escapeHtml(note)}</span>` : ''}
         </div>`;
       }).join('')}
     </div>

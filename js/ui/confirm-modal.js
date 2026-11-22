@@ -11,6 +11,7 @@ import { closeManagedModal, openManagedModal } from './modal-stack.js';
 // =============================================================================
 
 let _stylesInjected = false;
+let _modalSeq = 0;
 
 function ensureStyles() {
   if (_stylesInjected || typeof document === 'undefined') return;
@@ -51,6 +52,23 @@ function ensureStyles() {
   .cmodal__input:focus { border-color: var(--color-blue,#3b82f6); }
   .cmodal__unit { font-size: .82rem; font-weight: 700; color: var(--text-muted,#94a3b8); }
   @media (prefers-reduced-motion: reduce) { .cmodal-overlay, .cmodal { transition: none !important; transform: none !important; } }`;
+  document.head.appendChild(s);
+}
+
+/** One shared style hook for the multiline prompt's textarea. */
+function ensureTextareaStyle() {
+  if (typeof document === 'undefined' || document.getElementById('cmodalTextareaStyles')) return;
+  const s = document.createElement('style');
+  s.id = 'cmodalTextareaStyles';
+  s.textContent = `.cmodal__textarea {
+    width: 100%; min-height: 120px; max-height: 42vh; resize: vertical;
+    line-height: 1.5; font-weight: 500; white-space: pre-wrap;
+  }
+  .cmodal__counter {
+    display: block; margin-top: 4px; text-align: right;
+    color: var(--text-muted, #94a3b8); font-size: .68rem; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }`;
   document.head.appendChild(s);
 }
 
@@ -177,6 +195,80 @@ export function textPromptModal(opts = {}) {
     });
     overlay.addEventListener('keydown', (e) => {
       if (/** @type {KeyboardEvent} */ (e).key === 'Enter') { e.preventDefault(); submit(); }
+    });
+    openManagedModal(overlay, {
+      initialFocus: '[data-cm="input"]',
+      onRequestClose: () => close(null),
+    });
+    requestAnimationFrame(() => overlay.classList.add('cmodal--in'));
+  });
+}
+
+/**
+ * Multiline variant of `textPromptModal`, for free text that genuinely needs
+ * more than one line (a routine note). Same dialog, focus trap, Escape/backdrop
+ * dismissal and promise contract. Plain Enter inserts a newline; Cmd/Ctrl+Enter
+ * submits. Resolves to the trimmed string ('' clears), or null on cancel.
+ */
+export function multilineTextPromptModal(opts = {}) {
+  const {
+    title = 'Add a note', message = '', label = '', placeholder = '',
+    value = '', maxLength = 500, confirmLabel = 'Save', cancelLabel = 'Cancel',
+  } = opts;
+  if (typeof document === 'undefined') return Promise.resolve(null);
+  ensureStyles();
+  ensureTextareaStyle();
+  const cap = Math.max(1, Number(maxLength) || 500);
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'cmodal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', title);
+    const msgId = message ? `cmodalMsg${++_modalSeq}` : '';
+    overlay.innerHTML = `
+      <div class="cmodal">
+        <div class="cmodal__title">${esc(title)}</div>
+        ${message ? `<div class="cmodal__msg" id="${msgId}">${esc(message)}</div>` : ''}
+        <label class="cmodal__field">
+          ${label ? `<span class="cmodal__label">${esc(label)}</span>` : ''}
+          <textarea class="cmodal__input cmodal__textarea" rows="5" maxlength="${cap}"
+                    data-cm="input" placeholder="${esc(placeholder)}"
+                    ${msgId ? `aria-describedby="${msgId}"` : ''}
+                    aria-label="${esc(label || title)}">${esc(value)}</textarea>
+          <span class="cmodal__counter" data-cm="counter" aria-hidden="true">${String(value).length}/${cap}</span>
+        </label>
+        <div class="cmodal__row">
+          <button class="cmodal__btn cmodal__btn--cancel" data-cm="cancel">${esc(cancelLabel)}</button>
+          <button class="cmodal__btn cmodal__btn--ok" data-cm="ok">${esc(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const input = /** @type {HTMLTextAreaElement} */ (overlay.querySelector('[data-cm="input"]'));
+    const counter = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-cm="counter"]'));
+    const syncCounter = () => {
+      if (counter) counter.textContent = `${String(input?.value ?? '').length}/${cap}`;
+    };
+    input?.addEventListener('input', syncCounter);
+    let done = false;
+    const close = (result) => {
+      if (done) return;
+      done = true;
+      closeManagedModal(overlay);
+      overlay.classList.remove('cmodal--in');
+      setTimeout(() => { overlay.remove(); resolve(result); }, 200);
+    };
+    const submit = () => close(String(input?.value ?? '').trim().slice(0, cap));
+    overlay.addEventListener('click', (e) => {
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (t === overlay) close(null);
+      else if (t.closest('[data-cm="ok"]')) submit();
+      else if (t.closest('[data-cm="cancel"]')) close(null);
+    });
+    overlay.addEventListener('keydown', (e) => {
+      const key = /** @type {KeyboardEvent} */ (e);
+      if (key.key === 'Enter' && (key.metaKey || key.ctrlKey)) { e.preventDefault(); submit(); }
     });
     openManagedModal(overlay, {
       initialFocus: '[data-cm="input"]',

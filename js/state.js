@@ -8,6 +8,7 @@ import { PROGRAMS } from './constants.js';
 import { getCatalogEntry } from './programs/catalog.js';
 import { liftTarget, prescribeSetsForLift, reconcilePrescribedSets, jtRoleStampsForCtx, computeExercisePRs } from './engine.js';
 import { getWeekModifier } from './schema.js';
+import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 export { showToast } from './toast.js';
 import { showToast } from './toast.js';
 import { secureRandomSuffix } from './util/secure-id.js';
@@ -22,8 +23,10 @@ import {
 } from './state/activation-identity.js';
 import { migrateLegacyRunSessions, runSessionsForDay } from './state/run-sessions.js';
 import { isCompletedSet, isValidWorkingSet } from './set-utils.js';
+import { isFailedSet } from './workout/effort.js';
 import { sessionSetPlan, clearSessionSetPlan, clearDaySetPlans } from './workout/set-plan.js';
 import { ensureEquipmentProfiles, projectActiveEquipmentProfile } from './equipment-profiles.js';
+import { ensureRoutines } from './routines/store.js';
 import {
   beginRecoveryGate,
   reconcileRecoveryGate,
@@ -50,6 +53,10 @@ export let appState = {
   exerciseStats: {},
   customExercises: [],
   customPrograms: [],
+  // Reusable session templates and their folders. Deliberately NOT programs:
+  // they never resolve through getProgramById and never own a week slot.
+  routines: [],
+  libraryFolders: [],
   bodyWeightLog: [],
   bodyMeasurements: [],
   thresholdPaceSeconds: null,
@@ -634,13 +641,15 @@ function loadMetricsSignature(state) {
       const runSig = runSessionsForDay(wd, d)
         .map(run => `${run.sessionId || ''}:${run.rpe || ''}/${run.time || ''}`)
         .join(',');
-      // Session RPE can now fall back to the MEAN of per-set RPE/RIR when the
-      // source has no session-level number. The memo must see those set fields,
-      // or editing a set's RIR leaves a stale ATL/CTL cached.
+      // Session RPE can fall back to the MEAN of per-set RPE/RIR when the
+      // source has no session-level number, and an unrated failed set counts as
+      // RPE 10. The memo must see all three fields, or toggling Failure leaves
+      // stale ATL/CTL cached.
       const setRpeSig = Object.values(wd.lifts?.[d] || {})
         .flat()
-        .filter((set) => isValidWorkingSet(set) && (set.rpe != null || set.rir != null))
-        .map(set => `${set.rpe ?? ''}:${set.rir ?? ''}`)
+        .filter((set) => isValidWorkingSet(set)
+          && (set.rpe != null || set.rir != null || isFailedSet(set)))
+        .map(set => `${set.rpe ?? ''}:${set.rir ?? ''}:${isFailedSet(set) ? 1 : 0}`)
         .join(',');
       if (gr || gt || runSig || setRpeSig) {
         parts.push(`${wk}${d}:${gr || ''}/${gt || ''}/${runSig}/${setRpeSig}`);
@@ -649,6 +658,10 @@ function loadMetricsSignature(state) {
   }
   return parts.join('|');
 }
+
+// Exported for the regression test that proves a failure toggle invalidates the
+// memo. Production callers use memoizedLoadMetrics() below.
+export { loadMetricsSignature };
 
 function memoizedLoadMetrics(state) {
   const sig = loadMetricsSignature(state);
@@ -837,7 +850,8 @@ export async function pullEngineDataFromStorage() {
   const baseDefaults = {
     schemaVersion: 0, // 0 = legacy/unstamped; migrateState() upgrades + stamps on load
     currentWeek: '1', activeProgramId: 'hybrid_engine', weekStartedAt: null,
-    weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [], bodyWeightLog: [],
+    weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [],
+    routines: [], libraryFolders: [], bodyWeightLog: [],
     thresholdPaceSeconds: null, deloadApplied: null, _deloadDismissedWeek: null,
     streakData: { current: 0, longest: 0, lastActivityDate: null },
     goalData: { milestones: [], completedCount: 0 },
@@ -847,7 +861,7 @@ export async function pullEngineDataFromStorage() {
     wellnessLog: [],
     fastingSession: { active: false, startTime: null, goal: 16, history: [] },
     programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
-    settings: { name: '', weightUnit: 'kg', distanceUnit: 'km', progressionIncrement: 2.5, defaultBodyWeight: null, autoAdvanceWeek: true, theme: 'dark', onboardingComplete: false, fitnessGoal: 'hybrid', weightGoal: 'maintain', fitnessLevel: 'intermediate', equipmentTier: 'gym', weekStartDay: 'mon', fastingDefault: 16, reminderTime: { hour: 7, minute: 30 }, notifWeeklySummary: false, notifStreak: false, streakAlertTime: { hour: 20, minute: 0 }, notifMissedWorkout: false, notifFastingStage: true, musclePriorities: {}, equipment: { barbell: true, rack: true, dumbbells: true, cables: true, pullupBar: true, bands: false, kettlebells: false, ezBar: false, treadmill: false }, bandWeights: { L: 10, M: 20, H: 30 }, equipmentProfiles: [], activeEquipmentProfileId: null, restPeriods: { warmup: 45, compound: 180, accessory: 120, isolation: 90 }, restTimerEnabled: true, restAlertSound: true, restAlertVolume: 0.4, restOverrides: {}, exercisePrefs: {}, previousValuesScope: 'all', showPlateHints: false, autoWarmupRamp: false, hybridTraining: true, targetWeight: null, rateGoal: null, palette: 'midnight', avatarDataUrl: null },
+    settings: { name: '', weightUnit: 'kg', distanceUnit: 'km', progressionIncrement: 2.5, defaultBodyWeight: null, autoAdvanceWeek: true, theme: 'dark', onboardingComplete: false, fitnessGoal: 'hybrid', weightGoal: 'maintain', fitnessLevel: 'intermediate', equipmentTier: 'gym', weekStartDay: 'mon', fastingDefault: 16, reminderTime: { hour: 7, minute: 30 }, notifWeeklySummary: false, notifStreak: false, streakAlertTime: { hour: 20, minute: 0 }, notifMissedWorkout: false, notifFastingStage: true, musclePriorities: {}, equipment: { barbell: true, rack: true, dumbbells: true, cables: true, pullupBar: true, bands: false, kettlebells: false, ezBar: false, treadmill: false }, bandWeights: { L: 10, M: 20, H: 30 }, equipmentProfiles: [], activeEquipmentProfileId: null, restPeriods: { ...DEFAULT_REST_TIERS }, restTimerEnabled: true, restAlertSound: true, restAlertVolume: 0.4, restOverrides: {}, exercisePrefs: {}, previousValuesScope: 'all', showPlateHints: false, autoWarmupRamp: false, hybridTraining: true, targetWeight: null, rateGoal: null, palette: 'midnight', avatarDataUrl: null },
     profileSections: { order: null, hidden: [] },
     dashboardTiles: { order: null, hidden: null },   // hidden:null = focused default set (R4)
     hybridScore: { history: [], xp: 0, lastRecordedDate: null },
@@ -887,6 +901,9 @@ export async function pullEngineDataFromStorage() {
   if (!appState.weeks) appState.weeks = {};
   if (!appState.customExercises) appState.customExercises = [];
   if (!appState.customPrograms) appState.customPrograms = [];
+  // Routine arrays are additive and independent of the programme; this keeps
+  // imports/backups from an older build readable before the migration stamps.
+  ensureRoutines(appState);
   if (!appState.bodyWeightLog) appState.bodyWeightLog = [];
   if (appState.thresholdPaceSeconds === undefined) appState.thresholdPaceSeconds = null;
   if (appState.deloadApplied === undefined) appState.deloadApplied = null;
@@ -916,8 +933,8 @@ export async function pullEngineDataFromStorage() {
   } catch {}
   if (!appState.settings.avatarDataUrl && appState.settings.avatarDataUrl !== null) appState.settings.avatarDataUrl = null;
   if (!appState.settings.bandWeights) appState.settings.bandWeights = { L: 10, M: 20, H: 30 };
-  if (!appState.settings.restPeriods) appState.settings.restPeriods = { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
-  if (appState.settings.restPeriods.warmup === undefined) appState.settings.restPeriods.warmup = 45;
+  if (!appState.settings.restPeriods) appState.settings.restPeriods = { ...DEFAULT_REST_TIERS };
+  if (appState.settings.restPeriods.warmup === undefined) appState.settings.restPeriods.warmup = DEFAULT_REST_TIERS.warmup;
   if (appState.settings.restAlertSound === undefined) appState.settings.restAlertSound = true;
   if (appState.settings.restAlertVolume === undefined) appState.settings.restAlertVolume = 0.4;
   if (appState.settings.restTimerEnabled === undefined) appState.settings.restTimerEnabled = true;

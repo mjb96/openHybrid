@@ -29,6 +29,29 @@ export function weightUnitOf(state) {
 }
 
 /**
+ * Format a training volume (weight × reps) in the athlete's unit.
+ *
+ * Volume is stored in whatever unit the athlete entered, exactly like a set's
+ * load: openHybrid never converts stored weights, so this LABELS the number
+ * rather than scaling it. A pound athlete's stored 14,050 is 14,050 lb, not
+ * 14,050 kg. Tonnes are metric, so only kg gets the `t` compaction; pounds stay
+ * grouped as pounds.
+ *
+ * One helper because Weekly Review, the Training Report and the Year in Review
+ * quote the same number and must not disagree.
+ *
+ * @param {number|string|null|undefined} volume
+ * @param {string} unit  from weightUnitOf ('kg' | 'lbs')
+ */
+export function formatVolume(volume, unit = 'kg') {
+  const value = Number(volume);
+  if (!Number.isFinite(value) || value <= 0) return unit === 'lbs' ? '0 lb' : '0 kg';
+  if (unit === 'lbs') return `${Math.round(value).toLocaleString('en-AU')} lb`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}t`;
+  return `${Math.round(value)} kg`;
+}
+
+/**
  * Format a weight for display in the athlete's unit.
  * @param {number|string|null|undefined} value
  * @param {string} unit  from weightUnitOf
@@ -48,6 +71,40 @@ export function parsePaceSeconds(distKm, timeStr) {
   else if (parts.length === 3) totalSecs = parts[0] * 3600 + parts[1] * 60 + parts[2];
   if (totalSecs === 0) return 0;
   return totalSecs / parseFloat(distKm);
+}
+
+const THRESHOLD_PACE_MIN_SECONDS = 60;
+const THRESHOLD_PACE_MAX_SECONDS = 3600;
+
+/**
+ * Parse the athlete's threshold pace. Accepts `mm:ss` (the Settings and
+ * analytics fields) and a legacy bare integer of seconds.
+ *
+ * Returns null for empty, malformed or implausible input. `4.30` is a typo for
+ * `4:30`, not four seconds: a dot is never a valid separator, and a pace below
+ * one minute or above one hour is not a running threshold. The caller must
+ * leave the stored value untouched when this returns null.
+ * @param {string|number|null|undefined} val
+ * @returns {number|null} seconds
+ */
+export function parseThresholdPace(val) {
+  const raw = String(val ?? '').trim();
+  if (!raw) return null;
+  let seconds;
+  if (raw.includes(':')) {
+    const match = /^(\d{1,3}):(\d{1,2})$/.exec(raw);
+    if (!match) return null;
+    const minutes = Number(match[1]);
+    const part = Number(match[2]);
+    if (!Number.isFinite(minutes) || !Number.isFinite(part) || part >= 60) return null;
+    seconds = minutes * 60 + part;
+  } else {
+    if (!/^\d+$/.test(raw)) return null;
+    seconds = Number(raw);
+  }
+  if (!Number.isFinite(seconds)) return null;
+  if (seconds < THRESHOLD_PACE_MIN_SECONDS || seconds > THRESHOLD_PACE_MAX_SECONDS) return null;
+  return seconds;
 }
 
 export function formatPace(secsPerKm) {

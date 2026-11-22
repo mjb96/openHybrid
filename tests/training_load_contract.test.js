@@ -67,6 +67,28 @@ test('a day with no RPE anywhere stays zero instead of inventing effort', () => 
   assert.deepEqual(dayTrainingLoad(week, 'mon'), { strength: 0, endurance: 0, total: 0 });
 });
 
+test('an unrated failed set contributes RPE 10 instead of zero', () => {
+  const week = {
+    dates: { mon: '2026-07-10' },
+    lifts: { mon: { Squat: [{ w: '100', r: '5', c: true, failure: true }] } },
+    gymStats: { mon: { time: '60' } },
+    runs: {}, runSessions: {},
+  };
+  // The last rep needed help; that is maximal effort, not missing data.
+  assert.deepEqual(dayTrainingLoad(week, 'mon'), { strength: 600, endurance: 0, total: 600 });
+});
+
+test('a half-step set RIR derives the same half-step RPE for load', () => {
+  const week = {
+    dates: { mon: '2026-07-10' },
+    lifts: { mon: { Squat: [{ w: '100', r: '5', c: true, rir: 1.5 }] } },
+    gymStats: { mon: { time: '60' } },
+    runs: {}, runSessions: {},
+  };
+  // RIR 1.5 -> RPE 8.5; 8.5 × 60 = 510.
+  assert.deepEqual(dayTrainingLoad(week, 'mon'), { strength: 510, endurance: 0, total: 510 });
+});
+
 test('dated rolling load includes archived activations and one-off sessions', () => {
   const state = { weeks: {
     'arch:act_old:3': strengthSession('2026-07-10', 8, 60, {

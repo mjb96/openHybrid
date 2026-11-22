@@ -2,6 +2,7 @@
 // TIMERS: REST TIMER + SESSION DURATION
 // ==========================================
 import { hapticRestDone } from './haptics.js';
+import { DEFAULT_REST_TIERS, recommendedRestFor as recommendedRestForTiers, resolveRestDuration } from './workout/rest-duration.js';
 
 // Session duration timer
 let workoutStartTime = null;
@@ -34,7 +35,7 @@ const REST_TIMER_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 // and fall back to the user's configured default for anything unrecognised.
 // Tier defaults (seconds), tunable from Settings (settings.restPeriods). Pushed
 // in via setRestTiers on boot/change so this leaf module needs no state import.
-let _restTiers = { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
+let _restTiers = { ...DEFAULT_REST_TIERS };
 let _restTimerEnabled = true;
 let _restAlertSound = true;
 let _restAlertVolume = 0.4;
@@ -69,33 +70,11 @@ export function setRestAlertConfig({ sound, volume } = {}) {
 export function setRestOverrides(o) { _restOverrides = (o && typeof o === 'object') ? { ...o } : {}; }
 export function initRestPersistence(cb) { _onOverridesChange = typeof cb === 'function' ? cb : null; }
 
-// Checked isolation-first so "leg extension" / "leg curl" don't fall through to
-// the broad "press"/"row" compound keywords.
-const ISOLATION_KEYWORDS = [
-  'curl', 'raise', 'fly', 'flye', 'extension', 'pushdown', 'push-down', 'kickback',
-  'calf', 'shrug', 'face pull', 'pec deck', 'lateral', 'rear delt', 'reverse fly',
-  'concentration', 'preacher', 'wrist', 'crunch', 'sit-up', 'sit up', 'plank',
-  'pull-apart', 'pull apart', 'cable cross', 'adduction', 'abduction',
-];
-const PRIMARY_KEYWORDS = [
-  'squat', 'deadlift', 'bench', 'overhead press', 'ohp', 'military press',
-  'barbell row', 'pendlay', 'rdl', 'romanian', 'hip thrust', 'good morning',
-  'clean', 'snatch', 'jerk',
-];
-const SECONDARY_KEYWORDS = [
-  'press', 'row', 'pull-up', 'pullup', 'pull up', 'chin', 'dip', 'lunge',
-  'pulldown', 'pull-down', 'pull down', 'thruster', 'split squat', 'step-up',
-  'step up', 'push press', 't-bar',
-];
-
 // Recommended rest (seconds) for a lift by name, or null if unrecognised.
+// The classification itself lives in the pure resolver so the circuit model can
+// compute a group duration without importing this DOM-aware module.
 export function recommendedRestFor(liftName) {
-  if (!liftName || typeof liftName !== 'string') return null;
-  const n = liftName.toLowerCase();
-  if (ISOLATION_KEYWORDS.some(k => n.includes(k))) return _restTiers.isolation;
-  if (PRIMARY_KEYWORDS.some(k => n.includes(k)))   return _restTiers.compound;
-  if (SECONDARY_KEYWORDS.some(k => n.includes(k))) return _restTiers.accessory;
-  return null;
+  return recommendedRestForTiers(liftName, _restTiers);
 }
 
 // ==========================================
@@ -227,56 +206,31 @@ function _startRestCountdown() {
 // liftName: the exercise name string (e.g. "Back Squat")
 // setRpe:   optional numeric RPE of the completed set
 // setType:  optional set type char — 'W' = warmup, 'F' = AMRAP, '' = working set
-export function triggerRestTimerEngine(liftName, setRpe, setType, planRestSec = null, setRestSec = null) {
+// durationOverride: a circuit's governing duration, already resolved across the
+//   group. Undefined keeps the single-set precedence path unchanged.
+export function triggerRestTimerEngine(liftName, setRpe, setType, planRestSec = null, setRestSec = null, durationOverride = null) {
   if (!_restTimerEnabled) return; // auto rest timer turned off in Settings
 
-  let duration;
   _currentLift = liftName || null;
   _currentWorking = (setType !== 'W' && setType !== 'F');
 
-  // 0. A per-set rest is the athlete's explicit choice and outranks the plan,
-  // the remembered per-exercise override and the tier. 0 means no timer.
-  if (setRestSec != null && setRestSec !== '' && Number.isFinite(Number(setRestSec))) {
-    const explicit = Math.round(Number(setRestSec));
-    if (explicit <= 0) {
-      dismissRestTimer();
-      return;
-    }
-    duration = Math.min(600, Math.max(0, explicit));
-  } else if (setType === 'W') {
-    // 1. Warm-up rest is its own configured tier (default 45s). 0 means no
-    // timer for warm-ups, which is a deliberate choice for rushed sessions.
-    if (_restTiers.warmup <= 0) {
-      dismissRestTimer();
-      return;
-    }
-    duration = _restTiers.warmup;
-  } else if (setType === 'F') {
-    // AMRAP sets get a fixed 2-minute rest
-    duration = 120;
-  } else if (Number(planRestSec) > 0) {
-    // An imported/shared plan's own rest is a prescription, not a guess.
-    duration = Math.round(Number(planRestSec));
-  } else if (liftName && _restOverrides[liftName] != null) {
-    // A remembered per-exercise adjustment is an explicit choice — use it as-is
-    // (no RPE bonus on top, since the user already dialled in this value).
-    // 0 is the explicit "no timer for this exercise" sentinel.
-    const remembered = Number(_restOverrides[liftName]);
-    if (remembered <= 0) {
-      dismissRestTimer();
-      return;
-    }
-    duration = remembered;
-  } else {
-    // Working sets: prescribe rest by exercise type (heavy compound → isolation)
-    // so a curl no longer inherits the same 3 min as a squat. Unrecognised /
-    // custom lifts fall back to the accessory tier.
-    duration = recommendedRestFor(liftName) ?? _restTiers.accessory;
+  const duration = durationOverride != null
+    ? Math.max(0, Math.round(Number(durationOverride) || 0))
+    : resolveRestDuration({
+      liftName,
+      setRpe,
+      setType,
+      planRestSec,
+      setRestSec,
+      restTiers: _restTiers,
+      restOverrides: _restOverrides,
+    });
 
-    // RPE bonus: heavier perceived effort = more rest
-    const rpe = parseFloat(setRpe) || 0;
-    if (rpe >= 9) duration += 30;
-    else if (rpe >= 8) duration += 15;
+  // 0 is the resolver's "no timer" sentinel (explicit per-set 0, a disabled
+  // warm-up tier, or a disabled exercise override) — dismiss just as before.
+  if (duration <= 0) {
+    dismissRestTimer();
+    return;
   }
 
   _restDuration = duration; // last prescribed — used by idle display / dismiss reset

@@ -20,6 +20,8 @@ import { browseExercises, canonicalExerciseId } from '../exercises/catalog.js';
 import { showToast } from '../state.js';
 import { defaultSetModeForExercise } from './set-shape.js';
 import { openManagedModal, closeManagedModal } from '../ui/modal-stack.js';
+import { restampSessionRecords } from '../strength/records.js';
+import { computeExercisePRs } from '../engine.js';
 
 const esc = (value) => String(value == null ? '' : value).replace(/[&<>"']/g, (char) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -377,6 +379,16 @@ export async function saveSavedWorkoutEditor() {
   } else if (_draft) {
     captureDraftInputs();
     commitSavedWorkoutDraft(week, ctx.day, _draft);
+    // The saved day is history again: a corrected-down set must lose the PR it
+    // no longer earns, and a raised set that now beats the all-time baseline
+    // must gain one. The baseline excludes this whole week/day, so the edit is
+    // compared with genuine prior training rather than with itself.
+    restampSessionRecords(ctx.state, ctx.weekKey, ctx.day);
+    const state = ctx.state;
+    if (state) {
+      if (!state.exerciseStats) state.exerciseStats = {};
+      computeExercisePRs(state, state.exerciseStats);
+    }
     changed = true;
   }
   if (!changed) { closeSavedWorkoutEditor(); return false; }

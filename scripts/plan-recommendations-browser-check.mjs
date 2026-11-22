@@ -230,12 +230,41 @@ try {
         grid: document.querySelectorAll('#progLibraryContent .program-grid .prog-card').length,
       };
     };
+    // The recommendation row is one three-up grid: all three cards must fit at
+    // rest. There is no horizontal rail to scroll into view any more.
+    const readCardReach = () => {
+      const row = [...document.querySelectorAll('.collection-row')]
+        .find((r) => /Recommended For You/i.test(r.querySelector('.collection-title')?.textContent || ''));
+      const cards = [...(row?.querySelectorAll('.prog-card') || [])];
+      return cards.map((card) => {
+        const rect = card.getBoundingClientRect();
+        return {
+          name: card.querySelector('.prog-card-name')?.textContent?.trim() || '',
+          left: rect.left,
+          right: rect.right,
+          viewport: window.innerWidth,
+        };
+      });
+    };
     const before = await page.evaluate(layout);
+    const cardReach = await page.evaluate(readCardReach);
     console.log('default Discover:', JSON.stringify(before));
+    console.log('recommended cards in view:', JSON.stringify(cardReach));
     if (before.categoryChips || before.difficultyChips || before.browseGridChips) {
       failures.push('the simplified Discover must not render chip walls');
     }
     if (before.allProgramsTop == null) failures.push('All programs must be reachable');
+    else if (before.allProgramsTop > 620) {
+      failures.push(`All programs starts at ${before.allProgramsTop}px, past the 620px target at 390px`);
+    }
+    if (cardReach.length !== 3) {
+      failures.push(`the Discover recommendation row must be one three-up grid, got ${cardReach.length} cards`);
+    }
+    for (const card of cardReach) {
+      if (card.left < -0.5 || card.right > card.viewport + 0.5) {
+        failures.push(`recommended card "${card.name}" is clipped by the viewport (${Math.round(card.left)}–${Math.round(card.right)} of ${card.viewport})`);
+      }
+    }
     if (before.recommendationsTop == null) failures.push('no recommendations row on the default surface');
     else if (before.allProgramsTop != null && before.recommendationsTop > before.allProgramsTop) {
       failures.push('personal recommendations must lead the All programs list');

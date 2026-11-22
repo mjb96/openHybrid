@@ -36,6 +36,7 @@
 // =============================================================================
 
 import { isWarmupSet } from '../set-utils.js';
+import { pruneSingleMemberGroups } from './superset.js';
 
 /** The liftMeta field that carries the athlete's own set count. */
 export const SET_PLAN_FIELD = 'plannedSets';
@@ -108,7 +109,7 @@ export function clearDaySetPlans(weekData, day) {
  *
  * @returns {{ok:boolean, reason?:'missing'|'out-of-range', removed?:any,
  *   priorSets?:any[], priorOrder?:string[]|null, priorPlan?:number|null,
- *   liftRemoved?:boolean, plannedSets?:number}}
+ *   priorLiftMeta?:any, liftRemoved?:boolean, plannedSets?:number}}
  */
 export function applySetRemoval(weekData, day, liftName, setIndex) {
   const dayLifts = weekData?.lifts?.[day];
@@ -119,11 +120,14 @@ export function applySetRemoval(weekData, day, liftName, setIndex) {
     return { ok: false, reason: 'out-of-range' };
   }
 
-  // Snapshot BEFORE mutating, including the stamped count, so Undo restores the
-  // exact prior state rather than an approximation of it.
+  // Snapshot BEFORE mutating, including the stamped count and the day's
+  // liftMeta, so Undo can restore a circuit partner's tag that pruning removes.
   const priorSets = sets.map((set) => ({ ...set }));
   const priorOrder = Array.isArray(weekData.liftOrder?.[day]) ? [...weekData.liftOrder[day]] : null;
   const priorPlan = sessionSetPlan(weekData, day, liftName);
+  const priorLiftMeta = weekData.liftMeta?.[day]
+    ? JSON.parse(JSON.stringify(weekData.liftMeta[day]))
+    : null;
 
   const [removed] = sets.splice(index, 1);
   const liftRemoved = sets.length === 0;
@@ -131,12 +135,21 @@ export function applySetRemoval(weekData, day, liftName, setIndex) {
     delete dayLifts[liftName];
     const order = weekData.liftOrder?.[day];
     if (Array.isArray(order)) weekData.liftOrder[day] = order.filter((n) => n !== liftName);
+    // A deleted exercise cannot be a circuit member. Drop its tag, then drop a
+    // partner's tag if it is now alone — a one-member circuit is a stale badge.
+    const dayMeta = weekData.liftMeta?.[day];
+    if (dayMeta?.[liftName]) delete dayMeta[liftName].groupId;
+    pruneSingleMemberGroups(dayMeta);
   }
 
   const plannedSets = liftRemoved ? 0 : workingSetCount(sets);
   recordSessionSetPlan(weekData, day, liftName, plannedSets);
 
-  return { ok: true, removed, priorSets, priorOrder, priorPlan, liftRemoved, plannedSets };
+  return {
+    ok: true, removed, priorSets, priorOrder, priorPlan,
+    priorLiftMeta: liftRemoved ? priorLiftMeta : undefined,
+    liftRemoved, plannedSets,
+  };
 }
 
 /**
@@ -151,6 +164,12 @@ export function restoreSetRemoval(weekData, day, liftName, snapshot) {
   if (snapshot.priorOrder) {
     if (!weekData.liftOrder) weekData.liftOrder = {};
     weekData.liftOrder[day] = [...snapshot.priorOrder];
+  }
+  // Restore circuit membership exactly, including a partner's tag that pruning
+  // removed when this lift's last set was deleted.
+  if (snapshot.priorLiftMeta) {
+    if (!weekData.liftMeta) weekData.liftMeta = {};
+    weekData.liftMeta[day] = JSON.parse(JSON.stringify(snapshot.priorLiftMeta));
   }
   if (snapshot.priorPlan == null) clearSessionSetPlan(weekData, day, liftName);
   else recordSessionSetPlan(weekData, day, liftName, snapshot.priorPlan);

@@ -7,6 +7,11 @@
 // shared dashboard model (consistency / streak), the canonical CALENDAR-week
 // strength engine (totals + PRs) and the recorded score history. No DOM.
 //
+// Only the LIVE calendar week describes the present/future: the plan score, the
+// live score arc and the "next week" focus belong to it alone. A historical
+// selection reports what was logged that week and nothing about a plan it was
+// never trained under (the Progress hub made the same correction).
+//
 // The review is a CALENDAR-week surface. `state.currentWeek` is a PROGRAM
 // counter, not a date: imported/archived training lives under `arch:*` keys and
 // a frozen program week can point at last calendar week. Reading
@@ -26,7 +31,7 @@ import { bestE1rmByLiftForWeek, liftE1rmByCalendarWeek } from '../analytics/stre
 import { collectCalendarWeek, weekStartOf, addDaysISO, localDayKey, DAY_KEYS } from '../analytics/weekly-aggregate.js';
 import { isE1rmPr } from '../strength/e1rm.js';
 import { isProgramDeloadWeek } from './day-verdict.js';
-import { todayKey } from '../dates.js';
+import { todayKey, formatWeekRange } from '../dates.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 
 const round1 = (n) => Math.round(n * 10) / 10;
@@ -34,13 +39,6 @@ const round1 = (n) => Math.round(n * 10) / 10;
 function pctDelta(current, prev) {
   if (!prev || prev <= 0) return null;
   return Math.round(((current - prev) / prev) * 100);
-}
-
-function shortDate(dateISO) {
-  const [y, m, d] = String(dateISO || '').split('-').map(Number);
-  if (!y || !m || !d) return dateISO || '';
-  return new Date(Date.UTC(y, m - 1, d, 12))
-    .toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
 // Lifts whose best estimated 1RM this CALENDAR week beats their best in ALL
@@ -114,7 +112,9 @@ function comparisonWindow(totals, today, weekStart) {
   return totals.days.slice(0, elapsed || totals.days.length);
 }
 
-// The Hybrid Score arc across the last 7 recorded days.
+// The Hybrid Score arc across the last 7 recorded days. It is a LIVE series
+// anchored on `today`, so it only ever describes the current calendar week — a
+// historical selection must not borrow the athlete's present score.
 function scoreArc(state, today = todayKey()) {
   const cutoffISO = addDaysISO(today, -6);
   const entries = (state?.hybridScore?.history || [])
@@ -178,34 +178,47 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
   const volumeDeltaPct = pctDelta(current.volumeKg, prevVolume);
   const distanceDeltaPct = pctDelta(current.distanceKm, prevDistance);
   const prs = calendarWeekPRs(state, weekStart, today);
-  const arc = scoreArc(state, today);
   const isCurrentWeek = weekStart === weekStartOf(today);
+  // The plan, the live score arc and the "next week" focus describe the run the
+  // athlete is on RIGHT NOW. Scoring a historical week against today's program
+  // invented an adherence bar it was never trained under (a past week could read
+  // "40% · 2/5 planned" for a plan that did not exist yet), and the arc would
+  // leak this week's score into a completed week's review. Same rule as the hub.
+  const arc = isCurrentWeek ? scoreArc(state, today) : { hasData: false, series: [] };
+  const plan = isCurrentWeek ? program : null;
 
   // Adherence is a SESSION comparison, the same unit the Progress hub shows.
   // The old model used prescribed-vs-completed SETS, so a normal part-finished
   // week rendered as “6% · 5/81” while the hub said “4 of 4 planned”. Planned
   // sessions stay program-week based (that is what a plan is).
-  const plannedSessions = plannedTrainingDays(program);
+  const plannedSessions = plannedTrainingDays(plan);
   const sessionAdherencePct = plannedSessions
     ? Math.min(100, Math.round((current.sessions / plannedSessions) * 100))
     : null;
 
-  const focus = pickWeeklyFocus({
-    consistencyPct: sessionAdherencePct ?? 100,
-    hasPlan: plannedSessions != null,
-    acwr: model.load.hasData ? model.load.acwr : 0,
-    distance: current.distanceKm,
-    volumeDeltaPct,
-    isDeload: isProgramDeloadWeek(state, program),
-  });
+  const isDeload = isCurrentWeek && isProgramDeloadWeek(state, program);
+  const focus = isCurrentWeek
+    ? pickWeeklyFocus({
+        consistencyPct: sessionAdherencePct ?? 100,
+        hasPlan: plannedSessions != null,
+        acwr: model.load.hasData ? model.load.acwr : 0,
+        distance: current.distanceKm,
+        volumeDeltaPct,
+        isDeload,
+      })
+    : null;
 
   return {
     wkNum,
     isCurrentWeek,
     weekStart,
-    label: isCurrentWeek ? 'This week' : `Week of ${shortDate(weekStart)}`,
+    // A past selection names its REAL Monday–Sunday range ("9–15 Nov"); only the
+    // live calendar week may claim "This week".
+    label: isCurrentWeek ? 'This week' : formatWeekRange(weekStart, addDaysISO(weekStart, 6)),
     range: { start: weekStart, end: addDaysISO(weekStart, 6) },
-    hasData: current.sessions > 0 || current.workingSets > 0 || current.distanceKm > 0 || prs.length > 0 || arc.hasData,
+    // Training only: the live score arc used to make an empty week look like it
+    // had a story ("0 sessions · 0 PRs" beside a score), so it no longer counts.
+    hasData: current.sessions > 0 || current.workingSets > 0 || current.distanceKm > 0 || prs.length > 0,
     totals: {
       volume: Math.round(current.volumeKg),
       distanceKm: round1(current.distanceKm),
@@ -216,6 +229,9 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
     deltas: { volumePct: volumeDeltaPct, distancePct: distanceDeltaPct },
     consistency: {
       done: current.sessions,
+      // null — not 0 — when there is no plan to score against (always true for a
+      // historical week, whose program run is over). Callers drop the whole
+      // adherence claim instead of rendering "0 of 0 planned".
       total: plannedSessions,
       pct: sessionAdherencePct,
       unit: 'sessions',
@@ -227,11 +243,16 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
   };
 }
 
-// Share / notification copy. Compact, numbers-first, one focus.
+// Share / notification copy. Compact, numbers-first, one focus. The Hybrid Score
+// line and the forward-looking focus belong to the live week only — a completed
+// week's copy states what was done and stops.
 export function reviewToText(r, distUnit = 'km', weightUnit = 'kg') {
+  // The current week owns the words "This week"; a historical selection is
+  // introduced by its real date range.
+  const headline = r.isCurrentWeek === false ? `Week of ${r.label}` : r.label;
   if (!r.hasData) {
     return r.isCurrentWeek === false
-      ? `${r.label}: no sessions logged.`
+      ? `${headline}: no sessions logged.`
       : 'This week: no sessions logged yet — next week is a fresh start.';
   }
   const dist = distUnit === 'mi' ? `${round1(r.totals.distanceKm * 0.621371)} mi` : `${r.totals.distanceKm} km`;
@@ -240,9 +261,10 @@ export function reviewToText(r, distUnit = 'km', weightUnit = 'kg') {
     `${dist} run`,
     `${r.totals.sessions} session${r.totals.sessions === 1 ? '' : 's'}`,
   ];
-  if (r.totals.prCount > 0) bits.push(`${r.totals.prCount} PR${r.totals.prCount === 1 ? '' : 's'} 🏆`);
-  let txt = `${r.label} on openHybrid: ${bits.join(' · ')}.`;
-  if (r.arc.hasData) txt += ` Hybrid Score ${r.arc.end}${r.arc.delta !== 0 ? ` (${r.arc.delta > 0 ? '+' : ''}${r.arc.delta} this week)` : ''}.`;
-  txt += ` Next week's focus — ${r.focus.area}: ${r.focus.text}`;
+  if (r.totals.prCount > 0) bits.push(`${r.totals.prCount} e1RM PR lift${r.totals.prCount === 1 ? '' : 's'} 🏆`);
+  let txt = `${headline} on openHybrid: ${bits.join(' · ')}.`;
+  const isLive = r.isCurrentWeek !== false;
+  if (isLive && r.arc?.hasData) txt += ` Hybrid Score ${r.arc.end}${r.arc.delta !== 0 ? ` (${r.arc.delta > 0 ? '+' : ''}${r.arc.delta} this week)` : ''}.`;
+  if (isLive && r.focus) txt += ` Next week's focus — ${r.focus.area}: ${r.focus.text}`;
   return txt;
 }

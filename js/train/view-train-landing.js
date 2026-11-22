@@ -42,6 +42,7 @@ function exerciseListHTML(exercises) {
       <span class="tl-exercise__num" aria-hidden="true">${index + 1}</span>
       <span class="tl-exercise__name">${esc(exercise.name)}</span>
       <span class="tl-exercise__target">${esc(exercise.sets)} × ${esc(exercise.reps)}</span>
+      ${exercise.note ? `<span class="tl-exercise__note">${esc(exercise.note)}</span>` : ''}
     </div>`).join('')}
   </div>`;
 }

@@ -368,6 +368,7 @@ function paintDetail() {
     : '';
   content.innerHTML = `
     <div class="activity-action-menu" id="activityActionMenu" hidden>
+      ${_selected.kind === 'strength' ? `<button data-action="save-as-routine" data-activity-id="${esc(_selected.id)}">Save as routine</button>` : ''}
       <button data-action="share-activity">Share workout</button>
       <button data-action="edit-activity">Edit ${_selected.kind === 'run' ? 'run' : 'strength workout'}</button>
       <button data-action="delete-activity" class="activity-action-delete">Delete ${_selected.kind === 'run' ? _selected.title.toLowerCase() : 'strength workout'}</button>

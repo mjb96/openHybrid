@@ -22,7 +22,8 @@ import {
 } from './set-utils.js';
 import { effectiveSetMode } from './workout/set-shape.js';
 import { handleSetSheetAction, openSetSheet } from './workout/set-sheet.js';
-import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession } from './timers.js';
+import { handlePlateSheetAction } from './workout/plate-sheet.js';
+import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession, getRestTiers } from './timers.js';
 import { mountExerciseDragAndDropSystems } from './dragdrop.js';
 import { showToast, saveNewCustomExerciseToLibrary } from './state.js';
 import { escapeHtml } from './util.js';
@@ -31,6 +32,10 @@ import { buildSessionOutline, outlineSummaryLine } from './workout/session-outli
 import { plannedSetsForLift } from './workout/set-plan.js';
 import { addWarmupRamp, rampSetsFor } from './workout/warmup-ramp.js';
 import { buildSessionReview } from './workout/session-review.js';
+import {
+  colorForGroupId, detachMember, groupRestDuration, membersInOrder,
+  normaliseGroupId, resolveJoin, roundState, shouldRestAfterSet,
+} from './workout/superset.js';
 import { activeSessionLiftNames, applyExerciseSwap, neighborDay, pickInheritedSet } from './workout-order.js';
 import { getSubstitutions } from './workout/substitutions.js';
 import { plateHint } from './workout/plates.js';
@@ -57,16 +62,21 @@ import {
 import { openExerciseDetail } from './exercises/detail.js';
 import { exerciseLoggerHistory } from './workout/exercise-history.js';
 import {
-  getExerciseNote, preferredLoadBasis, preferredLoadMode, shouldAutoWarmup,
+  getExerciseLink, getExerciseNote, preferredLoadBasis, preferredLoadMode, shouldAutoWarmup,
 } from './workout/exercise-config.js';
+import { createReferenceLink } from './workout/reference-link.js';
 import { openExerciseOptions } from './workout/exercise-options.js';
-import { estimatedE1rmForSet, isE1rmExercise, isE1rmPr } from './strength/e1rm.js';
+import { isE1rmExercise } from './strength/e1rm.js';
 import {
-  activeOneOffSession, activeWorkoutDay, activeWorkoutWeekKey,
-  clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint,
+  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel, recordKindForSet,
+} from './strength/records.js';
+import {
+  activeOneOffSession, activeWorkoutDay, activeWorkoutDayForWeek, activeWorkoutWeekKey,
+  clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
 import { weightUnitLabel } from './workout/units.js';
+import { formatEffort } from './workout/effort.js';
 import {
   openConfirmResetModal, closeConfirmResetModal, executeResetActiveDayMetrics,
 } from './workout/clear-log.js';
@@ -288,9 +298,14 @@ function _previousSessionPanel(appState, performance, exerciseName, weightUnit) 
   const rows = sets.map((set, index) => {
     const weight = parseFloat(set?.w) || 0;
     const reps = parseInt(set?.r, 10) || 0;
-    const effort = set?.rir != null ? `${escapeHtml(String(set.rir))} reps left`
-      : set?.rpe != null ? `RPE ${escapeHtml(String(set.rpe))}` : '';
-    return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight > 0 ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effort}</small></div>`;
+    // One effort reader, and the existing copy: an entered RIR reads as
+    // "1.5 reps left", a legacy RPE-only set keeps "RPE 8.5", and an unrated
+    // set stays blank instead of showing a fabricated number.
+    const hasRir = set?.rir != null && set.rir !== '';
+    const effortText = escapeHtml(hasRir
+      ? formatEffort(set, { style: 'reps-left' })
+      : formatEffort(set, { scale: 'rpe' }));
+    return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight > 0 ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effortText}</small></div>`;
   }).join('');
   return `<details class="previous-session">
     <summary><span><small>Last performed · ${escapeHtml(_priorDateLabel(performance.date))}</small><strong>${escapeHtml(top)} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}</strong></span><b>Details</b></summary>
@@ -300,7 +315,7 @@ function _previousSessionPanel(appState, performance, exerciseName, weightUnit) 
   </details>`;
 }
 
-function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedDay, appState, homeBlueprint, isCollapsed, groupId, ssColor) {
+function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedDay, appState, homeBlueprint, isCollapsed, groupId, ssColor, ssMemberCount = 0, ssOrdinal = null) {
   const setsArr = loggedLiftsData[liftName];
   if (!Array.isArray(setsArr)) return null;
 
@@ -502,17 +517,30 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
     const weightColumnLabel = rowModes.size === 1
       ? ({ time: 'Time', distance: 'Distance' }[/** @type {string} */ ([...rowModes][0])] || 'Reps')
       : 'Value';
-    exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, plates, weightUnit: wUnit, weightColumnLabel });
-    // The athlete's own note is inserted as DOM text, never HTML: it is free
-    // text they typed, so it must not be able to become markup.
+    exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, ssMemberCount, ssOrdinal, plates, weightUnit: wUnit, weightColumnLabel });
+    // Free-text note and the private reference link both sit directly under the
+    // history line. The note is DOM text (never HTML); the link is a real anchor
+    // built through DOM APIs — neither value ever touches innerHTML.
+    const insertInBody = (el) => {
+      const history = exCard.querySelector('.cockpit-history-line, .previous-session');
+      if (history) history.insertAdjacentElement('afterend', el);
+      else exCard.querySelector('.cockpit-body')?.prepend(el);
+    };
     const exerciseNote = getExerciseNote(appState, displayLiftName);
+    let noteEl = null;
     if (exerciseNote) {
-      const noteEl = document.createElement('div');
+      noteEl = document.createElement('div');
       noteEl.className = 'cockpit-ex-note';
       noteEl.textContent = exerciseNote;
-      const history = exCard.querySelector('.cockpit-history-line, .previous-session');
-      if (history) history.insertAdjacentElement('afterend', noteEl);
-      else exCard.querySelector('.cockpit-body')?.prepend(noteEl);
+      insertInBody(noteEl);
+    }
+    const exerciseLink = getExerciseLink(appState, displayLiftName);
+    if (exerciseLink) {
+      const linkEl = createReferenceLink(document, exerciseLink, displayLiftName);
+      if (linkEl) {
+        if (noteEl) noteEl.insertAdjacentElement('afterend', linkEl);
+        else insertInBody(linkEl);
+      }
     }
     if (showPlates && plates) applyPlateHint(exCard, plates);
     if (showPlates && resolveExercise(displayLiftName)?.equipment?.includes('barbell')) {
@@ -714,7 +742,7 @@ export function renderWorkout() {
                           <span>Set ${s.set}</span>
                           <span>${s.reps} reps</span>
                           <span>${s.weight} ${escapeHtml(weightUnitLabel(_getState?.() || {}))}</span>
-                          <span style="color:var(--accent-blue);">${s.category || ''}</span>
+                          <span style="color:var(--accent-blue);">${escapeHtml(String(s.category || ''))}</span>
                        </div>`;
           });
           html += '</div>';
@@ -769,7 +797,10 @@ export function renderWorkout() {
   // "No lifting scheduled today".
   const timerKey = workoutSessionKey(appState, wk, selectedDay);
   const timerBound = bindWorkoutTimerSession(timerKey);
-  const timerRunning = timerBound && getWorkoutElapsedSeconds(timerKey) > 0;
+  // A BOUND timer is a running session. The old `elapsed > 0` test made the
+  // Start CTA reappear for the first second (a start renders at 0s), so a
+  // one-tap start showed the button again immediately after starting.
+  const timerRunning = timerBound;
   const sessionActive = timerBound || explicitSessionStatus(weekData, selectedDay) === SESSION_STATUS.IN_PROGRESS;
   document.getElementById('view-workout')?.classList.toggle('cockpit-session-active', sessionActive);
   const activeHead = document.getElementById('cockpitActiveHead');
@@ -799,6 +830,26 @@ export function renderWorkout() {
 
   exercisesContainer.innerHTML = '';
 
+  // The routine note is preparation context for a one-off started from the
+  // library. It is read by reference (sourceRoutineId → current routine), so an
+  // edit is reflected on the next render and a deleted routine leaves no stale
+  // copy. A finished session never shows it.
+  const routineNote = routineNoteForSession(appState, weekData, selectedDay);
+  if (routineNote) {
+    // `aside`, not `div`: the exercise cards are divs and existing selectors use
+    // `:first-of-type`, so the banner must not become the first div in here.
+    const banner = document.createElement('aside');
+    banner.className = 'cockpit-routine-note';
+    const label = document.createElement('span');
+    label.className = 'cockpit-routine-note__label';
+    label.textContent = 'Routine note';
+    const text = document.createElement('p');
+    text.className = 'cockpit-routine-note__text';
+    text.textContent = routineNote.note;
+    banner.append(label, text);
+    exercisesContainer.append(banner);
+  }
+
   const loggedLiftsData = weekData.lifts[selectedDay] || {};
 
   if (Object.keys(loggedLiftsData).length === 0 && selectedDay !== 'sun') {
@@ -811,7 +862,6 @@ export function renderWorkout() {
   const liftMeta = weekData.liftMeta[selectedDay];
 
   const orderedNames = activeSessionLiftNames(weekData, selectedDay, homeBlueprint, { oneOff: !!oneOff });
-  const activeNames = new Set(orderedNames);
 
   // Session outline. Rendered from the SAME ordered names the accordion below
   // uses, so the index can never list an exercise the session does not have.
@@ -823,18 +873,19 @@ export function renderWorkout() {
     refreshCockpitActiveStats();
   }
 
-  // Build superset group map only from exercises owned by this live session.
-  // Quarantined historical rows remain stored for Activities/analytics but can
-  // no longer appear in or count toward today's workout.
-  const SS_COLORS = { A: '#3b82f6', B: '#a855f7', C: '#10b981', D: '#f59e0b', E: '#ec4899', F: '#06b6d4' };
+  // Build the circuit map in the session's OWN display order. Iterating
+  // `loggedLiftsData` used `for…in` (object-key order), so a 3-member group
+  // rendered in insertion order while the rest of the cockpit was ordered by
+  // `liftOrder`. Quarantined historical rows still never appear here.
+  /** @type {Record<string, string[]>} */
   const groupMap = {};
-  for (const ln in loggedLiftsData) {
-    if (!activeNames.has(ln)) continue;
-    const gId = liftMeta[ln]?.groupId;
-    if (gId) {
-      if (!groupMap[gId]) groupMap[gId] = [];
-      if (!groupMap[gId].includes(ln)) groupMap[gId].push(ln);
-    }
+  for (const ln of orderedNames) {
+    // A malformed legacy id (the old allocator could reach `[`) is not a
+    // circuit: it renders as an ungrouped card and the panel starts a fresh A.
+    const gId = normaliseGroupId(liftMeta[ln]?.groupId);
+    if (!gId) continue;
+    const members = membersInOrder(weekData, selectedDay, ln, orderedNames);
+    if (members.length > 0) groupMap[gId] = members;
   }
 
   const renderedLifts = new Set();
@@ -845,19 +896,20 @@ export function renderWorkout() {
     const setsArr = loggedLiftsData[liftName];
     if (!Array.isArray(setsArr)) continue;
 
-    const groupId     = liftMeta[liftName]?.groupId;
+    const groupId     = normaliseGroupId(liftMeta[liftName]?.groupId);
     const groupMembers = groupId && groupMap[groupId]?.length > 1 ? groupMap[groupId] : null;
 
     if (groupMembers) {
-      const ssColor = SS_COLORS[groupId] || '#3b82f6';
+      const ssColor = colorForGroupId(groupId);
+      const circuit = roundState(weekData, selectedDay, liftName, { orderedNames });
       const wrapper = document.createElement('div');
-      wrapper.className = 'superset-group';
+      wrapper.className = `superset-group${circuit?.complete ? ' is-complete' : ''}`;
       wrapper.style.setProperty('--ss-color', ssColor);
       wrapper.setAttribute('data-group-id', groupId);
 
       const hdr = document.createElement('div');
       hdr.className = 'superset-group-header';
-      hdr.innerHTML = `<span class="superset-badge">SS ${groupId}</span><span class="text-xs text-muted" style="margin-left:8px;">Alternate exercises · rest after both</span>`;
+      hdr.innerHTML = `<span class="superset-badge">SS ${escapeHtml(String(groupId))}</span><span class="superset-group-meta">· ${groupMembers.length} exercises · rest after the last</span><span class="superset-group-progress">${circuit ? `· ${circuit.doneMembers} of ${circuit.members.length} done` : ''}</span>`;
       wrapper.appendChild(hdr);
 
       groupMembers.forEach((memberLift, mIdx) => {
@@ -866,16 +918,28 @@ export function renderWorkout() {
         const mCompleted = memberSets.length > 0 && memberSets.every(isCompletedSet);
 
         let mCollapsed = true;
-        if (previouslyExpandedLift === memberLift) mCollapsed = false;
-        else if (isFirstAccordionField && !mCompleted) { mCollapsed = false; isFirstAccordionField = false; }
+        if (previouslyExpandedLift === memberLift) {
+          mCollapsed = false;
+          // The explicitly open member owns the accordion. Without clearing the
+          // flag, a later group member matches `previouslyExpandedLift` while
+          // the FIRST member also auto-opens — two cards open at once.
+          isFirstAccordionField = false;
+        } else if (isFirstAccordionField && !mCompleted) {
+          mCollapsed = false;
+          isFirstAccordionField = false;
+        }
 
-        const card = _buildExerciseCardEl(memberLift, loggedLiftsData, weekData, wk, selectedDay, appState, homeBlueprint, mCollapsed, groupId, ssColor);
+        const card = _buildExerciseCardEl(
+          memberLift, loggedLiftsData, weekData, wk, selectedDay, appState, homeBlueprint,
+          mCollapsed, groupId, ssColor, groupMembers.length,
+          { index: mIdx + 1, total: groupMembers.length },
+        );
         if (card) wrapper.appendChild(card);
 
         if (mIdx < groupMembers.length - 1) {
           const connector = document.createElement('div');
           connector.className = 'superset-connector';
-          connector.textContent = `↕ SS ${groupId}`;
+          connector.textContent = `↕ ${mIdx + 2} of ${groupMembers.length}`;
           wrapper.appendChild(connector);
         }
         renderedLifts.add(memberLift);
@@ -1013,37 +1077,126 @@ function applySetComparison(parentRow, value, mode = SET_MODE.REPS, weight = 0) 
   cmp.title = result.label;
 }
 
-// PR detection for one completed set. Extracted from the tick path so quick-log
-// and log-all get the same live PR feedback instead of only manual ticks.
-function detectSetPR(parentRow, liftName, setIndex, w, r, appState, weekKey, day) {
-  if (!parentRow || !liftName || setIndex < 0 || !(w > 0) || !(r > 0)) return;
-  const setType = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex]?.type || '';
-  if (setType === 'W') return;
-  const storedSet = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex] || {};
-  const e1rm = estimatedE1rmForSet(liftName, { ...storedSet, w, r });
-  const prior = exerciseLoggerHistory(appState, liftName, {
-    weekKey,
-    day,
+// PR detection for one completed set, shape-aware via the shared records model.
+// Extracted from the tick path so quick-log and log-all get the same live PR
+// feedback instead of only manual ticks. Called for EVERY shape: a 60-second
+// hold earns a Hold PR and a 40 m carry a Carry PR, never an estimated 1RM.
+//
+// The function always SYNCHRONISES the row: when the candidate no longer earns
+// the record (a corrected-down weight, a shape change, a bodyweight load) it
+// removes the class, badge and stored stamp. That removal branch is why a set
+// edited after it was ticked cannot keep a trophy it no longer deserves.
+//
+// `options.justTicked` marks the unticked→ticked transition. The baseline toast
+// ("Baseline set — not a trophy") belongs to that moment only; a completed row
+// corrected on blur must not re-announce it.
+export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, weekKey, day, options = {}) {
+  if (!parentRow || !liftName || setIndex < 0) return null;
+  const storedSet = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex] || null;
+  const live = { ...(storedSet || {}), ...(candidate || {}), c: true };
+  const wasPR = parentRow.classList.contains('is-pr') || storedSet?.isPR === true;
+  if (isWarmupSet(live)) { clearSetPR(parentRow, storedSet); return null; }
+  const kind = recordKindForSet(live, liftName);
+  if (!kind) { clearSetPR(parentRow, storedSet); return null; }
+  const before = bestRecordBefore(appState, liftName, {
+    excludeWeekKey: weekKey,
+    excludeDay: day,
     beforeDate: appState.weeks?.[weekKey]?.dates?.[day] || dateKey(),
   });
-  const prevMax = Math.max(prior.datedBestEstimated1RM, prior.globalBestEstimated1RM);
-  const hasHistory = prior.hasHistory;
-  if (hasHistory && isE1rmPr(e1rm, prevMax)) {
-    parentRow.classList.add('is-pr');
-    hapticSuccess();
-    if (!parentRow.querySelector('.pr-badge')) {
-      const badge = document.createElement('span');
-      badge.className = 'pr-badge';
-      badge.textContent = 'PR';
-      parentRow.appendChild(badge);
+  // Rep records are bucketed by load. A single-set candidate has exactly one
+  // bucket, so take it rather than indexing an array as if it were a record.
+  const sessionRecords = bestRecordForSession(liftName, [live]);
+  const record = kind === RECORD_KIND.REPS ? (sessionRecords.reps[0] || null) : sessionRecords[kind];
+  if (!record || !isRecord(kind, record, before[kind])) {
+    const noPrior = kind === RECORD_KIND.REPS
+      ? !(Array.isArray(before?.reps) && before.reps.length > 0)
+      : !(Number(before?.[kind]?.value) > 0);
+    clearSetPR(parentRow, storedSet);
+    if (options.justTicked === true && !wasPR && kind === 'e1rm' && noPrior) {
+      showToast(`Baseline set — ${liftName} ✓`);
     }
-    showToast(`🏆 New PR — ${liftName}!`);
-  } else if (e1rm > 0 && !hasHistory) {
-    showToast(`Baseline set — ${liftName} ✓`);
+    return null;
+  }
+  parentRow.classList.add('is-pr');
+  if (parentRow.dataset) parentRow.dataset.prKind = kind;
+  let badge = parentRow.querySelector('.pr-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'pr-badge';
+    parentRow.appendChild(badge);
+  }
+  badge.textContent = prKindLabel(kind);
+  // Persist additively. `prKind` names what was measured so a re-render shows
+  // "Hold PR"/"Carry PR" instead of a generic trophy.
+  if (storedSet) {
+    storedSet.isPR = true;
+    storedSet.prKind = kind;
+  }
+  if (!wasPR) {
+    hapticSuccess();
+    showToast(kind === 'e1rm'
+      ? `🏆 New PR — ${liftName}!`
+      : `🏆 ${prKindLabel(kind)} — ${liftName}!`);
+  }
+  return { kind, record };
+}
+
+/** Remove a row's PR presentation and its stored stamp, if any. */
+function clearSetPR(parentRow, storedSet) {
+  parentRow?.classList.remove('is-pr');
+  parentRow?.querySelector('.pr-badge')?.remove();
+  if (parentRow?.dataset) delete parentRow.dataset.prKind;
+  if (storedSet && typeof storedSet === 'object') {
+    delete storedSet.isPR;
+    delete storedSet.prKind;
   }
 }
 
-export function executeOneTapQuickLog(labelNode, liftName, sIdx) {
+/**
+ * Start (or explicitly suppress) the rest that follows one ticked set.
+ *
+ * A circuit gets ONE governing duration resolved across every member, so a
+ * Bench/Curl round rests the same 180 s whichever member was ticked last.
+ * Ungrouped lifts keep the exact single-set precedence path.
+ *
+ * @param {any} appState
+ * @param {string} weekKey
+ * @param {string} day
+ * @param {string} liftName
+ * @param {number} setIndex
+ * @param {any} set
+ * @param {string} setType
+ * @param {number|string|null|undefined} planRest
+ * @param {number|string|null|undefined} setRpe
+ */
+function _startRestAfterTickedSet(appState, weekKey, day, liftName, setIndex, set, setType, planRest, setRpe) {
+  if (!liftName || !Number.isInteger(setIndex) || setIndex < 0) return;
+  const weekData = appState?.weeks?.[weekKey];
+  if (!weekData) return;
+  if (!shouldRestAfterSet(weekData, day, liftName, { setIndex, set })) return;
+
+  const groupDuration = groupRestDuration(weekData, day, liftName, {
+    setIndex,
+    set,
+    setRpe,
+    restTiers: getRestTiers(),
+    restOverrides: appState.settings?.restOverrides || {},
+    planRestFor: (name) => getProgramById(appState.activeProgramId)
+      ?.prescriptions?.[day]?.[name]?.restSec,
+  });
+
+  if (groupDuration == null) {
+    triggerRestTimerEngine(liftName, setRpe, setType, planRest, set?.restSec);
+    return;
+  }
+  if (groupDuration > 0) {
+    triggerRestTimerEngine(liftName, setRpe, setType, planRest, null, groupDuration);
+  } else {
+    dismissRestTimer();
+  }
+}
+
+export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
   if (!labelNode) return;
   const appState = _getState();
   const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
@@ -1155,17 +1308,23 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx) {
     const stored = appState.weeks[wk].lifts?.[selectedDay]?.[liftName]?.[sIdx] || {};
     const setType = stored.type || '';
     const planRest = getProgramById(appState.activeProgramId)?.prescriptions?.[selectedDay]?.[liftName]?.restSec;
-    triggerRestTimerEngine(liftName, setRpe, setType, planRest, stored.restSec);
+    // A circuit rests once after its LAST member, with one governing duration.
+    // `suppressRest` is used by Log all → so a batch starts exactly one rest.
+    if (options?.suppressRest !== true) {
+      _startRestAfterTickedSet(appState, wk, selectedDay, liftName, sIdx, stored, setType, planRest, setRpe);
+    }
   } catch(e) { console.warn(e); }
 
   const quickW = parseFloat(targetW);
-  if (setShape === SET_MODE.REPS) {
-    const quickR = parseInt(targetV, 10);
-    detectSetPR(parentRow, liftName, sIdx, quickW, quickR, appState, wk, selectedDay);
-    applySetComparison(parentRow, quickR, setShape, quickW);
-  } else {
-    applySetComparison(parentRow, _setRowValue(setShape, targetV), setShape, quickW);
-  }
+  // Every shape gets live PR feedback; a hold/carry was previously skipped
+  // entirely because detection only ran for REPS.
+  detectSetPR(parentRow, liftName, sIdx, {
+    ...(_setArr[sIdx] || {}),
+    w: targetW,
+    mode: setShape,
+    c: true,
+  }, appState, wk, selectedDay, { justTicked: true });
+  applySetComparison(parentRow, _setRowValue(setShape, targetV), setShape, quickW);
 
   _saveState(true);
   evaluateAccordionAutoFlowTransitions();
@@ -1206,12 +1365,37 @@ export function logAllAtTarget(liftName) {
   const card = document.querySelector(`.cockpit-exercise[data-liftname="${(window.CSS && CSS.escape) ? CSS.escape(liftName) : liftName}"]`);
   if (!card) return;
   let logged = 0;
+  // A batch must not start and restart a group's rest on every row. Log quietly,
+  // then start at most ONE rest from the last rest-worthy row (skip drop rows:
+  // they never start a rest and must not hide the group rest for the working
+  // row before them).
+  let lastRestIndex = null;
   Array.from(card.querySelectorAll('.cockpit-set-row')).forEach(row => {
     if (row.classList.contains('is-complete') || row.classList.contains('type-warmup')) return;
     const sIdx = parseInt(row.getAttribute('data-set-index'), 10);
-    if (!isNaN(sIdx)) { executeOneTapQuickLog(row, liftName, sIdx); logged++; }
+    if (!isNaN(sIdx)) {
+      executeOneTapQuickLog(row, liftName, sIdx, { suppressRest: true });
+      logged++;
+      if (!row.classList.contains('type-dropset')) lastRestIndex = sIdx;
+    }
   });
-  if (logged > 0) { hapticSuccess(); showToast(`Logged ${logged} set${logged > 1 ? 's' : ''} at target ✓`); }
+  if (logged > 0) {
+    const appState = _getState();
+    const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
+    const wk = activeWorkoutWeekKey(appState);
+    if (lastRestIndex != null) {
+      const stored = appState.weeks?.[wk]?.lifts?.[selectedDay]?.[liftName]?.[lastRestIndex] || {};
+      const gymRpeEl = document.getElementById('sessionGymRpeCockpit');
+      const setRpe = gymRpeEl && gymRpeEl.value ? parseFloat(gymRpeEl.value) : null;
+      const planRest = getProgramById(appState.activeProgramId)?.prescriptions?.[selectedDay]?.[liftName]?.restSec;
+      _startRestAfterTickedSet(
+        appState, wk, selectedDay, liftName, lastRestIndex, stored,
+        stored.type || '', planRest, setRpe,
+      );
+    }
+    hapticSuccess();
+    showToast(`Logged ${logged} set${logged > 1 ? 's' : ''} at target ✓`);
+  }
 }
 
 // Bring the latest exact exercise performance into the current draft without
@@ -1335,6 +1519,13 @@ export function updateInputState(inputNode) {
     setObj.r = inputNode.value;
     if (ph != null && setObj.tr == null) setObj.tr = ph;
   }
+  // A COMPLETED row can still be corrected. `updateInputState` is driven by
+  // `change`/blur, not by every keystroke, so this re-evaluation costs one
+  // history scan when the athlete leaves the field — not one per typed digit.
+  // Tick, quick-log and log-all stay immediate (they pass `justTicked`).
+  if (isCompletedSet(setObj)) {
+    detectSetPR(row, liftName, sIdx, setObj, appState, wk, selectedDay);
+  }
   // High-frequency keystroke path: debounce the local write instead of
   // serialising the whole state on every digit. Set-completion, quick-log and
   // finish still persist immediately (they use _saveState). A backgrounded app
@@ -1435,7 +1626,9 @@ export function commitWorkoutUIState() {
             if (rowLoadMode === 'bodyweight') storedSet.bw = true;
             else storedSet.band = storedSet.band || 'M';
           }
-          if (row.classList.contains('is-pr')) appState.weeks[wk].lifts[selectedDay][liftName][idx].isPR = true;
+          // PR stamps are written by detectSetPR (shape-aware, with `prKind`)
+          // and cleared there when a corrected set no longer earns one. Copying
+          // the row's class here used to persist a stale badge forever.
         }
       });
     });
@@ -1457,8 +1650,8 @@ export function toggleGymCheckLoggingState(checkboxNode) {
   const parentRow = checkboxNode.closest('.cockpit-set-row');
   const exCard = checkboxNode.closest('.cockpit-exercise');
   const lifecycleState = _getState();
-  const lifecycleDay = activeWorkoutDay(lifecycleState, _getSelectedDay());
   const lifecycleWeek = activeWorkoutWeekKey(lifecycleState);
+  const lifecycleDay = activeWorkoutDayForWeek(lifecycleState, lifecycleWeek, _getSelectedDay());
   markSessionInProgress(lifecycleState.weeks?.[lifecycleWeek], lifecycleDay);
   
   if (checkboxNode.checked) {
@@ -1546,29 +1739,39 @@ export function toggleGymCheckLoggingState(checkboxNode) {
       const gymRpeEl = document.getElementById('sessionGymRpeCockpit');
       const setRpe = gymRpeEl && gymRpeEl.value ? parseFloat(gymRpeEl.value) : null;
       const _appState = _getState();
-      const _selDay = _getSelectedDay();
       const _wk = activeWorkoutWeekKey(_appState);
+      // Resolve the day FROM the week the tick will write to. `activeWorkoutDay`
+      // alone answers for the active one-off and can disagree with `_wk` when a
+      // programme day is selected, which would stamp one slot and untick another.
+      const _selDay = activeWorkoutDayForWeek(_appState, _wk, _getSelectedDay());
       const _sIdx = exCard ? Array.from(exCard.querySelectorAll('.cockpit-set-row')).indexOf(parentRow) : -1;
       const storedForRest = _appState.weeks[_wk].lifts?.[_selDay]?.[liftName]?.[_sIdx] || {};
       const setType = storedForRest.type || '';
       const planRest = getProgramById(_appState.activeProgramId)?.prescriptions?.[_selDay]?.[liftName]?.restSec;
-      triggerRestTimerEngine(liftName, setRpe, setType, planRest, storedForRest.restSec);
+      const restSet = { ...storedForRest, type: setType };
+      _startRestAfterTickedSet(_appState, _wk, _selDay, liftName, _sIdx, restSet, setType, planRest, setRpe);
       // Stamp workout date on first set completion for this day
       if (!_appState.weeks[_wk].dates) _appState.weeks[_wk].dates = {};
       if (!_appState.weeks[_wk].dates[_selDay]) {
         _appState.weeks[_wk].dates[_selDay] = dateKey();
       }
 
-      // PR + per-set comparison. Shared with quick-log/log-all so those paths
-      // cannot silently skip the feedback a manual tick gets.
+      // PR + per-set comparison, for EVERY shape. Shared with quick-log/log-all
+      // so those paths cannot silently skip the feedback a manual tick gets.
       if (liftName && _sIdx >= 0) {
         const wIn = parentRow?.querySelector('.input-weight-node');
         const valueIn = parentRow ? _setValueInput(parentRow) : null;
         const w = parseFloat(wIn?.value) || 0;
-        if (rowMode === SET_MODE.REPS) {
-          const r = parseInt(valueIn?.value, 10) || 0;
-          detectSetPR(parentRow, liftName, _sIdx, w, r, _appState, _wk, _selDay);
-        }
+        const candidate = {
+          ...storedForRest,
+          w: wIn ? wIn.value : storedForRest.w,
+          mode: rowMode,
+          c: true,
+        };
+        if (rowMode === SET_MODE.TIME) candidate.sec = parseDuration(valueIn?.value) || '';
+        else if (rowMode === SET_MODE.DISTANCE) candidate.dist = parseFloat(valueIn?.value) || '';
+        else candidate.r = valueIn?.value ?? storedForRest.r;
+        detectSetPR(parentRow, liftName, _sIdx, candidate, _appState, _wk, _selDay, { justTicked: true });
         applySetComparison(parentRow, _setRowValue(rowMode, valueIn?.value), rowMode, w);
       }
     } catch(e) { console.warn(e); }
@@ -1576,6 +1779,18 @@ export function toggleGymCheckLoggingState(checkboxNode) {
     if (parentRow) {
       parentRow.classList.remove('is-complete');
       parentRow.querySelector('.set-cmp')?.remove();
+      // Withdrawing the entry withdraws its claim. A PR ticked by mistake must
+      // not survive unticking or the next render would resurrect the trophy.
+      const liftName = exCard ? exCard.getAttribute('data-liftname') : null;
+      if (liftName && exCard) {
+        const sIdx = Array.from(exCard.querySelectorAll('.cockpit-set-row')).indexOf(parentRow);
+        const appState = _getState();
+        const wk = activeWorkoutWeekKey(appState);
+        // Same pair the tick used: the week decides its own day.
+        const selDay = activeWorkoutDayForWeek(appState, wk, _getSelectedDay());
+        const stored = appState.weeks?.[wk]?.lifts?.[selDay]?.[liftName]?.[sIdx];
+        clearSetPR(parentRow, stored);
+      }
     }
     // Un-ticking is the athlete withdrawing the entry, so the complaint about it
     // goes too. Leaving it would accuse a row that no longer claims anything.
@@ -1693,11 +1908,35 @@ export function refreshContextualRowActions() {
   });
 }
 
+/**
+ * Refresh the circuit header's derived progress without re-rendering the
+ * cockpit. Group completion is never stored — it is roundState over the same
+ * sets the logger just ticked.
+ */
+function refreshSupersetGroupProgress() {
+  if (!workoutContextReady()) return;
+  const appState = _getState();
+  const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
+  const weekData = appState.weeks?.[activeWorkoutWeekKey(appState)];
+  if (!weekData) return;
+  document.querySelectorAll('#cockpitExercisesContainer .superset-group').forEach((wrapper) => {
+    const names = Array.from(wrapper.querySelectorAll('.cockpit-exercise'))
+      .map((card) => card.getAttribute('data-liftname'))
+      .filter(Boolean);
+    if (!names.length) return;
+    const circuit = roundState(weekData, selectedDay, names[0], { orderedNames: names });
+    wrapper.classList.toggle('is-complete', !!circuit?.complete);
+    const progress = wrapper.querySelector('.superset-group-progress');
+    if (progress && circuit) progress.textContent = `· ${circuit.doneMembers} of ${circuit.members.length} done`;
+  });
+}
+
 export function evaluateAccordionAutoFlowTransitions() {
-  // Both run BEFORE the early return: they must track every completion change,
+  // These run BEFORE the early return: they must track every completion change,
   // including ones made while no card happens to be expanded.
   try { refreshSessionOutline(); } catch (e) { console.warn(e); }
   try { refreshContextualRowActions(); } catch (e) { console.warn(e); }
+  try { refreshSupersetGroupProgress(); } catch (e) { console.warn(e); }
 
   const expandedCard = document.querySelector('.cockpit-exercise:not(.collapsed)');
   if (!expandedCard) return;
@@ -1728,6 +1967,31 @@ export function evaluateAccordionAutoFlowTransitions() {
   }
 }
 
+// The logger's own day order. The panel used `Object.keys(lifts)`, which made
+// its member list disagree with the cockpit it edits.
+function _dayLiftOrder(weekData, day) {
+  const lifts = weekData?.lifts?.[day] || {};
+  const order = Array.isArray(weekData?.liftOrder?.[day]) ? weekData.liftOrder[day] : [];
+  const names = [];
+  const seen = new Set();
+  for (const name of [...order, ...Object.keys(lifts)]) {
+    if (seen.has(name) || !Array.isArray(lifts[name])) continue;
+    names.push(name);
+    seen.add(name);
+  }
+  return names;
+}
+
+function _circuitPanelCandidate(candidateName, liftName, myGroupId, dayMeta) {
+  const theirGroup = normaliseGroupId(dayMeta[candidateName]?.groupId);
+  const crossGroup = !!myGroupId && !!theirGroup && theirGroup !== myGroupId;
+  const label = theirGroup ? `Join circuit ${theirGroup}` : `Add ${candidateName}`;
+  return `<div class="ss-candidate-row${crossGroup ? ' is-blocked' : ''}">
+    <button type="button" class="btn-pad ss-candidate" data-action="link-superset" data-liftname="${escapeHtml(liftName)}" data-partner="${escapeHtml(candidateName)}"${crossGroup ? ' disabled aria-disabled="true"' : ''} aria-label="${escapeHtml(crossGroup ? `${candidateName} is already in circuit ${theirGroup}` : `${label} to this circuit`)}">${escapeHtml(label)}</button>
+    ${crossGroup ? `<span class="ss-candidate-note">In circuit ${escapeHtml(String(theirGroup))} — unlink it first</span>` : ''}
+  </div>`;
+}
+
 export function showSupersetLinkPanel(exCard) {
   if (!exCard) return;
   const appState   = _getState();
@@ -1739,29 +2003,47 @@ export function showSupersetLinkPanel(exCard) {
 
   if (!appState.weeks[wk].liftMeta) appState.weeks[wk].liftMeta = {};
   if (!appState.weeks[wk].liftMeta[selectedDay]) appState.weeks[wk].liftMeta[selectedDay] = {};
-  const dayMeta  = appState.weeks[wk].liftMeta[selectedDay];
-  const myGroupId = dayMeta[liftName]?.groupId;
-  const dayLifts  = Object.keys(appState.weeks[wk]?.lifts?.[selectedDay] || {});
-  const others    = dayLifts.filter(n => n !== liftName);
+  const weekData = appState.weeks[wk];
+  const dayMeta = weekData.liftMeta[selectedDay];
+  const myGroupId = normaliseGroupId(dayMeta[liftName]?.groupId);
+  const dayLifts = _dayLiftOrder(weekData, selectedDay);
+  const members = myGroupId ? membersInOrder(weekData, selectedDay, liftName, dayLifts) : [];
+  const memberSet = new Set(members);
+  const candidates = dayLifts.filter((name) => name !== liftName && !memberSet.has(name));
 
   const panel = document.createElement('div');
   panel.className = 'ss-link-panel';
 
+  const candidateHtml = candidates.length
+    ? candidates.map((name) => _circuitPanelCandidate(name, liftName, myGroupId, dayMeta)).join('')
+    : `<p class="ss-panel-note">${myGroupId
+      ? 'Every exercise in this workout is already in the circuit.'
+      : 'Add another exercise to this workout, then start a circuit here.'}</p>`;
+
   if (myGroupId) {
-    const partners = Object.keys(dayMeta).filter(n => n !== liftName && dayMeta[n]?.groupId === myGroupId);
+    const memberRows = members.map((name) => `<div class="ss-member-row">
+      <span class="ss-member-name">${escapeHtml(name)}</span>
+      <button type="button" class="btn-pad ss-member-remove" data-action="remove-from-superset" data-member="${escapeHtml(name)}" aria-label="Remove ${escapeHtml(name)} from this circuit">Remove</button>
+    </div>`).join('');
     panel.innerHTML = `
-      <div class="ss-panel-title">Superset ${escapeHtml(String(myGroupId))} — paired with: ${partners.map(n => escapeHtml(n)).join(', ') || 'none'}</div>
-      <button class="btn-pad" style="color:#ef4444;border-color:rgba(239,68,68,0.3);" data-action="unlink-superset" data-liftname="${escapeHtml(liftName)}">Unlink superset</button>`;
-  } else if (others.length === 0) {
-    panel.innerHTML = `<div class="ss-panel-title" style="color:#94a3b8;">Add more exercises to pair as a superset.</div>`;
+      <div class="ss-panel-title">Circuit ${escapeHtml(String(myGroupId))}</div>
+      <div class="ss-panel-section">
+        <div class="ss-panel-label">In this circuit</div>
+        ${memberRows}
+        <button type="button" class="btn-pad ss-unlink" data-action="unlink-superset" data-liftname="${escapeHtml(liftName)}">Unlink circuit</button>
+      </div>
+      <div class="ss-panel-section">
+        <div class="ss-panel-label">Add to this circuit</div>
+        ${candidateHtml}
+      </div>`;
   } else {
-    let html = '<div class="ss-panel-title">Pair with:</div>';
-    others.forEach(name => {
-      const safe    = escapeHtml(name);
-      const display = name;
-      html += `<button class="btn-pad" data-action="link-superset" data-liftname="${escapeHtml(liftName)}" data-partner="${safe}">${escapeHtml(display)}</button>`;
-    });
-    panel.innerHTML = html;
+    panel.innerHTML = `
+      <div class="ss-panel-title">Superset / circuit</div>
+      <p class="ss-panel-note">Pick an exercise to start a circuit. Rest starts after the last exercise, not after every member.</p>
+      <div class="ss-panel-section">
+        <div class="ss-panel-label">Add to this circuit</div>
+        ${candidateHtml}
+      </div>`;
   }
 
   exCard.classList.remove('collapsed');
@@ -1779,6 +2061,12 @@ export function showSupersetLinkPanel(exCard) {
   }, 0);
 }
 
+/**
+ * Pair `liftName` with `partnerName`. Joining an existing circuit KEEPS its
+ * letter — the old code always allocated a new one, which silently unpaired the
+ * athlete's previous partner. A cross-group merge is refused with an explanation
+ * instead of re-lettering either side.
+ */
 export function pairAsSuperset(liftName, partnerName) {
   const appState   = _getState();
   const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
@@ -1788,13 +2076,32 @@ export function pairAsSuperset(liftName, partnerName) {
   if (!appState.weeks[wk].liftMeta[selectedDay]) appState.weeks[wk].liftMeta[selectedDay] = {};
   const dayMeta = appState.weeks[wk].liftMeta[selectedDay];
 
-  const used = new Set(Object.values(dayMeta).map(m => m?.groupId).filter(Boolean));
-  let letter = 'A';
-  while (used.has(letter)) letter = String.fromCharCode(letter.charCodeAt(0) + 1);
+  const join = resolveJoin(dayMeta, liftName, partnerName);
+  if (!join.ok) {
+    showToast(join.reason === 'cross-group'
+      ? `“${partnerName}” is already in circuit ${join.theirs}. Unlink that circuit first.`
+      : 'Pick a different exercise to pair.', true);
+    return;
+  }
+  const letter = join.groupId;
 
   dayMeta[liftName]    = { ...(dayMeta[liftName]    || {}), groupId: letter };
   dayMeta[partnerName] = { ...(dayMeta[partnerName] || {}), groupId: letter };
 
+  _saveState(true);
+  renderWorkout();
+}
+
+/** Remove one exercise from its circuit; a lone remaining tag is cleared too. */
+export function removeFromSuperset(memberName) {
+  const appState   = _getState();
+  const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
+  const wk = activeWorkoutWeekKey(appState);
+
+  const dayMeta = appState.weeks?.[wk]?.liftMeta?.[selectedDay];
+  if (!dayMeta || !memberName) return;
+  const removed = detachMember(dayMeta, memberName);
+  if (!removed.removed) return;
   _saveState(true);
   renderWorkout();
 }
@@ -1806,7 +2113,7 @@ export function unpairSuperset(liftName) {
 
   const dayMeta = appState.weeks?.[wk]?.liftMeta?.[selectedDay];
   if (!dayMeta) return;
-  const groupId = dayMeta[liftName]?.groupId;
+  const groupId = normaliseGroupId(dayMeta[liftName]?.groupId);
   if (!groupId) return;
 
   Object.keys(dayMeta).forEach(n => { if (dayMeta[n]?.groupId === groupId) delete dayMeta[n].groupId; });
@@ -1902,15 +2209,26 @@ function renderSessionHighlights(appState, weekKey, day, liftNames) {
   }
   const unit = weightUnitLabel(appState || {});
   const round = (value) => (Math.round(value * 10) / 10).toString().replace(/\.0$/, '');
+  const gainText = (h) => {
+    if (h.kind === 'hold') return `Hold PR · ${formatDuration(h.value)} · +${round(h.delta)}s`;
+    if (h.kind === 'carry') return `Carry PR · ${formatDistance(h.value)}m · +${round(h.delta)}m`;
+    if (h.kind === 'reps') {
+      const load = Number(h.load) > 0 ? `${round(h.load)} ${unit} × ` : '';
+      return `Rep PR · ${load}${round(h.value)} reps · +${round(h.delta)}`;
+    }
+    return `${round(h.e1rm)} ${unit} est. 1RM · +${round(h.delta)}`;
+  };
   host.hidden = false;
   host.innerHTML = `
     <div class="summary-highlights__title">Notable progress</div>
     ${highlights.map((h) => `
       <div class="summary-highlights__row">
         <span class="summary-highlights__lift">${escapeHtml(h.lift)}</span>
-        <span class="summary-highlights__gain">${round(h.e1rm)} ${escapeHtml(unit)} est. 1RM · +${round(h.delta)}</span>
+        <span class="summary-highlights__gain">${gainText(h)}</span>
       </div>`).join('')}
-    <div class="summary-highlights__note">Estimated from your best set — not a tested max.</div>
+    <div class="summary-highlights__note">${highlights.some((h) => h.kind !== 'hold' && h.kind !== 'carry' && h.kind !== 'reps')
+      ? 'Estimated from your best set — not a tested max.'
+      : 'Measured from the sets you completed.'}</div>
   `;
 }
 
@@ -2144,6 +2462,13 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (action === 'open-set-sheet') { openSetSheet(liftName, sIdx); return; }
+  // The calculator is its own stacked dialog: its controls live outside any
+  // `.cockpit-exercise`, so they carry no lift context and read it from module
+  // state instead.
+  if (action === 'close-plate-sheet' || action === 'plate-use-weight') {
+    handlePlateSheetAction(target, action);
+    return;
+  }
 
   if (action === 'log-all-target') logAllAtTarget(liftName);
   else if (action === 'use-previous-values') usePreviousValues(liftName);
@@ -2158,10 +2483,10 @@ document.addEventListener('click', (e) => {
   else if (action === 'show-ss-panel') showSupersetLinkPanel(exCard);
   else if (action === 'open-exercise-options') openExerciseOptions(liftName);
   else if (action === 'link-superset') pairAsSuperset(liftName, target.getAttribute('data-partner'));
+  else if (action === 'remove-from-superset') removeFromSuperset(target.getAttribute('data-member'));
   else if (action === 'unlink-superset') unpairSuperset(liftName);
   else if (action === 'toggle-accordion') toggleAccordionManual(exCard);
   else if (action === 'jump-to-exercise') jumpToExercise(liftName);
-  else if (action === 'set-rir') setPerSetRir(liftName, sIdx, parseInt(target.getAttribute('data-rir'), 10));
   else if (action === 'toggle-set-failure') toggleSetFailure(liftName, sIdx);
   else if (action === 'toggle-load-basis') toggleLoadBasis(liftName, sIdx);
   else if (action === 'edit-set-rest') void editSetRest(liftName, sIdx);
