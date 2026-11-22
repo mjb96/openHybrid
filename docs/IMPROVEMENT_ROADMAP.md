@@ -635,6 +635,30 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Home hierarchy, commit 1: date headline, week chip, one Start.**
+  - Home's `h1` is the real calendar day ("Mon 3 Aug"), not the program week, so
+    a cold boot can never flash "Week 1" as the screen's name. The week moved to
+    the compact chip beneath it: "Week 1 of 4 · Working Sets".
+  - The chip only claims a range when the active plan has a `totalWeeks` and the
+    current week is inside it — a legacy or unknown plan renders "Week N"
+    instead of inventing "of 4". With no active program the phase is omitted
+    rather than falling back to the resolver's "Training" placeholder.
+  - Removed the duplicate Home "Workout" quick action. Start on the Today
+    decision is the only strength start; the secondary row keeps Weight, Run and
+    History, and the Today card's meta no longer repeats the week a third time.
+  - Header CSS: the meta column gets `min-width: 0`, the headline uses
+    `clamp(1.15rem, 5.2vw, 1.5rem)` with `overflow-wrap: anywhere`, and the
+    phase label is a compact single-line pill (bordered, 999px radius,
+    ellipsis). No brand-token changes; the palette and type scale are untouched.
+  - Validation: 2,033 node tests at commit 1 (2,074 on the merged tree after the
+    Progress PR), typecheck, smoke, precache/workflow, the Home Today browser
+    contract (headline format, chip contents/pill, one Start, three quick
+    actions, no overflow) and the 2,241-control touch-target check.
+  - `core-ergonomics` passes on the merged tree; the earlier local rest-day
+    cockpit anomaly does not reproduce after the Progress PR's selector update.
+  - Next: collapse the Home bodyweight surface and settle the remaining card
+    competition below Today.
+
 - **2026-11-22 — Progress hub: calendar-week control and honest empty states.**
   - The hub now shows the shared calendar-week navigator and rebuilds the hero,
     all four domain cards and the 12-week strip for the selected Monday–Sunday
