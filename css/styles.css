@@ -1987,13 +1987,13 @@ body.sheet-scroll-locked {
     var(--bg-card);
   overflow: hidden;
 }
-.home-week__rail { padding: 15px 14px 13px; }
+.home-week__rail { padding: 11px 12px 10px; }
 .home-week__head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 11px;
+  margin-bottom: 8px;
 }
 .home-week__nav {
   display: flex;
@@ -2058,7 +2058,7 @@ body.sheet-scroll-locked {
   min-width: 0;
   display: grid;
   grid-template-columns: repeat(7, minmax(44px, 1fr));
-  gap: 3px;
+  gap: 2px;
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
@@ -2069,10 +2069,10 @@ body.sheet-scroll-locked {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
-  min-height: 66px;
-  padding: 7px 2px;
+  min-height: 48px;
+  padding: 5px 2px;
   border: 1px solid var(--border-default);
   border-radius: 11px;
   color: var(--text-secondary);
@@ -2083,19 +2083,21 @@ body.sheet-scroll-locked {
 .home-week-day:active { transform: scale(0.97); }
 .home-week-day:disabled { cursor: default; opacity: 0.62; }
 .home-week-day__name {
-  font-size: 0.58rem;
+  font-size: 0.55rem;
+  line-height: 1;
   font-weight: 800;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .home-week-day__dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--text-faint);
 }
 .home-week-day__date {
-  font-size: 0.54rem;
+  font-size: 0.52rem;
+  line-height: 1;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
