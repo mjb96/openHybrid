@@ -26,7 +26,7 @@ import { resolvedLoadMode } from '../workout/load-mode.js';
 import { supportsLoadBasis } from '../workout/load-basis.js';
 import { buildSavedWorkoutDraft } from '../workout/edit-saved.js';
 import { getExerciseRestOverride } from '../workout/exercise-config.js';
-import { MAX_ROUTINE_SETS, newRoutineId } from './store.js';
+import { MAX_ROUTINE_LIFTS, MAX_ROUTINE_SETS, newRoutineId } from './store.js';
 
 const ROUTINE_BADGE = 'Routine';
 const ROUTINE_COLOR = 'var(--accent-blue)';
@@ -53,19 +53,28 @@ function anchorSet(working) {
 }
 
 /**
- * The rep target for a routine: the persisted prescription (`tr`) when the
- * session carries one, otherwise what was actually performed.
+ * The rep target for a routine. The anchor (heaviest working) set pairs the
+ * prescription with the load: its own target wins, then its performed reps, and
+ * only then another set's prescription/performed reps. The old any-`tr` first
+ * rule could prescribe 8 reps on a 6-rep top set.
  * @param {any[]} working
  * @param {any} anchor
  * @returns {number}
  */
 function repTargetFor(working, anchor) {
+  const anchorTarget = parseInt(anchor?.tr, 10);
+  if (Number.isFinite(anchorTarget) && anchorTarget > 0) return anchorTarget;
+  const anchorReps = parseInt(anchor?.r, 10);
+  if (Number.isFinite(anchorReps) && anchorReps > 0) return anchorReps;
   for (const set of working) {
     const prescribed = parseInt(set?.tr, 10);
     if (Number.isFinite(prescribed) && prescribed > 0) return prescribed;
   }
-  const performed = parseInt(anchor?.r, 10);
-  return Number.isFinite(performed) && performed > 0 ? performed : 0;
+  for (const set of working) {
+    const performed = parseInt(set?.r, 10);
+    if (Number.isFinite(performed) && performed > 0) return performed;
+  }
+  return 0;
 }
 
 /**
@@ -190,6 +199,7 @@ export function buildRoutineFromSession(state, week, day, options = {}) {
   const lifts = [];
   const prescriptions = {};
   for (const lift of draft.liftOrder || []) {
+    if (lifts.length >= MAX_ROUTINE_LIFTS) break;
     const prescription = prescriptionForSets(state, lift, draft.lifts?.[lift]);
     if (!prescription) continue;
     prescriptions[lift] = prescription;
@@ -204,7 +214,6 @@ export function buildRoutineFromSession(state, week, day, options = {}) {
     id: newRoutineId(),
     name,
     folderId: null,
-    sortOrder: 0,
     createdAt: stamp,
     updatedAt: stamp,
     source: {

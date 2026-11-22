@@ -15,8 +15,9 @@ import path from 'node:path';
 
 import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek, routineSummary } from '../js/routines/model.js';
 import {
-  createFolder, deleteFolder, ensureRoutines, findFolder, MAX_ROUTINE_SETS, moveFolder,
-  moveRoutineToFolder, newFolderId, orderedFolders, removeRoutine, renameFolder, restoreFolder,
+  createFolder, deleteFolder, ensureRoutines, findFolder, hasRoutineCapacity,
+  MAX_ROUTINE_LIFTS, MAX_ROUTINES, MAX_ROUTINE_SETS, moveFolder, moveRoutineToFolder,
+  newFolderId, orderedFolders, removeRoutine, renameFolder, restoreFolder,
 } from '../js/routines/store.js';
 import { createOneOffStrengthSession } from '../js/workout/one-off-session.js';
 import { buildSetRow } from '../js/templates.js';
@@ -116,17 +117,39 @@ test('only completed working sets count: warm-ups, blank rows and empty lifts ar
   assert.equal(buildRoutineFromSession(state(), { lifts: {} }, 'mon', { name: 'Nothing' }), null);
 });
 
-test('the load is the heaviest working set; the rep target prefers tr, then r', () => {
+test('the load is the heaviest working set; the rep target follows the anchor set', () => {
   const routine = build();
   const bench = routine.prescriptions.mon['Bench Press'];
   assert.equal(bench.weight, 105);
-  assert.equal(bench.reps, 8, 'the persisted prescription (tr) outranks the heaviest set’s 6 reps');
+  assert.equal(bench.reps, 6, 'the heaviest set has no tr, so its own 6 reps pair with the 105 load');
   assert.equal(bench.mode, undefined);
 
   const deadlift = routine.prescriptions.mon.Deadlift;
   assert.equal(deadlift.weight, 140);
   assert.equal(deadlift.reps, 5, 'with no tr the performed reps are the target');
   assert.equal(deadlift.restSec, null);
+});
+
+test('rep target precedence: anchor tr, anchor r, any tr, then any r', () => {
+  // Anchor tr wins over everything.
+  assert.equal(prescriptionForSets(state(), 'Bench Press', [
+    { w: '100', r: '8', c: true, tr: '8' },
+    { w: '110', r: '5', c: true, tr: '5' },
+  ]).reps, 5);
+  // Anchor r wins over another set's tr.
+  assert.equal(prescriptionForSets(state(), 'Bench Press', [
+    { w: '100', r: '8', c: true, tr: '8' },
+    { w: '110', r: '6', c: true },
+  ]).reps, 6);
+  // With no anchor values, any tr, then any performed reps are the fallbacks.
+  assert.equal(prescriptionForSets(state(), 'Bench Press', [
+    { w: '100', r: '8', c: true, tr: '8' },
+    { w: '110', r: '', c: true },
+  ]).reps, 8);
+  assert.equal(prescriptionForSets(state(), 'Bench Press', [
+    { w: '100', r: '8', c: true },
+    { w: '110', r: '6', c: true },
+  ]).reps, 6);
 });
 
 test('rest precedence: per-set rest, then the exercise override, then the default', () => {
@@ -162,7 +185,7 @@ test('routineSourceWeek seeds a copyable week: count, order, rep target and rest
   assert.equal(sourceDay, 'mon', 'the day travels with the week so Start cannot pick today');
   assert.deepEqual(sourceWeek.liftOrder.mon, routine.days.mon.lifts);
   assert.deepEqual(Object.keys(sourceWeek.lifts.mon), routine.days.mon.lifts);
-  assert.deepEqual(sourceWeek.lifts.mon['Bench Press'][0], { w: '105', r: '8', c: false, tr: '8', restSec: 180 });
+  assert.deepEqual(sourceWeek.lifts.mon['Bench Press'][0], { w: '105', r: '6', c: false, tr: '6', restSec: 180 });
   assert.equal(sourceWeek.lifts.mon['Bench Press'].length, 3);
   assert.deepEqual(sourceWeek.lifts.mon.Plank[0], { w: '', r: '', c: false, mode: 'time', sec: 60 });
   assert.deepEqual(sourceWeek.lifts.mon['Farmer Carry'][0], { w: '40', r: '', c: false, mode: 'distance', dist: 30, basis: 'total' });
@@ -283,8 +306,8 @@ test('routineSourceWeek drives a one-off copy session without touching the progr
   assert.equal(lifts['Bench Press'].length, 3);
   assert.ok(lifts['Bench Press'].every((set) => set.c === false), 'every copied set starts uncompleted');
   assert.equal(lifts['Bench Press'][0].w, '105');
-  assert.equal(lifts['Bench Press'][0].r, '8');
-  assert.equal(lifts['Bench Press'][0].tr, '8');
+  assert.equal(lifts['Bench Press'][0].r, '6');
+  assert.equal(lifts['Bench Press'][0].tr, '6');
   assert.equal(lifts['Bench Press'][0].restSec, 180);
   assert.equal(lifts.Plank[0].mode, 'time');
   assert.equal(lifts.Plank[0].sec, 60);
@@ -310,6 +333,34 @@ test('routineSummary counts exercises and working sets, and estimates time only 
     prescriptions: { mon: { 'Bench Press': { sets: 1e9, restSec: 0 } } },
   });
   assert.equal(capped.workingSets, MAX_ROUTINE_SETS, 'the summary reads the same bound the copy path applies');
+});
+
+test('the builder caps lifts at the import bound, and the routine library caps records', () => {
+  const lifts = {};
+  for (let i = 0; i < MAX_ROUTINE_LIFTS + 1; i++) {
+    lifts[`Exercise ${i + 1}`] = [{ w: '50', r: '10', c: true }];
+  }
+  const routine = buildRoutineFromSession(state(), loadWeek(lifts), 'mon', { name: 'Huge' });
+  assert.equal(routine.days.mon.lifts.length, MAX_ROUTINE_LIFTS);
+  assert.equal(Object.keys(routine.prescriptions.mon).length, MAX_ROUTINE_LIFTS);
+  assert.equal(routine.days.mon.lifts.at(-1), `Exercise ${MAX_ROUTINE_LIFTS}`);
+
+  // The app must not write a routine its own import would drop.
+  const saved = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    currentWeek: '1',
+    weeks: { '1': { lifts: {} } },
+    routines: [routine],
+    libraryFolders: [],
+  };
+  const parsed = parseImport(JSON.parse(JSON.stringify(wrapExport(saved))));
+  const checked = validateImport(parsed.state, { currentSchemaVersion: CURRENT_SCHEMA_VERSION });
+  assert.equal(checked.ok, true);
+  assert.equal(checked.state.routines.length, 1, 'the capped routine survives its own import');
+
+  assert.equal(hasRoutineCapacity({ routines: Array.from({ length: MAX_ROUTINES - 1 }) }), true);
+  assert.equal(hasRoutineCapacity({ routines: Array.from({ length: MAX_ROUTINES }) }), false);
+  assert.equal(hasRoutineCapacity({}), true);
 });
 
 test('folders group routines one-way; deleting a folder never deletes a routine', () => {
@@ -356,6 +407,53 @@ test('folders group routines one-way; deleting a folder never deletes a routine'
   assert.equal(findFolder(state, travel.id)?.name, 'Trips');
   assert.equal(push.folderId, travel.id, 'Undo restores membership too');
   assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Trips', 'Home']);
+});
+
+test('folder reorder, delete and Undo preserve the exact DISPLAY order', () => {
+  const state = { routines: [], libraryFolders: [] };
+  const alpha = createFolder(state, 'Alpha');
+  createFolder(state, 'Beta');
+  const gamma = createFolder(state, 'Gamma');
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Alpha', 'Beta', 'Gamma']);
+
+  assert.equal(moveFolder(state, gamma.id, -1), true);
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Alpha', 'Gamma', 'Beta']);
+  assert.deepEqual(state.libraryFolders.map((folder) => folder.name), ['Alpha', 'Gamma', 'Beta'],
+    'the stored array follows display order after a move');
+  assert.deepEqual(state.libraryFolders.map((folder) => folder.sortOrder), [0, 1, 2]);
+
+  // Delete the first folder; Undo must restore it at display index 0.
+  const snapshot = deleteFolder(state, alpha.id);
+  assert.equal(snapshot.index, 0);
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Gamma', 'Beta']);
+  assert.equal(restoreFolder(state, snapshot), true);
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Alpha', 'Gamma', 'Beta']);
+  assert.deepEqual(state.libraryFolders.map((folder) => folder.sortOrder), [0, 1, 2]);
+
+  // A folder stored first but displayed last is deleted by DISPLAY index.
+  state.libraryFolders = [
+    { id: 'fld_z', name: 'Zulu', sortOrder: 20, createdAt: 'x' },
+    { id: 'fld_a', name: 'Able', sortOrder: 10, createdAt: 'x' },
+  ];
+  const zulu = deleteFolder(state, 'fld_z');
+  assert.equal(zulu.index, 1, 'the display index, not the array index');
+  assert.equal(restoreFolder(state, zulu), true);
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Able', 'Zulu']);
+  assert.deepEqual(state.libraryFolders.map((folder) => folder.name), ['Able', 'Zulu']);
+});
+
+test('a new folder appends after an imported library with offset sortOrder', () => {
+  const state = {
+    routines: [],
+    libraryFolders: [
+      { id: 'fld_a', name: 'Able', sortOrder: 10, createdAt: 'x' },
+      { id: 'fld_b', name: 'Baker', sortOrder: 20, createdAt: 'x' },
+    ],
+  };
+  const charlie = createFolder(state, 'Charlie');
+  assert.equal(charlie.sortOrder, 2, 'the imported 10/20 list is normalised before appending');
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Able', 'Baker', 'Charlie']);
+  assert.deepEqual(state.libraryFolders.map((folder) => folder.sortOrder), [0, 1, 2]);
 });
 
 test('the store seeds and repairs both root arrays, and Undo can remove a routine', () => {

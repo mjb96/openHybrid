@@ -120,6 +120,14 @@ test('malformed routines and folders are dropped; valid ones survive', () => {
     { ...validRoutine('rtn_lifts'), days: { mon: { lifts: 'Bench Press' } } },
     { ...validRoutine('rtn_name'), name: 42 },
     { ...validRoutine('rtn_band'), prescriptions: { mon: { 'Bench Press': { sets: 3, band: 'XXL' } } } },
+    // A routine must be startable: every listed lift needs a real prescription.
+    { ...validRoutine('rtn_no_rx'), prescriptions: {} },
+    { ...validRoutine('rtn_no_lifts'), days: { mon: { lifts: [] } }, prescriptions: {} },
+    {
+      ...validRoutine('rtn_missing_rx'),
+      days: { mon: { lifts: ['Bench Press', 'Back Squat'] } },
+      prescriptions: { mon: { 'Bench Press': { sets: 3, reps: 8 } } },
+    },
   ];
   const folder = { id: 'fld_travel', name: 'Travel', sortOrder: 0, createdAt: '2026-11-16T10:00:00.000Z', updatedAt: '2026-11-16T10:00:00.000Z' };
   const r = validateImport({

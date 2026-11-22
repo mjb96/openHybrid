@@ -141,7 +141,7 @@ async function openHistory(page) {
   await page.waitForSelector('#activitiesContent .activity-history-row--strength');
 }
 
-async function saveAsRoutine(page, name) {
+async function saveAsRoutine(page, name, expectedCount = 1) {
   await page.click('#activitiesHeaderActions [data-action="toggle-activity-menu"]');
   await page.waitForSelector('#activityActionMenu [data-action="save-as-routine"]');
   await page.click('#activityActionMenu [data-action="save-as-routine"]');
@@ -151,7 +151,7 @@ async function saveAsRoutine(page, name) {
   ok(/routine library/i.test(copy), 'the prompt names the routine library');
   await page.fill('.cmodal-overlay [data-cm="input"]', name);
   await page.click('.cmodal-overlay [data-cm="ok"]');
-  await waitForRoutines(page, 1);
+  await waitForRoutines(page, expectedCount);
 }
 
 try {
@@ -205,8 +205,17 @@ try {
   ok((reloaded.routines || []).length === 1, 'the routine survives a reload');
   ok(JSON.stringify(reloadedRoutine?.days?.mon?.lifts) === JSON.stringify(['Bench Press', 'Deadlift']), 'the reloaded routine keeps its order');
 
-  // A run is not a strength session, so its detail must not offer the action.
+  // A second routine proves delete/Undo and folder moves restore the RIGHT record.
   await openHistory(page);
+  await page.click('#activitiesContent .activity-history-row--strength');
+  await page.waitForSelector('#activitiesScreen .activity-detail-shell');
+  await saveAsRoutine(page, 'Second routine', 2);
+  const twoSaved = await readState(page);
+  ok(twoSaved.routines.length === 2, 'two routines can live in the library');
+  await page.click('#activitiesBack');
+  await page.waitForSelector('#activitiesContent .activity-history-row');
+
+  // A run is not a strength session, so its detail must not offer the action.
   await page.click('#activitiesContent .activity-history-row--run');
   await page.waitForSelector('#activitiesScreen .activity-detail-shell');
   await page.click('#activitiesHeaderActions [data-action="toggle-activity-menu"]');
@@ -224,13 +233,13 @@ try {
 
   await openPlansMyPlans(page);
   const card = page.locator('#progLibraryContent .routine-card').first();
-  ok(await page.locator('#progLibraryContent .routine-card').count() === 1, 'My Plans lists exactly one routine');
+  ok(await page.locator('#progLibraryContent .routine-card').count() === 2, 'My Plans lists both routines');
   ok(await page.locator('#progLibraryContent .prog-card[data-routine-id]').count() === 0, 'a routine never renders as a program card');
   ok((await card.getAttribute('data-routine-id') || '').startsWith('rtn_'), 'the card carries the routine id');
   ok((await card.locator('.routine-card__name').innerText()) === 'Push day', 'the card shows the routine name');
   const cardSummary = await card.locator('.routine-card__meta').innerText();
   ok(cardSummary === '2 exercises · 4 working sets', `the card summarises the routine (${cardSummary})`);
-  ok((await page.locator('#progLibraryTabs .lib-tab-count').innerText()) === '2', 'the My Plans badge counts the routine beside the plan');
+  ok((await page.locator('#progLibraryTabs .lib-tab-count').innerText()) === '3', 'the My Plans badge counts both routines beside the plan');
   const sectionTitle = await page.locator('#progLibraryContent .filtered-grid-title').first().innerText();
   ok(sectionTitle === 'Routines', `the routines section is labelled (${sectionTitle})`);
 
@@ -338,20 +347,23 @@ try {
   ok(renamed.activeProgramId === baseline.activeProgramId && renamed.currentWeek === baseline.currentWeek,
     'renaming never moves the active program or week');
 
-  // Delete with Undo: the record leaves, then comes back.
+  // Delete with Undo: the right record leaves, the other one stays, then it returns.
   await openRoutineMenu(page, 'delete-routine');
   await page.waitForSelector('.cmodal-overlay [data-cm="ok"]');
   await page.click('.cmodal-overlay [data-cm="ok"]');
-  await waitForRoutines(page, 0);
-  ok(await page.locator('#progLibraryContent .routine-card').count() === 0, 'Delete removes the routine card');
-  ok((await page.locator('#progLibraryTabs .lib-tab-count').innerText()) === '1', 'the My Plans badge drops the deleted routine');
+  await waitForRoutines(page, 1);
+  ok(await page.locator('#progLibraryContent .routine-card').count() === 1, 'Delete removes the routine card');
+  ok((await page.locator('#progLibraryContent .routine-card__name').innerText()) === 'Second routine',
+    'the other routine is untouched by the delete');
+  ok((await page.locator('#progLibraryTabs .lib-tab-count').innerText()) === '2', 'the My Plans badge drops the deleted routine');
   await page.waitForSelector('#activityUndoBar.show');
   ok(/Routine deleted/.test(await page.locator('#activityUndoMessage').innerText()), 'Delete offers Undo');
   await page.click('#activityUndoBar [data-action="undo-activity-delete"]');
-  await waitForRoutines(page, 1);
-  await page.waitForFunction(() => document.querySelectorAll('#progLibraryContent .routine-card').length === 1);
+  await waitForRoutines(page, 2);
+  await page.waitForFunction(() => document.querySelectorAll('#progLibraryContent .routine-card').length === 2);
   const restored = await readState(page);
-  ok(restored.routines[0].name === 'Push day A', 'Undo restores the renamed routine');
+  ok(restored.routines[0]?.name === 'Push day A' && restored.routines[1]?.name === 'Second routine',
+    'Undo restores the deleted routine in its place, not the other one');
   ok(restored.activeProgramId === baseline.activeProgramId
     && restored.currentWeek === baseline.currentWeek
     && JSON.stringify(restored.weeks['1']) === JSON.stringify(baseline.weeks['1']),
@@ -373,15 +385,15 @@ try {
   ok(!!travel && !!home && travel.sortOrder === 0 && home.sortOrder === 1, 'folders are created in display order');
   ok(folderState.libraryFolders.every((folder) => !('routines' in folder) && !('members' in folder) && !('routineIds' in folder)),
     'folders store no member list — membership is one-way on the routine');
-  ok(await page.locator('.routine-folder--unfiled .routine-card').count() === 1,
-    'the unfiled routine moves to the Unfiled bucket');
+  ok(await page.locator('.routine-folder--unfiled .routine-card').count() === 2,
+    'both unfiled routines move to the Unfiled bucket');
   ok(await page.locator('.routine-folder--empty').count() === 2,
     'empty folders stay visible so they can be filled');
   const folderMenuBox = await page.locator(`#progLibraryContent [data-action="open-routine-folder-menu"][data-folder-id="${travel.id}"]`).boundingBox();
   ok(!!folderMenuBox && folderMenuBox.width >= 44 && folderMenuBox.height >= 44,
     `the folder menu is a 44px target (${folderMenuBox ? `${Math.round(folderMenuBox.width)}×${Math.round(folderMenuBox.height)}` : 'missing'})`);
 
-  // Move the routine into Travel through the routine's own menu.
+  // Move the first routine (Push day A) into Travel through its own menu.
   await openRoutineMenu(page, 'move-routine-to-folder');
   await page.waitForSelector('#routineFolderSheet.active');
   const choiceNames = await page.locator('#routineFolderList .routine-folder-choice strong').allTextContents();
@@ -404,7 +416,8 @@ try {
   await page.waitForTimeout(350); // let the 0.3s sheet slide-down finish before the screenshot
   ok((await page.locator(`.routine-folder[data-folder-id="${travel.id}"] .routine-card__name`).innerText()) === 'Push day A',
     'the routine renders inside its folder');
-  ok(await page.locator('.routine-folder--unfiled').count() === 0, 'an empty Unfiled bucket is not rendered');
+  ok((await page.locator('.routine-folder--unfiled .routine-card__name').innerText()) === 'Second routine',
+    'the second routine stays under Unfiled');
 
   const travelBox = await page.locator(`.routine-folder[data-folder-id="${travel.id}"]`).boundingBox();
   ok(!!travelBox && travelBox.y >= 0 && travelBox.y + travelBox.height <= 844,
@@ -452,11 +465,12 @@ try {
     [STORAGE_KEY, 1],
   );
   const afterFolderDelete = await readState(page);
-  ok(afterFolderDelete.routines.length === 1 && afterFolderDelete.routines[0].folderId === null,
-    'deleting a folder moves its routines to Unfiled and deletes none');
+  ok(afterFolderDelete.routines.length === 2
+    && afterFolderDelete.routines.every((routine) => routine.folderId === null),
+  'deleting a folder moves its routines to Unfiled and deletes none');
   ok(JSON.stringify(afterFolderDelete.routines[0].prescriptions) === JSON.stringify(folderBaseline.routines[0].prescriptions),
     'deleting a folder never rewrites the routine');
-  ok(await page.locator('.routine-folder--unfiled .routine-card').count() === 1, 'the routine renders under Unfiled');
+  ok(await page.locator('.routine-folder--unfiled .routine-card').count() === 2, 'both routines render under Unfiled');
 
   await page.waitForSelector('#activityUndoBar.show');
   ok(/Folder deleted/.test(await page.locator('#activityUndoMessage').innerText()), 'folder deletion offers Undo');
@@ -473,10 +487,75 @@ try {
     (folderId) => document.querySelectorAll(`#progLibraryContent .routine-folder[data-folder-id="${folderId}"] .routine-card`).length === 1,
     travelAfterUndo.id,
   );
+  ok(JSON.stringify(await folderOrder()) === JSON.stringify(['Home', 'Travel']),
+    'Undo restores the folder at its display position, not the end');
+  ok((await page.locator(`.routine-folder[data-folder-id="${travelAfterUndo.id}"] .routine-card__name`).innerText()) === 'Push day A',
+    'Undo puts the right routine back in the restored folder');
+  ok((await page.locator('.routine-folder--unfiled .routine-card__name').innerText()) === 'Second routine',
+    'the other routine stays Unfiled through the folder Undo');
   ok(JSON.stringify(afterFolderUndo.weeks) === JSON.stringify(folderBaseline.weeks)
     && afterFolderUndo.activeProgramId === folderBaseline.activeProgramId
     && afterFolderUndo.currentWeek === folderBaseline.currentWeek,
   'folder actions never touch weeks, the active program or the program week');
+
+  // An unknown folderId is filed under Unfiled at read time (never rewritten),
+  // and the move sheet marks/counts it the same way the library does.
+  const orphanTarget = afterFolderUndo.routines.find((routine) => routine.name === 'Second routine');
+  await page.evaluate(([key, routineId, folderId]) => {
+    const state = JSON.parse(localStorage.getItem(key) || '{}');
+    const routine = (state.routines || []).find((entry) => entry.id === routineId);
+    if (routine) routine.folderId = folderId;
+    localStorage.setItem(key, JSON.stringify(state));
+  }, [STORAGE_KEY, orphanTarget.id, 'fld_missing']);
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForFunction(() => document.querySelectorAll('#homeWeekDays .home-week-day').length === 7);
+  await openPlansMyPlans(page);
+  ok((await page.locator('.routine-folder--unfiled .routine-card__name').innerText()) === 'Second routine',
+    'an unknown folderId renders under Unfiled');
+  await page.click('.routine-folder--unfiled .routine-card [data-action="open-routine-menu"]');
+  await page.waitForSelector('.action-menu [data-action="move-routine-to-folder"]');
+  await page.click('.action-menu [data-action="move-routine-to-folder"]');
+  await page.waitForSelector('#routineFolderSheet.active');
+  const unfiledChoice = page.locator('#routineFolderList .routine-folder-choice[data-folder-id=""]');
+  ok((await unfiledChoice.getAttribute('aria-pressed')) === 'true',
+    'the move sheet marks an orphaned routine as Unfiled');
+  ok((await unfiledChoice.locator('.program-workout-choice__main span').innerText()) === '1 routine',
+    'the Unfiled count matches where the library files it');
+  await page.click('#routineFolderSheet [data-action="close-routine-folder-sheet"]');
+  await page.waitForFunction(() => !document.getElementById('routineFolderSheet')?.classList.contains('active'));
+
+  // Start while a session is already open must not replace or orphan it.
+  const sessionKeysOf = (state) => Object.keys(state.weeks || {})
+    .filter((key) => key.startsWith('session:')).sort();
+  const beforeGuard = await readState(page);
+  await page.click(`.routine-folder[data-folder-id="${travelAfterUndo.id}"] [data-action="start-routine"]`);
+  await page.waitForSelector('.cmodal-overlay [data-cm="ok"]');
+  ok(/already open/i.test(await page.locator('.cmodal-overlay .cmodal__title').innerText()),
+    'Start while a session is open explains why it cannot start');
+  await page.click('.cmodal-overlay [data-cm="cancel"]');
+  await page.waitForFunction(() => !document.querySelector('.cmodal-overlay'));
+  const afterRefuse = await readState(page);
+  ok(JSON.stringify(sessionKeysOf(afterRefuse)) === JSON.stringify(sessionKeysOf(beforeGuard)),
+    'a refused Start creates no new session');
+  ok(afterRefuse.activeStrengthSessionKey === beforeGuard.activeStrengthSessionKey,
+    'a refused Start leaves the running session active');
+
+  await page.click(`.routine-folder[data-folder-id="${travelAfterUndo.id}"] [data-action="start-routine"]`);
+  await page.waitForSelector('.cmodal-overlay [data-cm="ok"]');
+  await page.click('.cmodal-overlay [data-cm="ok"]');
+  await page.waitForFunction(() => !document.getElementById('trainCockpit')?.hidden);
+  const afterResume = await readState(page);
+  ok(JSON.stringify(sessionKeysOf(afterResume)) === JSON.stringify(sessionKeysOf(beforeGuard)),
+    'Resume opens the existing session instead of replacing it');
+  ok(afterResume.activeStrengthSessionKey === beforeGuard.activeStrengthSessionKey,
+    'Resume keeps the same one-off session key');
+  const resumedWeek = afterResume.weeks?.[afterResume.activeStrengthSessionKey];
+  ok((await page.locator('#cockpitWorkoutTitle').innerText()) === (resumedWeek?.sessionTitle || ''),
+    'Resume opens the workout that was already in progress');
+  ok(JSON.stringify(afterResume.weeks) === JSON.stringify(folderBaseline.weeks)
+    && afterResume.activeProgramId === folderBaseline.activeProgramId
+    && afterResume.currentWeek === folderBaseline.currentWeek,
+  'no routine, folder or guard action touched the program week');
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();

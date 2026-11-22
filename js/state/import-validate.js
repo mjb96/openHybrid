@@ -210,6 +210,8 @@ export function isValidRoutine(routine) {
   if (!isRecord(routine.days)) return false;
   const days = Object.keys(routine.days);
   if (!days.length || days.length > 7) return false;
+  if (!isRecord(routine.prescriptions)) return false;
+  let liftCount = 0;
   for (const day of days) {
     const entry = routine.days[day];
     if (!isRecord(entry)) return false;
@@ -219,14 +221,23 @@ export function isValidRoutine(routine) {
     for (const field of ['title', 'badge', 'color', 'desc', 'runs']) {
       if (entry[field] != null && typeof entry[field] !== 'string') return false;
     }
-  }
-  if (routine.prescriptions != null) {
-    if (!isRecord(routine.prescriptions)) return false;
-    for (const byLift of Object.values(routine.prescriptions)) {
-      if (!isRecord(byLift)) return false;
-      for (const [lift, prescription] of Object.entries(byLift)) {
-        if (!lift.trim() || !isValidRoutinePrescription(prescription)) return false;
+    // Every listed lift needs its own prescription. A routine with a lift but no
+    // sets/reps is a "0 exercises" record the Start action cannot open, and one
+    // missing prescription would seed an empty card — refuse the routine whole.
+    if (entry.lifts.length) {
+      const dayPrescriptions = routine.prescriptions[day];
+      if (!isRecord(dayPrescriptions)) return false;
+      for (const lift of entry.lifts) {
+        if (!isValidRoutinePrescription(dayPrescriptions[lift])) return false;
       }
+      liftCount += entry.lifts.length;
+    }
+  }
+  if (!liftCount) return false;
+  for (const byLift of Object.values(routine.prescriptions)) {
+    if (!isRecord(byLift)) return false;
+    for (const [lift, prescription] of Object.entries(byLift)) {
+      if (!lift.trim() || !isValidRoutinePrescription(prescription)) return false;
     }
   }
   return true;

@@ -645,6 +645,27 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Folder order, bounds and the active-session guard.**
+  - Folder order is now display order everywhere: `normaliseFolderOrder` sorts by
+    `sortOrder` then name before renumbering, `deleteFolder` snapshots the
+    display index, and `restoreFolder` inserts into the display list at that
+    index and renumbers positionally. Undo restores the exact section order (the
+    browser check asserts the DOM order, not just the count).
+  - A new folder normalises an imported `10,20` library first, so it appends last
+    with the next dense number. The builder clamps to 60 lifts and the save path
+    refuses a 501st routine, so the app cannot write a record its own import
+    drops; the rep target now pairs with its anchor set (`tr` then `r`, then any
+    `tr`, then any `r`); imported routines must have a prescription for every
+    listed lift and at least one lift overall; the move sheet files an unknown
+    `folderId` under Unfiled with the same count/current marker as the library.
+  - Start now refuses while another workout is open and offers Resume instead of
+    replacing the clock or orphaning the one-off. The unused `routine.sortOrder`
+    field is dropped (folder membership is the only grouping this slice needs).
+  - Validation: three-folder reorder/delete/Undo tests, the lift/library bounds
+    round-trip, rep-precedence and import-repair tests, and a 98-assertion browser
+    check covering two routines, folder Undo order, orphaned membership, the
+    active-session guard and the unchanged program weeks.
+
 - **2026-11-22 — Routine folders.**
   - My Plans groups routines into folders ordered by `sortOrder`, then an
     **Unfiled** bucket for routines with no folder; empty folders stay visible

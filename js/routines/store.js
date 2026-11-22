@@ -93,17 +93,43 @@ export function orderedFolders(state) {
   return (Array.isArray(state?.libraryFolders) ? state.libraryFolders : [])
     .filter((folder) => folder && typeof folder === 'object')
     .slice()
-    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0)
-      || String(a.name || '').localeCompare(String(b.name || '')));
+    .sort(compareFolders);
 }
 
-/** Put the given folder references back into a dense 0..n-1 sort order. */
-function normaliseFolderOrder(folders) {
-  folders.forEach((folder, index) => { folder.sortOrder = index; });
+function compareFolders(a, b) {
+  return (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0)
+    || String(a.name || '').localeCompare(String(b.name || ''));
 }
 
 /**
- * Create a folder at the end of the list.
+ * Sort a folder list into DISPLAY order (sortOrder, then name) and renumber it
+ * 0..n-1. Use this when the input may be in an arbitrary/imported order.
+ * @param {any[]} folders
+ * @returns {any[]}
+ */
+function normaliseFolderOrder(folders) {
+  const ordered = (Array.isArray(folders) ? folders : [])
+    .filter((folder) => folder && typeof folder === 'object')
+    .slice()
+    .sort(compareFolders);
+  return renumberFolders(ordered);
+}
+
+/**
+ * Renumber an ALREADY display-ordered list 0..n-1, positionally. Callers pass
+ * the list after an insert/removal/swap, so re-sorting here would undo the move.
+ * @param {any[]} folders
+ * @returns {any[]}
+ */
+function renumberFolders(folders) {
+  folders.forEach((folder, index) => { folder.sortOrder = index; });
+  return folders;
+}
+
+/**
+ * Create a folder at the end of the DISPLAY order. The list is normalised first,
+ * so an imported library with offset/gapped sortOrder appends last with the next
+ * dense number (not at `state.libraryFolders.length`, which is raw array order).
  * @param {any} state
  * @param {string} name
  * @returns {any|null} the new folder, or null when the name is blank/capped
@@ -113,13 +139,14 @@ export function createFolder(state, name) {
   if (!state || !clean) return null;
   ensureRoutines(state);
   if (state.libraryFolders.length >= MAX_ROUTINE_FOLDERS) return null;
+  const ordered = normaliseFolderOrder(state.libraryFolders);
   const folder = {
     id: newFolderId(),
     name: clean,
-    sortOrder: state.libraryFolders.length,
+    sortOrder: ordered.length,
     createdAt: new Date().toISOString(),
   };
-  state.libraryFolders.push(folder);
+  state.libraryFolders = [...ordered, folder];
   return folder;
 }
 
@@ -134,34 +161,41 @@ export function renameFolder(state, id, name) {
 
 /**
  * Delete a folder, moving every member routine to Unfiled. Routines are NEVER
- * deleted. Returns the snapshot Undo needs, or null when the folder is gone.
+ * deleted. `index` is the folder's DISPLAY index so Undo can put it back where
+ * the athlete saw it. Returns the snapshot Undo needs, or null when it is gone.
  * @returns {{folder:any, index:number, routineIds:string[]}|null}
  */
 export function deleteFolder(state, id) {
   if (!state || !Array.isArray(state.libraryFolders) || !id) return null;
-  const index = state.libraryFolders.findIndex((folder) => folder?.id === id);
+  const ordered = orderedFolders(state);
+  const index = ordered.findIndex((folder) => folder?.id === id);
   if (index === -1) return null;
-  const folder = state.libraryFolders.splice(index, 1)[0];
+  const folder = ordered[index];
+  state.libraryFolders = renumberFolders(ordered.filter((entry) => entry.id !== id));
   const routineIds = [];
   for (const routine of Array.isArray(state.routines) ? state.routines : []) {
     if (routine?.folderId !== id) continue;
     routine.folderId = null;
     routineIds.push(routine.id);
   }
-  normaliseFolderOrder(state.libraryFolders);
   return { folder, index, routineIds };
 }
 
-/** Restore a deleted folder at its old position and re-file its routines. */
+/**
+ * Restore a deleted folder at its old DISPLAY index and re-file its routines.
+ * The insert happens against the current display order, then the list is
+ * renumbered positionally, so Undo restores the exact order that was on screen.
+ */
 export function restoreFolder(state, snapshot) {
   if (!state || !snapshot?.folder) return false;
   ensureRoutines(state);
+  const ordered = orderedFolders(state);
   const index = Math.min(
     Math.max(0, Number(snapshot.index) || 0),
-    state.libraryFolders.length,
+    ordered.length,
   );
-  state.libraryFolders.splice(index, 0, snapshot.folder);
-  normaliseFolderOrder(state.libraryFolders);
+  ordered.splice(index, 0, snapshot.folder);
+  state.libraryFolders = renumberFolders(ordered);
   for (const routineId of snapshot.routineIds || []) {
     const routine = findRoutine(state, routineId);
     if (routine) routine.folderId = snapshot.folder.id;
@@ -194,6 +228,11 @@ export function moveFolder(state, id, direction) {
   if (index === -1 || next < 0 || next >= folders.length) return false;
   const [moved] = folders.splice(index, 1);
   folders.splice(next, 0, moved);
-  normaliseFolderOrder(folders);
+  state.libraryFolders = renumberFolders(folders);
   return true;
+}
+
+/** True while the routine library has room for another record. */
+export function hasRoutineCapacity(state) {
+  return (Array.isArray(state?.routines) ? state.routines.length : 0) < MAX_ROUTINES;
 }

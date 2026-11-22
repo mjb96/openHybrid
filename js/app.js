@@ -113,14 +113,15 @@ import { initNotifications, requestNotificationPermission, cancelReminders, chec
 import { buildProgramSessionChoices } from './workout/program-session-picker.js';
 import { buildActivityHistory } from './activities/model.js';
 import {
-  clearActiveOneOffSession, createOneOffStrengthSession,
+  clearActiveOneOffSession, createOneOffStrengthSession, activeOneOffSession,
 } from './workout/one-off-session.js';
 import { markSessionInProgress } from './workout/session-status.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
 import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
 import {
-  createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, moveFolder,
-  moveRoutineToFolder, orderedFolders, removeRoutine, renameFolder, restoreFolder,
+  createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, hasRoutineCapacity,
+  MAX_ROUTINES, moveFolder, moveRoutineToFolder, orderedFolders, removeRoutine, renameFolder,
+  restoreFolder,
 } from './routines/store.js';
 import { showUndo } from './ui/undo-bar.js';
 
@@ -406,6 +407,11 @@ export async function saveActivityAsRoutine(activityId) {
   if (menu) menu.hidden = true;
   document.querySelector('[data-action="toggle-activity-menu"]')?.setAttribute('aria-expanded', 'false');
 
+  if (!hasRoutineCapacity(appState)) {
+    showToast(`Your routine library is full (${MAX_ROUTINES}). Delete a routine to save another.`, true);
+    return;
+  }
+
   const row = buildActivityHistory(appState).find((item) => item.kind === 'strength' && item.id === activityId);
   const sourceWeek = row && appState.weeks?.[row.week];
   if (!row || !sourceWeek) { showToast('That workout could not be found', true); return; }
@@ -462,9 +468,24 @@ export async function saveActivityAsRoutine(activityId) {
 // ordinary one-off session and opens the cockpit; it never activates a program,
 // never reseeds a week and never touches activeProgramId/currentWeek.
 
-export function startRoutine(routineId) {
+export async function startRoutine(routineId) {
   const routine = findRoutine(appState, routineId);
   if (!routine) { showToast('That routine could not be found', true); return; }
+  // One live workout owns the session clock and its one-off week. Starting a
+  // routine here would bind the timer to a new key and leave the old session
+  // orphaned, so refuse and offer the session that is already open. Never
+  // auto-discard — only an explicit Finish/Discard in that session may end it.
+  const activeOneOff = activeOneOffSession(appState);
+  if (activeOneOff || activeWorkoutSwitchStatus()?.unresolved) {
+    const resume = await confirmModal({
+      title: 'A workout is already open',
+      message: 'Finish or discard it before starting a routine. Your current session has not been changed.',
+      confirmLabel: 'Resume workout',
+      cancelLabel: 'Not now',
+    });
+    if (resume) launchActiveWorkoutCockpit();
+    return;
+  }
   const { sourceWeek, sourceDay } = routineSourceWeek(routine);
   const lifts = sourceDay ? sourceWeek.lifts?.[sourceDay] || {} : {};
   if (!sourceDay || !Object.keys(lifts).length) {
@@ -656,10 +677,15 @@ export async function moveRoutineFolder(folderId, direction) {
 function renderRoutineFolderChoices(routine) {
   const list = document.getElementById('routineFolderList');
   if (!list) return;
-  const current = routine.folderId || null;
+  const folders = orderedFolders(appState);
+  // The library files an unknown folderId under Unfiled, so the sheet must use
+  // the same valid-id set for both the current marker and the counts.
+  const validIds = new Set(folders.map((folder) => folder.id));
+  const bucketOf = (entry) => (entry?.folderId && validIds.has(entry.folderId) ? entry.folderId : null);
+  const current = bucketOf(routine);
   const countIn = (folderId) => (appState.routines || [])
-    .filter((entry) => (entry?.folderId || null) === folderId).length;
-  const choices = [{ id: null, name: 'Unfiled' }, ...orderedFolders(appState)];
+    .filter((entry) => bucketOf(entry) === folderId).length;
+  const choices = [{ id: null, name: 'Unfiled' }, ...folders];
   // Folder names are athlete input; escape every one before it reaches HTML.
   list.innerHTML = choices.map((folder) => {
     const id = folder.id == null ? null : folder.id;
@@ -1522,7 +1548,12 @@ document.addEventListener('click', (e) => {
   // Routine library actions. They are routed HERE rather than through
   // handleLibraryAction, which is only called for the library-local whitelist
   // below and cannot launch a session or own a destructive Undo.
-  else if (action === 'start-routine') startRoutine(target.getAttribute('data-routine-id'));
+  else if (action === 'start-routine') {
+    startRoutine(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine start failed:', error);
+      showToast('The routine could not be started', true);
+    });
+  }
   else if (action === 'open-routine-menu') {
     const routineId = target.getAttribute('data-routine-id');
     if (isActionMenuOpen()) closeActionMenu();

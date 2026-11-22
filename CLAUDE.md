@@ -108,12 +108,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   (+Undo) live in the `•••` menu. Start is a real start: `startRoutine` marks the
   one-off `in_progress`, binds the session clock and opens the active cockpit
   through `beginActiveWorkoutSession`, the same sequence the cockpit Start button
-  uses. `libraryFolders`
+  uses; while another workout is open it refuses and offers Resume instead of
+  replacing or orphaning that session. `libraryFolders`
   (`{id,name,sortOrder,createdAt}`) group routines with ONE-WAY membership on
   `routine.folderId`; a folder never stores a member list, deleting one moves its
-  routines to Unfiled and never deletes a routine (Undo restores the folder and
-  membership). `js/app.js` owns those actions; they never activate or reseed a
-  program.
+  routines to Unfiled and never deletes a routine (Undo restores the folder at its
+  display index and the membership). Folder order is display-based (`sortOrder`,
+  then name) and renormalised on every create/delete/restore/move; a routine has no
+  ordering field of its own. `js/app.js` owns those actions; they never activate
+  or reseed a program.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported

@@ -100,7 +100,6 @@ export interface Routine {
   id: string;
   name: string;
   folderId: string | null;
-  sortOrder: number;
   createdAt: string;
   updatedAt: string;
   source: { activityId: string | null; programId: string | null; day: string; date: string | null };
