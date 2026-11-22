@@ -124,7 +124,7 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
   const targetStyle  = diagnostic.isStalled ? 'color: var(--color-amber); font-weight: 800;' : '';
   const ssBtnClass   = groupId ? 'btn-ss-link ss-active' : 'btn-ss-link';
   const ssBtnStyle   = groupId ? `style="--ss-color:${ssColor};"` : '';
-  const ssBtnLabel   = groupId ? `SS ${groupId}` : 'SS+';
+  const ssBtnLabel   = groupId ? `SS ${escapeHtml(String(groupId))}` : 'SS+';
 
   return `<div class="cockpit-header">
     <div class="drag-handle-grip">☰</div>
@@ -134,7 +134,7 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
           <span class="cockpit-ex-name">${displaySafeName}</span>
           ${stalledBadge}
         </div>
-        <div class="cockpit-ex-target" style="${targetStyle}" data-target-label="${escapeHtml(String(targetLabel || blueprintLabel))}">${blueprintLabel}</div>
+        <div class="cockpit-ex-target" style="${targetStyle}" data-target-label="${escapeHtml(String(targetLabel || blueprintLabel))}">${escapeHtml(blueprintLabel)}</div>
       </div>
       <div class="cockpit-ex-status">${isCompleted ? 'DONE' : 'LOG'}</div>
     </div>

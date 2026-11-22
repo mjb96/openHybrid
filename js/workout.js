@@ -714,7 +714,7 @@ export function renderWorkout() {
                           <span>Set ${s.set}</span>
                           <span>${s.reps} reps</span>
                           <span>${s.weight} ${escapeHtml(weightUnitLabel(_getState?.() || {}))}</span>
-                          <span style="color:var(--accent-blue);">${s.category || ''}</span>
+                          <span style="color:var(--accent-blue);">${escapeHtml(String(s.category || ''))}</span>
                        </div>`;
           });
           html += '</div>';
@@ -854,7 +854,7 @@ export function renderWorkout() {
 
       const hdr = document.createElement('div');
       hdr.className = 'superset-group-header';
-      hdr.innerHTML = `<span class="superset-badge">SS ${groupId}</span><span class="text-xs text-muted" style="margin-left:8px;">Alternate exercises · rest after both</span>`;
+      hdr.innerHTML = `<span class="superset-badge">SS ${escapeHtml(String(groupId))}</span><span class="text-xs text-muted" style="margin-left:8px;">Alternate exercises · rest after both</span>`;
       wrapper.appendChild(hdr);
 
       groupMembers.forEach((memberLift, mIdx) => {
