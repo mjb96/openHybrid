@@ -517,6 +517,42 @@ test('pairAsSuperset / unpairSuperset tag and clear a shared groupId', () => {
   assert.equal(meta.Row.groupId, undefined);
 });
 
+test('pairAsSuperset adds a third without re-lettering the original pair', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Bench');
+  workout.appendCustomSetRow(null, 'Row');
+  workout.appendCustomSetRow(null, 'Curl');
+  workout.pairAsSuperset('Bench', 'Row');
+  workout.pairAsSuperset('Row', 'Curl');
+  const meta = state.weeks['1'].liftMeta.mon;
+  assert.equal(meta.Bench.groupId, 'A', 'the first partner is not stranded under a dead letter');
+  assert.equal(meta.Row.groupId, 'A');
+  assert.equal(meta.Curl.groupId, 'A');
+
+  workout.removeFromSuperset('Curl');
+  assert.equal(meta.Curl.groupId, undefined);
+  assert.equal(meta.Bench.groupId, 'A');
+  workout.removeFromSuperset('Row');
+  assert.equal(meta.Bench.groupId, undefined, 'a lone remaining member loses its badge');
+});
+
+test('pairAsSuperset refuses a cross-group merge instead of re-lettering', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Bench');
+  workout.appendCustomSetRow(null, 'Row');
+  workout.appendCustomSetRow(null, 'Curl');
+  workout.appendCustomSetRow(null, 'Fly');
+  workout.pairAsSuperset('Bench', 'Row');
+  workout.pairAsSuperset('Curl', 'Fly');
+  const meta = state.weeks['1'].liftMeta.mon;
+  assert.equal(meta.Curl.groupId, 'B');
+  workout.pairAsSuperset('Row', 'Curl');
+  assert.equal(meta.Bench.groupId, 'A');
+  assert.equal(meta.Row.groupId, 'A');
+  assert.equal(meta.Curl.groupId, 'B');
+  assert.equal(meta.Fly.groupId, 'B');
+});
+
 test('manual run input derives pace and time in the visible distance unit', () => {
   initWith(freshState());
   const distance = document.getElementById('runInputDist');

@@ -124,12 +124,21 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   </div>`;
 }
 
-export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
+export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, ssMemberCount = 0, ssOrdinal = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
   const stalledBadge = diagnostic.isStalled ? `<span class="badge-stall-indicator">PROGRESS CHECK</span>` : '';
   const targetStyle  = diagnostic.isStalled ? 'color: var(--color-amber); font-weight: 800;' : '';
   const ssBtnClass   = groupId ? 'btn-ss-link ss-active' : 'btn-ss-link';
   const ssBtnStyle   = groupId ? `style="--ss-color:${ssColor};"` : '';
-  const ssBtnLabel   = groupId ? `SS ${escapeHtml(String(groupId))}` : 'SS+';
+  // The button carries the group size so an athlete can tell a pair from a
+  // three-exercise circuit without opening the panel. The accessible name adds
+  // this member's place in the round.
+  const memberCount = Number(ssMemberCount) > 0 ? Math.round(Number(ssMemberCount)) : 0;
+  const ssBtnLabel   = groupId
+    ? `SS ${escapeHtml(String(groupId))}${memberCount > 1 ? ` · ${memberCount}` : ''}`
+    : 'SS+';
+  const ssBtnAria    = groupId
+    ? `Circuit ${escapeHtml(String(groupId))}${memberCount > 1 ? `, ${memberCount} exercises` : ''}${ssOrdinal ? `, exercise ${ssOrdinal.index} of ${ssOrdinal.total}` : ''}. Edit circuit`
+    : 'Add this exercise to a superset circuit';
 
   return `<div class="cockpit-header">
     <div class="drag-handle-grip">☰</div>
@@ -143,7 +152,7 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
       </div>
       <div class="cockpit-ex-status">${isCompleted ? 'DONE' : 'LOG'}</div>
     </div>
-    <button class="${ssBtnClass}" ${ssBtnStyle} data-action="show-ss-panel" data-liftname="${safeLiftName}">${ssBtnLabel}</button>
+    <button class="${ssBtnClass}" ${ssBtnStyle} data-action="show-ss-panel" data-liftname="${safeLiftName}" aria-label="${ssBtnAria}" title="${ssBtnAria}">${ssBtnLabel}</button>
     <button type="button" class="btn-ex-config tactile-scale" data-action="open-exercise-options" data-liftname="${safeLiftName}" aria-label="Settings for ${displaySafeName}" title="Exercise settings">⚙</button>
   </div>
   <div class="cockpit-body">

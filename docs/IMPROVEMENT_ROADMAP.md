@@ -257,11 +257,19 @@ Features: L3, L9, L10, L12, L13 (see §7).
 4. **Warm-up editor.** Editable percentage/reps rows with insert and delete,
    plate and dumbbell rounding through the existing ramp, and per-lift opt-in.
    `liftMeta[...].autoRamp` still prevents resurrection after a dismissal.
-5. **Rest timer polish.** Per-exercise default, ±15 s adjustments, drop-set
-   suppression, inline timer, alert sound/volume, and the existing reload
-   persistence.
-6. **Superset polish.** Rest after the pair rather than after each member,
-   stable colours, persistence in the routine, and an explicit unlink.
+5. **Rest timer polish (landed).** Per-exercise default, ±15 s adjustments,
+   drop-set suppression, inline timer, alert sound/volume, and the existing
+   reload persistence. Drop suppression is GLOBAL: a `type:'D'` row never
+   starts a rest and never advances a circuit round; a warm-up tick keeps its
+   own tier. Circuit rest uses ONE duration resolved across the group’s
+   members (longest wins) instead of the ticked member’s alone.
+6. **Circuit polish (landed).** Same-day lifts share a `groupId`; the group can
+   be a pair or a circuit of three or more. Rest starts after the last member
+   catches up, never after each member, using one governing duration resolved
+   across the group (the longest member wins). A–F keep their colours and later ids
+   continue through a wider palette; ids run A…Z then AA/AB. The panel adds,
+   removes and unlinks members explicitly, and routines/copied sessions keep
+   the membership.
 7. **Previous values scope.** Verify the `last anywhere` / `last in this
    routine` toggle and tap-to-fill, and make the scope visible where it matters.
    Scope limits the panel and the fill action; it never limits PR detection.
@@ -497,7 +505,7 @@ not rebuild a ✅.
 | L8 | Warm-up calculator | `workout/warmup-ramp.js` | Percentage rows, plate/dumbbell rounding, insert/delete | ✅ | 1 |
 | L9 | Plate calculator | `workout/plates.js` | Target, bar, plates, counts, per-side, shortfall | ◐ | 1 |
 | L10 | RPE | `workout/set-sheet.js` | 6–10 in half steps, live entry, review later | ◐ | 1 |
-| L11 | Supersets | `workout-order.js` | Pairs and circuits, colours, rest after both | ◐ | 1 |
+| L11 | Supersets | `workout/superset.js` | Pairs and circuits, stable colours, rest after the group | ✅ | 1 |
 | L12 | Saving a workout | `workout/session-status.js` | Name, duration, date, notes, summary | ✅ | 1 |
 | L13 | Live PR | `workout.js` | 1RM/weight/volume/reps/duration detection and banner | ◐ | 1 |
 | L14 | Live activity | — | Lock-screen/ongoing notification with set and rest controls | ○ | 6 |
@@ -650,9 +658,62 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,104 node tests, typecheck, smoke, precache/workflow gates, 44 real-browser checks |
+| Quality | 2,128 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Supersets become circuits (`84aa2d0`, `4e4e723`).**
+  - **The old path was pair-only and lost work.** `pairAsSuperset` always minted
+    a new letter, so adding a third exercise re-lettered the original pair and
+    stranded the previous partner under a dead id; members rendered in
+    object-key order, colours stopped at F, the 27th circuit became `[`, and
+    rest fired after every member instead of after the group. Rest also asked
+    only the ticked member, so a Bench/Curl pair rested 180 s or 90 s depending
+    on tick order.
+  - `js/workout/superset.js` is the pure group model (no DOM, no
+    `../workout.js` import): same-day lifts sharing a non-empty `groupId`,
+    `membersInOrder`, derived `roundState`, join/remove/unlink and the group
+    rest decision. Adding a third JOINS the existing letter; a cross-group merge
+    is refused with an explanation rather than re-lettering either side.
+    Members render in `liftOrder`; the in-place panel adds, removes one member
+    (clearing a lone surviving tag) and unlinks all, with 44px controls.
+  - **One rest per group.** `shouldRestAfterSet` counts only working, non-drop
+    rows and rests only after every other member has done
+    `min(done_ticked, its available rows)`, so an uneven circuit rests once the
+    shorter member catches up. Warm-up ticks keep the warm-up tier; drop ticks
+    never rest, complete a round or change the denominator. Both the manual tick
+    and one-tap quick log gate through it.
+  - `js/workout/rest-duration.js` owns the pure precedence (per-set > warm-up
+    tier > AMRAP > plan > override > tier + RPE), extracted from the timer.
+    `groupRestDuration` resolves every member through that same precedence and
+    takes the longest, so a Bench/Curl pair rests 180 s in both tick orders; a
+    per-set rest on the ticked row still wins outright, including `0`.
+  - **Stable identity.** A–F keep their historic colours and the palette
+    continues beyond F; ids run A…Z then AA…ZZ, so the 27th group is no longer
+    `[` and invalid legacy tags render as `SS+`. The header reads
+    `SS A · 3 exercises · rest after the last`, each member's SS button carries
+    the count, and connectors use `2 of 3` ordinals. Completion adds a wider
+    border and badge tick, never a text dim that breaks AA contrast.
+  - **Routine/copy persistence.** `prescriptions[day][lift].groupId` survives
+    save-as-routine and routine start; `createOneOffStrengthSession` carries
+    only `{groupId}` from live source lifts, and both paths prune a
+    single-member tag. Import drops a malformed optional `groupId` rather than
+    the whole routine. Deleting a partner's last set prunes the survivor's tag;
+    the Undo snapshot carries `liftMeta`, so both tags return. No schema
+    migration: values live in existing `liftMeta`/`prescriptions` fields.
+  - `tests/superset_circuit.test.js` (22) plus 2 logging contracts cover
+    join-not-split, cross-group refusal, remove-one, stable colours, AA ids,
+    uneven/warm-up/drop rounds, both rest orders, routine restore and
+    Copy/Repeat. `scripts/superset-browser-check.mjs` drives the real cockpit at
+    390px (pair → add third → liftOrder → no rest after A1/B1 → rest after C1 →
+    remove one → unlink all) and asserts the same 180 s duration in both tick
+    orders; the rest-timer check covers drop suppression and touch-target
+    measures the SS panel.
+  - Validation: 2,128 node tests, typecheck, smoke, precache and workflow gates,
+    and 45/45 real-Chromium checks. Screenshot:
+    `node scripts/superset-browser-check.mjs --screenshot=shots/superset-circuit.png`.
+  - Next: exercise-level circuit behaviour after a mid-session swap and a
+    second-pass UI review of the panel on a long day.
 
 - **2026-11-22 — Routines: save, start and organise reusable workouts (six
   commits).**

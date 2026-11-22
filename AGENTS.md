@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 44 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 45 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -514,6 +514,22 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   both surfaces. `shareImageCanvas` (pr-share.js) is the single
   navigator.share → download path for every card; run distance/pace formatting
   lives in `js/workout/run-units.js` so the recap and card cannot drift.
+- Circuits / supersets: `js/workout/superset.js` is the pure group model — any
+  pair or circuit of three or more same-day lifts sharing a non-empty
+  `liftMeta[day][lift].groupId`, rendered in `liftOrder`, with A…Z then AA…ZZ
+  ids and stable A–F colours (the palette continues beyond F). Adding a lift to
+  an existing circuit JOINS its letter instead of minting a new one; a
+  cross-group merge is refused. The in-place panel adds, removes one member (a
+  lone remaining tag is cleared) and unlinks all, with 44px controls. One
+  **group rest** is resolved through `js/workout/rest-duration.js` (longest
+  member wins; per-set rest still wins outright) and starts only after the last
+  member catches up. Warm-up ticks keep the warm-up tier; drop rows never start
+  a rest or advance a round. `prescriptions[day][lift].groupId` carries a
+  circuit through routines and copies; a malformed imported routine tag is
+  dropped rather than the routine, and copies carry only `{groupId}`. A lone tag
+  is pruned on read, on last-set removal and in copied/restored sessions (Undo
+  snapshots liftMeta). Values live in existing `liftMeta`/`prescriptions`
+  fields — no schema migration.
 - Bands do TWO opposite jobs (`js/workout/load-mode.js`): on a bodyweight movement a
   band ASSISTS (`w = bodyweight − band`, `loadMode: 'assisted'`); on anything else the
   band IS the load (`w = band`, `loadMode: 'banded'`). `bandRole()` decides from the

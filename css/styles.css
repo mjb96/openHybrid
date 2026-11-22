@@ -2713,7 +2713,7 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   outline: none;
 }
 
-/* ---- Superset groups ---- */
+/* ---- Superset / circuit groups ---- */
 .superset-group {
   border-left: 3px solid var(--ss-color, var(--color-blue));
   padding-left: 8px;
@@ -2721,9 +2721,16 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   cursor: grab;
 }
 .superset-group.is-dragging { opacity: 0.45; }
+/* Derived from the sets themselves, never a stored flag: a finished circuit
+   keeps its last member's RPE pad reachable but reads as done. Never dim the
+   text — 0.78 opacity pushed muted labels below AA contrast. */
+.superset-group.is-complete { border-left-width: 4px; }
+.superset-group.is-complete .superset-badge::before { content: '✓ '; }
 .superset-group-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 4px;
   padding: 5px 4px 8px;
 }
 .superset-badge {
@@ -2735,6 +2742,18 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   border-radius: 20px;
   background: var(--ss-color, var(--color-blue));
   color: #fff;
+  white-space: nowrap;
+}
+.superset-group-meta {
+  margin-left: 8px;
+  font-size: 0.65rem;
+  color: var(--text-tertiary);
+}
+.superset-group-progress {
+  margin-left: auto;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ss-color, var(--color-blue));
   white-space: nowrap;
 }
 .superset-connector {
@@ -2905,10 +2924,11 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   background: rgba(0,0,0,0.35);
   border-bottom: 1px solid var(--glass-border);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
-  align-items: flex-start;
+  align-items: stretch;
 }
+.ss-link-panel .btn-pad { min-height: var(--touch-target); }
 .ss-panel-title {
   font-size: 0.7rem;
   font-weight: 700;
@@ -2917,6 +2937,61 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   letter-spacing: 0.08em;
   width: 100%;
   margin-bottom: 4px;
+}
+.ss-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.ss-panel-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ss-panel-note {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.ss-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+}
+.ss-member-name {
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.ss-member-remove,
+.ss-unlink {
+  flex: 0 0 auto;
+  color: var(--color-red);
+  border-color: rgba(239,68,68,0.35);
+}
+.ss-unlink { align-self: flex-start; }
+.ss-candidate-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.ss-candidate-row.is-blocked { opacity: 0.65; }
+.ss-candidate-note {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.ss-candidate-row .btn-pad:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ==========================================================================
@@ -5675,6 +5750,11 @@ html[data-theme="light"] .btn-pad {
 html[data-theme="light"] .btn-pad:hover {
   background: rgba(0, 0, 0, 0.09) !important;
   color: rgba(0, 0, 0, 0.85) !important;
+}
+html[data-theme="light"] .ss-member-remove,
+html[data-theme="light"] .ss-unlink {
+  color: #b91c1c !important;
+  border-color: rgba(185, 28, 28, 0.35) !important;
 }
 
 /* "Add set / Add warm-up" dashed append button */

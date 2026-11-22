@@ -4,6 +4,7 @@
 // shape without ever completing or overwriting a programmed day.
 import { dateKey } from '../dates.js';
 import { secureRandomSuffix } from '../util/secure-id.js';
+import { normaliseGroupId, pruneSingleMemberGroups } from './superset.js';
 
 const PREFIX = 'session:';
 const DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -83,6 +84,21 @@ export function createOneOffStrengthSession(state, options = {}) {
   const liftOrder = Array.isArray(sourceOrder)
     ? sourceOrder.filter((name) => Object.hasOwn(lifts, name))
     : Object.keys(lifts);
+  // Only circuit membership travels with a copied workout. Planned-set counts,
+  // swap origins and warm-up-ramp stamps belong to the source session, not to a
+  // fresh one — cloning the whole liftMeta made a copy inherit decisions it
+  // never made. Filtering to live lifts and pruning a lone tag keeps a deleted
+  // partner from recreating a one-member circuit.
+  const sourceMeta = options.sourceWeek?.liftMeta?.[options.sourceDay];
+  /** @type {Record<string, {groupId: string}>} */
+  const liftMeta = {};
+  if (sourceMeta && typeof sourceMeta === 'object') {
+    for (const name of Object.keys(lifts)) {
+      const groupId = normaliseGroupId(sourceMeta[name]?.groupId);
+      if (groupId) liftMeta[name] = { groupId };
+    }
+  }
+  pruneSingleMemberGroups(liftMeta);
   const kind = options.kind === 'copy' ? 'copy' : 'empty';
   state.weeks[key] = {
     sessionId,
@@ -96,7 +112,7 @@ export function createOneOffStrengthSession(state, options = {}) {
     runs: {}, runSessions: {},
     lifts: { [day]: lifts },
     liftOrder: { [day]: liftOrder },
-    liftMeta: { [day]: {} },
+    liftMeta: { [day]: liftMeta },
     notes: { [day]: '' },
     gymRpe: { [day]: '' },
     bodyWeight: {},
