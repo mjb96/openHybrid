@@ -659,7 +659,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,257 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,267 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
@@ -739,8 +739,9 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - One owner for defaults: `DEFAULT_REST_TIERS` replaced four hardcoded copies;
     `restPresetFor` derives the active preset from stored tiers (custom values
     show none); the duplicate Settings `saveThresholdPace` is gone — the field
-    uses the analytics implementation that accepts `mm:ss` and rejects empty,
-    malformed or implausible input without overwriting the stored value.
+    uses the analytics implementation, which parses `mm:ss` strictly (60–3600 s)
+    and rejects empty, `4.30`, `0` or out-of-range input without overwriting the
+    stored baseline. The toast distinguishes "saved" from "Enter pace as mm:ss".
   - Fasting stage nudges are a persisted toggle under Notifications → Fasting
     (default on), and the delivery path refuses to fire while the Fasting module
     is hidden or the toggle is off. The write-less `settings.fastingEnabled`
@@ -748,9 +749,14 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     signal.
   - `tests/settings_wiring.test.js` ratchets the STATIC settings
     input/select/textarea ids to an app/settings handler (not buttons or
-    JS-rendered controls). The four attribute-wired Health Connect toggles are
-    the documented exceptions; the cap is six and the list may only shrink.
-  - Validation: 2,257 node tests, typecheck, smoke, precache, settings-nav,
+    JS-rendered controls), matching exact quoted ids rather than substrings. The
+    four attribute-wired Health Connect toggles are the documented exceptions,
+    each asserted to carry `data-hc-field`; the cap is six and the list may only
+    shrink.
+  - Every `.settings-switch` input has an accessible name, `.hc-data-toggle` is
+    a 44px row with centred content, and the Settings body's bottom padding is
+    asserted statically and in the browser at 40px + the published inset.
+  - Validation: 2,267 node tests, typecheck, smoke, precache, settings-nav,
     module-toggles, equipment profiles, core ergonomics at 320/360/390/412 and
     200% text, safe area, touch target, and all 45 browser checks. The 390×844
     Training/Logging screenshots under the untracked
