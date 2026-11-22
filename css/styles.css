@@ -2873,6 +2873,33 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
 }
 .cockpit-ex-link::before { content: '↗'; font-size: 0.9rem; line-height: 1; }
 .cockpit-ex-link:active { background: rgba(34, 211, 238, 0.16); }
+/* Routine note on a one-off started from the library. Preparation context, so
+   it sits above the exercise cards and reads by reference from the routine. */
+.cockpit-routine-note {
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-purple, #8b5cf6) 34%, transparent);
+  border-left: 3px solid var(--accent-purple, #8b5cf6);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-purple, #8b5cf6) 9%, var(--bg-card, #161b22));
+}
+.cockpit-routine-note__label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--accent-purple, #8b5cf6);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cockpit-routine-note__text {
+  margin: 0;
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
 .exercise-config-overlay {
   position: fixed;
   inset: 0;

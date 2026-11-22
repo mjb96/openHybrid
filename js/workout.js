@@ -68,7 +68,7 @@ import { openExerciseOptions } from './workout/exercise-options.js';
 import { estimatedE1rmForSet, isE1rmExercise, isE1rmPr } from './strength/e1rm.js';
 import {
   activeOneOffSession, activeWorkoutDay, activeWorkoutWeekKey,
-  clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint,
+  clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
 import { weightUnitLabel } from './workout/units.js';
@@ -816,6 +816,27 @@ export function renderWorkout() {
   }
 
   exercisesContainer.innerHTML = '';
+
+  // The routine note is preparation context for a one-off started from the
+  // library. It is read by reference (sourceRoutineId → current routine), so an
+  // edit is reflected on the next render and a deleted routine leaves no stale
+  // copy. A finished session never shows it.
+  const routineNote = routineNoteForSession(appState, weekData, selectedDay);
+  if (routineNote) {
+    // `aside`, not `div`: the exercise cards are divs and existing selectors use
+    // `:first-of-type`, so the banner must not become the first div in here.
+    const banner = document.createElement('aside');
+    banner.className = 'cockpit-routine-note';
+    banner.setAttribute('data-routine-id', routineNote.routineId);
+    const label = document.createElement('span');
+    label.className = 'cockpit-routine-note__label';
+    label.textContent = 'Routine note';
+    const text = document.createElement('p');
+    text.className = 'cockpit-routine-note__text';
+    text.textContent = routineNote.note;
+    banner.append(label, text);
+    exercisesContainer.append(banner);
+  }
 
   const loggedLiftsData = weekData.lifts[selectedDay] || {};
 

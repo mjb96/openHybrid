@@ -23,6 +23,7 @@ export const MAX_ROUTINE_SETS = 50;
 export const MAX_ROUTINE_LIFTS = 60;
 export const MAX_ROUTINES = 500;
 export const MAX_ROUTINE_FOLDERS = 200;
+export const MAX_ROUTINE_NOTE = 500;
 
 /**
  * Guarantee both root routine arrays exist. Idempotent; returns true when it
@@ -73,6 +74,26 @@ export function removeRoutine(state, id) {
   const index = state.routines.findIndex((routine) => routine?.id === id);
   if (index === -1) return null;
   return state.routines.splice(index, 1)[0] || null;
+}
+
+/**
+ * Set or clear a routine's private note. The note is copied into NOTHING: it is
+ * read back by reference from the routine library when a session starts. Blank
+ * clears it entirely (`routine.note` is absent when empty) and the cap is the
+ * same bound import validation enforces.
+ * @param {any} state
+ * @param {string|null|undefined} routineId
+ * @param {string} text
+ * @returns {boolean}
+ */
+export function updateRoutineNote(state, routineId, text) {
+  const routine = findRoutine(state, routineId);
+  if (!routine) return false;
+  const note = String(text ?? '').trim().slice(0, MAX_ROUTINE_NOTE);
+  if (note) routine.note = note;
+  else delete routine.note;
+  routine.updatedAt = new Date().toISOString();
+  return true;
 }
 
 // ── Folders ──────────────────────────────────────────────────────────────────

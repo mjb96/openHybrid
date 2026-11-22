@@ -4,6 +4,8 @@
 // shape without ever completing or overwriting a programmed day.
 import { dateKey } from '../dates.js';
 import { secureRandomSuffix } from '../util/secure-id.js';
+import { findRoutine, MAX_ROUTINE_NOTE } from '../routines/store.js';
+import { explicitSessionStatus, SESSION_STATUS } from './session-status.js';
 import { normaliseGroupId, pruneSingleMemberGroups } from './superset.js';
 
 const PREFIX = 'session:';
@@ -66,7 +68,7 @@ function weekdayForDateKey(localDate) {
 /**
  * @param {any} state
  * @param {{ kind?:'empty'|'copy', title?:string, sourceWeek?:any, sourceDay?:string,
- * sourceActivityId?:string, now?:Date, tz?:string }} [options]
+ * sourceActivityId?:string, sourceRoutineId?:string, now?:Date, tz?:string }} [options]
  */
 export function createOneOffStrengthSession(state, options = {}) {
   if (!state.weeks || typeof state.weeks !== 'object') state.weeks = {};
@@ -106,6 +108,10 @@ export function createOneOffStrengthSession(state, options = {}) {
     sessionTitle: String(options.title || (kind === 'copy' ? 'Copied Workout' : 'Empty Workout')),
     sessionDay: day,
     sourceActivityId: options.sourceActivityId || null,
+    // A routine-started session remembers only WHERE the note lives. The note
+    // itself is never copied, so editing/deleting the routine is reflected on
+    // the next cockpit render instead of showing a stale snapshot.
+    sourceRoutineId: options.sourceRoutineId || null,
     startedAt: now.toISOString(),
     programId: null,
     dates: { [day]: localDate },
@@ -120,6 +126,30 @@ export function createOneOffStrengthSession(state, options = {}) {
   };
   state.activeStrengthSessionKey = key;
   return { key, day, sessionId, week: state.weeks[key] };
+}
+
+/**
+ * The CURRENT routine note for a one-off session started from a routine.
+ *
+ * Read by reference on every render (`sourceRoutineId` is the only thing stored
+ * on the week): editing the routine changes what this returns, and deleting the
+ * routine returns null. A finished session hides the banner — the note belongs
+ * to preparation, not to the historical record.
+ *
+ * @param {any} state
+ * @param {any} week
+ * @param {string|null|undefined} [day]
+ * @returns {{ routineId:string, routineName:string, note:string }|null}
+ */
+export function routineNoteForSession(state, week, day = null) {
+  const routineId = week?.sourceRoutineId;
+  if (!routineId) return null;
+  const sessionDay = day || week?.sessionDay || null;
+  if (explicitSessionStatus(week, sessionDay) === SESSION_STATUS.FINISHED) return null;
+  const routine = findRoutine(state, routineId);
+  const note = String(routine?.note || '').trim().slice(0, MAX_ROUTINE_NOTE);
+  if (!note) return null;
+  return { routineId, routineName: String(routine.name || 'Routine'), note };
 }
 
 export function oneOffBlueprint(state, fallback = null) {

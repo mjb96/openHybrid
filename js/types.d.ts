@@ -99,6 +99,8 @@ export interface Routine {
   kind: 'routine';
   id: string;
   name: string;
+  /** Optional private prep note (max 500); absent when empty. */
+  note?: string;
   folderId: string | null;
   createdAt: string;
   updatedAt: string;

@@ -54,6 +54,18 @@ function ensureStyles() {
   document.head.appendChild(s);
 }
 
+/** One shared style hook for the multiline prompt's textarea. */
+function ensureTextareaStyle() {
+  if (typeof document === 'undefined' || document.getElementById('cmodalTextareaStyles')) return;
+  const s = document.createElement('style');
+  s.id = 'cmodalTextareaStyles';
+  s.textContent = `.cmodal__textarea {
+    width: 100%; min-height: 120px; max-height: 42vh; resize: vertical;
+    line-height: 1.5; font-weight: 500; white-space: pre-wrap;
+  }`;
+  document.head.appendChild(s);
+}
+
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /**
@@ -177,6 +189,72 @@ export function textPromptModal(opts = {}) {
     });
     overlay.addEventListener('keydown', (e) => {
       if (/** @type {KeyboardEvent} */ (e).key === 'Enter') { e.preventDefault(); submit(); }
+    });
+    openManagedModal(overlay, {
+      initialFocus: '[data-cm="input"]',
+      onRequestClose: () => close(null),
+    });
+    requestAnimationFrame(() => overlay.classList.add('cmodal--in'));
+  });
+}
+
+/**
+ * Multiline variant of `textPromptModal`, for free text that genuinely needs
+ * more than one line (a routine note). Same dialog, focus trap, Escape/backdrop
+ * dismissal and promise contract. Plain Enter inserts a newline; Cmd/Ctrl+Enter
+ * submits. Resolves to the trimmed string ('' clears), or null on cancel.
+ */
+export function multilineTextPromptModal(opts = {}) {
+  const {
+    title = 'Add a note', message = '', label = '', placeholder = '',
+    value = '', maxLength = 500, confirmLabel = 'Save', cancelLabel = 'Cancel',
+  } = opts;
+  if (typeof document === 'undefined') return Promise.resolve(null);
+  ensureStyles();
+  ensureTextareaStyle();
+  const cap = Math.max(1, Number(maxLength) || 500);
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'cmodal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', title);
+    overlay.innerHTML = `
+      <div class="cmodal">
+        <div class="cmodal__title">${esc(title)}</div>
+        ${message ? `<div class="cmodal__msg">${esc(message)}</div>` : ''}
+        <label class="cmodal__field">
+          ${label ? `<span class="cmodal__label">${esc(label)}</span>` : ''}
+          <textarea class="cmodal__input cmodal__textarea" rows="5" maxlength="${cap}"
+                    data-cm="input" placeholder="${esc(placeholder)}"
+                    aria-label="${esc(label || title)}">${esc(value)}</textarea>
+        </label>
+        <div class="cmodal__row">
+          <button class="cmodal__btn cmodal__btn--cancel" data-cm="cancel">${esc(cancelLabel)}</button>
+          <button class="cmodal__btn cmodal__btn--ok" data-cm="ok">${esc(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const input = /** @type {HTMLTextAreaElement} */ (overlay.querySelector('[data-cm="input"]'));
+    let done = false;
+    const close = (result) => {
+      if (done) return;
+      done = true;
+      closeManagedModal(overlay);
+      overlay.classList.remove('cmodal--in');
+      setTimeout(() => { overlay.remove(); resolve(result); }, 200);
+    };
+    const submit = () => close(String(input?.value ?? '').trim().slice(0, cap));
+    overlay.addEventListener('click', (e) => {
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (t === overlay) close(null);
+      else if (t.closest('[data-cm="ok"]')) submit();
+      else if (t.closest('[data-cm="cancel"]')) close(null);
+    });
+    overlay.addEventListener('keydown', (e) => {
+      const key = /** @type {KeyboardEvent} */ (e);
+      if (key.key === 'Enter' && (key.metaKey || key.ctrlKey)) { e.preventDefault(); submit(); }
     });
     openManagedModal(overlay, {
       initialFocus: '[data-cm="input"]',

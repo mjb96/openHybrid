@@ -10,11 +10,13 @@ import { test } from 'node:test';
 import {
   validateImport,
   isSafeImageDataUrl,
+  isValidRoutine,
   sanitizeImportedState,
   importCounts,
   importPreviewMessage,
   importReasonMessage,
 } from '../js/state/import-validate.js';
+import { MAX_ROUTINE_NOTE } from '../js/routines/store.js';
 
 const okState = () => ({
   currentWeek: '1',
@@ -143,6 +145,28 @@ test('malformed routines and folders are dropped; valid ones survive', () => {
 
   const message = importPreviewMessage(r.counts);
   assert.match(message, /1 routine · 1 routine folder/);
+});
+
+test('a routine note is optional text; an overlong or non-string note is repaired without dropping the routine', () => {
+  // isValidRoutine accepts absent/string (and must not decide the note's fate:
+  // sanitizeImportedState repairs it afterward).
+  assert.equal(isValidRoutine(validRoutine()), true);
+  assert.equal(isValidRoutine({ ...validRoutine(), note: 'Cue' }), true);
+  assert.equal(isValidRoutine({ ...validRoutine(), note: 42 }), true);
+
+  const withNote = { ...validRoutine('rtn_note'), note: '  Cue  ' };
+  const overlong = { ...validRoutine('rtn_long'), note: 'a'.repeat(MAX_ROUTINE_NOTE + 150) };
+  const nonString = { ...validRoutine('rtn_bad'), note: 42 };
+  const blank = { ...validRoutine('rtn_blank'), note: '   ' };
+  const r = validateImport({ ...okState(), routines: [withNote, overlong, nonString, blank] });
+  assert.equal(r.ok, true);
+  assert.equal(r.state.routines.length, 4, 'a malformed note must never drop the routine');
+  const byId = Object.fromEntries(r.state.routines.map((routine) => [routine.id, routine]));
+  assert.equal(byId.rtn_note.note, 'Cue');
+  assert.equal(byId.rtn_long.note.length, MAX_ROUTINE_NOTE);
+  assert.equal('note' in byId.rtn_bad, false, 'a non-string note is removed');
+  assert.equal('note' in byId.rtn_blank, false, 'a blank note is removed');
+  assert.equal(overlong.note.length, MAX_ROUTINE_NOTE + 150, 'the imported object is not mutated');
 });
 
 // ── avatar sanitization: hostile markup never survives an import ─────────────
