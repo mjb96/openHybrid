@@ -2,6 +2,7 @@
 // SEARCH ENGINE — Full-text search across the program catalog
 // =============================================================================
 import { PROGRAM_CATALOG } from './catalog.js';
+import { escapeHtml } from '../util.js';
 
 // Searchable fields and their weights (higher = more important)
 const SEARCH_FIELDS = [
@@ -155,6 +156,21 @@ export function searchPrograms(query) {
     .sort((a, b) => b.score - a.score);
 
   return scored.map(({ program }) => program);
+}
+
+/**
+ * The heading above the search results.
+ *
+ * Returns HTML-SAFE markup: `query` is whatever the athlete typed, including
+ * markup, and this heading is written with `innerHTML`. Escaping happens here,
+ * once, so every caller can interpolate the result and no caller can
+ * accidentally reintroduce the raw string. The count is normalised to a
+ * non-negative integer and drives only singular/plural.
+ */
+export function searchResultsHeading(query, count) {
+  const total = Number.isFinite(Number(count)) ? Math.max(0, Math.trunc(Number(count))) : 0;
+  const label = total === 1 ? 'result' : 'results';
+  return `${total} ${label} for "${escapeHtml(String(query ?? '').trim())}"`;
 }
 
 // Popular search suggestions shown before typing

@@ -3,7 +3,7 @@
 // =============================================================================
 import { PROGRAM_CATALOG, CATEGORIES, DIFFICULTY_LABELS, getCatalogEntry } from './catalog.js';
 import { getHomeCollections, filterByCategory, getCollectionDef } from './collections.js';
-import { searchPrograms, POPULAR_SEARCHES } from './search.js';
+import { searchPrograms, POPULAR_SEARCHES, searchResultsHeading } from './search.js';
 import { getRecommendations } from './recommendations.js';
 import { athleteProfile, recommendationBasis } from './recommendation-fit.js';
 import { renderProgramDetail, closeProgramDetail } from './detail.js';
@@ -741,7 +741,7 @@ function renderSearchResults(query) {
   }
 
   container.innerHTML = `
-    <div class="search-results-count mb-3">${results.length} programs for "<strong>${query}</strong>"</div>
+    <div class="search-results-count mb-3">${searchResultsHeading(query, results.length)}</div>
     <div class="program-grid">
       ${results.map(p => renderProgramCard(p, 'large')).join('')}
     </div>
