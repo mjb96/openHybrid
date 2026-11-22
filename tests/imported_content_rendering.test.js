@@ -4,7 +4,7 @@ import { safeCssColor } from '../js/util.js';
 import { celebrationContentHtml } from '../js/ui/celebration.js';
 import { renderProgramCard } from '../js/programs/program-card.js';
 import { render1RMProgressionChart } from '../js/analytics/charts/strength-charts.js';
-import { buildExerciseCard } from '../js/templates.js';
+import { buildExerciseCard, buildSetRow } from '../js/templates.js';
 import { liftTarget } from '../js/engine.js';
 import { getWeekModifier } from '../js/schema.js';
 import { createImportedProgram, parsePlanFile } from '../js/programs/program-json.js';
@@ -111,4 +111,38 @@ test('superset group id is escaped in the exercise card badge', () => {
   const html = buildExerciseCard(baseExerciseCardArgs({ groupId: HOSTILE, ssColor: '#3b82f6' }));
   assert.equal(html.includes('<img'), false);
   assert.match(html, /SS &lt;img/);
+});
+
+// Stored set fields are copied verbatim by a backup/CSV import (the import
+// validator only checks that each set is an object), so the row's start-tag
+// attributes must never let a value close the tag.
+function cockpitSetRowHtml(set) {
+  return buildSetRow(set, 0, 'Squat', null, 'kg', 'Squat', 75, 5, 5, null, null, null);
+}
+
+test('a hostile stored RIR cannot break out of a cockpit set-row attribute', () => {
+  const html = cockpitSetRowHtml({ w: '100', r: '5', c: true, rir: HOSTILE });
+  assert.equal(html.includes('<img'), false);
+  assert.match(html, /data-rir="&lt;img/);
+});
+
+test('a hostile stored set type cannot break out of a cockpit set-row attribute', () => {
+  const html = cockpitSetRowHtml({ w: '100', r: '5', c: true, type: HOSTILE });
+  assert.equal(html.includes('<img'), false);
+  assert.match(html, /data-set-type="&lt;img/);
+});
+
+test('a stored mode or load mode outside the closed vocabulary falls back safely', () => {
+  const html = cockpitSetRowHtml({ w: '100', r: '5', mode: HOSTILE, loadMode: HOSTILE });
+  assert.equal(html.includes('<img'), false);
+  assert.match(html, /data-set-mode="reps"/);
+  assert.match(html, /data-load-mode="weighted"/);
+});
+
+test('a normal set row still carries the attributes the cockpit reads', () => {
+  const html = cockpitSetRowHtml({ w: '100', r: '5', c: true, rir: 2, type: 'W' });
+  assert.match(html, /data-rir="2"/);
+  assert.match(html, /data-set-mode="reps"/);
+  assert.match(html, /data-set-type="W"/);
+  assert.match(html, /data-load-mode="weighted"/);
 });

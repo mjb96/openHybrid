@@ -86,8 +86,13 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   const noteHtml = sData.note
     ? `<div class="set-note">${escapeHtml(String(sData.note))}</div>`
     : '';
+  // Stored set fields arrive from imported state (CSV rows, plan/backup JSON),
+  // and `rir`/`type` are copied verbatim by an import. Every dynamic value in
+  // the row's start tag is therefore escaped — including the ones whose current
+  // writers only ever produce a closed vocabulary.
+  const rirAttr = sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '');
 
-  return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${mode}" data-load-mode="${directMode}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${type}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '')}">
+  return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${escapeHtml(String(mode))}" data-load-mode="${escapeHtml(String(directMode))}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${escapeHtml(String(type))}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${escapeHtml(String(rirAttr))}">
     ${roleTagHtml}
     ${sData.isPR ? '<span class="pr-badge">PR</span>' : ''}
     <button type="button" class="set-num-lbl" data-action="open-set-sheet"
