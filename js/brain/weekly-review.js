@@ -261,7 +261,7 @@ export function reviewToText(r, distUnit = 'km', weightUnit = 'kg') {
     `${dist} run`,
     `${r.totals.sessions} session${r.totals.sessions === 1 ? '' : 's'}`,
   ];
-  if (r.totals.prCount > 0) bits.push(`${r.totals.prCount} PR${r.totals.prCount === 1 ? '' : 's'} 🏆`);
+  if (r.totals.prCount > 0) bits.push(`${r.totals.prCount} PR lift${r.totals.prCount === 1 ? '' : 's'} 🏆`);
   let txt = `${headline} on openHybrid: ${bits.join(' · ')}.`;
   const isLive = r.isCurrentWeek !== false;
   if (isLive && r.arc?.hasData) txt += ` Hybrid Score ${r.arc.end}${r.arc.delta !== 0 ? ` (${r.arc.delta > 0 ? '+' : ''}${r.arc.delta} this week)` : ''}.`;

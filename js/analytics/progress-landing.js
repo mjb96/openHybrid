@@ -239,7 +239,7 @@ function strengthDomain(state, { weekStart, unit, isCurrentWeek }) {
   }
 
   const prSupport = cs.prCount > 0
-    ? `${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} ${when}`
+    ? `${cs.prCount} new PR lift${cs.prCount === 1 ? '' : 's'} ${when}`
     : cs.improvedCount > 0
       ? `${cs.improvedCount} lift${cs.improvedCount === 1 ? '' : 's'} up on last week`
       : null;

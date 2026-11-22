@@ -57,6 +57,7 @@ function blankCopiedSet(set) {
   const next = clone(set) || {};
   next.c = false;
   delete next.isPR;
+  delete next.prKind;
   return next;
 }
 

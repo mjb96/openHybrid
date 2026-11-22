@@ -28,7 +28,7 @@ import {
 } from '../js/strength/e1rm.js';
 import { computeExercisePRs } from '../js/engine.js';
 import { exerciseLoggerHistory, exercisePerformanceHistory } from '../js/workout/exercise-history.js';
-import { allLiftsStats, isWeeklyPR } from '../js/metrics/metrics-strength.js';
+import { allLiftsStats } from '../js/metrics/metrics-strength.js';
 import { bestE1rmByLiftForWeek, calendarStrengthSummary } from '../js/analytics/strength-calendar.js';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -320,15 +320,6 @@ test('floating-point noise cannot manufacture a PR', () => {
   const base = estimatedE1rm(102.5, 7);
   assert.equal(isE1rmPr(base + 1e-9, base), false);
   assert.equal(isE1rmPr(base, base), false);
-});
-
-test('isWeeklyPR no longer treats repeating a past best as a new record', () => {
-  // It previously accepted `cur >= all - 0.01`, so a lift matched every week
-  // reported a PR every week.
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 100, allTimeMax: 100, priorBestMax: 100 }), false);
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 105, allTimeMax: 105, priorBestMax: 100 }), true);
-  assert.equal(isWeeklyPR({ currentEstimatedMax: 105, allTimeMax: 105, priorBestMax: 0 }), false);
-  assert.equal(isWeeklyPR(null), false);
 });
 
 test('a warm-up can never trigger a PR', () => {

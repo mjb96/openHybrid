@@ -13,7 +13,7 @@ export {
   estimatedE1rm, liftE1rmByCalendarWeek, bestE1rmByLiftForWeek,
   calendarStrengthSummary, calendarWeekE1rmSeriesForLift,
 } from '../analytics/strength-calendar.js';
-import { estimatedE1rmForSet, isE1rmPr } from '../strength/e1rm.js';
+import { estimatedE1rmForSet } from '../strength/e1rm.js';
 import { canonicalExerciseId, legacyMuscleMap, muscleCreditsForExercise, resolveExercise } from '../exercises/catalog.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { collectCalendarWeek, localDayKey, weekStartOf } from '../analytics/weekly-aggregate.js';
@@ -22,22 +22,6 @@ import { collectCalendarWeek, localDayKey, weekStartOf } from '../analytics/week
 
 function e1rm(exerciseName, set) {
   return estimatedE1rmForSet(exerciseName, set);
-}
-
-/**
- * Is a lift a genuine PR this week — a NEW best that beats prior history — rather
- * than a first-ever baseline? Mirrors the cockpit rule (a PR needs prior history;
- * the first log of a lift is a "baseline", not a trophy) so analytics and the
- * cockpit agree. Needs a stat carrying priorBestMax (best e1RM before this week).
- * @param {{currentEstimatedMax?:number, allTimeMax?:number, priorBestMax?:number}} stat
- */
-export function isWeeklyPR(stat) {
-  if (!stat) return false;
-  // One shared rule (isE1rmPr): needs prior history, and must BEAT it by more
-  // than the shared epsilon. This previously accepted `cur >= all - 0.01`, so
-  // simply repeating a past best counted as a new record — a lift matched every
-  // week reported a PR every week.
-  return isE1rmPr(stat.currentEstimatedMax || 0, stat.priorBestMax || 0);
 }
 
 function isWorkingSet(s) {
@@ -174,11 +158,16 @@ export function workoutQuality(state, days, maxWeek, window = 3) {
   return { hasData: true, pct: Math.round((sum / n) * 100), n };
 }
 
-// Returns {[lift]: {allTimeMax, currentWeekMax, prevWeekMax}} scanning all weeks.
-export function allLiftsStats(state, days) {
+// Returns {[lift]: {allTimeMax, currentWeekMax, prevWeekMax, priorMax}} scanning
+// all weeks; priorMax excludes the current program week (or `excludeWeekKey`).
+export function allLiftsStats(state, days, options = {}) {
   const result = {};
   const curWk = String(state.currentWeek || '1');
   const prevWk = String((parseInt(curWk, 10) || 1) - 1);
+  // The prior-best baseline excludes the CURRENT program week (and therefore
+  // its in-progress sets) while still scanning every archived activation, so a
+  // "new PR" badge can never be manufactured by comparing this week with itself.
+  const excludeWeekKey = options.excludeWeekKey == null ? curWk : String(options.excludeWeekKey);
 
   for (const wKey in (state.weeks || {})) {
     const wkData = state.weeks[wKey];
@@ -187,13 +176,14 @@ export function allLiftsStats(state, days) {
       for (const lift in dayLifts) {
         if (!Array.isArray(dayLifts[lift])) continue;
         const identity = resolveExercise(lift)?.name || lift;
-        if (!result[identity]) result[identity] = { allTimeMax: 0, currentWeekMax: 0, prevWeekMax: 0 };
+        if (!result[identity]) result[identity] = { allTimeMax: 0, currentWeekMax: 0, prevWeekMax: 0, priorMax: 0 };
         dayLifts[lift].forEach(s => {
           if (!isWorkingSet(s)) return;
           const val = e1rm(lift, s);
           if (val > result[identity].allTimeMax) result[identity].allTimeMax = val;
           if (wKey === curWk  && val > result[identity].currentWeekMax) result[identity].currentWeekMax = val;
           if (wKey === prevWk && val > result[identity].prevWeekMax)    result[identity].prevWeekMax = val;
+          if (wKey !== excludeWeekKey && val > result[identity].priorMax) result[identity].priorMax = val;
         });
       }
     });

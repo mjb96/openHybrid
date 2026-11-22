@@ -166,6 +166,34 @@ export function bestRecordForSession(exerciseName, sets) {
   return best;
 }
 
+/** Merge one record into a best-map, keeping rep records bucketed by load. */
+function mergeRecord(target, record) {
+  if (!target || !record) return;
+  if (record.kind === RECORD_KIND.REPS) {
+    const bucket = target.reps.find((entry) => sameLoad(entry, record));
+    if (!bucket) target.reps.push(record);
+    else if (record.value > bucket.value) target.reps[target.reps.indexOf(bucket)] = record;
+    return;
+  }
+  if (!target[record.kind] || record.value > target[record.kind].value) {
+    target[record.kind] = record;
+  }
+}
+
+/**
+ * Merge one session's per-kind bests into a running best-map. Exposed for the
+ * exercise drilldown, which walks history oldest → newest and needs the same
+ * all-time baseline without rescanning every prior session per row.
+ *
+ * @param {{e1rm:any, hold:any, carry:any, reps:any[]}} target
+ * @param {{e1rm:any, hold:any, carry:any, reps:any}} records
+ */
+export function mergeRecordBests(target, records) {
+  if (!target || !records) return target;
+  for (const kind of Object.values(RECORD_KIND)) mergeRecord(target, records[kind]);
+  return target;
+}
+
 /**
  * The best record of each kind from every OTHER session before a date.
  *
@@ -200,13 +228,7 @@ export function bestRecordBefore(state, exerciseName, opts = {}) {
       const kind = recordKindForSet(set, exerciseName);
       if (!kind) continue;
       const record = recordForSet(kind, set, exerciseName);
-      if (kind === RECORD_KIND.REPS) {
-        const bucket = best.reps.find((entry) => sameLoad(entry, record));
-        if (!bucket) best.reps.push(record);
-        else if (record.value > bucket.value) best.reps[best.reps.indexOf(bucket)] = record;
-      } else if (!best[kind] || record.value > best[kind].value) {
-        best[kind] = record;
-      }
+      mergeRecord(best, record);
     }
   }
   const legacyMax = numeric(exerciseStatForName(state?.exerciseStats, exerciseName)?.legacyMax);
@@ -291,24 +313,25 @@ export function restampSessionRecords(state, weekKey, day) {
   let stamped = 0;
   for (const [liftName, sets] of Object.entries(dayLifts)) {
     if (!Array.isArray(sets)) continue;
-    for (const set of sets) {
-      if (!set || typeof set !== 'object') continue;
-      delete set.isPR;
-      delete set.prKind;
-    }
-    const sessionBest = bestRecordForSession(liftName, sets);
     const prior = bestRecordBefore(state, liftName, {
       excludeWeekKey: weekKey,
       excludeDay: day,
       beforeDate,
     });
-    for (const kind of Object.values(RECORD_KIND)) {
-      const candidate = sessionBest[kind];
-      if (!candidate || !isRecord(kind, candidate, prior[kind])) continue;
-      const target = candidate.set;
-      if (!target || typeof target !== 'object') continue;
-      target.isPR = true;
-      target.prKind = kind;
+    for (const set of sets) {
+      if (!set || typeof set !== 'object') continue;
+      delete set.isPR;
+      delete set.prKind;
+      if (!isValidWorkingSet(set)) continue;
+      // Each set is judged against the all-time baseline for its OWN shape, not
+      // against another set in the same session — the same rule the live
+      // cockpit applies when it ticks the set.
+      const kind = recordKindForSet(set, liftName);
+      if (!kind) continue;
+      const record = recordForSet(kind, set, liftName);
+      if (!isRecord(kind, record, prior[kind])) continue;
+      set.isPR = true;
+      set.prKind = kind;
       stamped += 1;
     }
   }

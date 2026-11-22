@@ -9,6 +9,9 @@
 // =============================================================================
 import { exercisePerformanceHistory } from '../workout/exercise-history.js';
 import { estimatedE1rmForSet } from '../strength/e1rm.js';
+import {
+  RECORD_KIND, bestRecordForSession, isRecord, mergeRecordBests,
+} from '../strength/records.js';
 import { addDaysISO, localDayKey } from './weekly-aggregate.js';
 import {
   SET_MODE, formatDistance, formatDuration, isRepSet, setModeOf, setVolume,
@@ -69,9 +72,11 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     .slice()
     .reverse(); // oldest → newest for PR baselines
 
-  let priorE1rm = 0;
-  let priorTime = 0;
-  let priorDistance = 0;
+  // The PR baseline walks the SAME history oldest → newest through the shared
+  // records model, so hold/carry/rep sessions are compared by their own shape
+  // and an e1RM uses the shared epsilon. Assigning the old per-shape maxima here
+  // was a second rule that disagreed with the cockpit.
+  const priorRecords = { e1rm: null, hold: null, carry: null, reps: [] };
   const all = [];
   for (const row of history) {
     const sets = Array.isArray(row.workingSets) ? row.workingSets : [];
@@ -83,14 +88,10 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     const reps = sets.reduce((sum, set) => sum + (parseInt(set?.r, 10) || 0), 0);
     const seconds = sets.reduce((sum, set) => sum + (Number(set?.sec) || 0), 0);
     const metres = sets.reduce((sum, set) => sum + (Number(set?.dist) || 0), 0);
-    const isPr = shape === SET_MODE.TIME
-      ? priorTime > 0 && top.sec > priorTime
-      : shape === SET_MODE.DISTANCE
-        ? priorDistance > 0 && top.dist > priorDistance
-        : priorE1rm > 0 && top.e1rm > priorE1rm;
-    if (shape === SET_MODE.TIME) priorTime = Math.max(priorTime, top.sec);
-    else if (shape === SET_MODE.DISTANCE) priorDistance = Math.max(priorDistance, top.dist);
-    else priorE1rm = Math.max(priorE1rm, top.e1rm);
+    const sessionRecords = bestRecordForSession(exerciseName, sets);
+    const isPr = Object.values(RECORD_KIND)
+      .some((kind) => sessionRecords[kind] && isRecord(kind, sessionRecords[kind], priorRecords[kind]));
+    mergeRecordBests(priorRecords, sessionRecords);
     all.push({
       date: row.date,
       dateLabel: fmtd(row.date),

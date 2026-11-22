@@ -2190,15 +2190,26 @@ function renderSessionHighlights(appState, weekKey, day, liftNames) {
   }
   const unit = weightUnitLabel(appState || {});
   const round = (value) => (Math.round(value * 10) / 10).toString().replace(/\.0$/, '');
+  const gainText = (h) => {
+    if (h.kind === 'hold') return `Hold PR · ${formatDuration(h.value)} · +${round(h.delta)}s`;
+    if (h.kind === 'carry') return `Carry PR · ${formatDistance(h.value)}m · +${round(h.delta)}m`;
+    if (h.kind === 'reps') {
+      const load = Number(h.load) > 0 ? `${round(h.load)} ${unit} × ` : '';
+      return `Rep PR · ${load}${round(h.value)} reps · +${round(h.delta)}`;
+    }
+    return `${round(h.e1rm)} ${unit} est. 1RM · +${round(h.delta)}`;
+  };
   host.hidden = false;
   host.innerHTML = `
     <div class="summary-highlights__title">Notable progress</div>
     ${highlights.map((h) => `
       <div class="summary-highlights__row">
         <span class="summary-highlights__lift">${escapeHtml(h.lift)}</span>
-        <span class="summary-highlights__gain">${round(h.e1rm)} ${escapeHtml(unit)} est. 1RM · +${round(h.delta)}</span>
+        <span class="summary-highlights__gain">${gainText(h)}</span>
       </div>`).join('')}
-    <div class="summary-highlights__note">Estimated from your best set — not a tested max.</div>
+    <div class="summary-highlights__note">${highlights.some((h) => h.kind !== 'hold' && h.kind !== 'carry' && h.kind !== 'reps')
+      ? 'Estimated from your best set — not a tested max.'
+      : 'Measured from the sets you completed.'}</div>
   `;
 }
 

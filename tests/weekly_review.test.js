@@ -120,7 +120,7 @@ test('buildWeeklyReview: a selected past week reviews that week, labelled by its
   assert.equal(r.totals.distanceKm, 6);        // NOT week 3's 7 km
   assert.equal(r.prs.length, 1);               // 105 beats week 1's 100
   // Share copy introduces the range instead of claiming "this week".
-  assert.match(reviewToText(r), /^Week of 9–15 Nov on openHybrid: 1,050 kg lifted · 6 km run · 2 sessions · 1 PR/);
+  assert.match(reviewToText(r), /^Week of 9–15 Nov on openHybrid: 1,050 kg lifted · 6 km run · 2 sessions · 1 PR lift/);
 });
 
 test('buildWeeklyReview: the live week keeps the literal "This week" label', () => {
@@ -186,7 +186,7 @@ test('buildWeeklyReview: imported archived weeks are this week when their DATE s
   assert.equal(r.totals.sets, 2);
   assert.equal(r.prs.length, 1);
   assert.equal(r.prs[0].lift, 'Back Squat');
-  assert.match(reviewToText(r), /This week on openHybrid: 1,200 kg lifted · 8 km run · 2 sessions · 1 PR/);
+  assert.match(reviewToText(r), /This week on openHybrid: 1,200 kg lifted · 8 km run · 2 sessions · 1 PR lift/);
 });
 
 test('buildWeeklyReview: a frozen program week is not this calendar week', () => {
@@ -228,7 +228,7 @@ test('buildWeeklyReview: a past week is never scored against the ACTIVE plan', (
   assert.doesNotMatch(txt, /next week/i);
   assert.doesNotMatch(txt, /Hybrid Score/);
   assert.doesNotMatch(txt, /planned/);
-  assert.match(txt, /^Week of 9–15 Nov on openHybrid: 1,050 kg lifted · 6 km run · 2 sessions · 1 PR 🏆\.$/);
+  assert.match(txt, /^Week of 9–15 Nov on openHybrid: 1,050 kg lifted · 6 km run · 2 sessions · 1 PR lift 🏆\.$/);
 
   // The live week still scores the plan it is actually being trained under.
   const live = buildWeeklyReview(makeState(), DAYS, PROGRAM5, { today: TODAY, weekStart: W3 });
@@ -288,7 +288,7 @@ test('pickWeeklyFocus: a deload week overrides the volume-dip / momentum praise'
 test('reviewToText: numbers-first share copy with unit conversion', () => {
   const r = buildWeeklyReview(makeState(), DAYS, PROGRAM, { today: TODAY });
   const txt = reviewToText(r, 'km');
-  assert.match(txt, /This week on openHybrid: 1,100 kg lifted · 7 km run · 2 sessions · 1 PR 🏆\./);
+  assert.match(txt, /This week on openHybrid: 1,100 kg lifted · 7 km run · 2 sessions · 1 PR lift 🏆\./);
   assert.match(txt, /Hybrid Score 84 \(\+12 this week\)/);
   assert.match(txt, /Next week's focus — /);
   assert.match(reviewToText(r, 'mi'), /4\.3 mi run/);

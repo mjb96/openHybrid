@@ -146,7 +146,9 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
       liftReps += parseInt(s.r, 10) || 0;
       const setWeight = parseFloat(s.w) || 0;
       const setReps = parseInt(s.r, 10) || 0;
-      if (!topSet || setWeight > topSet.w || (setWeight === topSet.w && setReps > topSet.r)) {
+      // A hold/carry has no reps. Leaving `topSet` at {w:0,r:0} made the summary
+      // read "0 kg × 0" beside a perfectly good 60-second plank.
+      if (setReps > 0 && (!topSet || setWeight > topSet.w || (setWeight === topSet.w && setReps > topSet.r))) {
         topSet = { w: setWeight, r: setReps };
       }
       const est = estimatedE1rmForSet(name, s);

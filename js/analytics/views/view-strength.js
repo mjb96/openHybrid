@@ -31,7 +31,7 @@ import { collectCalendarWeek, weekStartOf, localDayKey, addDaysISO } from '../we
 import { formatWeekRange } from '../../dates.js';
 import { calendarStrengthSummary, calendarWeekE1rmSeriesForLift, bestE1rmByLiftForWeek } from '../../metrics/metrics-strength.js';
 import { canonicalExerciseId } from '../../exercises/catalog.js';
-import { estimatedE1rmForSet } from '../../strength/e1rm.js';
+import { estimatedE1rmForSet, isE1rmPr } from '../../strength/e1rm.js';
 import { buildStrengthMetricDetail } from '../strength-detail.js';
 import { buildVolumeGuideModel, musclePriorityLabel } from '../volume-guide.js';
 
@@ -134,7 +134,10 @@ function renderStrengthProgression(sa, weekLabels, appState) {
     const delta = cur > 0 && prev > 0 ? cur - prev : null;
     const roiColor = prog.roi > 0.2 ? '#10b981' : prog.roi < -0.1 ? '#ef4444' : 'rgba(255,255,255,0.5)';
 
-    const isPR = cur > 0 && Math.abs(cur - prog.lifetimePR) < 0.5;
+    // One shared rule: a genuine new best over the prior best OUTSIDE the
+    // current week, by more than the shared epsilon. The old `|cur - lifetime|
+    // < 0.5` test treated an exact tie with the lifetime PR as a NEW PR.
+    const isPR = cur > 0 && isE1rmPr(cur, prog.priorBestMax || 0);
     const prBadge = isPR ? `<span style="font-size:0.7rem;background:rgba(16,185,129,0.15);color:#10b981;border:1px solid #10b981;border-radius:4px;padding:1px 5px;margin-left:6px;">NEW PR</span>` : '';
 
     html += `<article class="card-dark p-3 mb-3" style="border:1px solid rgba(59,130,246,0.15);">
@@ -421,7 +424,7 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
     // from. A live-week spark beside a historical PR chip described two periods.
     const series = calendarWeekE1rmSeriesForLift(appState, top.name, { weeks: 12, today: getSelectedWeekStart() });
     const prChip = cs.prCount > 0
-      ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new PR${cs.prCount === 1 ? '' : 's'} ${_periodWord(cs.weekKey)}</span>`
+      ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new PR lift${cs.prCount === 1 ? '' : 's'} ${_periodWord(cs.weekKey)}</span>`
       : '';
     hero = `<article class="card-dark an-hero">
       <div class="an-hero__k">All-time est. 1RM · ${esc(top.name)}</div>
@@ -630,7 +633,7 @@ export function render1RMList(container, dynamicStats, calStats = null, unit = '
 
   const summaryBar = prCount > 0
     ? `<div class="flex-between mb-4 p-3 card-dark" style="border:1px solid rgba(16,185,129,0.3);">
-        <span class="text-sm text-muted">PRs set ${period}</span>
+        <span class="text-sm text-muted">PR lifts ${period}</span>
         <span class="font-heavy" style="color:#10b981;">${prCount} lift${prCount !== 1 ? 's' : ''}</span>
        </div>`
     : '';

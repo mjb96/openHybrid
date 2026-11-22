@@ -179,8 +179,11 @@ export function setSetMode(liftName, setIndex, mode) {
     : (parseInt(set.r, 10) || 0) > 0;
   if (!hasValue) {
     set.c = false;
-    delete set.isPR;
   }
+  // The record belonged to the OLD shape; a hold PR must not survive a switch to
+  // reps (or vice versa). It is re-earned on the next tick.
+  delete set.isPR;
+  delete set.prKind;
   set.mode = mode;
   _saveState(true);
   rerenderWorkout();

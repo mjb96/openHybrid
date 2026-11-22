@@ -215,11 +215,16 @@ test('a mixed session earns one badge per shape and renders the kind names', () 
   assert.deepEqual(byName['Back Squat'].prKinds.map((p) => p.kind).sort(), ['e1rm', 'hold']);
   assert.deepEqual(byName.Plank.prKinds.map((p) => p.kind), ['hold']);
   assert.deepEqual(byName['Farmer Carry'].prKinds.map((p) => p.kind), ['carry']);
+  assert.equal(byName.Plank.topSet, null, 'a hold is not a 0 kg × 0 rep set');
+  assert.equal(byName.Plank.topShape.value, 60);
 
   const html = recap.renderSessionRecapHTML(r);
   assert.match(html, /🏆 PR/);
   assert.match(html, /🏆 Hold PR/);
   assert.match(html, /🏆 Carry PR/);
+  assert.match(html, /best 1:00/);
+  assert.match(html, /best 55m/);
+  assert.doesNotMatch(html, /0 kg × 0/);
 });
 
 test('the share card stays e1RM-only', () => {

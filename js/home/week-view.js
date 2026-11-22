@@ -14,7 +14,7 @@ import { addDaysISO, indexSlotsByDate } from '../analytics/weekly-aggregate.js';
 import { dayVolume, isValidWorkingSet } from '../set-utils.js';
 import { buildSessionMuscles } from './session-muscles.js';
 import { muscleHeatmapHTML } from './body-heatmap.js';
-import { sessionSummaryHTML } from './session-summary.js';
+import { sessionSummaryHTML, countPrLifts } from './session-summary.js';
 import { escapeHtml } from '../util.js';
 import { parseStrengthDurationSeconds } from '../strength/duration.js';
 
@@ -106,14 +106,15 @@ function summariseSlots(state, date, slots, programLookup = null) {
     }
   }
   let sets = 0;
-  let prs = 0;
   for (const rows of Object.values(dayLifts)) {
     for (const set of rows) {
       if (!isValidWorkingSet(set)) continue;
       sets += 1;
-      if (set?.isPR === true) prs += 1;
     }
   }
+  // PR counts are in LIFTS — the same unit as Home's session summary and
+  // Progress, so three record sets on one lift are one PR.
+  const prs = countPrLifts(dayLifts);
   const volume = dayVolume(dayLifts);
   const muscles = buildSessionMuscles(dayLifts);
   const bodyWeight = (state?.bodyWeightLog || [])
@@ -312,7 +313,7 @@ export function weekRecapHTML(view, options = {}) {
     ? `<div class="session-summary__stats">${statItems.join('')}</div>`
     : '';
   const prs = view.prs > 0
-    ? `<span class="session-summary__pr">🏆 ${view.prs} PR${view.prs === 1 ? '' : 's'}</span>`
+    ? `<span class="session-summary__pr">🏆 ${view.prs} PR lift${view.prs === 1 ? '' : 's'}</span>`
     : '';
   const chips = view.muscles.hasData
     ? `<div class="session-summary__muscles" aria-label="Muscles worked">

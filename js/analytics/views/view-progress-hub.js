@@ -127,7 +127,7 @@ function weekHero(model) {
     <div class="ph-week__stats">
       <div><b>${week.volumeKg.toLocaleString('en-AU')} ${esc(unit)}</b><span>Volume</span></div>
       <div><b>${esc(formatDist(week.distanceKm, distUnit, 1))}</b><span>Distance</span></div>
-      <div><b>${week.prCount}</b><span>PR${week.prCount === 1 ? '' : 's'}</span></div>
+      <div><b>${week.prCount}</b><span>PR lift${week.prCount === 1 ? '' : 's'}</span></div>
     </div>
     ${adherence}
   </section>`;

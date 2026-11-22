@@ -122,7 +122,7 @@ test('the PR list copy follows the selected week', () => {
   render1RMList(container, dynamicStats, {
     curByLift, prevByLift: {}, prSet: new Set(['Back Squat']), isCurrentWeek: false,
   }, 'kg');
-  assert.match(container.innerHTML, /PRs set that week/);
+  assert.match(container.innerHTML, /PR lifts that week/);
   assert.match(container.innerHTML, /That week: ~120 kg/);
   assert.doesNotMatch(container.innerHTML, /This week/);
 
@@ -130,5 +130,5 @@ test('the PR list copy follows the selected week', () => {
     curByLift, prevByLift: {}, prSet: new Set(), isCurrentWeek: true,
   }, 'kg');
   assert.match(container.innerHTML, /This week: ~120 kg/);
-  assert.doesNotMatch(container.innerHTML, /PRs set that week/);
+  assert.doesNotMatch(container.innerHTML, /PR lifts that week/);
 });

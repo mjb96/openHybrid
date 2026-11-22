@@ -15,48 +15,18 @@
 // This is the pure model behind that review. No DOM, no state mutation.
 //
 // It reuses the canonical strength primitives rather than recomputing anything:
-// `isValidWorkingSet` (warm-ups and zero-rep sets are not training),
-// `estimatedE1rmForSet` (which refuses bodyweight/assisted/band work instead of
-// fabricating a load) and `isE1rmPr`/`E1RM_PR_EPSILON` (one shared 0.5 threshold,
-// and a first-ever log is a BASELINE, not a record). That is deliberate: a
-// "new best" here that the Strength screen does not also show would be worse
+// `isValidWorkingSet` (warm-ups and zero-rep sets are not training) and the
+// shared shape-aware records model (`recordKindForSet` / `bestRecordForSession`
+// / `bestRecordBefore` / `isRecord`). That model refuses bodyweight/assisted/band
+// work instead of fabricating a load, uses the shared 0.5 e1RM epsilon, treats a
+// first-ever log as a BASELINE, and compares holds with holds and carries with
+// carries. A "new best" here that the cockpit does not also show would be worse
 // than showing nothing.
 // =============================================================================
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
-import { estimatedE1rmForSet, isE1rmPr } from '../strength/e1rm.js';
-import { exercisePerformanceHistory, EXERCISE_HISTORY_SCOPE } from './exercise-history.js';
-
-/** Best defensible e1RM across a set list, and the set that produced it. */
-function bestE1rm(liftName, sets) {
-  let best = 0;
-  let bestSet = null;
-  for (const set of sets || []) {
-    if (!isValidWorkingSet(set)) continue;
-    const estimate = estimatedE1rmForSet(liftName, set);
-    if (estimate > best) { best = estimate; bestSet = set; }
-  }
-  return { e1rm: best, set: bestSet };
-}
-
-/**
- * All-time best e1RM for a lift from every OTHER session, including archived
- * program runs. Scoped ALL on purpose: a personal best is a fact about the
- * athlete, not about the program they happen to be running, so switching
- * programs must not hand out a fresh set of "records" for lifts they have
- * already beaten.
- */
-function previousBestE1rm(state, liftName, weekKey, day) {
-  const history = exercisePerformanceHistory(state, liftName, {
-    scope: EXERCISE_HISTORY_SCOPE.ALL,
-    exclude: { weekKey: String(weekKey), day },
-  });
-  let best = 0;
-  for (const row of history) {
-    const value = Number(row?.e1rm) || 0;
-    if (value > best) best = value;
-  }
-  return best;
-}
+import {
+  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel,
+} from '../strength/records.js';
 
 /**
  * Build the review for one finished session.
@@ -67,7 +37,8 @@ function previousBestE1rm(state, liftName, weekKey, day) {
  *   volume: number,
  *   workingSets: number,
  *   exercisesWorked: number,
- *   highlights: Array<{ lift: string, e1rm: number, previousBest: number, delta: number }>,
+ *   highlights: Array<{ lift: string, kind: string, label: string, value: number,
+ *     e1rm: number, load: number, previousBest: number, delta: number }>,
  * }}
  */
 export function buildSessionReview(state, opts = /** @type {any} */ ({})) {
@@ -99,15 +70,27 @@ export function buildSessionReview(state, opts = /** @type {any} */ ({})) {
     workingSets += liftSets;
     exercisesWorked++;
 
-    const { e1rm } = bestE1rm(lift, sets);
-    if (e1rm <= 0) continue;                   // bodyweight/band work has no comparable load
-    const previousBest = previousBestE1rm(state, lift, weekKey, day);
-    if (isE1rmPr(e1rm, previousBest)) {
+    const sessionBest = bestRecordForSession(lift, sets);
+    const previous = bestRecordBefore(state, lift, {
+      excludeWeekKey: weekKey,
+      excludeDay: day,
+      beforeDate: week?.dates?.[day],
+    });
+    for (const kind of Object.values(RECORD_KIND)) {
+      const candidate = sessionBest[kind];
+      if (!candidate || !isRecord(kind, candidate, previous[kind])) continue;
+      const prior = Number(previous[kind]?.value) || 0;
       highlights.push({
         lift,
-        e1rm,
-        previousBest,
-        delta: e1rm - previousBest,
+        kind,
+        label: prKindLabel(kind),
+        value: candidate.value,
+        // `e1rm`/`delta` stay for the existing finish-sheet contract; a hold or
+        // carry carries no estimated 1RM, so its weight figure is deliberately 0.
+        e1rm: kind === RECORD_KIND.E1RM ? candidate.value : 0,
+        load: candidate.load,
+        previousBest: prior,
+        delta: candidate.value - prior,
       });
     }
   }
@@ -125,7 +108,7 @@ export function buildSessionReview(state, opts = /** @type {any} */ ({})) {
  * sessions are not PR sessions, and inventing praise for every one of them
  * teaches the athlete to ignore the line that matters.
  *
- * @param {{highlights: Array<{lift:string, delta:number}>}} review
+ * @param {{highlights: Array<{lift:string, delta:number, kind?:string}>}} review
  * @param {(value:number)=>string} formatWeight
  */
 export function reviewHighlightLine(review, formatWeight = (v) => String(Math.round(v))) {
@@ -133,6 +116,10 @@ export function reviewHighlightLine(review, formatWeight = (v) => String(Math.ro
   if (!highlights.length) return '';
   const [first] = highlights;
   const gain = `+${formatWeight(first.delta)}`;
-  if (highlights.length === 1) return `New best: ${first.lift} (${gain} estimated 1RM)`;
+  const unit = first?.kind === 'hold' ? 's hold'
+    : first?.kind === 'carry' ? 'm carry'
+      : first?.kind === 'reps' ? ' reps at this load'
+        : ' estimated 1RM';
+  if (highlights.length === 1) return `New best: ${first.lift} (${gain}${unit})`;
   return `New best: ${first.lift} (${gain}) and ${highlights.length - 1} more`;
 }

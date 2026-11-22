@@ -659,9 +659,38 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,201 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,238 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — Shape-aware PRs: one rule, one count.**
+  - `js/strength/records.js` is now the one record model: e1RM (shared
+    eligibility + `E1RM_PR_EPSILON`), hold (`sec`), carry (`dist`) and rep
+    records at the same stored load and load mode. Bodyweight/assisted/banded
+    sets are silent because `w` is mass or assistance, not a comparable load;
+    `bestRecordBefore` scans every activation including `arch:*` and requires
+    prior history, so a first-ever log stays a baseline.
+  - The cockpit detects every shape at tick, quick-log and completed-row edits,
+    persists `prKind`, and synchronises both ways: a corrected-down set or an
+    unticked one loses its class, badge and stored stamp. The recap compares each
+    kind with the all-time prior best (not the latest session) and renders
+    PR / Hold PR / Carry PR / Rep PR; the share card stays e1RM-only. Holds and
+    carries now show their time/distance in the recap instead of `0 kg × 0`.
+  - Progress, the finish review and the exercise drilldown share the model. The
+    tie-as-PR `|cur − lifetime| < 0.5` rule and the `0.995` insight threshold are
+    gone, `isWeeklyPR` was deleted, and PR counts are LIFTS everywhere (Home
+    session/day recap, Progress hub + Strength list, Week in Review). A saved
+    edit re-derives the day's stamps against the baseline excluding that
+    week/day and rebuilds `exerciseStats`.
+  - Validation: 2,238 node tests, typecheck, smoke, precache, finish-review,
+    edit-saved, set-row, workout-history, touch-target (2,759 controls) and all
+    45 browser checks. Real 390×844 recap showing Hold PR + Carry PR at
+    `hevy-audit/shots/pr-types.png`.
+  - The superset browser check's fixture is now clock-pinned: its programme week
+    started exactly seven days before the wall clock, so the "Time to Advance?"
+    sheet covered the app and made the nav inert on 2026-11-23. Reproduced on
+    `origin/main`; the pin makes the check assert the circuit, not the date.
+  - Next: Android device checklist and the remaining capability-backlog rows.
 
 - **2026-11-22 — Half-step effort ratings: review fixes.**
   - Per-set effort is now RIR 0–4 in half steps (0 … 4+, with 4+ stored as 4)

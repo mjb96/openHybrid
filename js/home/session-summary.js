@@ -7,6 +7,7 @@
 // sessions without one simply omit the tile rather than inventing a number.
 // =============================================================================
 import { dayVolume, isValidWorkingSet } from '../set-utils.js';
+import { canonicalExerciseId } from '../exercises/catalog.js';
 import { runDaySummary, runSessionsForDay } from '../state/run-sessions.js';
 import { buildSessionMuscles } from './session-muscles.js';
 import { muscleHeatmapHTML } from './body-heatmap.js';
@@ -43,6 +44,26 @@ export function formatGymDuration(value) {
 }
 
 /**
+ * PR count in LIFTS, the unit every surface now uses: three record sets on one
+ * lift are one PR lift, not three PRs. Explicit catalogue aliases collapse to
+ * one identity, and the set must be completed working work (a warm-up stamp
+ * from an old import must not count).
+ *
+ * @param {Record<string, any[]>} lifts
+ * @returns {number}
+ */
+export function countPrLifts(lifts) {
+  const prLifts = new Set();
+  for (const [name, rows] of Object.entries(lifts || {})) {
+    if (!Array.isArray(rows)) continue;
+    if (rows.some((set) => set?.isPR === true && isValidWorkingSet(set))) {
+      prLifts.add(canonicalExerciseId(name) || name);
+    }
+  }
+  return prLifts.size;
+}
+
+/**
  * @param {any} state
  * @param {string|number} weekKey
  * @param {string} day
@@ -52,7 +73,7 @@ export function buildSessionSummary(state, weekKey, day) {
   const lifts = week?.lifts?.[day] || {};
   const sets = Object.values(lifts).flat().filter(isValidWorkingSet);
   const volume = dayVolume(lifts);
-  const prs = sets.filter((set) => set?.isPR === true).length;
+  const prs = countPrLifts(lifts);
   const duration = formatGymDuration(week?.gymStats?.[day]?.time);
   const finishedAt = week?.sessionSummary?.[day]?.finishedAt || null;
   const date = week?.dates?.[day] || null;
@@ -100,7 +121,7 @@ export function sessionSummaryHTML(summary, options = {}) {
   if (summary.distanceKm > 0) stats.push({ value: distanceText(summary.distanceKm, distanceUnit), label: 'Distance' });
 
   const prs = summary.prs > 0
-    ? `<span class="session-summary__pr">🏆 ${summary.prs} PR${summary.prs === 1 ? '' : 's'}</span>`
+    ? `<span class="session-summary__pr">🏆 ${summary.prs} PR lift${summary.prs === 1 ? '' : 's'}</span>`
     : '';
   const chips = summary.muscles.hasData
     ? `<div class="session-summary__muscles" aria-label="Muscles worked">
