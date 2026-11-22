@@ -385,9 +385,11 @@ function _syncSettingsUI() {
   const notifWeekly   = document.getElementById('settingsNotifWeeklySummary');
   const notifStreak   = document.getElementById('settingsNotifStreak');
   const notifMissed   = document.getElementById('settingsNotifMissedWorkout');
+  const notifFasting  = document.getElementById('settingsNotifFastingStage');
   if (notifWeekly) notifWeekly.checked = !!s.notifWeeklySummary;
   if (notifStreak)  notifStreak.checked  = !!s.notifStreak;
   if (notifMissed)  notifMissed.checked  = !!s.notifMissedWorkout;
+  if (notifFasting) notifFasting.checked = s.notifFastingStage !== false;
 
   // Reminder time picker
   const rtEl = document.getElementById('settingsReminderTime');
@@ -750,6 +752,7 @@ export function setNotifToggle(type, enabled) {
   if (type === 'weeklySummary')   appState.settings.notifWeeklySummary = enabled;
   else if (type === 'streak')     appState.settings.notifStreak = enabled;
   else if (type === 'missed')     appState.settings.notifMissedWorkout = enabled;
+  else if (type === 'fasting')    appState.settings.notifFastingStage = enabled;
   saveStateToLocalStorage(true);
   rearmReminder();
 }

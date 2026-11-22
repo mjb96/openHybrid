@@ -1942,6 +1942,7 @@ document.addEventListener('change', (e) => {
   if (target.id === 'settingsNotifWeeklySummary')   { setNotifToggle('weeklySummary', target.checked); return; }
   if (target.id === 'settingsNotifStreak')          { setNotifToggle('streak', target.checked); return; }
   if (target.id === 'settingsNotifMissedWorkout')   { setNotifToggle('missed', target.checked); return; }
+  if (target.id === 'settingsNotifFastingStage')    { setNotifToggle('fasting', target.checked); return; }
   if (target.id === 'settingsEquipmentProfile')     { selectEquipmentProfile(target.value); return; }
   if (target.id === 'settingsEquipmentProfileName') { saveEquipmentProfileName(); return; }
   const eqKey = target.getAttribute?.('data-equipment');

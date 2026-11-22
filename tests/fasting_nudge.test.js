@@ -54,6 +54,18 @@ test('S1d — firer fires once per stage and persists the marker so it never rep
   assert.equal(sent.length, 1);
 });
 
+test('S1d — a hidden Fasting module can never fire a nudge', () => {
+  const start = new Date(Date.now() - 13 * 3600e3).toISOString();
+  const state = {
+    settings: { modules: { fasting: false }, notifFastingStage: true },
+    fastingSession: { active: true, startTime: start, goal: 16, history: [] },
+  };
+  let sent = 0;
+  assert.equal(maybePushFastingNudge(state, { notifyFn: () => sent++, granted: true, saveFn: () => {} }), null);
+  assert.equal(sent, 0);
+  assert.equal(state.fastingSession._nudge, undefined, 'no marker is written for a hidden module');
+});
+
 test('S1d — a brand-new fast (startTime change) resets the marker', () => {
   const start = new Date(Date.now() - 13 * 3600e3).toISOString();
   const state = { fastingSession: { active: true, startTime: start, goal: 16, _nudge: { startTime: 'OLD', zoneId: 'glycogen', goalNotified: true } } };

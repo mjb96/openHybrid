@@ -112,6 +112,37 @@ try {
   await page.click('[data-action="set-previous-scope"][data-scope="program"]');
   ok(await page.locator('[data-action="set-previous-scope"][data-scope="program"]').evaluate((el) => el.classList.contains('active')), 'previous-values scope persists its active state');
 
+  // Fasting stage nudges are a real, persisted toggle under Notifications, and
+  // the module switch gates both the control and the delivery path.
+  await page.click('#settingsTabs [data-settings-tab="health"]');
+  const nudgeRow = page.locator('.settings-row', { has: page.locator('#settingsNotifFastingStage') });
+  ok(await page.locator('#settingsNotifFastingStage').isChecked(), 'fasting stage nudges default on');
+  await nudgeRow.locator('.settings-switch').click();
+  const nudgeStored = await page.evaluate(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.notifFastingStage);
+  ok(nudgeStored === false, 'the fasting stage nudge preference is stored');
+
+  await page.click('#settingsTabs [data-settings-tab="training"]');
+  const fastingModuleSwitch = page.locator('.settings-row', { has: page.locator('[data-module-toggle="fasting"]') }).locator('.settings-switch');
+  await fastingModuleSwitch.click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'off');
+  await page.click('#settingsTabs [data-settings-tab="health"]');
+  ok(!(await page.locator('#settingsNotifFastingStage').isVisible()), 'the fasting nudge toggle hides with its module');
+  const gated = await page.evaluate(async () => {
+    const { maybePushFastingNudge } = await import('./js/fasting/fasting-nudge.js');
+    return maybePushFastingNudge({
+      settings: { modules: { fasting: false }, notifFastingStage: true },
+      fastingSession: { active: true, startTime: new Date(Date.now() - 13 * 3600e3).toISOString(), goal: 16, history: [] },
+    }, { notifyFn: () => {}, granted: true, saveFn: () => {} });
+  });
+  ok(gated === null, 'a disabled Fasting module cannot fire a nudge');
+  await page.click('#settingsTabs [data-settings-tab="training"]');
+  await fastingModuleSwitch.click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'on');
+  await page.click('#settingsTabs [data-settings-tab="health"]');
+  await nudgeRow.locator('.settings-switch').click();
+  ok(await page.locator('#settingsNotifFastingStage').isChecked(), 'the fasting nudge toggle can be restored');
+  await page.click('#settingsTabs [data-settings-tab="training"]');
+
   await page.fill('#settingsSearch', 'theme');
   const searchLabels = await visibleLabel();
   ok(searchLabels.includes('Appearance'), 'search finds Appearance');

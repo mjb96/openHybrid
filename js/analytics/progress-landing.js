@@ -386,15 +386,14 @@ export function secondaryDestinations(state) {
 
 /**
  * Fasting is optional (roadmap §3A): it appears for people who actually fast,
- * never by default. There is no settings toggle today, so real usage — an
- * active fast or any completed one — is the honest signal. The explicit
- * settings flag is respected first so Phase 5's "choose your domains" work can
- * drive this without changing callers.
+ * never by default. The Fasting module switch controls visibility; this helper
+ * answers the narrower "has this athlete used fasting?" question from real
+ * usage — an active fast or any completed one. There is deliberately no second
+ * `settings.fastingEnabled` flag: that read never had a writer, so it could only
+ * drift from the module switch and the session history.
  * @param {any} state
  */
 export function fastingIsEnabled(state) {
-  if (state?.settings?.fastingEnabled === true) return true;
-  if (state?.settings?.fastingEnabled === false) return false;
   const session = state?.fastingSession;
   if (session?.active) return true;
   return Array.isArray(session?.history) && session.history.length > 0;

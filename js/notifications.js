@@ -248,8 +248,9 @@ export function pushOvertrainingWarning(assessment) {
 
 // ── Fasting stage / goal nudges (S1d — fired on home render / app open) ───────
 // Best-effort: delivers a nudge when an active fast has crossed into a new
-// metabolic stage or hit its goal since the last check. Gated on granted +
-// (not explicitly disabled). `saveFn` persists the once-per-stage marker.
+// metabolic stage or hit its goal since the last check. Gated on granted, on
+// the Fasting module being visible, and on the athlete's stage-nudge toggle.
+// `saveFn` persists the once-per-stage marker.
 export function pushFastingStageNudge(state, saveFn) {
   try {
     if (!state || state.settings?.notifFastingStage === false) return null;
