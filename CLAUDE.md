@@ -58,11 +58,24 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   Train quick starts/recent runs, Progress domains and Home insight/running cards
   filter through `moduleEnabled`; analytics sections carry `data-module` hooks so a
   deep link cannot reopen a hidden module. Settings must reflect the switches. Data is
-  never deleted, and stored history remains readable.
-- Settings navigation: `js/settings.js` groups the former long scroll into
-  Profile / Training / Health / Appearance / Data tabs, with a global search and
-  an explicit no-results state. Existing checks select the Training tab before
-  touching equipment/modules.
+  never deleted, and stored history remains readable. Fasting stage nudges are
+  gated by `moduleEnabled(state,'fasting')` AND the athlete's
+  `settings.notifFastingStage` (default on), so a hidden module can never notify;
+  there is no separate `settings.fastingEnabled` flag.
+- Settings navigation: `js/settings/nav.js` is the pure navigation model — five
+  fixed destinations (Profile / Training / Health / Appearance / Data), the
+  card-label → group map (`settingsGroupForLabel`; unknown labels land in
+  Training) and `sectionMatchesQuery` (visible text + `aria-label`/`title`/option
+  text). `js/settings.js` renders the filters as a `role="group"` of
+  `aria-pressed` buttons (never a fake tablist), clears the query on open/close,
+  resets scroll on search and announces no-results with `role="status"`; the
+  visible count ignores cards hidden by a module switch. Training order is
+  Training (units) → Logging (rest tiers/presets/sound, progression, previous
+  values, warm-up, plate hints) → Program Week → Equipment → Modules.
+  `.settings-switch` is a 44px hit area around the unchanged 42×24 track, and
+  `.settings-body` pads with `--safe-bottom` after the env() fallback.
+  `tests/settings_wiring.test.js` ratchets every settings control to a handler;
+  add a real handler rather than a sixth tab.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can
