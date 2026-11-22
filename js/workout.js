@@ -811,7 +811,10 @@ export function renderWorkout() {
   const startBtn = document.getElementById('startWorkoutBtn');
   if (startBtn) {
     const hasGymToday = Array.isArray(homeBlueprint.lifts) && homeBlueprint.lifts.length > 0;
-    startBtn.style.display = (hasGymToday && !timerRunning) ? '' : 'none';
+    // `timerRunning` is elapsed > 0, so a render inside the first second of a
+    // session put Start back under the running clock. The session being active
+    // is the real condition.
+    startBtn.style.display = (hasGymToday && !sessionActive) ? '' : 'none';
   }
 
   if (!exercisesContainer) return;

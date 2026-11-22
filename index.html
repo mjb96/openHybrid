@@ -499,13 +499,16 @@
         </button>
       </section>
 
-      <!-- A live fast is status, not a menu: never hide an in-progress timer. -->
-      <div class="qa-row qa-row--fasting mb-4" id="dashboardQuickActions" data-module="fasting" aria-label="Active fast" style="grid-template-columns:1fr;margin-top:10px;display:none;">
-        <button class="qa-btn" id="qaFasting" data-action="open-fasting-detail" aria-label="View your active fast">
-          <span class="qa-icon">⏱️</span>
-          <span class="qa-text"><span class="qa-label">Fasting</span><span class="qa-sub">Intermittent fasting</span></span>
-        </button>
-      </div>
+      <!-- Hybrid section: only the metrics Home does not already show. The
+           balance and endurance cards disappear with Hybrid training off; the
+           strength week card stays, because strength is never optional. -->
+      <section class="home-hybrid" id="homeHybridSection" aria-label="Hybrid training">
+        <div id="homeBalanceCard" data-home-card="hybridBalance" data-hybrid></div>
+        <div class="home-hybrid__pair">
+          <div id="homeStrengthWeekCard" data-home-card="strengthWeek"></div>
+          <div id="homeEnduranceWeekCard" data-home-card="enduranceWeek" data-hybrid data-module="running"></div>
+        </div>
+      </section>
 
       <div id="homeBodyweightCard" data-home-card="bodyweight"></div>
 
@@ -551,20 +554,20 @@
            The full header/day selector/outline step aside so the first set is
            visible (js/workout.js toggles cockpit-session-active). -->
       <div class="cockpit-active-sticky">
-        <button class="subview-back-btn" data-action="back-to-train-landing">← Back to Train</button>
+        <div class="cockpit-active-top">
+        <button class="subview-back-btn" data-action="back-to-train-landing" aria-label="Back to Train"><span class="subview-back-arrow" aria-hidden="true">←</span><span class="subview-back-label">Back to Train</span></button>
         <div class="cockpit-active-head" id="cockpitActiveHead" hidden>
           <div class="cockpit-active-head__stats">
             <span><b id="cockpitActiveVolume">0 kg</b><small>Volume</small></span>
             <span><b id="cockpitActiveSets">0/0</b><small>Sets</small></span>
+            <span class="cockpit-active-head__clock" id="workoutDurationBar" role="timer" aria-label="Session time">
+              <b id="workoutDurationClock">00:00</b><small>Time</small>
+            </span>
           </div>
           <button type="button" class="cockpit-active-head__finish" data-action="open-finish-modal">Finish</button>
         </div>
-        <div class="cockpit-exercise-rail" id="cockpitExerciseRail" role="group" aria-label="Exercise rail" hidden></div>
-
-        <div class="session-timer-bar" id="workoutDurationBar" role="timer">
-          <span class="timer-txt">⏱️ SESSION ACTIVE</span>
-          <span class="timer-clock" id="workoutDurationClock">00:00</span>
         </div>
+        <div class="cockpit-exercise-rail" id="cockpitExerciseRail" role="group" aria-label="Exercise rail" hidden></div>
       </div>
 
       <div class="workout-cockpit-header">
@@ -601,19 +604,18 @@
 
       <button id="startWorkoutBtn" class="btn-action-block btn-green mb-3" data-action="start-timer">Start Workout</button>
 
-      <div class="global-timer-bar" id="cockpitTimerBar">
-        <div class="rest-timer-body">
-          <!-- The label IS the pause control: it used to render a decorative ⏸
-               with no pause behind it, which reads as a broken button. -->
-          <button type="button" class="timer-label" id="restPauseBtn"
-                  data-action="rest-pause" aria-pressed="false"
-                  aria-label="Pause rest timer">⏸ REST</button>
-          <span class="timer-clock" id="cockpitTimerClock">1:30</span>
-          <div class="rest-timer-actions">
-            <button class="rest-adj-btn" data-action="rest-adjust" data-delta="-30">−30s</button>
-            <button class="rest-adj-btn" data-action="rest-adjust" data-delta="30">+30s</button>
-            <button class="rest-skip-btn" data-action="dismiss-rest">Done</button>
-          </div>
+      <!-- Rest floats above the bottom nav. It must stay reachable while the
+           session scrolls, and reparenting it into the active card moved it away
+           the moment that card collapsed. -->
+      <div class="global-timer-bar rest-pill" id="cockpitTimerBar" aria-label="Rest timer">
+        <button type="button" class="rest-pill__pause" id="restPauseBtn"
+                data-action="rest-pause" aria-pressed="false"
+                aria-label="Pause rest timer" title="Pause rest timer">⏸</button>
+        <span class="rest-pill__clock" id="cockpitTimerClock" role="timer">1:30</span>
+        <div class="rest-pill__actions">
+          <button class="rest-adj-btn" data-action="rest-adjust" data-delta="-15" aria-label="Subtract 15 seconds">−15</button>
+          <button class="rest-adj-btn" data-action="rest-adjust" data-delta="15" aria-label="Add 15 seconds">+15</button>
+          <button class="rest-skip-btn" data-action="dismiss-rest">Skip</button>
         </div>
         <div class="rest-progress-track">
           <div class="rest-progress-fill" id="restProgressFill" style="width:100%"></div>
@@ -1714,6 +1716,11 @@
         <!-- Modules -->
         <div class="settings-section" id="settingsModules">
           <div class="settings-section-label">Modules</div>
+          <div class="settings-row">
+            <label class="settings-row-label">Hybrid training</label>
+            <label class="settings-switch"><input type="checkbox" data-hybrid-toggle aria-label="Hybrid training" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-hint">Off gives you a strength-only dashboard: the balance and endurance cards disappear. Running, Health Connect and the others stay exactly as you set them below.</div>
           <div class="settings-hint">Hide parts of openHybrid you do not use. Your data stays on this device and can be shown again at any time.</div>
           <div class="settings-row">
             <label class="settings-row-label">Running &amp; GPS</label>
@@ -2458,9 +2465,9 @@
     </div>
     <div class="qs-grid">
       <button class="qs-item qs-item--primary" data-action="qs-workout" aria-label="Start today's workout"><span class="qs-item__icon" aria-hidden="true">🏋️</span><span class="qs-item__label">Workout</span></button>
-      <button class="qs-item" data-action="qs-run"  aria-label="Start a run"><span class="qs-item__icon" aria-hidden="true">🏃</span><span class="qs-item__label">Run</span></button>
-      <button class="qs-item" data-action="qs-walk" aria-label="Start a walk"><span class="qs-item__icon" aria-hidden="true">🚶</span><span class="qs-item__label">Walk</span></button>
-      <button class="qs-item" data-action="qs-fast" aria-label="Start a fast"><span class="qs-item__icon" aria-hidden="true">⏱️</span><span class="qs-item__label">Fast</span></button>
+      <button class="qs-item" data-action="qs-run"  data-module="running" aria-label="Start a run"><span class="qs-item__icon" aria-hidden="true">🏃</span><span class="qs-item__label">Run</span></button>
+      <button class="qs-item" data-action="qs-walk" data-module="running" aria-label="Start a walk"><span class="qs-item__icon" aria-hidden="true">🚶</span><span class="qs-item__label">Walk</span></button>
+      <button class="qs-item" data-action="qs-fast" data-module="fasting" aria-label="Start a fast"><span class="qs-item__icon" aria-hidden="true">⏱️</span><span class="qs-item__label">Fast</span></button>
     </div>
     <div style="height: 16px;"></div>
   </div>

@@ -403,9 +403,18 @@ const MIGRATIONS = [
     if (!Array.isArray(state.routines)) state.routines = [];
     if (!Array.isArray(state.libraryFolders)) state.libraryFolders = [];
   },
+  // v14 → v15: hybrid training is on for everyone who already has the app.
+  // It only controls hybrid-only Home surfaces; the Running/Fasting/Health/
+  // Recovery modules keep their own stored choices.
+  (state) => {
+    if (!state.settings || typeof state.settings !== 'object' || Array.isArray(state.settings)) {
+      state.settings = {};
+    }
+    if (state.settings.hybridTraining == null) state.settings.hybridTraining = true;
+  },
 ];
 
-export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 14
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 15
 
 /** Error raised when a state upgrade cannot safely commit. */
 export class StateMigrationError extends Error {

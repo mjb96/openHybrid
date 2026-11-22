@@ -17,6 +17,24 @@ export const MODULES = Object.freeze([
 
 const IDS = new Set(MODULES.map((m) => m.id));
 
+/**
+ * Hybrid training is a PRESENTATION preference, not a fifth module. It decides
+ * whether the hybrid-only surfaces exist (the balance card and the endurance
+ * summary on Home); the four feature modules stay independently controlled, so
+ * an athlete can hide Running without losing their recovery switches. Absent
+ * means on, because every existing install predates the preference.
+ */
+export function hybridTrainingEnabled(state) {
+  return state?.settings?.hybridTraining !== false;
+}
+
+export function setHybridTraining(state, on) {
+  if (!state) return false;
+  if (!state.settings || typeof state.settings !== 'object') state.settings = {};
+  state.settings.hybridTraining = !!on;
+  return true;
+}
+
 export function moduleEnabled(state, id) {
   if (!IDS.has(id)) return true;
   return state?.settings?.modules?.[id] !== false;
@@ -37,4 +55,5 @@ export function applyModuleVisibility(state, root = (typeof document !== 'undefi
   root.dataset.moduleFasting = moduleEnabled(state, 'fasting') ? 'on' : 'off';
   root.dataset.moduleHealth = moduleEnabled(state, 'health') ? 'on' : 'off';
   root.dataset.moduleRecovery = moduleEnabled(state, 'recovery') ? 'on' : 'off';
+  root.dataset.hybrid = hybridTrainingEnabled(state) ? 'on' : 'off';
 }

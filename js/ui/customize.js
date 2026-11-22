@@ -10,6 +10,9 @@
 
 export const HOME_CARDS = Object.freeze([
   { id: 'weekStrip', label: 'This week', note: 'Seven-day rail with four weeks of recaps' },
+  { id: 'hybridBalance', label: 'Training balance', note: 'This week’s strength vs endurance split' },
+  { id: 'strengthWeek', label: 'Strength this week', note: 'Tonnage, top-lift change and PRs' },
+  { id: 'enduranceWeek', label: 'Endurance this week', note: 'Distance and pace (Running module)' },
   { id: 'bodyweight', label: 'Bodyweight', note: 'Latest weigh-in and 30-day trend' },
   { id: 'insight', label: 'Coach insight', note: 'One evidence-backed line' },
   { id: 'volumeGuide', label: 'Muscle volume', note: 'Focus-muscle coverage for the week' },

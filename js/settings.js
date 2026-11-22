@@ -16,7 +16,7 @@ import {
 } from './timers.js';
 import { todayKey, startOfProgramWeek } from './dates.js';
 import { parseWorkoutCsv, applyWorkoutCsvImport, CSV_IMPORT_LIMITS, decodeCsvBytes } from './portability/import-workout-csv.js';
-import { moduleEnabled, setModuleEnabled, applyModuleVisibility } from './modules.js';
+import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingEnabled, setHybridTraining } from './modules.js';
 import * as equipmentProfiles from './equipment-profiles.js';
 import { applyPalette, normalizePalette } from './theme.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
@@ -270,6 +270,9 @@ function _syncSettingsUI() {
 
   document.querySelectorAll('[data-module-toggle]').forEach((input) => {
     input.checked = moduleEnabled(appState, input.getAttribute('data-module-toggle'));
+  });
+  document.querySelectorAll('[data-hybrid-toggle]').forEach((input) => {
+    input.checked = hybridTrainingEnabled(appState);
   });
 
   // Equipment profiles: the selector and active name reflect the stored
@@ -1025,6 +1028,20 @@ export function toggleModule(id, on) {
   document.dispatchEvent(new CustomEvent('app:modules-changed', { detail: { id, on: !!on } }));
   // A card hidden by the module switch must stop counting as a search result
   // immediately, while the panel is open.
+  _applySettingsFilter();
+}
+
+/**
+ * Hybrid training: hides the hybrid-only Home surfaces. It deliberately does
+ * NOT touch the four feature modules — an athlete who wants a strength-only
+ * dashboard still chooses Running/Recovery/Health/Fasting one by one below.
+ */
+export function toggleHybridTraining(on) {
+  const appState = _getState();
+  if (!setHybridTraining(appState, on)) return;
+  applyModuleVisibility(appState);
+  saveStateToLocalStorage(true);
+  document.dispatchEvent(new CustomEvent('app:modules-changed', { detail: { hybrid: !!on } }));
   _applySettingsFilter();
 }
 

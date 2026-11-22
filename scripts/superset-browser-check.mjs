@@ -108,8 +108,16 @@ const readState = (page) => page.evaluate((key) => JSON.parse(localStorage.getIt
 const groupNames = (page) => page.evaluate(() => [...document.querySelectorAll('#cockpitExercisesContainer .superset-group .cockpit-exercise')]
   .map((card) => card.getAttribute('data-liftname')));
 const timerActive = (page) => page.evaluate(() => !!document.getElementById('cockpitTimerBar')?.classList.contains('active'));
-const timerOwner = (page) => page.evaluate(() => document.getElementById('cockpitTimerBar')
-  ?.closest('.cockpit-exercise')?.getAttribute('data-liftname') || '');
+// The rest pill is deliberately GLOBAL: it floats above the bottom nav so it
+// survives the active card collapsing, which is exactly when the athlete waits
+// for the next set. It must never be nested in a member card again.
+const timerPlacement = (page) => page.evaluate(() => {
+  const bar = document.getElementById('cockpitTimerBar');
+  return {
+    inView: !!bar?.closest('#view-workout'),
+    inCard: bar?.closest('.cockpit-exercise')?.getAttribute('data-liftname') || '',
+  };
+});
 // The persisted rest snapshot carries the exact resolved duration, so the
 // assertion is not a race with a ticking clock.
 const restDuration = (page) => page.evaluate(() => {
@@ -223,7 +231,8 @@ try {
   ok(!await timerActive(page), 'ticking B1 does not start rest while C1 is behind');
   await tickFirstSet(page, third);
   ok(await timerActive(page), 'ticking C1 starts the group rest');
-  ok(await timerOwner(page) === third, `the rest bar is attached to the last member (${await timerOwner(page)})`);
+  const circuitPill = await timerPlacement(page);
+  ok(circuitPill.inView && !circuitPill.inCard, `the group rest pill is global, not nested in a card (${circuitPill.inCard || 'none'})`);
 
   if (shotPath) {
     // Let the "baseline set" toast clear so the screenshot is the circuit, not
@@ -298,7 +307,8 @@ try {
     await openPanel(orderPage, firstLift);
     ok(await clickPanel(orderPage, 'link-superset', secondLift), `${orderLabel}: the pair forms`);
     await orderPage.waitForSelector('.superset-group');
-    // Expand the last member so the moved rest bar has a real home to attach to.
+    // Expand the last member so the second set is reachable and the group rest
+    // is triggered by the final tick (the pill itself is global).
     await orderPage.evaluate((name) => {
       const card = [...document.querySelectorAll('.cockpit-exercise')]
         .find((candidate) => candidate.getAttribute('data-liftname') === name);
@@ -313,8 +323,8 @@ try {
     const duration = await restDuration(orderPage);
     durations[orderLabel] = duration;
     ok(duration === 180, `${orderLabel}: the group rest is the compound 180 s, found ${duration}`);
-    const owner = await timerOwner(orderPage);
-    ok(owner === secondLift, `${orderLabel}: the rest bar follows the last member (owner ${owner || 'none'})`);
+    const orderPill = await timerPlacement(orderPage);
+    ok(orderPill.inView && !orderPill.inCard, `${orderLabel}: the group rest pill is global (${orderPill.inCard || 'none'})`);
     ok(orderErrors.length === 0, orderErrors.length ? `${orderLabel}: browser errors: ${orderErrors.join(' | ')}` : `${orderLabel}: no browser errors`);
     await orderContext.close();
   }

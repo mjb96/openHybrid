@@ -393,25 +393,29 @@ export function render1RMProgressChart(container, weekLabels, sqData, bpData, dl
  * Points sit on a real time axis, so a two-week gap reads as a gap rather than
  * one evenly spaced step.
  *
- * @param {HTMLElement|null} container
+ * Pure string builder so Home and Progress draw the SAME chart: the compact
+ * variant only changes geometry (smaller canvas, fewer gridlines/labels, no
+ * legend), never the maths. Returns '' when there is nothing to plot.
+ *
  * @param {any[]} bwLog
- * @param {{ unit?: string, goal?: number|null }} [options]
+ * @param {{ unit?: string, goal?: number|null, compact?: boolean, idPrefix?: string, ariaLabel?: string }} [options]
+ * @returns {string}
  */
-export function renderBodyWeightWithMA(container, bwLog, options = {}) {
-  if (!container) return;
+export function bodyWeightChartSVG(bwLog, options = {}) {
+  const compact = options.compact === true;
   const unit = options.unit || 'kg';
   const goal = Number(options.goal);
   const hasGoal = Number.isFinite(goal) && goal > 0;
   const log = normalizeWeighIns(bwLog);
-  if (log.length < 2) {
-    container.innerHTML = log.length === 1
-      ? `<p style="color:var(--text-secondary);font-size:.85rem;padding:8px 0;">One entry logged (${log[0].weight} ${unit}). Log another to see the trend.</p>`
-      : '<p style="color:var(--text-muted);font-size:.78rem;padding:8px 0;">Log body weight to see the trend.</p>';
-    return;
-  }
+  if (log.length < 2) return '';
 
-  const W = 400, H = 200;
-  const PAD_L = 46, PAD_R = 14, PAD_T = 26, PAD_B = 30;
+  const W = compact ? 320 : 400;
+  const H = compact ? 118 : 200;
+  const PAD_L = compact ? 34 : 46;
+  const PAD_R = compact ? 10 : 14;
+  const PAD_T = compact ? 12 : 26;
+  const PAD_B = compact ? 18 : 30;
+  const gridSteps = compact ? 2 : 4;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
   const at = (date) => new Date(`${date}T12:00:00`).getTime();
@@ -434,42 +438,69 @@ export function renderBodyWeightWithMA(container, bwLog, options = {}) {
   });
 
   let grid = '';
-  for (let i = 0; i <= 4; i++) {
-    const value = ymin + ((ymax - ymin) * i) / 4;
+  for (let i = 0; i <= gridSteps; i++) {
+    const value = ymin + ((ymax - ymin) * i) / gridSteps;
     const y = toY(value);
     grid += `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="rgba(148,163,184,.14)" stroke-width="1"/>`
       + `<text x="${PAD_L - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="rgba(203,213,225,.62)">${value.toFixed(1)}</text>`;
   }
 
-  const xLabelIdx = [...new Set([0, Math.floor((log.length - 1) / 2), log.length - 1])];
-  const xAxis = xLabelIdx.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 7}" text-anchor="${index === 0 ? 'start' : index === log.length - 1 ? 'end' : 'middle'}" font-size="9.5" fill="rgba(203,213,225,.62)">${formatDayMonth(log[index].date)}</text>`).join('');
+  const xLabelIdx = compact
+    ? [...new Set([0, log.length - 1])]
+    : [...new Set([0, Math.floor((log.length - 1) / 2), log.length - 1])];
+  const xAxis = xLabelIdx.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 5}" text-anchor="${index === 0 ? 'start' : index === log.length - 1 ? 'end' : 'middle'}" font-size="9.5" fill="rgba(203,213,225,.62)">${formatDayMonth(log[index].date)}</text>`).join('');
 
   const fillPath = `M ${xs[0].toFixed(1)},${(PAD_T + chartH).toFixed(1)} `
     + xs.map((x, index) => `L ${x.toFixed(1)},${ys[index].toFixed(1)}`).join(' ')
     + ` L ${xs[xs.length - 1].toFixed(1)},${(PAD_T + chartH).toFixed(1)} Z`;
   const dailyPath = xs.map((x, index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[index].toFixed(1)}`).join(' ');
   const maPath = xs.map((x, index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${toY(ma[index]).toFixed(1)}`).join(' ');
-  const dots = xs.map((x, index) => `<circle cx="${x.toFixed(1)}" cy="${ys[index].toFixed(1)}" r="2.6" fill="#22d3ee"><title>${log[index].date} · ${weights[index]} ${unit}</title></circle>`).join('');
+  const dots = xs.map((x, index) => `<circle cx="${x.toFixed(1)}" cy="${ys[index].toFixed(1)}" r="${compact ? 2.2 : 2.6}" fill="#22d3ee"><title>${log[index].date} · ${weights[index]} ${unit}</title></circle>`).join('');
 
   const goalLine = hasGoal
-    ? `<line x1="${PAD_L}" y1="${toY(goal).toFixed(1)}" x2="${W - PAD_R}" y2="${toY(goal).toFixed(1)}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="6 4"/>`
-      + `<text x="${W - PAD_R}" y="${(toY(goal) - 6).toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="700" fill="#f59e0b">Goal ${goal} ${unit}</text>`
+    ? `<line x1="${PAD_L}" y1="${toY(goal).toFixed(1)}" x2="${W - PAD_R}" y2="${toY(goal).toFixed(1)}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="${compact ? '4 3' : '6 4'}"/>`
+      + (compact ? '' : `<text x="${W - PAD_R}" y="${(toY(goal) - 6).toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="700" fill="#f59e0b">Goal ${goal} ${unit}</text>`)
     : '';
 
-  const legend = `<circle cx="${PAD_L}" cy="11" r="3.5" fill="#22d3ee"/>`
+  // The legend is the only thing the compact card cannot afford; the card's own
+  // meta line already names the goal, and the trend line is explained below it.
+  const legend = compact ? '' : `<circle cx="${PAD_L}" cy="11" r="3.5" fill="#22d3ee"/>`
     + `<text x="${PAD_L + 8}" y="14.5" font-size="9.5" fill="var(--text-secondary)">Daily</text>`
     + `<line x1="${PAD_L + 44}" y1="11" x2="${PAD_L + 58}" y2="11" stroke="#a3e635" stroke-width="2.5"/>`
     + `<text x="${PAD_L + 63}" y="14.5" font-size="9.5" fill="var(--text-secondary)">7d avg</text>`
     + (hasGoal ? `<line x1="${PAD_L + 112}" y1="11" x2="${PAD_L + 126}" y2="11" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 2"/><text x="${PAD_L + 131}" y="14.5" font-size="9.5" fill="var(--text-secondary)">Goal</text>` : '');
 
-  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="Body weight history">`
-    + `<defs><linearGradient id="bwArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3ee" stop-opacity=".24"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>`
+  // Two charts can be in the DOM at once (Home stays mounted behind Progress),
+  // so the gradient id is per-caller rather than a shared constant.
+  const gradientId = `${options.idPrefix || 'bw'}Area`;
+  const label = options.ariaLabel || (compact ? 'Bodyweight trend' : 'Body weight history');
+  const className = compact ? ' class="home-bw__spark"' : '';
+  return `<svg viewBox="0 0 ${W} ${H}"${className} style="width:100%;height:auto;display:block;" role="img" aria-label="${label}">`
+    + `<defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3ee" stop-opacity=".24"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>`
     + grid
-    + `<path d="${fillPath}" fill="url(#bwArea)"/>`
+    + `<path d="${fillPath}" fill="url(#${gradientId})"/>`
     + `<path d="${dailyPath}" fill="none" stroke="#22d3ee" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity=".75"/>`
     + `<path d="${maPath}" fill="none" stroke="#a3e635" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`
     + dots + goalLine + xAxis + legend
     + `</svg>`;
+}
+
+/**
+ * Progress → Body weight: the full chart, or an honest empty state.
+ *
+ * @param {HTMLElement|null} container
+ * @param {any[]} bwLog
+ * @param {{ unit?: string, goal?: number|null }} [options]
+ */
+export function renderBodyWeightWithMA(container, bwLog, options = {}) {
+  if (!container) return;
+  const svg = bodyWeightChartSVG(bwLog, options);
+  if (svg) { container.innerHTML = svg; return; }
+  const unit = options.unit || 'kg';
+  const log = normalizeWeighIns(bwLog);
+  container.innerHTML = log.length === 1
+    ? `<p style="color:var(--text-secondary);font-size:.85rem;padding:8px 0;">One entry logged (${log[0].weight} ${unit}). Log another to see the trend.</p>`
+    : '<p style="color:var(--text-muted);font-size:.78rem;padding:8px 0;">Log body weight to see the trend.</p>';
 }
 
 /**

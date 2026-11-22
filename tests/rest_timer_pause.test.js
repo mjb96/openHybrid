@@ -90,18 +90,19 @@ test('pause holds the countdown, and pressing again resumes it', () => {
 
 test('the label says which state it is in, and exposes it to assistive tech', () => {
   triggerRestTimerEngine('Back Squat', null, '');
-  assert.equal(pauseBtn().textContent, '⏸ REST');
+  // The pill has room for one glyph; the aria-label carries the meaning.
+  assert.equal(pauseBtn().textContent, '⏸');
   assert.equal(pauseBtn().getAttribute('aria-pressed'), 'false');
 
   toggleRestPause();
-  assert.equal(pauseBtn().textContent, '▶ PAUSED');
+  assert.equal(pauseBtn().textContent, '▶');
   assert.equal(pauseBtn().getAttribute('aria-pressed'), 'true');
   assert.match(pauseBtn().getAttribute('aria-label'), /resume/i);
   // A held countdown must not be styled like a running one.
   assert.equal(bar().classList.contains('rest-paused'), true);
 
   toggleRestPause();
-  assert.equal(pauseBtn().textContent, '⏸ REST');
+  assert.equal(pauseBtn().textContent, '⏸');
   assert.equal(bar().classList.contains('rest-paused'), false);
   dismissRestTimer();
 });
@@ -117,7 +118,7 @@ test('a pause never carries into the next set', () => {
 
   triggerRestTimerEngine('Back Squat', null, '');
   assert.equal(isRestPaused(), false, 'a new set always starts running');
-  assert.equal(pauseBtn().textContent, '⏸ REST');
+  assert.equal(pauseBtn().textContent, '⏸');
   dismissRestTimer();
 });
 

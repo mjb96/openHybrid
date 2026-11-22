@@ -61,7 +61,17 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   never deleted, and stored history remains readable. Fasting stage nudges are
   gated by `moduleEnabled(state,'fasting')` AND the athlete's
   `settings.notifFastingStage` (default on), so a hidden module can never notify;
-  there is no separate `settings.fastingEnabled` flag.
+  there is no separate `settings.fastingEnabled` flag. The quick-start sheet's
+  Run/Walk/Fast carry the same `data-module` hooks, so a disabled module cannot
+  offer a start.
+- Hybrid training: `settings.hybridTraining` (default on, v14→v15 seeds it) is a
+  PRESENTATION preference, **not a fifth module**. `hybridTrainingEnabled` /
+  `setHybridTraining` live in `js/modules.js` and `applyModuleVisibility` publishes
+  `<html data-hybrid="on|off">`; CSS hides only `[data-hybrid]` surfaces (the Home
+  balance and endurance cards). Turning it off gives a strength-only dashboard and
+  NEVER rewrites the four module switches, so Running/Recovery/Health/Fasting stay
+  the athlete's own choices. It is deliberately separate from
+  `settings.fitnessGoal`, which drives recommendations and Hybrid Score weights.
 - Settings navigation: `js/settings/nav.js` is the pure navigation model — five
   fixed destinations (Profile / Training / Health / Appearance / Data), the
   card-label → group map (`settingsGroupForLabel`; unknown and
@@ -170,7 +180,25 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `settings.targetWeight` and `settings.rateGoal` are optional; v7→v8 seeds them.
   The view lives in `js/analytics/views/view-bodyweight.js`, the SVG chart in
   `js/analytics/charts.js`, and the prefilled weigh-in sheet (steppers, date,
-  recent edit/delete) in `js/bodyweight-sheet.js`.
+  recent edit/delete) in `js/bodyweight-sheet.js`. Home and Progress draw the SAME
+  chart through `bodyWeightChartSVG` (the Home card passes compact geometry and
+  keeps the summary row above it); `renderBodyWeightWithMA` delegates to it, so
+  there is never a second sparkline implementation. The sheet focuses its CLOSE
+  BUTTON, not the number field — autofocusing `#bwSheetWeight` raised the mobile
+  keyboard over the steppers.
+- Hybrid week on Home: `js/analytics/hybrid-balance.js` buckets
+  `dailyLoadBreakdownTimeline` (the one dated sRPE reader in
+  `js/metrics/training-load.js`) into Monday-based calendar weeks and classifies
+  the strength/endurance share (balanced 40–60%, `status` + `trend`). Strength
+  sRPE needs a recorded session duration, so sets without one return
+  `unmeasured-strength` instead of a fabricated endurance-only split. The trend is
+  pace-matched: an in-progress week is compared with the SAME weekdays in prior
+  weeks. `js/home/hybrid-dashboard.js` renders the three Home cards from it plus
+  `buildCalendarWeekStrength`, `calendarStrengthSummary` and
+  `collectCalendarWeek` — no metric is re-derived. Endurance merges same-day runs
+  through `runDaySummary`, shows an aerobic-fitness estimate from
+  `effectiveVdot` ALWAYS labelled `(est.)` (the app has no measured VO₂ max
+  source), and the card disappears when the Running module is off.
 - Body measurements: `js/metrics/measurements.js` is the pure model behind the
   Measurements card beside the bodyweight trend — 14 canonical length sites
   (neck, shoulders, chest, waist, hips, glutes, arm_l/r, forearm_l/r,
@@ -318,12 +346,19 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   muscles) with Back to week/today. Only the explicit "Open full activity"
   opens History. `buildDayRecap`/`summariseSlots` resolve the stored
   program-day title. The card deliberately omits the state pill, score row and
-  evidence drawer. Below it sit the compact
+  evidence drawer. Directly below the week surface sits the optional hybrid
+  section (`#homeHybridSection`, `js/home/hybrid-dashboard.js`): a Training
+  balance card with a 5-week split trend, then Strength and Endurance week cards.
+  The balance and endurance cards carry `data-hybrid` (hidden by the Hybrid
+  training switch) and the endurance card also carries `data-module="running"`;
+  the strength card is never removed by either, so strength-only mode keeps it.
+  Below that sit the compact
   bodyweight card (`js/home/bodyweight-card.js` → `#homeBodyweightCard`) with
   one-tap prefilled logging, one coach insight from `model.topInsight`, and a
   2×2 quick-action grid. The In Focus cards and their graph module were removed;
-  deep charts live in Progress. Optional cards (week strip, bodyweight, coach
-  insight, muscle volume) can be hidden from the Home header's Customize sheet:
+  deep charts live in Progress. Optional cards (week strip, training balance,
+  strength this week, endurance this week, bodyweight, coach insight, muscle
+  volume) can be hidden from the Home header's Customize sheet:
   `js/ui/customize.js` owns the card catalogue and `settings.ui`, and
   `js/ui/customize-sheet.js` persists/applies it. Today, safety flags, quick
   actions and navigation stay pinned. Keep `#homePrimaryCta`,

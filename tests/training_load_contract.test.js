@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
+  dailyLoadBreakdownTimeline,
   dailyTrainingLoadTimeline,
   dayTrainingLoad,
   programWeekDailyLoads,
@@ -109,6 +110,37 @@ test('dated rolling load includes archived activations and one-off sessions', ()
   const withoutArchive = recomputeLoadMetrics({ weeks: { 'session:str_new': state.weeks['session:str_new'] } }, { throughDate: '2026-07-13' });
   assert.ok(all.ctl > withoutArchive.ctl, 'prior activation contributes to chronic load');
   assert.ok(all.atl > withoutArchive.atl, 'prior activation contributes to acute load');
+});
+
+test('the dated split timeline keeps strength and endurance minutes apart', () => {
+  const date = '2026-07-13';
+  const state = { weeks: {
+    '1': {
+      dates: { mon: date },
+      lifts: { mon: { Squat: [{ c: true, w: '100', r: '5' }] } },
+      gymRpe: { mon: '8' },
+      gymStats: { mon: { time: '60' } },
+      runs: {},
+      runSessions: { mon: [{ sessionId: 'r1', time: '30:00', rpe: '6' }] },
+    },
+  } };
+  // Strength 8×60 = 480; endurance 6×30 = 180.
+  const rows = dailyLoadBreakdownTimeline(state, { throughDate: date });
+  assert.deepEqual(rows, [{ date, strength: 480, endurance: 180, total: 660 }]);
+  // The rolling reader is a projection of the same rows: one formula, one owner.
+  assert.deepEqual(dailyTrainingLoadTimeline(state, { throughDate: date }), [{ date, load: 660 }]);
+});
+
+test('the split timeline is date-strict and carries empty days as true zeroes', () => {
+  const state = { weeks: {
+    '1': strengthSession('2026-07-10', 8, 30),
+    undated: strengthSession(null, 10, 100),
+  } };
+  assert.deepEqual(dailyLoadBreakdownTimeline(state, { throughDate: '2026-07-12' }), [
+    { date: '2026-07-10', strength: 240, endurance: 0, total: 240 },
+    { date: '2026-07-11', strength: 0, endurance: 0, total: 0 },
+    { date: '2026-07-12', strength: 0, endurance: 0, total: 0 },
+  ]);
 });
 
 test('rolling load is date-strict, dedupes legacy slots, and sums independent same-day sessions', () => {

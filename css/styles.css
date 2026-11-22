@@ -1532,20 +1532,53 @@ input[type="checkbox"].gym-check:checked ~ .gym-check-icon { opacity: 1; }
 }
 .global-timer-bar.active  { display: flex; }
 
-.session-timer-bar {
-  background: var(--bg-card);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  padding: 14px var(--space-4);
-  border-radius: var(--radius-lg);
-  justify-content: space-between;
+/* Compact floating rest pill (cockpit + Quick Activity). Deliberately GLOBAL:
+   it sits above the bottom nav so it survives the active card collapsing, which
+   is exactly when the athlete is waiting for it. The pause control keeps the
+   44px target even though the glyph is small. */
+.global-timer-bar.rest-pill {
+  position: fixed;
+  z-index: 90;
+  left: 16px;
+  right: 16px;
+  bottom: calc(100px + var(--safe-bottom));
+  width: auto;
+  max-width: 568px;
+  margin: 0 auto;
+  padding: 6px 10px 7px;
+  border-radius: 999px;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 14px;
-  display: none;
+  gap: 8px 10px;
 }
-.session-timer-bar.active { display: flex; }
-
-.timer-txt   { font-size: var(--text-lg); font-weight: 700; color: #a3e635; letter-spacing: 0.02em; }
-.timer-clock { font-size: var(--text-2xl); font-weight: 800; font-family: monospace; color: var(--text-white); }
+.rest-pill__pause {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -6px 0 -6px -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #a3e635;
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.rest-pill__pause:active { opacity: 0.7; }
+.global-timer-bar.rest-paused .rest-pill__pause { color: var(--color-amber, #f59e0b); }
+.rest-pill__clock {
+  color: var(--text-white);
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.rest-pill__actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.rest-pill .rest-progress-track { flex-basis: 100%; height: 3px; margin: 0; }
 
 
 /* --- 6g. Analytics & Drill-Down Views --- */
@@ -5524,12 +5557,6 @@ html[data-theme="light"] .home-week-progress__track { background: rgba(0,0,0,0.1
   border-bottom-color: var(--border-default) !important;
 }
 
-/* --- Session timer bar upgrade --- */
-.session-timer-bar {
-  background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06)) !important;
-  border: 1px solid rgba(16,185,129,0.25) !important;
-  border-radius: var(--radius-xl) !important;
-}
 .global-timer-bar {
   background: linear-gradient(135deg, rgba(34,211,238,0.10), rgba(34,211,238,0.04)) !important;
   border: 1px solid rgba(34,211,238,0.22) !important;
@@ -5739,12 +5766,6 @@ html[data-theme="light"] .cockpit-exercise.completed {
   border-color: rgba(16,185,129,0.18) !important;
 }
 
-/* --- Session timer bar --- */
-html[data-theme="light"] .session-timer-bar {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.04)) !important;
-  border: 1px solid rgba(16,185,129,0.22) !important;
-}
-
 /* Global rest timer stays dark per existing rule — no change needed */
 
 /* --- Run cockpit card --- */
@@ -5885,14 +5906,6 @@ html[data-theme="light"] .rest-decompression-banner {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.10);
   color: rgba(0, 0, 0, 0.55);
-}
-
-/* Session timer bar text (lime green "SESSION ACTIVE" on light bg) */
-html[data-theme="light"] .timer-txt {
-  color: #059669;
-}
-html[data-theme="light"] .timer-clock {
-  color: #0f172a;
 }
 
 /* Rest timer — adj/skip buttons */
@@ -8777,14 +8790,6 @@ html[data-theme="light"] .run-notes-input:focus {
    24. LIGHT MODE — session/global timer bars
    -------------------------------------------------------------------------- */
 
-html[data-theme="light"] .session-timer-bar {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03)) !important;
-  border-color: rgba(16,185,129,0.22) !important;
-}
-
-html[data-theme="light"] .timer-txt   { color: #059669 !important; }
-html[data-theme="light"] .timer-clock { color: #0f172a !important; }
-
 html[data-theme="light"] .global-timer-bar {
   background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(34,211,238,0.03)) !important;
   border-color: rgba(34,211,238,0.22) !important;
@@ -9905,7 +9910,7 @@ input[type="checkbox"].gym-check {
   background: var(--surface-2, rgba(255,255,255,.04));
 }
 .cockpit-active-head[hidden] { display: none; }
-.cockpit-active-head__stats { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.cockpit-active-head__stats { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .cockpit-active-head__stats span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cockpit-active-head__stats b {
   color: var(--text-primary, #f8fafc);
@@ -9921,6 +9926,10 @@ input[type="checkbox"].gym-check {
   letter-spacing: .1em;
   text-transform: uppercase;
 }
+/* The session clock lives with the other stats. It used to be a separate
+   full-width "SESSION ACTIVE" bar, which pushed the first working set below the
+   fold on a 390px phone for no information gain. */
+.cockpit-active-head__clock b { font-variant-numeric: tabular-nums; }
 .cockpit-active-head__finish {
   flex: 0 0 auto;
   min-height: 44px;
@@ -9983,8 +9992,21 @@ input[type="checkbox"].gym-check {
 .cockpit-session-active #cockpitSessionOutline,
 .cockpit-session-active #cockpitScheduleContext,
 .cockpit-session-active #cockpitScoreHook { display: none !important; }
-.cockpit-active-sticky .subview-back-btn { margin: 0 0 6px; }
-.cockpit-session-active .cockpit-exercise { scroll-margin-top: 245px; }
+/* Back, stats and Finish share ONE band while a session runs. Pre-session the
+   head is hidden and the back control keeps its full label. */
+.cockpit-active-top { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+.cockpit-active-sticky .subview-back-btn { margin: 0; flex: 0 0 auto; }
+.cockpit-session-active .cockpit-active-top .cockpit-active-head { flex: 1 1 auto; margin: 0; }
+.cockpit-session-active .cockpit-active-sticky .subview-back-label { display: none; }
+.cockpit-session-active .cockpit-active-sticky .subview-back-btn {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+.cockpit-session-active .cockpit-exercise { scroll-margin-top: 132px; }
 
 html[data-theme="light"] .cockpit-session-active .cockpit-active-sticky { background: var(--bg-body, #f2f2f7); box-shadow: 0 10px 18px rgba(15,23,42,.08); }
 html[data-theme="light"] .cockpit-active-head { background: rgba(0,0,0,.02); border-color: rgba(0,0,0,.08); }
@@ -10411,6 +10433,13 @@ html[data-module-recovery="off"] [data-module="recovery"] {
   display: none !important;
 }
 
+/* Hybrid training off = strength-only dashboard. Only the hybrid-only cards
+   carry [data-hybrid]; the feature modules keep their own switches, so nothing
+   here can hide a surface the athlete chose to keep. */
+html[data-hybrid="off"] [data-hybrid] {
+  display: none !important;
+}
+
 /* Weigh-in sheet — prefilled, stepper-first, no repeated typing. */
 .bw-log-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .bw-log-hint { color: var(--text-muted); font-size: .72rem; }
@@ -10833,6 +10862,55 @@ html[data-theme="dark"][data-palette="ember"] {
   background: color-mix(in srgb, var(--color-cyan) 14%, transparent);
   color: var(--color-cyan); font-size: .68rem; font-weight: 800;
 }
+/* The chart block below the summary row: the SAME chart Progress draws, so the
+   aspect ratio comes from the viewBox; a fixed height would squash the labels. */
+.home-bw__chart {
+  display: block; width: 100%; min-height: 64px; margin: 6px 0 2px; padding: 0;
+  border: 0; background: none; color: inherit; text-align: left;
+}
+.home-bw__spark { display: block; width: 100%; height: auto; max-height: 168px; }
+.home-bw__empty { display: flex; align-items: center; min-height: 96px; color: var(--text-muted); font-size: .74rem; }
+
+/* ---- Hybrid section: balance + the two week summaries -------------------- */
+.home-hybrid { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
+.home-hybrid__pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.home-hy {
+  margin: 0; padding: 12px 14px;
+  border: 1px solid var(--border-light); border-radius: 16px;
+}
+.home-hy__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.home-hy__eyebrow { display: block; color: var(--text-muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.home-hy__status {
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border-light);
+  color: var(--text-secondary); font-size: .66rem; font-weight: 800;
+}
+.home-hy__status--balanced { color: var(--color-green); border-color: color-mix(in srgb, var(--color-green) 45%, transparent); }
+.home-hy__status--strength-heavy,
+.home-hy__status--endurance-heavy { color: var(--color-amber); border-color: color-mix(in srgb, var(--color-amber) 45%, transparent); }
+.home-hy__status--unmeasured-strength,
+.home-hy__status--no-data { color: var(--text-muted); }
+.home-hy__body {
+  display: block; width: 100%; min-height: 44px; margin: 10px 0 6px; padding: 0;
+  border: 0; background: none; color: inherit; text-align: left;
+}
+.home-hy__split { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(148, 163, 184, .18); }
+.home-hy__seg { display: block; height: 100%; }
+.home-hy__seg--strength { background: var(--color-cyan); }
+.home-hy__seg--endurance { background: var(--color-green); }
+.home-hy__legend { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; color: var(--text-secondary); font-size: .7rem; }
+.home-hy__legend b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.home-hy__note { margin: 2px 0 0; color: var(--text-secondary); font-size: .74rem; line-height: 1.4; }
+.home-hy__trend { display: block; margin-top: 4px; color: var(--text-muted); font-size: .68rem; }
+.home-hy__mini-body {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 44px;
+  padding: 0; border: 0; background: none; color: inherit; text-align: left;
+}
+.home-hy__value { color: var(--text-primary); font-size: 1.18rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-hy__delta { align-self: flex-start; font-size: .68rem; font-weight: 800; }
+.home-hy__delta--up { color: var(--color-green); }
+.home-hy__delta--down { color: var(--color-amber); }
+.home-hy__delta--flat { color: var(--text-muted); }
+.home-hy__sub { color: var(--text-muted); font-size: .68rem; line-height: 1.35; }
 
 /* Saved-workout editor */
 .edit-saved-sheet { max-height: min(88vh, 760px); }

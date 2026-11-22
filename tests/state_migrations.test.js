@@ -173,6 +173,23 @@ test('v13→v14 seeds the routine library and folder arrays without touching pro
   assert.equal(JSON.stringify(state.customPrograms), programsBefore, 'programs are untouched');
 });
 
+test('v14→v15 seeds hybrid training on and leaves every module choice untouched', () => {
+  const legacy = {
+    schemaVersion: 14,
+    settings: { modules: { running: false, health: true } },
+    weekStartedAt: '2026-11-16',
+  };
+  migrateState(legacy);
+  assert.equal(legacy.schemaVersion, CURRENT_SCHEMA_VERSION);
+  assert.equal(legacy.settings.hybridTraining, true);
+  assert.deepEqual(legacy.settings.modules, { running: false, health: true });
+
+  // An athlete who already turned it off keeps that choice.
+  const chosen = { schemaVersion: 14, settings: { hybridTraining: false }, weekStartedAt: '2026-11-16' };
+  migrateState(chosen);
+  assert.equal(chosen.settings.hybridTraining, false);
+});
+
 test('migrateState is idempotent — already-current state is untouched', () => {
   const state = {
     schemaVersion: CURRENT_SCHEMA_VERSION,

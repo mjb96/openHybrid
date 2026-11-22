@@ -90,35 +90,60 @@ export function programWeekLoadBalance(state, days, currentWeek, maxWeek, window
 }
 
 /**
- * Calendar-contiguous daily sRPE across every dated stored session, including
- * archived activations and independent one-off workouts. Duplicate legacy
- * slots use the same canonical identity/dedup rules as calendar analytics.
- * Undated slots are preserved in state but intentionally excluded.
+ * Calendar-contiguous daily sRPE split across every dated stored session,
+ * including archived activations and independent one-off workouts. Duplicate
+ * legacy slots use the same canonical identity/dedup rules as calendar
+ * analytics. Undated slots are preserved in state but intentionally excluded.
+ *
+ * This is the ONE dated load reader. `dailyTrainingLoadTimeline` (rolling
+ * ATL/CTL) and the hybrid balance split both derive from it, so a strength or
+ * endurance minute can never be counted differently by two surfaces.
  *
  * @param {any} state
- * @param {{throughDate?:string|Date, tz?:string}} [options]
+ * @param {{throughDate?:string|Date, tz?:string, index?:any}} [options]
+ * @returns {Array<{date:string, strength:number, endurance:number, total:number}>}
  */
-export function dailyTrainingLoadTimeline(state, options = {}) {
+export function dailyLoadBreakdownTimeline(state, options = {}) {
   const throughDate = localDayKey(options.throughDate || todayKey(options.tz), options.tz);
   if (!throughDate) return [];
-  const index = indexSlotsByDate(state, { tz: options.tz });
-  const loadByDate = new Map();
+  const index = options.index || indexSlotsByDate(state, { tz: options.tz });
+  const byDate = new Map();
 
   for (const [date, slots] of index.allByDate.entries()) {
     if (date > throughDate) continue;
-    let load = 0;
+    const entry = byDate.get(date) || { strength: 0, endurance: 0 };
     for (const slot of slots) {
       const week = state?.weeks?.[slot.weekKey];
-      load += dayTrainingLoad(week, slot.day).total;
+      const load = dayTrainingLoad(week, slot.day);
+      entry.strength += load.strength;
+      entry.endurance += load.endurance;
     }
-    loadByDate.set(date, (loadByDate.get(date) || 0) + load);
+    byDate.set(date, entry);
   }
 
-  const dates = [...loadByDate.keys()].sort();
+  const dates = [...byDate.keys()].sort();
   if (!dates.length) return [];
   const rows = [];
   for (let date = dates[0]; date && date <= throughDate; date = addDaysISO(date, 1)) {
-    rows.push({ date, load: loadByDate.get(date) || 0 });
+    const entry = byDate.get(date) || { strength: 0, endurance: 0 };
+    rows.push({
+      date,
+      strength: entry.strength,
+      endurance: entry.endurance,
+      total: entry.strength + entry.endurance,
+    });
   }
   return rows;
+}
+
+/**
+ * Calendar-contiguous daily total sRPE (rolling ATL/CTL input).
+ *
+ * @param {any} state
+ * @param {{throughDate?:string|Date, tz?:string, index?:any}} [options]
+ * @returns {Array<{date:string, load:number}>}
+ */
+export function dailyTrainingLoadTimeline(state, options = {}) {
+  return dailyLoadBreakdownTimeline(state, options)
+    .map((row) => ({ date: row.date, load: row.total }));
 }

@@ -86,23 +86,29 @@ try {
     const card = document.getElementById('homeBodyweightCard');
     const row = card?.querySelector('.home-bw__line');
     return {
-      height: card ? card.getBoundingClientRect().height : 0,
       rowHeight: row ? row.getBoundingClientRect().height : 0,
       action: row?.getAttribute('data-action') || '',
-      openers: card?.querySelectorAll('[data-action="open-bw-sheet"]').length || 0,
+      sheetOpeners: card?.querySelectorAll('[data-action="open-bw-sheet"]').length || 0,
       nestedButtons: card?.querySelectorAll('button button').length || 0,
-      sparkHeight: card?.querySelector('.home-bw__spark')?.getBoundingClientRect().height || 0,
     };
   });
-  ok(bwCard.height > 0 && bwCard.height < 100, `the Home card is one compact line (${Math.round(bwCard.height)}px)`);
   ok(bwCard.rowHeight >= 44, `the card row is ${Math.round(bwCard.rowHeight)}px, at least 44px`);
-  ok(bwCard.action === 'open-bw-sheet' && bwCard.openers === 1, 'one row opens the prefilled weigh-in sheet');
+  ok(bwCard.action === 'open-bw-sheet' && bwCard.sheetOpeners === 1, 'one row opens the prefilled weigh-in sheet');
   ok(bwCard.nestedButtons === 0, 'the row contains no nested button');
-  ok(bwCard.sparkHeight >= 24 && bwCard.sparkHeight <= 32, `the spark is ${Math.round(bwCard.sparkHeight)}px tall`);
+  const homeChart = await page.locator('#homeBodyweightCard .home-bw__spark').innerHTML();
+  ok((homeChart.match(/<circle /g) || []).length >= 8, 'the Home chart plots every weigh-in, not just a trend line');
+  ok(/stroke-dasharray/.test(homeChart), 'the Home chart draws the goal line');
+  ok(/#a3e635/.test(homeChart), 'the Home chart draws the 7-day average');
+  const homePlotBox = await page.locator('#homeBodyweightCard .home-bw__spark').boundingBox();
+  ok(!!homePlotBox && homePlotBox.height >= 100, `the Home chart is a real chart (${Math.round(homePlotBox?.height || 0)}px tall)`);
   ok(/85\.9 kg/.test(await page.locator('#homeBodyweightCard').innerText()), 'Home shows the latest weigh-in');
   await page.click('#homeBodyweightCard [data-action="open-bw-sheet"]');
   await page.waitForSelector('#bwSheet.active');
   ok((await page.locator('#bwSheetWeight').inputValue()) === '85.9', 'Home Log opens the prefilled sheet');
+  // The soft keyboard must not open on its own: focus belongs on the sheet's
+  // close button, not the number field. (A focused input is what raises it.)
+  ok((await page.evaluate(() => document.activeElement?.id)) !== 'bwSheetWeight', 'opening the weigh-in sheet does not focus the weight input');
+  ok((await page.evaluate(() => document.activeElement?.classList?.contains('sheet-close-btn'))) === true, 'focus starts on the sheet close button');
   await page.click('#bwSheet .sheet-close-btn');
   await page.waitForFunction(() => !document.getElementById('bwSheet')?.classList.contains('active'));
 
