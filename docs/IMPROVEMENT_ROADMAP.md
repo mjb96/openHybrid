@@ -735,25 +735,39 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - Verified: node tests, typecheck, smoke, precache, and the new
     `hybrid-dashboard-browser-check` plus home-today, customize, module-toggles,
     bodyweight, rest-timer and touch-target checks.
-  - Next: two owner notes for the logger, to confirm before building —
-    (1) a logger setting must apply PER EXERCISE, not per set, and must be
-    remembered once chosen (most likely the set sheet's rest control, which
-    currently writes a per-set `restSec`); (2) the ghost/placeholder values
-    should update in line with what was entered for the PREVIOUS set. Both need
-    the exact control named before building, because per-set rest and the
-    prescribed ghost are deliberate today (the ghost doubles as the adherence
-    target), so the change is a contract change rather than a tweak. Then return
-    to the gated backlog at Phase 0 → Phase 1.
+  - Next: return to the gated backlog at Phase 0 → Phase 1.
 
-- **2026-11-23 — Session recap lists lifts in the order they were performed.**
+- **2026-11-23 — Owner review follow-ups: recap order, exercise rest, live ghosts,
+  a balance split that survives a missing RPE.**
   - `buildSessionRecap` sorted lifts by tonnage, so the finish recap, History
     detail and share card opened with the heaviest lift instead of the one the
     athlete actually started with. It now orders by `week.liftOrder[day]` — the
-    cockpit's own order (program seeding, drag reorder, swap) and the only
-    stable record of sequence, since sets carry no completion timestamp — with
-    stored insertion order after the known lifts.
-  - Tests pin three cases: volume no longer decides, an explicit `liftOrder`
-    wins, and a lift missing from it stays after the ordered ones.
+    cockpit's own order and the only stable record of sequence, since sets carry
+    no completion timestamp — with stored insertion order after the known lifts.
+  - Rest chosen in the set sheet is now an EXERCISE preference: it writes
+    `settings.restOverrides`, clears the row's own `restSec`, and every set of
+    the lift (and the next session) resolves it. A `restSec` already stored on
+    another set still outranks it, so nothing logged is rewritten.
+  - The ghost on a blank row follows the athlete: `ghostForRow` copies the
+    nearest earlier non-warm-up set's entered weight/reps and the next row
+    updates live as you type. The coach's target stays on the row as
+    `data-prescribed`, so true-adherence is still measured against the
+    prescription rather than the athlete's own last set.
+  - **The reported defect — "Training balance says no load logged though I have
+    logged sessions" — was the currency, not the card.** Strength sRPE needs an
+    RPE, and logging never forces one, so a normal lifter's sessions produced
+    zero load. The split now uses sRPE when RPE exists and TRAINING MINUTES
+    (`gymStats.time` + run durations) when it does not, with `basis` shown on the
+    card ("Split by training time"). Working sets with neither RPE nor a duration
+    report `unmeasured-strength` instead of `no-data`.
+  - Tests: recap ordering (3 cases), `ghostForRow`, `data-prescribed`, exercise
+    rest persistence, the minutes fallback, and unmeasured-vs-no-data.
+  - Next: notification copy — a day that is already trained still reads
+    "Today: <session>" because `briefingToText` (js/brain/morning-briefing.js)
+    never consults `session.done`; `composeMorningReminder` composes the briefing
+    at fire time on web, but Android's native alarm fires outside JS. Decide
+    whether a completed day suppresses the reminder or rewords it to
+    "Done today", and cancel the OS alarm on finish if suppression is chosen.
 
 - **2026-11-23 — 14-site review fixes: display units, disclosure, trend labels.**
   - The per-site chart now receives DISPLAY values: `measurementTrendData`

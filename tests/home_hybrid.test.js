@@ -127,10 +127,30 @@ test('an empty week is an honest empty state, not a zero-filled ratio', () => {
   const model = buildHomeHybrid({ settings: {} }, { today: TUESDAY });
   assert.equal(model.balance.status, 'no-data');
   const html = balanceCardHTML(model);
-  assert.match(html, /Log a session to see your week split/);
+  assert.match(html, /No sessions logged this calendar week/);
   assert.match(html, /No load logged/);
   assert.match(strengthCardHTML(model), /No working sets yet this week/);
   assert.match(enduranceCardHTML(model), /No runs logged this week/);
+});
+
+test('a split measured in training time says so on the card', () => {
+  // No RPE anywhere: the balance falls back to minutes and must label the basis.
+  const state = {
+    settings: {},
+    weeks: { '3': {
+      dates: { mon: MONDAY, tue: TUESDAY },
+      lifts: { mon: { Squat: [{ c: true, w: '100', r: '5' }] } },
+      gymStats: { mon: { time: '50' } },
+      runs: {},
+      runSessions: { tue: [{ sessionId: 'r1', dist: 10, time: '50:00', type: 'run' }] },
+    } },
+  };
+  const model = buildHomeHybrid(state, { today: TUESDAY });
+  assert.equal(model.balance.basis, 'minutes');
+  assert.equal(model.balance.strengthPct, 50);
+  const html = balanceCardHTML(model);
+  assert.match(html, /Split by training time/);
+  assert.match(html, /by time/, 'the split is tagged as time, not a load verdict');
 });
 
 test('aerobic fitness is shown as an ESTIMATE, never a measured VO2 max', () => {

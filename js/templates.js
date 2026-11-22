@@ -21,7 +21,11 @@ export function buildEmptyWorkoutCard() {
 
 // `bodyweight` is null when the athlete has never logged one. It used to
 // default to 75 kg and was shown in the weight field as if it were theirs.
-export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null, weightUnit = 'kg', exerciseName = safeLiftName, bodyweight = null, prescribedReps = null, prescribedRepGoal = null, previousSetData = null, roleTag = null, setMode = null) {
+export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null, weightUnit = 'kg', exerciseName = safeLiftName, bodyweight = null, prescribedReps = null, prescribedRepGoal = null, previousSetData = null, roleTag = null, setMode = null, prescribed = null) {
+  // `historicalSetData` is the VISUAL ghost for this row: normally the previous
+  // set's entered values (see ghostForRow). `prescribed` is the coach's target
+  // and stays the adherence baseline even when the ghost follows the athlete's
+  // own previous set.
   const ghostWeight = historicalSetData?.w || weightUnit;
   const ghostReps   = historicalSetData?.r || prescribedReps || 'reps';
   const type = sData.type || '';
@@ -62,8 +66,14 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // restores it (no stale calculated load). A row the athlete has filled keeps
   // its value (never overwritten); the suggestion only ever fills a blank.
   const boSrc = hasRole && roleTag.boSrc ? String(roleTag.boSrc) : '';
-  const ghostDefault = String(ghostWeight);
-  const weightPlaceholder = (hasRole && roleTag.backoffSuggest != null) ? String(roleTag.backoffSuggest) : ghostDefault;
+  const ghostDefault = String(prescribed?.w ?? ghostWeight);
+  const weightPlaceholder = (hasRole && roleTag.backoffSuggest != null) ? String(roleTag.backoffSuggest) : String(ghostWeight);
+  // The adherence baseline: the same value the placeholder used to carry before
+  // it started following the previous set. Kept on the row so true-adherence
+  // still measures against the prescription, not against the athlete's last set.
+  const prescribedPlaceholder = (hasRole && roleTag.backoffSuggest != null)
+    ? String(roleTag.backoffSuggest)
+    : ghostDefault;
   const backoffHint = hasRole && roleTag.backoffHint ? String(roleTag.backoffHint) : '';
   const boAttrs = boSrc
     ? ` data-bo-src="${escapeHtml(boSrc)}" data-bo-pct="${escapeHtml(String(roleTag.boPct ?? ''))}"`
@@ -111,7 +121,7 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
          title="Set type, load, rest, note">${setRowNumberLabel(type, sIdx)}</button>
     ${prevCol}
     <div class="set-entry">
-      <input type="number" inputmode="decimal" class="input-weight-node" aria-label="Effective load for set ${sIdx + 1}" placeholder="${escapeHtml(weightPlaceholder)}" data-ghost-default="${escapeHtml(ghostDefault)}" value="${escapeHtml(effectiveValue)}">
+      <input type="number" inputmode="decimal" class="input-weight-node" aria-label="Effective load for set ${sIdx + 1}" placeholder="${escapeHtml(weightPlaceholder)}" data-ghost-default="${escapeHtml(ghostDefault)}" data-prescribed="${escapeHtml(prescribedPlaceholder)}" value="${escapeHtml(effectiveValue)}">
       ${boSrc ? `<small class="set-backoff-hint">${escapeHtml(backoffHint)}</small>` : ''}
     </div>
     <div class="set-entry">

@@ -26,8 +26,34 @@
 // PURE. No DOM, no state mutation.
 // =============================================================================
 import {
-  SET_MODE, formatDistance, formatDuration, parseDuration, setModeOf,
+  SET_MODE, formatDistance, formatDuration, isWarmupSet, parseDuration, setModeOf,
 } from '../set-utils.js';
+
+/**
+ * The visual ghost for a blank row: the nearest earlier NON-warm-up set's
+ * entered weight/reps, falling back to the coach's prescription.
+ *
+ * The ghost used to be the same prescription on every row, so after a set the
+ * next row still showed the plan rather than what the athlete had just done.
+ * Only ENTERED fields are copied; an empty row never seeds another empty row.
+ *
+ * @param {any[]} sets
+ * @param {number} index
+ * @param {{w?:any, r?:any}|null} [fallback]
+ * @returns {{w:any, r:any}|null}
+ */
+export function ghostForRow(sets, index, fallback = null) {
+  const normalise = (set) => (set ? { w: set.w ?? null, r: set.r ?? null } : null);
+  if (!Array.isArray(sets) || index <= 0) return normalise(fallback);
+  for (let i = index - 1; i >= 0; i--) {
+    const set = sets[i];
+    if (!set || isWarmupSet(set)) continue;
+    const w = String(set.w ?? '').trim();
+    const r = String(set.r ?? '').trim();
+    if (w || r) return { w: w || null, r: r || null };
+  }
+  return normalise(fallback);
+}
 
 /**
  * Above these, a value is surprising but still possible, so it warns rather

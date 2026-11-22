@@ -180,7 +180,8 @@ export function clearRunSessions(week, day, sessionId = null) {
   return before - week.runSessions[day].length;
 }
 
-function parseDurationSeconds(value) {
+/** Parse `H:MM:SS`, `M:SS` or a bare minute count into seconds. */
+export function parseDurationSeconds(value) {
   if (value == null || value === '') return 0;
   const parts = String(value).split(':').map(Number);
   if (parts.some((n) => !Number.isFinite(n))) return 0;

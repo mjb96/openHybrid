@@ -150,7 +150,7 @@ const BALANCE_COPY = Object.freeze({
   'strength-heavy': 'Lifting dominates. Add an easy run or a loaded carry.',
   'endurance-heavy': 'Running dominates. Add a full-body strength session.',
   'unmeasured-strength': 'Add a session time to your lifting so the split is real.',
-  'no-data': 'Log a session to see your week split.',
+  'no-data': 'No sessions logged this calendar week.',
 });
 
 /** @param {number|null} pct */
@@ -171,13 +171,22 @@ export function balanceCardHTML(model) {
   const trend = b.trend && b.trend.dir !== 'holding'
     ? `<span class="home-hy__trend">${b.trend.dir === 'building' ? 'Building' : 'Easing'} ${b.trend.pct > 0 ? '+' : ''}${b.trend.pct}% vs the same point in recent weeks</span>`
     : '';
+  // sRPE needs an RPE, which is optional when logging. Say when the split is
+  // measured in training time instead, so the number is never mistaken for a
+  // physiological load ratio. Only when there IS a split to describe.
+  const basisNote = b.basis === 'minutes' && b.hasData
+    ? '<span class="home-hy__trend">Split by training time — add session RPE for a load-based split.</span>'
+    : '';
+  const basisTag = b.basis === 'minutes' && b.hasData
+    ? '<span class="home-hy__basis">by time</span>'
+    : '';
   const aria = hasSplit
     ? `Training balance this week: ${strengthWidth} percent strength, ${enduranceWidth} percent endurance`
     : 'Training balance: no measured split yet';
 
   return `<article class="card-dark home-hy home-hy--balance">
     <div class="home-hy__head">
-      <span class="home-hy__eyebrow">Training balance</span>
+      <span class="home-hy__eyebrow">Training balance${basisTag}</span>
       <span class="home-hy__status home-hy__status--${status}">${escapeHtml(b.statusLabel)}</span>
     </div>
     <button type="button" class="home-hy__body" data-action="open-analytics" data-context="${model.balanceContext}">
@@ -192,6 +201,7 @@ export function balanceCardHTML(model) {
     </button>
     <p class="home-hy__note">${escapeHtml(BALANCE_COPY[status] || BALANCE_COPY['no-data'])}</p>
     ${trend}
+    ${basisNote}
   </article>`;
 }
 

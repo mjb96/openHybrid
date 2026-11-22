@@ -8,7 +8,7 @@
 // =============================================================================
 import { addDaysISO, localDayKey, todayKey } from '../dates.js';
 import { indexSlotsByDate } from '../analytics/weekly-aggregate.js';
-import { runLoadForDay } from '../state/run-sessions.js';
+import { runLoadForDay, runSessionsForDay, parseDurationSeconds } from '../state/run-sessions.js';
 import { parseStrengthDurationMinutes } from '../strength/duration.js';
 import { isValidWorkingSet } from '../set-utils.js';
 import { effortForSet } from '../workout/effort.js';
@@ -45,6 +45,21 @@ export function dayTrainingLoad(week, day) {
   const gymMins = parseStrengthDurationMinutes(week?.gymStats?.[day]?.time);
   const strength = gymRpe > 0 && gymMins > 0 ? gymRpe * gymMins : 0;
   const endurance = runLoadForDay(week, day);
+  return { strength, endurance, total: strength + endurance };
+}
+
+/**
+ * Wall-clock training minutes for one day, split by modality.
+ *
+ * sRPE needs an RPE AND a duration; RPE is optional when logging, so a lifter
+ * who never rates effort has real sessions with ZERO sRPE. This is the honest
+ * fallback currency for the hybrid balance split: the minutes the athlete
+ * actually trained, never an invented effort.
+ */
+export function dayTrainingMinutes(week, day) {
+  const strength = parseStrengthDurationMinutes(week?.gymStats?.[day]?.time);
+  const endurance = runSessionsForDay(week, day)
+    .reduce((total, run) => total + parseDurationSeconds(run?.time), 0) / 60;
   return { strength, endurance, total: strength + endurance };
 }
 
@@ -101,7 +116,7 @@ export function programWeekLoadBalance(state, days, currentWeek, maxWeek, window
  *
  * @param {any} state
  * @param {{throughDate?:string|Date, tz?:string, index?:any}} [options]
- * @returns {Array<{date:string, strength:number, endurance:number, total:number}>}
+ * @returns {Array<{date:string, strength:number, endurance:number, total:number, strengthMin:number, enduranceMin:number}>}
  */
 export function dailyLoadBreakdownTimeline(state, options = {}) {
   const throughDate = localDayKey(options.throughDate || todayKey(options.tz), options.tz);
@@ -111,12 +126,15 @@ export function dailyLoadBreakdownTimeline(state, options = {}) {
 
   for (const [date, slots] of index.allByDate.entries()) {
     if (date > throughDate) continue;
-    const entry = byDate.get(date) || { strength: 0, endurance: 0 };
+    const entry = byDate.get(date) || { strength: 0, endurance: 0, strengthMin: 0, enduranceMin: 0 };
     for (const slot of slots) {
       const week = state?.weeks?.[slot.weekKey];
       const load = dayTrainingLoad(week, slot.day);
+      const minutes = dayTrainingMinutes(week, slot.day);
       entry.strength += load.strength;
       entry.endurance += load.endurance;
+      entry.strengthMin += minutes.strength;
+      entry.enduranceMin += minutes.endurance;
     }
     byDate.set(date, entry);
   }
@@ -125,12 +143,14 @@ export function dailyLoadBreakdownTimeline(state, options = {}) {
   if (!dates.length) return [];
   const rows = [];
   for (let date = dates[0]; date && date <= throughDate; date = addDaysISO(date, 1)) {
-    const entry = byDate.get(date) || { strength: 0, endurance: 0 };
+    const entry = byDate.get(date) || { strength: 0, endurance: 0, strengthMin: 0, enduranceMin: 0 };
     rows.push({
       date,
       strength: entry.strength,
       endurance: entry.endurance,
       total: entry.strength + entry.endurance,
+      strengthMin: entry.strengthMin,
+      enduranceMin: entry.enduranceMin,
     });
   }
   return rows;

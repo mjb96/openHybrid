@@ -53,7 +53,7 @@ import { hasRunData, newRunSessionId, upsertRunSession } from './state/run-sessi
 import { completionPresentation, evaluateSessionCompletion } from './workout/completion-policy.js';
 import { rescheduledWorkoutContext } from './workout/program-session-picker.js';
 import { applyBandLoad, applyLoadMode } from './workout/load-mode.js';
-import { compareWithPrevious, validateSetEntry, primarySetEntryMessage } from './workout/set-entry.js';
+import { compareWithPrevious, ghostForRow, validateSetEntry, primarySetEntryMessage } from './workout/set-entry.js';
 import { deleteDayWorkoutData, hasDayWorkoutDraft, snapshotDayWorkoutData, restoreDayWorkoutData } from './workout/delete-day.js';
 import { explicitSessionStatus, finishSession, markSessionInProgress, SESSION_STATUS } from './workout/session-status.js';
 import {
@@ -127,13 +127,16 @@ export {
 import { replaceManagedModal } from './ui/modal-stack.js';
 
 
-// E5 — a set-row input's placeholder carries the prescribed ghost target (the
-// coach's suggestion); the default "kg"/"reps" placeholders are non-numeric.
+// E5 — the adherence baseline is the row's `data-prescribed` attribute (the
+// coach's target). The visible placeholder can now follow the athlete's previous
+// set, so it must never be read as the prescription. Default "kg"/"reps"
+// ghosts are non-numeric and skipped.
 // Returns the numeric target, or null when there's no real prescription.
 function _numericPlaceholder(inputNode) {
-  const ph = String(inputNode?.getAttribute?.('placeholder') || '').trim();
-  if (!/^\d+(?:\.\d+)?$/.test(ph)) return null;
-  const n = Number(ph);
+  const explicit = inputNode?.getAttribute?.('data-prescribed');
+  const raw = String((explicit != null && explicit !== '') ? explicit : (inputNode?.getAttribute?.('placeholder') || '')).trim();
+  if (!/^\d+(?:\.\d+)?$/.test(raw)) return null;
+  const n = Number(raw);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -458,7 +461,9 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
           backoffHint: suggest != null ? `${roleTag.boPct}% of ${topSetWeight}${wUnit} top set · ${suggest}${wUnit}` : '' };
       }
     }
-    const ghostSet = suggestedGhost;
+    // The ghost follows the athlete's own previous set; the prescription stays
+    // the adherence baseline (`prescribed` below) so nothing is re-measured.
+    const ghostSet = ghostForRow(setsArr, sIdx, suggestedGhost);
     // Per-exercise defaults shape a BLANK row only. They are applied to a
     // display copy so opening a workout never writes settings into the program
     // scaffold; completion stamps what the athlete actually used.
@@ -486,6 +491,7 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
       displaySet, sIdx, safeLiftName, ghostSet, wUnit, displayLiftName,
       _currentBodyweight(appState), target.reps, repGoalFromTarget(target.reps), previousSet, roleTag,
       effectiveSetMode(displaySet, displayLiftName, appState),
+      suggestedGhost,
     );
   }).join('');
 
@@ -2530,6 +2536,32 @@ document.addEventListener('focusout', (e) => {
   }
 });
 
+/**
+ * Keep the NEXT working row's ghost in step with what was just entered here.
+ * Presentation only: `data-prescribed` (the adherence baseline) is untouched,
+ * so the coach's target is still what a completed set is measured against.
+ * @param {HTMLElement|null} row
+ */
+function syncNextRowGhost(row) {
+  const card = row?.closest?.('.cockpit-exercise');
+  if (!card) return;
+  const rows = Array.from(card.querySelectorAll('.cockpit-set-row'));
+  const index = rows.indexOf(row);
+  if (index < 0) return;
+  const weight = row.querySelector('.input-weight-node')?.value?.trim() || '';
+  const reps = row.querySelector('.input-reps-node')?.value?.trim() || '';
+  if (!weight && !reps) return;
+  for (let i = index + 1; i < rows.length; i++) {
+    const next = rows[i];
+    if (next.classList.contains('type-warmup')) continue;
+    const weightInput = next.querySelector('.input-weight-node');
+    const repsInput = next.querySelector('.input-reps-node');
+    if (weightInput && !weightInput.value && weight) weightInput.placeholder = weight;
+    if (repsInput && !repsInput.value && reps) repsInput.placeholder = reps;
+    return;
+  }
+}
+
 document.addEventListener('input', (e) => {
   const target = e.target;
   // Clear an inline entry error the moment the athlete starts answering it.
@@ -2539,6 +2571,11 @@ document.addEventListener('input', (e) => {
   // number is still being typed. The verdict is re-taken when they tick.
   if (target.classList?.contains('input-weight-node') || target.classList?.contains('input-set-value-node')) {
     setRowMessage(target.closest?.('.cockpit-set-row'), null);
+  }
+  // The ghost of the next set follows this one, so the athlete sees the load
+  // they just used rather than the original prescription.
+  if (target.classList?.contains('input-weight-node') || target.classList?.contains('input-reps-node')) {
+    syncNextRowGhost(target.closest?.('.cockpit-set-row'));
   }
   // Live T1 Block-2 back-off recalculation: editing a top-set (rep-max) weight
   // immediately refreshes the suggested back-off loads in the same card.

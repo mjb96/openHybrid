@@ -126,7 +126,7 @@ test('the dated split timeline keeps strength and endurance minutes apart', () =
   } };
   // Strength 8×60 = 480; endurance 6×30 = 180.
   const rows = dailyLoadBreakdownTimeline(state, { throughDate: date });
-  assert.deepEqual(rows, [{ date, strength: 480, endurance: 180, total: 660 }]);
+  assert.deepEqual(rows, [{ date, strength: 480, endurance: 180, total: 660, strengthMin: 60, enduranceMin: 30 }]);
   // The rolling reader is a projection of the same rows: one formula, one owner.
   assert.deepEqual(dailyTrainingLoadTimeline(state, { throughDate: date }), [{ date, load: 660 }]);
 });
@@ -137,9 +137,9 @@ test('the split timeline is date-strict and carries empty days as true zeroes', 
     undated: strengthSession(null, 10, 100),
   } };
   assert.deepEqual(dailyLoadBreakdownTimeline(state, { throughDate: '2026-07-12' }), [
-    { date: '2026-07-10', strength: 240, endurance: 0, total: 240 },
-    { date: '2026-07-11', strength: 0, endurance: 0, total: 0 },
-    { date: '2026-07-12', strength: 0, endurance: 0, total: 0 },
+    { date: '2026-07-10', strength: 240, endurance: 0, total: 240, strengthMin: 30, enduranceMin: 0 },
+    { date: '2026-07-11', strength: 0, endurance: 0, total: 0, strengthMin: 0, enduranceMin: 0 },
+    { date: '2026-07-12', strength: 0, endurance: 0, total: 0, strengthMin: 0, enduranceMin: 0 },
   ]);
 });
 
