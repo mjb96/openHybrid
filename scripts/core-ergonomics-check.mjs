@@ -165,7 +165,7 @@ try {
     await page.waitForSelector('#view-profile.active');
     await page.click('#view-profile [data-action="open-settings"]');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-    await inspect(page, `settings ${width}px`, ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input']);
+    await inspect(page, `settings ${width}px`, ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch']);
     await page.click('#settingsOverlay [data-action="close-settings"]');
     await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
 
@@ -238,6 +238,14 @@ try {
 
   const { context, page } = await appPage(360, true);
   await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-avatar', '.btn-history-link']);
+  await page.click('.home-avatar');
+  await page.waitForSelector('#view-profile.active');
+  await page.click('#view-profile [data-action="open-settings"]');
+  await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
+  await page.click('#settingsTabs [data-settings-tab="training"]');
+  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch']);
+  await page.click('#settingsOverlay [data-action="close-settings"]');
+  await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
   await page.click('.bottom-nav [data-target="workout"]');
   await page.waitForSelector('#view-workout.active');
   // The Train landing is itself a primary surface at 200% text, so assert it
