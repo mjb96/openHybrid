@@ -21,7 +21,7 @@ import * as equipmentProfiles from './equipment-profiles.js';
 import { applyPalette, normalizePalette } from './theme.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
 import {
-  looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport,
+  looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport, hasBodyFatColumn,
 } from './portability/import-measurements-csv.js';
 import { buildFitCandidate, applyFitImports } from './portability/import-fit.js';
 import { parseFitBuffer } from './garmin.js';
@@ -1242,6 +1242,7 @@ export async function handleExternalCsvFile(file) {
       message: [
         `${body.entries.length} weigh-in${body.entries.length === 1 ? '' : 's'} from ${body.entries[0].date} to ${body.entries.at(-1).date}.`,
         already ? `${already} date${already === 1 ? '' : 's'} already have a measurement and will be left unchanged.` : '',
+        hasBodyFatColumn(text) ? 'This file also contains body fat. Weigh-in import keeps weigh-ins only — import the Body fat (%) CSV separately.' : '',
         '',
         'Only missing dates are added. Your existing measurements are never overwritten.',
       ].filter(Boolean).join('\n'),
@@ -1282,7 +1283,7 @@ export async function handleExternalCsvFile(file) {
     if (!ok) return;
     const result = applyMeasurementsCsvImport(_getState(), measured);
     if (!result.added) {
-      showToast('Those measurements are already in your log.');
+      showToast('Those dates already have measurements — existing entries are never overwritten.');
       return;
     }
     await saveStateToLocalStorage(false);

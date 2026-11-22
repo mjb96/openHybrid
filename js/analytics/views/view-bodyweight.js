@@ -140,9 +140,22 @@ function measurementsHtml(model) {
     </div>`;
   }).join('');
 
+  // Body fat is a percentage the athlete entered, not a tape length. Its delta
+  // is in percentage points (`pp`), never percent-of-percent, and it only
+  // appears when a reading exists — a body-fat-only log still renders the card.
+  const bodyFat = model.bodyFat?.latest
+    ? `<div class="bw-ms-site bw-ms-site--bodyfat" title="Entered reading — not estimated">
+        <span>Body fat</span>
+        <strong>${model.bodyFat.latest.value.toFixed(1)} <small>%</small></strong>
+        ${model.bodyFat.delta == null
+          ? '<em class="bw-ms-delta bw-ms-delta--none">first reading</em>'
+          : `<em class="bw-ms-delta" title="Change in percentage points">${model.bodyFat.delta > 0 ? '+' : ''}${roundDisplay(model.bodyFat.delta).toFixed(1)} pp</em>`}
+      </div>`
+    : '';
+
   return `<article class="card-dark p-3 bw-measurements">
     ${head}
-    <div class="bw-ms-grid">${cells}</div>
+    <div class="bw-ms-grid">${cells}${bodyFat}</div>
     ${logButton}
   </article>`;
 }

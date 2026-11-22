@@ -1,10 +1,11 @@
 // =============================================================================
 // MEASUREMENTS SHEET (js/measurements-sheet.js)
 //
-// The tape is a slow signal, so the sheet asks for six optional fields and
-// saves whatever was actually measured. Prefilling a NEW date with last month's
-// numbers would invite saving stale data unknowingly, so the last reading is
-// only a placeholder and an existing date is prefilled exactly.
+// The tape is a slow signal, so the sheet asks for six optional tape sites plus
+// an entered body-fat reading and saves whatever was actually measured.
+// Prefilling a NEW date with last month's numbers would invite saving stale data
+// unknowingly, so the last reading is only a placeholder and an existing date is
+// prefilled exactly.
 //
 // Storage stays canonical centimetres; the sheet writes display-unit values
 // back through the model, so a cm/in toggle never rewrites stored data.
@@ -75,6 +76,20 @@ function fillSheet(chosen) {
     input.setAttribute('aria-label', `${site.label} (${unit})`);
   }
 
+  // Body fat is a percentage, so it is neither converted by the cm/in toggle
+  // nor prefilled onto a new date — only the latest reading ON OR BEFORE the
+  // chosen date is a placeholder. A future reading would suggest a measurement
+  // that did not exist yet, and body fat may be measured less often than the
+  // tape, so search the history rather than only `latest`.
+  const bodyFatInput = inputFor('bodyFat');
+  if (bodyFatInput) {
+    const own = existing?.bodyFat;
+    const lastBodyFat = newest.find((entry) => entry.date <= chosen && typeof entry.bodyFat === 'number')?.bodyFat;
+    bodyFatInput.value = typeof own === 'number' ? String(roundDisplay(own)) : '';
+    bodyFatInput.placeholder = typeof lastBodyFat === 'number' ? String(roundDisplay(lastBodyFat)) : '%';
+    bodyFatInput.setAttribute('aria-label', 'Body fat (%)');
+  }
+
   renderRecent(newest.filter((entry) => entry.date !== chosen).slice(0, 3), unit);
 }
 
@@ -122,7 +137,10 @@ function renderRecent(recent, unit) {
 
     const right = document.createElement('span');
     const value = document.createElement('strong');
-    value.textContent = `${values} ${unit}`;
+    value.textContent = [
+      values ? `${values} ${unit}` : '',
+      typeof entry.bodyFat === 'number' ? `Body fat ${roundDisplay(entry.bodyFat)}%` : '',
+    ].filter(Boolean).join(' · ');
 
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -175,12 +193,13 @@ export function saveMeasurementsSheet() {
   /** @type {Record<string, string>} */
   const values = {};
   for (const site of MEASUREMENT_SITES) values[site.key] = inputFor(site.key)?.value ?? '';
+  values.bodyFat = inputFor('bodyFat')?.value ?? '';
   const { record, invalid } = buildMeasurementRecord(date, values, unit);
   if (invalid.length) {
     showToast(`Check ${invalid.join(', ')} — that reading is outside a plausible range.`, true);
     return;
   }
-  const measured = MEASUREMENT_SITES.some((site) => record[site.key] != null);
+  const measured = record.bodyFat != null || MEASUREMENT_SITES.some((site) => record[site.key] != null);
   if (!measured) {
     showToast('Enter at least one measurement');
     return;
@@ -204,10 +223,13 @@ export async function deleteMeasurementEntry(date) {
   const entry = entries().find((row) => row.date === date);
   if (!entry) return;
   const unit = measurementUnit(appState);
-  const summary = MEASUREMENT_SITES
-    .filter((site) => typeof entry[site.key] === 'number')
-    .map((site) => `${site.label} ${roundDisplay(cmToDisplay(entry[site.key], unit), unit)} ${unit}`)
-    .join(' · ');
+  const summary = [
+    MEASUREMENT_SITES
+      .filter((site) => typeof entry[site.key] === 'number')
+      .map((site) => `${site.label} ${roundDisplay(cmToDisplay(entry[site.key], unit), unit)} ${unit}`)
+      .join(' · '),
+    typeof entry.bodyFat === 'number' ? `Body fat ${roundDisplay(entry.bodyFat)}%` : '',
+  ].filter(Boolean).join(' · ');
   const confirmed = await confirmModal({
     title: 'Delete measurements?',
     message: `${date}${summary ? ` · ${summary}` : ''}`,

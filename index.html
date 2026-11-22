@@ -2292,6 +2292,11 @@
         <label class="ms-sheet-field"><span>Arm</span><input id="msSheet_arm" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm"></label>
         <label class="ms-sheet-field"><span>Thigh</span><input id="msSheet_thigh" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh"></label>
         <label class="ms-sheet-field"><span>Neck</span><input id="msSheet_neck" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Neck"></label>
+        <label class="ms-sheet-field ms-sheet-field--full ms-sheet-field--bodyfat">
+          <span>Body fat (%)</span>
+          <input id="msSheet_bodyFat" type="number" step="0.1" min="2" max="70" inputmode="decimal" aria-label="Body fat (%)" aria-describedby="msSheet_bodyFatHint">
+          <small id="msSheet_bodyFatHint" class="ms-sheet-hint">From a scale, calipers or DEXA — entered, not estimated.</small>
+        </label>
     </div>
     <div class="settings-row">
       <label class="settings-row-label" for="msSheetDate">Date</label>

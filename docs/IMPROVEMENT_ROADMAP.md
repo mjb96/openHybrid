@@ -492,6 +492,10 @@ not rebuild a ✅.
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
 | P12 | Year in Review | — | December annual recap with totals, best month, PRs, streak | ○ | 5 |
 
+P7 stays ◐ on purpose: body fat is now an ENTERED reading on the measurements
+record (scale/caliper/DEXA, never a formula), and six tape sites ship, but the
+plan's 14-site catalogue and per-site graph are still open.
+
 ### Workout logging (14)
 
 | ID | Feature | Owner | Target behaviour | Status | Phase |
@@ -576,7 +580,7 @@ One definition per term, owned by one module. Phase 0 confirms each against code
 | Active day | A day with at least one session, used by reports | `brain/monthly-report.js` |
 | Streak week | A Monday-based week with at least one session | `analytics/training-calendar.js` |
 | PR | A set that beats every earlier comparable set, all-time | `analytics/exercise-detail.js` |
-| Body reading | One dated record per site, centimetres canonical | `metrics/measurements.js` |
+| Body reading | One dated record per site in canonical centimetres, plus an optional entered body-fat percentage | `metrics/measurements.js` |
 
 ## 10. Definition of done
 
@@ -659,9 +663,45 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,267 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,280 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — Body fat as an entered reading.**
+  - Body fat joins the body-measurements record as an additive `bodyFat`
+    percentage (2–70, one decimal). There is no height, sex or age in state, so
+    no formula is offered: a scale, caliper or DEXA value is typed in. It is NOT
+    a `MEASUREMENT_SITES` entry, because that set is centimetre-validated, and
+    the cm/in toggle never touches the percentage.
+  - The measurements sheet gains a full-width Body fat (%) field with its own
+    divider and the honest hint "entered, not estimated". An existing date
+    prefills it exactly; a new date starts blank with the last reading only as a
+    placeholder. Save replaces the whole record, so editing another site cannot
+    drop the stored percentage. A body-fat-only record counts as a real entry.
+  - The Measurements card renders a distinct Body fat cell only when measured,
+    with a first-reading state and a delta in PERCENTAGE POINTS (`pp`), never
+    percent-of-percent. A body-fat-only log still renders the card.
+  - CSV: the measurements export gains a `Body fat (%)` column. Imports accept
+    `body_fat`, `bodyfat`, `body_fat_pct` and `body_fat_percent` as percentages,
+    merge same-date rows and still never overwrite an existing date; a
+    body-fat-only file is detected and semicolon files accept a decimal comma.
+    Known limitation: a combined weigh-in + body-fat CSV belongs to the
+    bodyweight reader, so its body fat is not imported (documented in the module
+    header); the weigh-in confirm now says so explicitly.
+  - Review fixes: light mode replaces the cyan body-fat accent and delta with
+    `#155e75` — measured 5.76:1 on the card and 6.58:1 on the sheet in a real
+    390px light context. (The suggested `#0e7490` measured only 4.25:1 on the
+    card's composited surface, so it was darkened.) The "nothing added" import
+    toast now says existing dates are never overwritten instead of claiming the
+    measurements are already logged. Body-fat placeholders use the latest
+    reading ON OR BEFORE the chosen date, never a future one.
+  - Validation: 13 new node tests across the slice (2,280 combined), typecheck,
+    smoke, precache/workflow gates, the extended bodyweight browser check
+    (stored 18.4 and 19.0, `-0.6 pp` with its percentage-point title, exact
+    prefill, blank+on-or-before placeholder, tape edit preserving body fat,
+    unit-toggle isolation, delete, 320px fit, 390px light contrast) and the
+    full 45-check browser suite.
+  - Next: the remaining P7 scope — the 14-site catalogue and per-site graph.
 
 - **2026-11-23 — Shape-aware PRs: one rule, one count.**
   - `js/strength/records.js` is now the one record model: e1RM (shared
