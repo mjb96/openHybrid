@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-hae5e1e7765f6';
+const CACHE_NAME = 'openhybrid-v122-h6404a0f5e8ce';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -51,6 +51,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/charts/strength-charts.js",
   "./js/analytics/comparison.js",
   "./js/analytics/exercise-detail.js",
+  "./js/analytics/exercises-summary.js",
   "./js/analytics/gym-performance.js",
   "./js/analytics/hybrid-balance.js",
   "./js/analytics/insights/build-insights.js",
@@ -82,6 +83,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/views/screen-kit.js",
   "./js/analytics/views/view-balance.js",
   "./js/analytics/views/view-bodyweight.js",
+  "./js/analytics/views/view-exercises.js",
   "./js/analytics/views/view-fasting.js",
   "./js/analytics/views/view-gym-performance.js",
   "./js/analytics/views/view-monthly-report.js",
@@ -262,6 +264,7 @@ const REQUIRED_ASSETS = [
   "./js/strength/e1rm.js",
   "./js/strength/pr-labels.js",
   "./js/strength/records.js",
+  "./js/strength/set-records.js",
   "./js/sw-reload.js",
   "./js/templates.js",
   "./js/theme.js",

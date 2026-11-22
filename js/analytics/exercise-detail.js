@@ -13,6 +13,7 @@ import {
   bestRecordForSession, isRecord, mergeRecordBests, recordCandidates,
 } from '../strength/records.js';
 import { addDaysISO, localDayKey } from './weekly-aggregate.js';
+import { buildSetRecords } from '../strength/set-records.js';
 import {
   SET_MODE, formatDistance, formatDuration, isRepSet, setModeOf, setVolume,
 } from '../set-utils.js';
@@ -71,6 +72,13 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
   const history = exercisePerformanceHistory(state, exerciseName)
     .slice()
     .reverse(); // oldest → newest for PR baselines
+
+  // "Heaviest set at N reps" is a different question from a PR, so it has its
+  // own module (§7) rather than a second rule living here.
+  const setRecords = buildSetRecords(
+    history.map((row) => ({ date: row.date, workingSets: row.workingSets || [] })),
+    exerciseName,
+  );
 
   // The PR baseline walks the SAME history oldest → newest through the shared
   // records model, so hold/carry/rep sessions are compared by their own shape
@@ -182,6 +190,7 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     previous,
     change,
     totals,
+    setRecords,
     chart: {
       kind: latestShape === SET_MODE.TIME ? 'time'
         : latestShape === SET_MODE.DISTANCE ? 'distance'
