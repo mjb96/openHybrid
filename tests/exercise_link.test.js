@@ -141,6 +141,25 @@ test('import repair drops only an unsafe link and keeps the note and the input i
   assert.equal(input.settings.exercisePrefs.a.link, 'javascript:alert(1)', 'the imported object must not be mutated');
 });
 
+test('a non-object exercisePrefs is emptied and a __proto__ key cannot pollute', () => {
+  const nonObject = sanitizeImportedState({ settings: { exercisePrefs: 'not a map' } });
+  assert.deepEqual(Object.keys(nonObject.settings.exercisePrefs), []);
+  assert.equal(Object.getPrototypeOf(nonObject.settings.exercisePrefs), null);
+
+  const hostile = sanitizeImportedState(JSON.parse(
+    '{"settings":{"exercisePrefs":{"__proto__":{"polluted":true},"id:row":{"note":"keep"}}}}',
+  ));
+  const prefs = hostile.settings.exercisePrefs;
+  assert.equal(Object.getPrototypeOf(prefs), null, 'the clone has no prototype setter to hit');
+  assert.equal(Object.prototype.polluted, undefined, 'Object.prototype was not polluted');
+  assert.deepEqual(
+    Object.getOwnPropertyDescriptor(prefs, '__proto__')?.value,
+    { polluted: true },
+    'the __proto__ key is stored as plain data',
+  );
+  assert.equal(prefs['id:row'].note, 'keep');
+});
+
 test('a private reference link never reaches the recap, share card or CSV', () => {
   const state = {
     settings: {

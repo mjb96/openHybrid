@@ -139,7 +139,7 @@ export function createOneOffStrengthSession(state, options = {}) {
  * @param {any} state
  * @param {any} week
  * @param {string|null|undefined} [day]
- * @returns {{ routineId:string, routineName:string, note:string }|null}
+ * @returns {{ note:string }|null}
  */
 export function routineNoteForSession(state, week, day = null) {
   const routineId = week?.sourceRoutineId;
@@ -149,7 +149,7 @@ export function routineNoteForSession(state, week, day = null) {
   const routine = findRoutine(state, routineId);
   const note = String(routine?.note || '').trim().slice(0, MAX_ROUTINE_NOTE);
   if (!note) return null;
-  return { routineId, routineName: String(routine.name || 'Routine'), note };
+  return { note };
 }
 
 export function oneOffBlueprint(state, fallback = null) {

@@ -60,10 +60,13 @@ export function sanitizeImportedState(state) {
     // exercisePrefs carries a private reference link that reaches an href. A
     // stale/hostile value must not ride in; drop ONLY the link and keep the
     // note and every other preference. The input object is never mutated.
-    if (s.exercisePrefs && typeof s.exercisePrefs === 'object' && !Array.isArray(s.exercisePrefs)) {
-      const prefs = {};
-      for (const [key, value] of Object.entries(s.exercisePrefs)) {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    // A non-object collection is emptied, and a null-prototype copy means a
+    // `__proto__` key is stored as data instead of hitting the prototype setter.
+    if (s.exercisePrefs != null) {
+      const source = isRecord(s.exercisePrefs) ? s.exercisePrefs : {};
+      const prefs = Object.create(null);
+      for (const [key, value] of Object.entries(source)) {
+        if (!isRecord(value)) {
           prefs[key] = value;
           continue;
         }

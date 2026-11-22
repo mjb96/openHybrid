@@ -238,9 +238,13 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
   if (runOut) types.push(runOut.type);
 
   // The workout note is stored once, in week.notes[day], and written by both the
-  // cockpit and the finish sheet. It is a STRENGTH note: a run-only day leaves
-  // it blank so a run recap never surfaces a note the run detail does not own.
-  const notes = hasStrengthWork ? String(wd.notes?.[day] || '').trim() : '';
+  // cockpit and the finish sheet. It is a STRENGTH note: a run-only detail leaves
+  // it blank, and a run detail on a MIXED date must not borrow the strength note
+  // just because the same date also has gym stats. Run notes are a separate field
+  // on the run session (`runs[].notes` / runSessions), owned by the run surface.
+  const notes = activityKind !== 'run' && hasStrengthWork
+    ? String(wd.notes?.[day] || '').trim()
+    : '';
 
   // Insights are NOT hand-rolled here — they come from the shared insight
   // engine (see insightsForSession), so there's one source of truth. This

@@ -307,7 +307,8 @@ try {
     // The link is free text the athlete stores per exercise. It must render as
     // a real anchor (never markup), keep a 44px target and refuse every
     // non-http(s) scheme without overwriting the good link already stored.
-    if (width === 412 && theme === 'dark') {
+    // Runs in BOTH themes: the light card is where cyan text used to fail.
+    if ((width === 390 && theme === 'light') || (width === 412 && theme === 'dark')) {
       const openConfig = async () => {
         await page.click('.cockpit-exercise:not(.collapsed) .btn-ex-config');
         await page.waitForSelector('.exercise-config');
@@ -323,6 +324,29 @@ try {
         const a = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-ex-link');
         if (!a) return null;
         const rect = a.getBoundingClientRect();
+        const parse = (value) => {
+          const match = String(value || '').match(/rgba?\(([^)]+)\)/);
+          if (!match) return null;
+          const parts = match[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+          if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return null;
+          return { r: parts[0], g: parts[1], b: parts[2], a: parts[3] == null ? 1 : parts[3] };
+        };
+        const channel = (v) => {
+          const n = v / 255;
+          return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+        };
+        const luminance = (color) => 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+        const foreground = parse(getComputedStyle(a).color) || { r: 0, g: 0, b: 0 };
+        let background = { r: 255, g: 255, b: 255, a: 1 };
+        let node = a.parentElement;
+        while (node) {
+          const candidate = parse(getComputedStyle(node).backgroundColor);
+          if (candidate && candidate.a >= 0.95) { background = candidate; break; }
+          node = node.parentElement;
+        }
+        const fgLum = luminance(foreground);
+        const bgLum = luminance(background);
+        const ratio = (Math.max(fgLum, bgLum) + 0.05) / (Math.min(fgLum, bgLum) + 0.05);
         return {
           isAnchor: a.tagName === 'A',
           href: a.getAttribute('href'),
@@ -331,6 +355,10 @@ try {
           label: a.textContent.trim(),
           width: Math.round(rect.width),
           height: Math.round(rect.height),
+          color: getComputedStyle(a).color,
+          background: `rgb(${background.r}, ${background.g}, ${background.b})`,
+          contrast: Number(ratio.toFixed(2)),
+          theme: document.documentElement.getAttribute('data-theme') || '',
         };
       });
       console.log(`${tag} reference-link:`, JSON.stringify(anchor));
@@ -346,6 +374,12 @@ try {
       }
       if ((anchor?.height || 0) < 44) {
         fail(`${tag}: reference link is ${anchor?.width}×${anchor?.height}, below the 44px touch target`);
+      }
+      if (anchor?.theme !== theme) {
+        fail(`${tag}: reference link rendered in the wrong theme (${anchor?.theme || 'unset'})`);
+      }
+      if ((anchor?.contrast || 0) < 4.5) {
+        fail(`${tag}: reference link contrast is ${anchor?.contrast}:1 (${anchor?.color} on ${anchor?.background})`);
       }
 
       await openConfig();

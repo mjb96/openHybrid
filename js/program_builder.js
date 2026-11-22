@@ -27,6 +27,8 @@ import {
 } from './programs/editor-model.js';
 import { closeManagedModal, openManagedModal } from './ui/modal-stack.js';
 import { trackVisibleViewport } from './ui/visible-viewport.js';
+import { buildExerciseRowHTML } from './programs/exercise-row.js';
+import { openExerciseOptions } from './workout/exercise-options.js';
 import {
   effectiveMusclePriorities, musclePriorityLabel, projectProgramMuscleCredits,
   volumeReferenceForPriority,
@@ -256,7 +258,7 @@ function renderSchedule(program) {
 
         <div class="program-editor__list-heading"><div><span>Exercises</span><small>${day.lifts.length} in workout order</small></div><button class="program-editor__add" data-action="b-open-picker" data-day="${selectedDay}">+ Add exercise</button></div>
         <div class="program-editor__exercise-list">
-          ${day.lifts.length ? day.lifts.map((name, index) => renderExerciseRow(selectedDay, name, index, day.lifts.length)).join('') : `
+          ${day.lifts.length ? day.lifts.map((name, index) => buildExerciseRowHTML(selectedDay, name, index, day.lifts.length, appState)).join('') : `
             <button class="program-editor__empty" data-action="b-open-picker" data-day="${selectedDay}"><strong>No exercises yet</strong><span>Add the first exercise to this session</span></button>
           `}
         </div>
@@ -267,19 +269,6 @@ function renderSchedule(program) {
         </div>
       </article>
     </section>
-  `;
-}
-
-function renderExerciseRow(day, name, index, count) {
-  return `
-    <div class="program-editor__exercise-row">
-      <div class="program-editor__order-controls" aria-label="Reorder ${escapeHtml(name)}">
-        <button data-action="b-move-up" data-day="${day}" data-i="${index}" aria-label="Move ${escapeHtml(name)} up" ${index === 0 ? 'disabled' : ''}>↑</button>
-        <button data-action="b-move-down" data-day="${day}" data-i="${index}" aria-label="Move ${escapeHtml(name)} down" ${index === count - 1 ? 'disabled' : ''}>↓</button>
-      </div>
-      <button class="program-editor__exercise-name" data-action="b-open-picker" data-day="${day}" data-i="${index}"><strong>${escapeHtml(name)}</strong><span>Tap to replace</span></button>
-      <button class="program-editor__remove" data-action="b-remove-lift" data-day="${day}" data-i="${index}" aria-label="Remove ${escapeHtml(name)}">×</button>
-    </div>
   `;
 }
 
@@ -659,6 +648,14 @@ document.addEventListener('click', async (event) => {
   else if (action === 'b-move-up' && day) moveLift(day, index, -1);
   else if (action === 'b-move-down' && day) moveLift(day, index, 1);
   else if (action === 'b-remove-lift' && day) removeLift(day, index);
+  else if (action === 'b-exercise-settings' && day && Number.isInteger(index)) {
+    // Preferences are keyed by the canonical exercise name, exactly like the
+    // cockpit. The sheet re-renders the builder when it closes so a newly set
+    // note/link appears on the row immediately.
+    const program = getProgram();
+    const name = program?.days?.[day]?.lifts?.[index];
+    if (name) openExerciseOptions(name, { onClose: () => renderBuilderUI() });
+  }
   else if (action === 'b-mark-rest' && day) makeRestDay(day);
   else if (action === 'b-mark-training' && day) {
     const program = getProgram();

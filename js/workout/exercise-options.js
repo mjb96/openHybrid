@@ -35,8 +35,9 @@ function restLabel(seconds) {
 /**
  * Open the per-exercise settings sheet.
  * @param {string} name
+ * @param {{ onClose?: () => void }} [options]
  */
-export function openExerciseOptions(name) {
+export function openExerciseOptions(name, options = {}) {
   const state = getState?.();
   if (!state || !name) return;
   const rest = getExerciseRestOverride(state, name);
@@ -161,7 +162,7 @@ export function openExerciseOptions(name) {
     const ok = !raw || !!safeExternalHttpUrl(raw);
     if (linkError) {
       linkError.hidden = ok;
-      linkError.textContent = ok ? '' : 'Enter a valid http:// or https:// link.';
+      linkError.textContent = ok ? '' : 'Enter a web address (http:// or https://).';
     }
     linkInput?.classList.toggle('is-invalid', !ok);
     linkInput?.setAttribute('aria-invalid', ok ? 'false' : 'true');
@@ -169,10 +170,16 @@ export function openExerciseOptions(name) {
   };
   linkInput?.addEventListener('input', validateLink);
 
+  let closed = false;
   const close = () => {
+    if (closed) return;
+    closed = true;
     closeManagedModal(overlay);
     overlay.classList.remove('cmodal--in');
-    setTimeout(() => overlay.remove(), 180);
+    setTimeout(() => {
+      overlay.remove();
+      try { options.onClose?.(); } catch (err) { console.warn('Exercise settings close handler failed:', err); }
+    }, 180);
   };
   const save = () => {
     const input = /** @type {HTMLInputElement|null} */ (overlay.querySelector('#exerciseConfigRest'));

@@ -71,6 +71,23 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   stamps filled new sets completed and refreshes the finished summary's set
   count. Programme scaffolding that landed on the same day later is preserved
   but is not presented as part of the historical session.
+- Note scopes and private links: `week.notes[day]` is the WORKOUT note — shown
+  by the cockpit, finish recap and History and exported as the CSV `Notes`
+  column. It is strength-only: `buildSessionRecap` gates it on
+  `activityKind !== 'run'` (plus real strength work), so a run detail on a
+  mixed date never borrows it; run notes stay on the run session
+  (`runs[].notes`). Exercise notes and reference links live in
+  `settings.exercisePrefs`, keyed by `exerciseConfigKey` (canonical id; aliases
+  share one entry): `note` (140 chars) and `link` (only via
+  `safeExternalHttpUrl` — http(s), no credentials/control chars). They are
+  shown in the cockpit, the program-builder row (which opens the exercise
+  options sheet) and the Train/plan previews read-only; they never enter
+  History, share cards or CSV. A routine note is `routine.note` (≤500, absent
+  when empty). Starting a routine stores only `week.sourceRoutineId`; the
+  cockpit banner calls `routineNoteForSession` → `findRoutine` on every render,
+  so edits are live and deleting the routine removes it. Import clones
+  `exercisePrefs` on a null prototype, repairs links, and truncates routine
+  notes instead of dropping them.
 - History (formerly Activities): `js/activities.js` + `js/activities/model.js` +
   `js/activities/calendar.js` own the record/action destination — Calendar | List,
   search, month headers, provenance, source filter (Logged in app / Imported),

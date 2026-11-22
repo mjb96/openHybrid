@@ -88,26 +88,42 @@ test('a one-off not started from a routine has no routine note', () => {
 
 test('the routine note never reaches History, recap, share or CSV', () => {
   const s = stateWith();
+  s.settings.exercisePrefs = {
+    'id:barbell_bench_press': {
+      note: 'Pinned exercise cue',
+      link: 'https://private.example.com/form',
+    },
+  };
   const session = startFromRoutine(s);
   const day = session.day;
   session.week.dates[day] = '2026-11-19';
   session.week.lifts[day] = { 'Bench Press': [{ w: '100', r: '5', c: true }] };
   session.week.gymStats[day] = { time: '20:00' };
+  session.week.notes[day] = 'Workout note is part of the session record';
 
   const recap = buildSessionRecap(s, session.key, day);
   assert.ok(!JSON.stringify(recap).includes(NOTE), 'the recap model carries no routine note');
+  assert.ok(!JSON.stringify(recap).includes('https://private.example.com/form'));
   const html = renderSessionRecapHTML(recap);
   assert.ok(!html.includes(NOTE));
   assert.ok(!/Routine note/i.test(html), 'History has no routine-note label');
+  assert.ok(html.includes('Workout note is part of the session record'));
 
   const summary = buildWorkoutShareSummary(recap, { title: 'Push day' });
   assert.ok(!JSON.stringify(summary).includes(NOTE));
   assert.ok(!workoutShareCaption(summary).includes(NOTE));
+  assert.ok(!JSON.stringify(summary).includes('https://private.example.com/form'));
 
   const csv = buildTrainingCsv(s, [day]);
+  // The workout note IS the session record and is deliberately exported; the
+  // routine note and every exercise-pinned scope are not.
+  assert.ok(csv.includes('Workout note is part of the session record'));
   assert.ok(!csv.includes(NOTE));
+  assert.ok(!csv.includes('Pinned exercise cue'));
+  assert.ok(!csv.includes('https://private.example.com/form'));
   assert.ok(!csv.includes('sourceRoutineId'));
-  assert.equal(session.week.notes[day], '', 'the routine note never enters week.notes');
+  assert.equal(session.week.notes[day], 'Workout note is part of the session record',
+    'the routine note never enters week.notes');
 });
 
 test('saving a routine never copies the session note, and a repeat starts blank', () => {

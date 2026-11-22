@@ -91,8 +91,8 @@ upgrade have landed:
   decision surface now, but several domains have no comparable long-range view,
   so "is this working?" is answerable for a week and harder for a year.
 - The logging loop is strong for a prescribed lift and thinner for everything
-  around it: notes have no clear scope model, plate maths is a hint rather than
-  a calculator, and RPE entry is not constrained the way the rest of the row is.
+  around it: plate maths is a hint rather than a calculator, and RPE entry is
+  not constrained the way the rest of the row is.
 - Body composition stops at bodyweight plus six tape sites. There is no body fat
   and no visual history, which is the one place a lifter most expects a
   before/after.
@@ -497,7 +497,7 @@ not rebuild a ✅.
 | --- | --- | --- | --- | --- | --- |
 | L1 | Log and track | `workout.js` | Routines or empty sessions, all variables, save | ✅ | — |
 | L2 | Start empty workout | `workout.js` | Timer, add exercises, finish | ✅ | — |
-| L3 | Exercise notes | `workout/exercise-config.js` | Routine, session and pinned exercise scopes, clickable link | ◐ | 1 |
+| L3 | Exercise notes | `workout/exercise-config.js` | Routine, session and pinned exercise scopes, clickable link | ✅ | 1 |
 | L4 | Rest timer | `timers.js` | Per exercise, 5 s–5 min, ±15 s, drop suppression, sound | ✅ | 1 |
 | L5 | Add/remove sets | `workout/set-mutations.js` | Add, remove, reorder, load/reps/rep-range/time | ✅ | — |
 | L6 | Set types | `workout/set-sheet.js` | Normal, warm-up, failure, drop with volume and PR rules | ✅ | — |
@@ -661,6 +661,29 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | 2,128 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Note scopes close the review gaps (`ed459ee`, `78526dc`, `7b3c353`).**
+  - The workout note (`week.notes[day]`) now reaches the finish recap and
+    History detail as text. It is strength-only: a run detail on a mixed date
+    cannot borrow it (`activityKind !== 'run'`), and run notes stay on
+    `runs[].notes`.
+  - Exercise notes and private reference links live in
+    `settings.exercisePrefs` keyed by canonical exercise id. Links pass
+    `safeExternalHttpUrl` (http/https only), are built as real anchors with
+    `noopener noreferrer`, and are never fetched. The cockpit, builder row and
+    Train/plan previews show the note; only the cockpit/builder open settings.
+  - Routine notes (`routine.note`, ≤500) are read by reference through
+    `week.sourceRoutineId`, so edits update the live banner and deletion removes
+    it. Import clones prefs on a null prototype and repairs invalid links/notes
+    instead of dropping the routine.
+  - The CSV `Notes` column remains the workout note only; routine notes,
+    exercise notes and reference links are private scopes and never exported.
+  - Light theme now darkens the cyan link and violet note labels to ≥4.5:1;
+    the builder gained Exercise settings, and the multiline note dialog has a
+    character counter, `aria-describedby` and Enter/Cmd+Enter semantics.
+  - Validation: 2,161 node tests (including a jsdom prompt test), typecheck,
+    smoke, routines, set-row at 390/light + 412/dark with measured contrast,
+    touch-target, core-ergonomics and all 45 browser checks.
 
 - **2026-11-22 — Supersets become circuits (`84aa2d0`, `4e4e723`).**
   - **The old path was pair-only and lost work.** `pairAsSuperset` always minted

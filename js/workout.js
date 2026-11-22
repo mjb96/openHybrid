@@ -827,7 +827,6 @@ export function renderWorkout() {
     // `:first-of-type`, so the banner must not become the first div in here.
     const banner = document.createElement('aside');
     banner.className = 'cockpit-routine-note';
-    banner.setAttribute('data-routine-id', routineNote.routineId);
     const label = document.createElement('span');
     label.className = 'cockpit-routine-note__label';
     label.textContent = 'Routine note';

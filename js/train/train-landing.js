@@ -25,6 +25,7 @@ import { moduleEnabled } from '../modules.js';
 import { localDayKey } from '../dates.js';
 import { getWeekModifier } from '../schema.js';
 import { liftTarget } from '../engine.js';
+import { getExerciseNote } from '../workout/exercise-config.js';
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -73,7 +74,7 @@ export function recentActivities(state, limit = 3) {
  * @param {any} state
  * @param {any} program
  * @param {string} day
- * @returns {Array<{ name: string, sets: number, reps: string, weight: number|null }>}
+ * @returns {Array<{ name: string, sets: number, reps: string, weight: number|null, note: string }>}
  */
 export function sessionExercisePreview(state, program, day) {
   const blueprint = program?.days?.[day];
@@ -90,6 +91,7 @@ export function sessionExercisePreview(state, program, day) {
       weight: Number.isFinite(Number(target?.weight)) && Number(target.weight) > 0
         ? Number(target.weight)
         : null,
+      note: getExerciseNote(state, name),
     };
   });
 }

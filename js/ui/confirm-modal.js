@@ -11,6 +11,7 @@ import { closeManagedModal, openManagedModal } from './modal-stack.js';
 // =============================================================================
 
 let _stylesInjected = false;
+let _modalSeq = 0;
 
 function ensureStyles() {
   if (_stylesInjected || typeof document === 'undefined') return;
@@ -62,6 +63,11 @@ function ensureTextareaStyle() {
   s.textContent = `.cmodal__textarea {
     width: 100%; min-height: 120px; max-height: 42vh; resize: vertical;
     line-height: 1.5; font-weight: 500; white-space: pre-wrap;
+  }
+  .cmodal__counter {
+    display: block; margin-top: 4px; text-align: right;
+    color: var(--text-muted, #94a3b8); font-size: .68rem; font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }`;
   document.head.appendChild(s);
 }
@@ -219,15 +225,18 @@ export function multilineTextPromptModal(opts = {}) {
     overlay.className = 'cmodal-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-label', title);
+    const msgId = message ? `cmodalMsg${++_modalSeq}` : '';
     overlay.innerHTML = `
       <div class="cmodal">
         <div class="cmodal__title">${esc(title)}</div>
-        ${message ? `<div class="cmodal__msg">${esc(message)}</div>` : ''}
+        ${message ? `<div class="cmodal__msg" id="${msgId}">${esc(message)}</div>` : ''}
         <label class="cmodal__field">
           ${label ? `<span class="cmodal__label">${esc(label)}</span>` : ''}
           <textarea class="cmodal__input cmodal__textarea" rows="5" maxlength="${cap}"
                     data-cm="input" placeholder="${esc(placeholder)}"
+                    ${msgId ? `aria-describedby="${msgId}"` : ''}
                     aria-label="${esc(label || title)}">${esc(value)}</textarea>
+          <span class="cmodal__counter" data-cm="counter" aria-hidden="true">${String(value).length}/${cap}</span>
         </label>
         <div class="cmodal__row">
           <button class="cmodal__btn cmodal__btn--cancel" data-cm="cancel">${esc(cancelLabel)}</button>
@@ -237,6 +246,11 @@ export function multilineTextPromptModal(opts = {}) {
     document.body.appendChild(overlay);
 
     const input = /** @type {HTMLTextAreaElement} */ (overlay.querySelector('[data-cm="input"]'));
+    const counter = /** @type {HTMLElement|null} */ (overlay.querySelector('[data-cm="counter"]'));
+    const syncCounter = () => {
+      if (counter) counter.textContent = `${String(input?.value ?? '').length}/${cap}`;
+    };
+    input?.addEventListener('input', syncCounter);
     let done = false;
     const close = (result) => {
       if (done) return;

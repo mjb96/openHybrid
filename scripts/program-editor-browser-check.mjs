@@ -280,6 +280,31 @@ for (const width of WIDTHS) {
   await context.close();
 }
 
+// Builder → Exercise settings: the pinned note and reference link show on the
+// row, and the sheet is reachable from the builder (not only the cockpit).
+{
+  const { context, page } = await openEditor(390);
+  const row = page.locator('.program-editor__exercise-row').first();
+  await row.locator('[data-action="b-exercise-settings"]').click();
+  await page.waitForSelector('.exercise-config');
+  await page.fill('#exerciseConfigNote', 'Pause at the chest.');
+  await page.fill('#exerciseConfigLink', 'https://www.youtube.com/watch?v=abc123');
+  await page.click('.exercise-config [data-cm="ok"]');
+  await page.waitForTimeout(500);
+  const pinned = await page.evaluate(() => ({
+    note: document.querySelector('.program-editor__exercise-row .program-editor__exercise-note')?.textContent.trim() || '',
+    link: document.querySelector('.program-editor__exercise-row .program-editor__exercise-link')?.getAttribute('href') || '',
+    label: document.querySelector('.program-editor__exercise-row .program-editor__exercise-link')?.textContent.trim() || '',
+    sheetOpen: !!document.querySelector('.exercise-config'),
+  }));
+  console.log(`  builder pinned note=${JSON.stringify(pinned.note)} link=${JSON.stringify(pinned.link)} label=${JSON.stringify(pinned.label)}`);
+  check(pinned.note === 'Pause at the chest.', 'the builder row does not show the pinned exercise note');
+  check(pinned.link === 'https://www.youtube.com/watch?v=abc123', 'the builder row does not show the reference link');
+  check(pinned.label === 'Watch on YouTube', 'the builder link label does not name the destination');
+  check(!pinned.sheetOpen, 'the exercise settings sheet did not close after Save');
+  await context.close();
+}
+
 await browser.close();
 server.close();
 if (failures.length) {
