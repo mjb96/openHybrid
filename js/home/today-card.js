@@ -268,7 +268,9 @@ export function buildTodayCardModel(options) {
   // ignored that and could mark today "completed" from last week's session.
   const todaySlotIsToday = !todaySlotDate || todaySlotDate === todayISO;
   card.title = todaySession.title;
-  card.meta = `${card.dayLabel} · Week ${weekKey} · ${todaySession.planned.label}`;
+  // The header chip already states the program week; repeating it here was a
+  // third copy on one screen.
+  card.meta = `${card.dayLabel} · ${todaySession.planned.label}`;
 
   // Imported/archived work on today's real date. It can never be found by
   // scanning weeks[currentWeek], so without this the card offered "Start

@@ -25,6 +25,26 @@ test('Home removes the repeated At-a-Glance grid', () => {
   assert.doesNotMatch(indexHTML, />At a Glance</);
 });
 
+test('the Home header leads with the calendar day, not a program week', () => {
+  const h1 = indexHTML.match(/<h1[^>]*id="homeWeekBlockIndicator"[^>]*>([\s\S]*?)<\/h1>/);
+  assert.ok(h1, 'Home still renders the headline element');
+  // The static markup must never claim a week: the chip below carries it, and
+  // the first render replaces this text with the calendar day.
+  const inner = (h1[1] || '').trim();
+  assert.ok(inner.length > 0, 'the headline has a non-empty fallback');
+  assert.doesNotMatch(h1[0], />Week /);
+  assert.doesNotMatch(inner, /^Week \d/);
+});
+
+test('Home offers one Start, not a competing Workout quick action', () => {
+  const quickAt = indexHTML.indexOf('id="homeQuickActions"');
+  assert.ok(quickAt > 0, 'Home renders the quick-action row');
+  const quickBlock = indexHTML.slice(quickAt, indexHTML.indexOf('</div>', quickAt));
+  assert.doesNotMatch(quickBlock, /open-quick-start/);
+  assert.match(quickBlock, /data-action="open-run-logger"/);
+  assert.match(quickBlock, /class="home-quick-btn btn-history-link"/);
+});
+
 test('the dormant tile catalogue no longer defines a Home tile selection', () => {
   assert.doesNotMatch(dashboardSource, /HOME_TILE_IDS/);
 });

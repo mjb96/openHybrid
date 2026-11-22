@@ -1,4 +1,6 @@
 // Home Today-card browser contract:
+// - the header leads with the calendar day, one week chip, and one-way Start
+//   (no duplicate Workout quick action);
 // - one primary action in the first decision surface;
 // - calendar-day routing, including resume/review/rest/no-plan states;
 // - no horizontal overflow and 44px controls at narrow mobile widths.
@@ -158,12 +160,19 @@ try {
         const primary = document.querySelector('.today-card__primary');
         const secondary = document.querySelector('.today-card__secondary');
         const cardRect = card?.getBoundingClientRect();
+        const meta = document.querySelector('.home-header-meta');
+        const chip = document.getElementById('homePhaseLabelTag');
+        const chipRect = chip?.getBoundingClientRect();
+        const metaRect = meta?.getBoundingClientRect();
         return {
           state: card?.getAttribute('data-today-state'),
           insideWeek: !!card?.closest('#homeWeekStrip'),
           collapsed: !!card?.classList.contains('is-collapsed'),
           primaryCount: card?.querySelectorAll('.today-card__primary').length || 0,
           cardWithinViewport: !!cardRect && cardRect.left >= 0 && cardRect.right <= innerWidth && cardRect.bottom <= innerHeight,
+          headline: document.getElementById('homeWeekBlockIndicator')?.textContent?.trim() || '',
+          headerFits: !!chipRect && !!metaRect && chipRect.left >= 0
+            && chipRect.right <= metaRect.right + 0.5 && metaRect.right <= innerWidth,
           primaryHeight: primary?.getBoundingClientRect().height || 0,
           secondaryHeight: secondary?.getBoundingClientRect().height || 0,
           inFocusCards: document.querySelectorAll('#strengthBarChart, #runBarChart, #homeInFocus').length,
@@ -172,6 +181,9 @@ try {
         };
       });
       ok(layout.state === 'ready', `${theme} ${width}px renders ready state`);
+      ok(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2}$/.test(layout.headline), `${theme} ${width}px headline is the calendar day (got "${layout.headline}")`);
+      ok(!/^Week \d/.test(layout.headline), `${theme} ${width}px headline never claims a program week`);
+      ok(layout.headerFits, `${theme} ${width}px keeps the week chip inside the header`);
       ok(layout.insideWeek, `${theme} ${width}px keeps Today inside the week surface`);
       ok(layout.collapsed, `${theme} ${width}px starts the ready day compact`);
       ok(layout.primaryCount === 1, `${theme} ${width}px has exactly one Today primary action`);
@@ -197,6 +209,39 @@ try {
       ok(await page.locator('.today-card').evaluate((el) => el.classList.contains('is-collapsed')), `${theme} ${width}px tapping today again collapses it`);
       await context.close();
     }
+  }
+
+  // ---- Home hierarchy: day headline, week chip, ONE Start -------------------
+  // The h1 is the calendar day and the chip carries the program week, so a
+  // boot can never flash "Week 1" as the headline and the header never states
+  // the week three times on one screen.
+  {
+    const { context, page } = await openState({ state: 'ready' });
+    const header = await page.evaluate(() => ({
+      headline: document.getElementById('homeWeekBlockIndicator')?.textContent?.trim() || '',
+      chip: document.getElementById('homePhaseLabelTag')?.textContent?.trim() || '',
+      chipPill: (() => {
+        const el = document.getElementById('homePhaseLabelTag');
+        if (!el) return null;
+        const s = getComputedStyle(el);
+        return { radius: parseFloat(s.borderTopLeftRadius), nowrap: s.whiteSpace, overflowX: s.overflowX };
+      })(),
+      workoutQuickStarts: document.querySelectorAll('#homeQuickActions [data-action="open-quick-start"]').length,
+      quickActions: document.querySelectorAll('#homeQuickActions .home-quick-btn').length,
+      primaryCtas: document.querySelectorAll('#homePrimaryCta').length,
+      weekDays: document.querySelectorAll('.home-week-day').length,
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    }));
+    ok(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} [A-Z][a-z]{2}$/.test(header.headline), `Home headline is the calendar day (got "${header.headline}")`);
+    ok(!/^Week \d/.test(header.headline), 'Home headline never claims a program week');
+    ok(header.chip === 'Week 1 of 4 · Working Sets', `Home chip states week and phase (got "${header.chip}")`);
+    ok(header.chipPill?.radius >= 99 && header.chipPill?.nowrap === 'nowrap' && header.chipPill?.overflowX === 'hidden', 'the week chip is a compact single-line pill');
+    ok(header.workoutQuickStarts === 0, 'Home quick actions no longer offer a second Workout start');
+    ok(header.quickActions === 3, 'Home quick actions keep Weight, Run and History');
+    ok(header.primaryCtas === 1, 'Home still offers exactly one primary Start');
+    ok(header.weekDays === 7, 'Home still renders the seven-day rail');
+    ok(!header.overflow, 'the Home header does not overflow the viewport');
+    await context.close();
   }
 
   const expected = {

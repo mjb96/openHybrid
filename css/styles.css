@@ -4995,11 +4995,12 @@ h2.section-header {
 }
 h2.section-header::after { display: none; }
 
-/* --- Home header (app name + week) --- */
+/* --- Home header (day headline + week chip) --- */
 .home-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px;
   margin-bottom: 20px;
   margin-top: 6px;
 }
@@ -5029,6 +5030,7 @@ h2.section-header::after { display: none; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .home-app-label {
   font-size: 0.6rem;
@@ -5037,20 +5039,32 @@ h2.section-header::after { display: none; }
   letter-spacing: 0.14em;
   color: var(--text-faint);
 }
+/* Calendar-day headline. It can wrap inside a narrow header instead of
+   pushing the avatar off-screen, and 200% text must not overflow sideways. */
 .home-week-label {
-  font-size: 1.5rem;
+  font-size: clamp(1.15rem, 5.2vw, 1.5rem);
   font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.04em;
-  line-height: 1;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
   margin: 0;
 }
+/* "Week N of M · Phase" is a compact status pill, not a second headline. */
 .home-phase-label {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, currentColor 38%, transparent);
+  border-radius: 999px;
   font-size: 0.62rem;
-  font-weight: 600;
+  font-weight: 700;
   color: rgba(99,102,241,0.75);
   letter-spacing: 0.04em;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* --- Weekly completion widget (home header, right) --- */

@@ -266,6 +266,18 @@ function shortDate(iso) {
   return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
 }
 
+// The Home headline is the CALENDAR day ("Mon 3 Aug"), never the program week:
+// the chip underneath states the week, and a boot flash must never claim
+// "Week 1". Noon UTC keeps the weekday stable whatever the host timezone is
+// doing, and the locale's comma is stripped so the line reads as one phrase.
+function formatHomeHeadline(iso) {
+  const [y, m, d] = String(iso || '').split('-').map(Number);
+  if (!y || !m || !d) return 'Today';
+  return new Date(Date.UTC(y, m - 1, d, 12))
+    .toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+    .replace(',', '');
+}
+
 function renderHomeGreeting(appState) {
   const el = document.getElementById('homeGreeting');
   if (el) el.textContent = greetingFor(appState?.settings?.name);
@@ -494,12 +506,27 @@ export function renderHome() {
   const homeDay = todayProgramDay();
   const DEFAULT_DAYS = _getDays(); 
 
+  const activeProgram = getProgramById(appState.activeProgramId);
   const wk = appState?.currentWeek || "1";
 
-  const indicatorEl = document.getElementById('homeWeekBlockIndicator');
+  const headlineEl = document.getElementById('homeWeekBlockIndicator');
+  if (headlineEl) headlineEl.textContent = formatHomeHeadline(renderDay);
+
   const phaseEl = document.getElementById('homePhaseLabelTag');
-  if (indicatorEl) indicatorEl.textContent = 'Week ' + wk;
-  if (phaseEl) phaseEl.textContent = resolveProgramPhase(getProgramById(appState.activeProgramId), wk, appState).label;
+  if (phaseEl) {
+    const weekNumber = Number.parseInt(String(wk), 10);
+    const totalWeeks = Number(activeProgram?.totalWeeks);
+    let chip = `Week ${wk}`;
+    // Only promise a range when the plan actually has one and this week is
+    // inside it; a legacy/unknown week must not claim "of 4".
+    if (Number.isFinite(totalWeeks) && totalWeeks > 0 && Number.isFinite(weekNumber) && weekNumber <= totalWeeks) {
+      chip += ` of ${totalWeeks}`;
+    }
+    // No active program means no phase to name — never fall back to the
+    // resolver's "Training" placeholder.
+    if (activeProgram) chip += ` · ${resolveProgramPhase(activeProgram, wk, appState).label}`;
+    phaseEl.textContent = chip;
+  }
 
   // Home-header avatar → Profile (the avatar is Profile's entry point now that
   // Profile has left the nav bar). Shows the photo if set, else name initials.
@@ -517,8 +544,6 @@ export function renderHome() {
       avatarEl.classList.remove('home-avatar--img');
     }
   }
-
-  const activeProgram = getProgramById(appState.activeProgramId);
 
   // Streak freezes (R7): auto-cover an occasional missed day and top up the
   // bank on 7-day tiers — before the model computes the streak below.
