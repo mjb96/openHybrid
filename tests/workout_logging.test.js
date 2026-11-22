@@ -273,13 +273,18 @@ test('toggleLoadBasis cycles a dumbbell set between Each and Both', () => {
   assert.equal(sets('Dumbbell Bench Press')[0].basis, 'each');
 });
 
-test('per-set rest and note persist and clear', async () => {
+test('rest is remembered per EXERCISE, not pinned to one set', async () => {
   initWith(freshState());
   workout.appendCustomSetRow(null, 'Row');
   const mutations = await import('../js/workout/set-mutations.js');
   mutations.setSetRest('Row', 0, 90);
-  assert.equal(sets('Row')[0].restSec, 90);
+  // The preference lives on the exercise (and survives the session); the row
+  // itself carries no restSec, so every set of the lift resolves the same rest.
+  assert.equal(state.settings.restOverrides.Row, 90);
+  assert.equal(sets('Row')[0].restSec, undefined);
+
   mutations.setSetRest('Row', 0, null);
+  assert.equal(state.settings.restOverrides.Row, undefined);
   assert.equal(sets('Row')[0].restSec, undefined);
 
   mutations.setSetNote('Row', 0, '  belt on  ');

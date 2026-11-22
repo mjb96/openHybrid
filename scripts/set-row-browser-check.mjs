@@ -101,8 +101,13 @@ const storedFirstSet = (page, lift) => page.evaluate((name) => {
   return Array.isArray(sets) ? sets[0] : null;
 }, lift);
 
-/** One stored set by index, for the plate calculator's write/no-write checks. */
-const storedSetAt = (page, lift, index) => page.evaluate(([name, idx]) => {
+/** Rest is an EXERCISE preference now: it lives on the lift, not the set. */
+const storedRestOverride = (page, lift) => page.evaluate((name) => {
+  const state = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+  return state.settings?.restOverrides?.[name] ?? null;
+}, lift);
+
+/** One stored set by index, for the plate calculator's write/no-write checks. */const storedSetAt = (page, lift, index) => page.evaluate(([name, idx]) => {
   const state = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
   return state.weeks?.['1']?.lifts?.thu?.[name]?.[idx] || null;
 }, [lift, index]);
@@ -658,9 +663,9 @@ try {
       fail(`${tag}: a completed set did not show its comparison against last time (${JSON.stringify(comparison)})`);
     }
 
-    // ---- per-set rest and note (one viewport is enough for this UI path) ----
-    // Both live in the set sheet now: the row keeps one line per set, and the
-    // sheet is opened by tapping the set number.
+    // ---- exercise rest and per-set note (one viewport is enough) ------------
+    // The rest choice is remembered on the EXERCISE (every set and the next
+    // session use it); the note stays per set.
     if (width === 412 && theme === 'dark') {
       await page.click('.cockpit-exercise:not(.collapsed) .cockpit-set-row .set-num-lbl');
       await page.waitForSelector('#setSheet.active');
@@ -670,7 +675,7 @@ try {
       await page.click('.cmodal__btn--ok');
       await page.waitForTimeout(350);
       const restLabel = await page.locator('.cockpit-exercise:not(.collapsed) .cockpit-set-row').first().getAttribute('data-rest-label');
-      if (!/1:15/.test(restLabel || '')) fail(`${tag}: per-set rest did not render 1:15 (got "${restLabel}")`);
+      if (!/1:15/.test(restLabel || '')) fail(`${tag}: exercise rest did not render 1:15 (got "${restLabel}")`);
 
       await page.click('#setSheet [data-action="set-sheet-note"]');
       await page.waitForSelector('.cmodal__input');
@@ -682,8 +687,15 @@ try {
       const noteState = await page.locator('#setSheetNoteState').textContent();
       if (!/✓/.test(noteState || '')) fail(`${tag}: the sheet did not mark the stored note (got "${noteState}")`);
       const storedMeta = await storedFirstSet(page, 'Incline Barbell Press');
-      if (storedMeta?.restSec !== 75 || storedMeta?.note !== 'Belt on, paused') {
-        fail(`${tag}: per-set rest/note did not persist: ${JSON.stringify({ restSec: storedMeta?.restSec, note: storedMeta?.note })}`);
+      const restOverride = await storedRestOverride(page, 'Incline Barbell Press');
+      if (Number(restOverride) !== 75) {
+        fail(`${tag}: exercise rest did not persist on the lift (got ${JSON.stringify(restOverride)})`);
+      }
+      if (storedMeta?.restSec != null) {
+        fail(`${tag}: the row still pins its own restSec (${storedMeta.restSec}); rest belongs to the exercise`);
+      }
+      if (storedMeta?.note !== 'Belt on, paused') {
+        fail(`${tag}: per-set note did not persist: ${JSON.stringify({ note: storedMeta?.note })}`);
       }
       await page.click('#setSheet .sheet-close-btn');
       await page.waitForTimeout(250);

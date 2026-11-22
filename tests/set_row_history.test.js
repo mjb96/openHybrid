@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSetRow } from '../js/templates.js';
+import { ghostForRow } from '../js/workout/set-entry.js';
 
 test('a first-ever row may show a ghost target but never claims it as history', () => {
   const html = buildSetRow(
@@ -71,4 +72,34 @@ test('a completed set compares against the same set last session', () => {
     'kg', 'Back Squat', 80, 10, 10, { w: 85, r: 8 },
   );
   assert.match(same, /set-cmp--same/);
+});
+
+test('the ghost follows the previous set while the prescription stays the baseline', () => {
+  // Row 2 shows what the athlete just entered (100 × 8), but `data-prescribed`
+  // still carries the coach's 90 kg so true-adherence is not re-measured.
+  const html = buildSetRow(
+    { w: '', r: '', c: false }, 1, 'Back Squat', { w: 100, r: 8 },
+    'kg', 'Back Squat', 80, 10, null, null, null, null, { w: 90, r: 10 },
+  );
+  assert.match(html, /placeholder="100"/, 'the visible ghost is the previous set');
+  assert.match(html, /data-prescribed="90"/, 'the adherence baseline is unchanged');
+  assert.match(html, /data-ghost-default="90"/);
+});
+
+test('ghostForRow reads the nearest earlier working set, skipping warm-ups', () => {
+  const sets = [
+    { w: '40', r: '8', type: 'W', c: true },   // warm-up
+    { w: '100', r: '5', c: true },             // the working set to copy
+    { w: '', r: '', c: false },                // blank row before another warm-up
+    { w: '60', r: '10', type: 'W', c: true },
+    { w: '', r: '', c: false },                // the row being rendered
+  ];
+  assert.deepEqual(ghostForRow(sets, 4, { w: 90, r: 10 }), { w: '100', r: '5' });
+  assert.deepEqual(ghostForRow(sets, 2, { w: 90, r: 10 }), { w: '100', r: '5' });
+});
+
+test('ghostForRow falls back to the prescription when nothing was entered', () => {
+  assert.deepEqual(ghostForRow([{ w: '', r: '' }, { w: '', r: '' }], 1, { w: 90, r: 10 }), { w: 90, r: 10 });
+  assert.deepEqual(ghostForRow([], 0, { w: 90, r: 10 }), { w: 90, r: 10 });
+  assert.equal(ghostForRow([{ w: '100', r: '5' }], 0, null), null, 'the first row never ghosts itself');
 });

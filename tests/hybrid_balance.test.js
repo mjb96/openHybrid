@@ -48,6 +48,55 @@ const strengthDay = (weekStart, minutes = 60, rpe = 8) => weekWithDays([
 
 const runDay = (date, minutes = 60, rpe = 8) => ({ time: `${minutes}:00`, rpe: String(rpe) });
 
+test('sessions without an RPE still split the week by training time', () => {
+  // The reported defect: logging never forces an RPE, so a normal lifter has
+  // real sessions with zero sRPE. Minutes are measured data, not invented
+  // effort, and the basis says so.
+  const date = CURRENT_MONDAY;
+  const state = { weeks: {
+    '3': {
+      dates: { mon: date, tue: dayDate(date, 'tue') },
+      lifts: { mon: { Squat: [{ c: true, w: '100', r: '5' }] } },
+      gymStats: { mon: { time: '60' } }, // no gymRpe, no per-set RPE
+      runs: {},
+      runSessions: { tue: [{ sessionId: 'r1', time: '60:00' }] }, // no run RPE
+    },
+  } };
+  const model = buildHybridBalance(state, { today: '2026-07-14' });
+  assert.equal(model.basis, 'minutes');
+  assert.equal(model.basisLabel, 'Training time');
+  assert.equal(model.hasData, true, 'a session with a duration is data');
+  assert.equal(model.strengthPct, 50);
+  assert.equal(model.endurancePct, 50);
+  assert.equal(model.strengthMin, 60);
+  assert.equal(model.enduranceMin, 60);
+  assert.equal(model.status, 'balanced');
+});
+
+test('working sets with no recorded duration are unmeasured, never "no data"', () => {
+  const state = { weeks: {
+    '3': {
+      dates: { mon: CURRENT_MONDAY },
+      lifts: { mon: { Squat: [{ c: true, w: '100', r: '5' }] } },
+      runs: {},
+      runSessions: {},
+    },
+  } };
+  const model = buildHybridBalance(state, { today: CURRENT_MONDAY });
+  assert.equal(model.hasData, false);
+  assert.equal(model.basis, 'none');
+  assert.equal(model.status, 'unmeasured-strength');
+  assert.equal(model.coverage.strengthDurationMissing, true);
+  assert.equal(model.coverage.strengthSets, 1);
+});
+
+test('a week with no sessions at all stays an honest empty state', () => {
+  const model = buildHybridBalance({ weeks: {} }, { today: '2026-07-14' });
+  assert.equal(model.status, 'no-data');
+  assert.equal(model.basis, 'none');
+  assert.equal(model.hasData, false);
+});
+
 test('an even split is balanced, and percentages always add to 100', () => {
   const state = { weeks: {
     '3': weekWithDays([
@@ -62,9 +111,12 @@ test('an even split is balanced, and percentages always add to 100', () => {
   assert.equal(model.endurancePct, 50);
   assert.equal(model.strengthPct + model.endurancePct, 100);
   assert.equal(model.ratio, 1);
-  assert.equal(model.strengthMin, 480);
-  assert.equal(model.enduranceMin, 480);
-  assert.equal(model.totalMin, 960);
+  assert.equal(model.strengthLoad, 480);
+  assert.equal(model.enduranceLoad, 480);
+  assert.equal(model.totalLoad, 960);
+  assert.equal(model.basis, 'srpe');
+  assert.equal(model.strengthMin, 60);
+  assert.equal(model.enduranceMin, 60);
 });
 
 test('the split leans when one discipline owns most of the week', () => {
@@ -116,7 +168,8 @@ test('working sets without a session duration are an honest empty state, not an 
   assert.equal(model.status, 'unmeasured-strength');
   assert.equal(model.coverage.strengthDurationMissing, true);
   assert.ok(model.coverage.strengthSets > 0, 'the sets are still visible to the reader');
-  assert.equal(model.strengthMin, 0);
+  assert.equal(model.strengthLoad, 0);
+  assert.equal(model.strengthMin, 0, 'no session duration was recorded');
 });
 
 test('a week with no load is a true zero with no fabricated ratio', () => {
@@ -152,8 +205,8 @@ test('archived activations and one-off sessions count, because the date decides 
     'session:str_one_off': oneOff,
   } }, { today: '2026-07-14' });
   assert.equal(model.hasData, true);
-  assert.equal(model.strengthMin, 0, 'the archived week is in a prior calendar week');
-  assert.equal(model.enduranceMin, 480);
+  assert.equal(model.strengthLoad, 0, 'the archived week is in a prior calendar week');
+  assert.equal(model.enduranceLoad, 480);
   assert.equal(model.priorWeeksWithLoad, 1);
 });
 

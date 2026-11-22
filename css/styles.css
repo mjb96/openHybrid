@@ -10880,6 +10880,7 @@ html[data-theme="dark"][data-palette="ember"] {
 }
 .home-hy__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .home-hy__eyebrow { display: block; color: var(--text-muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.home-hy__basis { margin-left: 6px; color: var(--text-secondary); font-size: .6rem; font-weight: 700; letter-spacing: 0; text-transform: none; }
 .home-hy__status {
   padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border-light);
   color: var(--text-secondary); font-size: .66rem; font-weight: 800;

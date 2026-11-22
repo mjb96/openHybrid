@@ -13,6 +13,57 @@ function stateWith(day) {
   return { weeks: { '1': day } };
 }
 
+test('lifts keep the order the session was performed, not the heaviest first', () => {
+  const wd = {
+    dates: { mon: '2026-07-02' },
+    lifts: {
+      mon: {
+        'Squat': [{ w: 100, r: 5, c: true }],
+        'Bench Press': [{ w: 80, r: 5, c: true }, { w: 80, r: 5, c: true }],
+      },
+    },
+    runs: {},
+  };
+  // No liftOrder: stored insertion order is the only evidence of sequence.
+  // Volume would put Bench (800) ahead of Squat (500); the recap must not.
+  const r = buildSessionRecap(stateWith(wd), '1', 'mon');
+  assert.deepEqual(r.lifts.map((lift) => lift.name), ['Squat', 'Bench Press']);
+});
+
+test('an explicit liftOrder wins, including after a drag reorder', () => {
+  const wd = {
+    dates: { mon: '2026-07-02' },
+    liftOrder: { mon: ['Bench Press', 'Squat'] },
+    lifts: {
+      mon: {
+        'Squat': [{ w: 100, r: 5, c: true }],
+        'Bench Press': [{ w: 80, r: 5, c: true }],
+      },
+    },
+    runs: {},
+  };
+  const r = buildSessionRecap(stateWith(wd), '1', 'mon');
+  assert.deepEqual(r.lifts.map((lift) => lift.name), ['Bench Press', 'Squat']);
+});
+
+test('a lift missing from liftOrder stays after the ordered ones', () => {
+  const wd = {
+    dates: { mon: '2026-07-02' },
+    liftOrder: { mon: ['Squat'] },
+    lifts: {
+      mon: {
+        'Squat': [{ w: 100, r: 5, c: true }],
+        'Cable Fly': [{ w: 20, r: 12, c: true }],
+        'Leg Press': [{ w: 200, r: 10, c: true }],
+      },
+    },
+    runs: {},
+  };
+  const r = buildSessionRecap(stateWith(wd), '1', 'mon');
+  assert.equal(r.lifts[0].name, 'Squat');
+  assert.deepEqual(r.lifts.slice(1).map((lift) => lift.name), ['Cable Fly', 'Leg Press']);
+});
+
 test('summarises a strength session: tonnage, working sets, top lift + e1RM', () => {
   const wd = {
     dates: { mon: '2026-07-02' },

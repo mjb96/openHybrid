@@ -239,7 +239,18 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
       setList, previous, next,
     });
   }
-  lifts.sort((a, b) => b.volume - a.volume);
+  // Order the lifts the way the session was PERFORMED, not by tonnage. The
+  // volume sort put the biggest lift first, so the recap disagreed with the
+  // workout the athlete actually did. `liftOrder` is the cockpit's own order
+  // (program seeding, drag reorder, swap) and is the only stable record of it:
+  // sets carry no completion timestamp. Lifts missing from it keep their stored
+  // insertion order after the known ones (Array#sort is stable).
+  const liftOrder = Array.isArray(wd?.liftOrder?.[day]) ? wd.liftOrder[day] : [];
+  const orderIndex = (name) => {
+    const index = liftOrder.indexOf(name);
+    return index === -1 ? liftOrder.length : index;
+  };
+  lifts.sort((a, b) => orderIndex(a.name) - orderIndex(b.name));
   const muscles = Object.entries(muscleCredits)
     .map(([muscle, credits]) => ({ muscle, credits }))
     .sort((a, b) => b.credits - a.credits);

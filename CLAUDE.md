@@ -187,11 +187,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   BUTTON, not the number field — autofocusing `#bwSheetWeight` raised the mobile
   keyboard over the steppers.
 - Hybrid week on Home: `js/analytics/hybrid-balance.js` buckets
-  `dailyLoadBreakdownTimeline` (the one dated sRPE reader in
+  `dailyLoadBreakdownTimeline` (the one dated reader in
   `js/metrics/training-load.js`) into Monday-based calendar weeks and classifies
-  the strength/endurance share (balanced 40–60%, `status` + `trend`). Strength
-  sRPE needs a recorded session duration, so sets without one return
-  `unmeasured-strength` instead of a fabricated endurance-only split. The trend is
+  the strength/endurance share (balanced 40–60%, `status` + `trend`). The
+  currency is sRPE when the athlete records RPE, and TRAINING MINUTES when they
+  do not — logging never forces an RPE, so a normal lifter would otherwise see
+  "no load". `basis` is `'srpe' | 'minutes' | 'none'` and the card says "Split by
+  training time" for the fallback; minutes are measured (`gymStats.time` + run
+  durations), never invented effort. Working sets with neither RPE nor a
+  duration return `unmeasured-strength`, never `no-data`. The trend is
   pace-matched: an in-progress week is compared with the SAME weekdays in prior
   weeks. `js/home/hybrid-dashboard.js` renders the three Home cards from it plus
   `buildCalendarWeekStrength`, `calendarStrengthSummary` and
@@ -675,10 +679,19 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   affects VOLUME only: `each` doubles a dumbbell pair, `per-side` and legacy
   sets count once, and e1RM stays per-implement. Blank dumbbell rows default to
   Each (Per side when unilateral); legacy completed sets read as Both and are
-  never rewritten. `js/workout/load-basis.js` owns the helpers. Per-set
-  `restSec` (0 = no timer) outranks the plan/override/tier resolution; per-set
-  `note` (140 chars) is shown in the logger and recap. Both are additive and
-  recognised by the draft predicates. The per-set plate line
+  never rewritten. `js/workout/load-basis.js` owns the helpers. Rest chosen in
+  the SET SHEET is an EXERCISE preference: `setSetRest` writes the name-keyed
+  `settings.restOverrides` entry and clears the row's own `restSec`, so every set
+  of that lift — and the next session — resolves the same rest. A `restSec` that
+  was already stored on another set still outranks it (legacy/explicit rows are
+  never rewritten); the set sheet shows the resolved value, not "default".
+  Per-set `note` (140 chars) is shown in the logger and recap. Both are additive
+  and recognised by the draft predicates. A blank row's GHOST follows the
+  athlete: `ghostForRow` (set-entry) copies the nearest earlier non-warm-up
+  set's entered weight/reps, and a live input sync updates the next row. The
+  coach's target stays on the row as `data-prescribed` and is what `_numericPlaceholder`
+  reads for true-adherence, so the ghost can never be recorded as the
+  prescription. The per-set plate line
   (`js/workout/plate-hint-dom.js`) uses the entered/ghost weight and active
   profile and shows the load change since the previous row; it respects
   `settings.showPlateHints`. Rest settings also own `restPeriods.warmup`

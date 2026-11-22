@@ -23,6 +23,7 @@ import {
   defaultBasisForExercise, nextBasis, normalizeBasis,
 } from './load-basis.js';
 import { effortForSet, normalizeEffortRir } from './effort.js';
+import { getExerciseRestOverride, setExerciseRestOverride } from './exercise-config.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import {
   getState as _getState,
@@ -510,9 +511,11 @@ function _syncSetMetaRow(liftName, setIndex) {
   // The row states its rest as an attribute; the set sheet reads it back and
   // the accessibility label uses it. The visible control lives in the sheet, so
   // this must be updated here rather than by rewriting a button that no longer
-  // exists in the row.
-  const rest = Number(set.restSec);
-  row.setAttribute('data-rest-label', set.restSec == null
+  // exists in the row. A rest chosen in the sheet is now stored on the EXERCISE,
+  // so the row must label the resolved value, not "default".
+  const override = getExerciseRestOverride(_getState(), liftName);
+  const rest = set.restSec != null ? Number(set.restSec) : override;
+  row.setAttribute('data-rest-label', rest == null
     ? 'Rest default'
     : rest <= 0 ? 'Rest off' : `Rest ${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`);
   row.querySelector('.set-num-lbl')?.setAttribute(
@@ -537,8 +540,13 @@ function _syncSetMetaRow(liftName, setIndex) {
 export function setSetRest(liftName, setIndex, seconds) {
   const { sets } = _setAt(liftName, setIndex);
   if (!sets?.[setIndex]) return;
-  if (seconds == null) delete sets[setIndex].restSec;
-  else sets[setIndex].restSec = Math.max(0, Math.min(600, Math.round(Number(seconds) || 0)));
+  // Rest is an EXERCISE preference. Choosing it here remembers it on the lift,
+  // so every later set and the next session use it; the row's own restSec is
+  // cleared so it cannot pin a stale value. A restSec that was already stored on
+  // ANOTHER set still outranks the override — logged/legacy rows are not
+  // rewritten.
+  setExerciseRestOverride(_getState(), liftName, seconds == null ? null : seconds);
+  if ('restSec' in sets[setIndex]) delete sets[setIndex].restSec;
   _saveState(true);
   _syncSetMetaRow(liftName, setIndex);
 }
@@ -547,8 +555,8 @@ export async function editSetRest(liftName, setIndex) {
   const { sets } = _setAt(liftName, setIndex);
   if (!sets?.[setIndex]) return;
   const value = await numberPromptModal({
-    title: 'Rest after this set',
-    message: 'Seconds. 0 turns the timer off for this set; cancel keeps the current setting.',
+    title: `Rest for ${liftName}`,
+    message: 'Seconds. 0 turns the timer off for this exercise; cancel keeps the current setting. Remembered for this exercise.',
     label: 'Seconds',
     unit: 's',
     min: -1,

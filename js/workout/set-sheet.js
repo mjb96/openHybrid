@@ -24,6 +24,7 @@ import {
 } from './set-mutations.js';
 import { effectiveSetMode } from './set-shape.js';
 import { effortForSet, normalizeEffortRir } from './effort.js';
+import { getExerciseRestOverride } from './exercise-config.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
 import { getSelectedDay, getState } from './context.js';
@@ -101,7 +102,10 @@ function render(liftName, setIndex) {
   markActive(document.getElementById('setSheetMode'), 'data-mode', mode);
   markActive(document.getElementById('setSheetLoad'), 'data-mode', resolvedLoadMode(set, liftName));
   markActive(document.getElementById('setSheetBasis'), 'data-basis', basis || '');
-  markActive(document.getElementById('setSheetRest'), 'data-rest', set.restSec == null ? '-1' : String(Number(set.restSec)));
+  markActive(document.getElementById('setSheetRest'), 'data-rest', (() => {
+    const rest = set.restSec != null ? Number(set.restSec) : getExerciseRestOverride(getState(), liftName);
+    return rest == null ? '-1' : String(rest);
+  })());
   const effort = effortForSet(set);
   // Only a recorded rating lights a cell. A `''` RIR stays unselected instead
   // of coercing to 0, and an inferred failure keeps its own Failure button.

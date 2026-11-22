@@ -78,16 +78,17 @@ function classify(strengthPct, strengthSets) {
  * has already lived through, against the SAME weekdays in prior weeks. Without
  * this, every Monday reads as a huge "ease" against completed weeks.
  *
- * @param {Array<{strength:number[], endurance:number[]}>} buckets oldest first
+ * @param {Array<{loadByDay:number[], minByDay:number[]}>} weeks oldest first
  * @param {number} elapsedDays 1..7
+ * @param {'loadByDay'|'minByDay'} key
  */
-function paceMatchedTrend(buckets, elapsedDays) {
-  if (buckets.length < 2) return null;
-  const current = buckets[buckets.length - 1];
-  const cur = sum(current.strength.slice(0, elapsedDays)) + sum(current.endurance.slice(0, elapsedDays));
-  const priors = buckets
+function paceMatchedTrend(weeks, elapsedDays, key) {
+  if (weeks.length < 2) return null;
+  const current = weeks[weeks.length - 1];
+  const cur = sum(current[key].slice(0, elapsedDays));
+  const priors = weeks
     .slice(0, -1)
-    .map((bucket) => sum(bucket.strength.slice(0, elapsedDays)) + sum(bucket.endurance.slice(0, elapsedDays)))
+    .map((week) => sum(week[key].slice(0, elapsedDays)))
     .filter((value) => value > 0);
   if (!priors.length) return null;
   const priorAvg = sum(priors) / priors.length;
@@ -111,6 +112,11 @@ function emptyModel(weekStart, weekEnd) {
     weekEnd,
     weeks: [],
     priorWeeksWithLoad: 0,
+    basis: 'none',
+    basisLabel: '',
+    strengthLoad: 0,
+    enduranceLoad: 0,
+    totalLoad: 0,
     strengthMin: 0,
     enduranceMin: 0,
     totalMin: 0,
@@ -144,7 +150,14 @@ export function buildHybridBalance(state, options = {}) {
   const index = options.index || indexSlotsByDate(state, { tz });
   const timeline = dailyLoadBreakdownTimeline(state, { throughDate: today, tz, index });
 
-  /** @type {Map<string, {strength:number[], endurance:number[]}>} */
+  /**
+   * Two currencies, one decision. sRPE is the physiological currency, but it
+   * needs an RPE — optional when logging — so a lifter who never rates effort
+   * has real sessions with ZERO load. Minutes are the fallback: the time they
+   * actually trained. The chosen basis is reported so the card can say which.
+   *
+   * @type {Map<string, {loadS:number[], loadE:number[], minS:number[], minE:number[]}>}
+   */
   const buckets = new Map();
   for (const row of timeline) {
     const start = weekStartOf(row.date);
@@ -152,38 +165,71 @@ export function buildHybridBalance(state, options = {}) {
     const offset = daysBetween(start, row.date);
     if (offset == null || offset < 0 || offset >= DAYS_PER_WEEK) continue;
     const bucket = buckets.get(start) || {
-      strength: new Array(DAYS_PER_WEEK).fill(0),
-      endurance: new Array(DAYS_PER_WEEK).fill(0),
+      loadS: new Array(DAYS_PER_WEEK).fill(0),
+      loadE: new Array(DAYS_PER_WEEK).fill(0),
+      minS: new Array(DAYS_PER_WEEK).fill(0),
+      minE: new Array(DAYS_PER_WEEK).fill(0),
     };
-    bucket.strength[offset] += row.strength;
-    bucket.endurance[offset] += row.endurance;
+    bucket.loadS[offset] += row.strength;
+    bucket.loadE[offset] += row.endurance;
+    bucket.minS[offset] += row.strengthMin || 0;
+    bucket.minE[offset] += row.enduranceMin || 0;
     buckets.set(start, bucket);
   }
 
-  const ordered = [];
-  const weeks = [];
+  // Assemble both currencies per week first; the basis is chosen afterwards so
+  // every week is measured the same way.
+  const raw = [];
   for (let i = 0; i < windowWeeks; i++) {
     const weekStart = addDaysISO(firstWeekStart, i * DAYS_PER_WEEK);
-    const bucket = buckets.get(weekStart) || { strength: [], endurance: [] };
-    ordered.push(bucket);
-    const strengthMin = sum(bucket.strength);
-    const enduranceMin = sum(bucket.endurance);
-    const totalMin = strengthMin + enduranceMin;
-    const split = splitPercent(strengthMin, enduranceMin);
-    weeks.push({
+    const bucket = buckets.get(weekStart) || { loadS: [], loadE: [], minS: [], minE: [] };
+    const strengthLoad = sum(bucket.loadS);
+    const enduranceLoad = sum(bucket.loadE);
+    const strengthMin = sum(bucket.minS);
+    const enduranceMin = sum(bucket.minE);
+    raw.push({
       weekStart,
       weekEnd: addDaysISO(weekStart, DAYS_PER_WEEK - 1),
       isCurrent: weekStart === currentWeekStart,
-      strengthMin: round1(strengthMin),
-      enduranceMin: round1(enduranceMin),
-      totalMin: round1(totalMin),
-      ...split,
+      strengthLoad,
+      enduranceLoad,
+      strengthMin,
+      enduranceMin,
+      loadByDay: new Array(DAYS_PER_WEEK).fill(0)
+        .map((_, day) => (bucket.loadS[day] || 0) + (bucket.loadE[day] || 0)),
+      minByDay: new Array(DAYS_PER_WEEK).fill(0)
+        .map((_, day) => (bucket.minS[day] || 0) + (bucket.minE[day] || 0)),
     });
   }
 
-  const current = weeks[weeks.length - 1] || null;
+  const current = raw[raw.length - 1] || null;
   if (!current) return emptyModel(currentWeekStart, addDaysISO(currentWeekStart, 6));
 
+  const weekTotal = (week, key) => week.strengthLoad + week.enduranceLoad;
+  let basis = 'none';
+  if (weekTotal(current) > 0) basis = 'srpe';
+  else if (current.strengthMin + current.enduranceMin > 0) basis = 'minutes';
+  else if (raw.some((week) => weekTotal(week) > 0)) basis = 'srpe';
+  else if (raw.some((week) => week.strengthMin + week.enduranceMin > 0)) basis = 'minutes';
+
+  const shareFor = (week) => (basis === 'minutes'
+    ? splitPercent(week.strengthMin, week.enduranceMin)
+    : basis === 'srpe'
+      ? splitPercent(week.strengthLoad, week.enduranceLoad)
+      : { strengthPct: null, endurancePct: null });
+
+  const weeks = raw.map((week) => ({
+    weekStart: week.weekStart,
+    weekEnd: week.weekEnd,
+    isCurrent: week.isCurrent,
+    strengthLoad: round1(week.strengthLoad),
+    enduranceLoad: round1(week.enduranceLoad),
+    strengthMin: round1(week.strengthMin),
+    enduranceMin: round1(week.enduranceMin),
+    ...shareFor(week),
+  }));
+
+  const currentShare = shareFor(current);
   const strengthWeek = buildCalendarWeekStrength(state, {
     today,
     weekStart: currentWeekStart,
@@ -192,38 +238,57 @@ export function buildHybridBalance(state, options = {}) {
   });
   const strengthSets = strengthWeek.totalWorkingSets || 0;
 
-  const status = classify(current.strengthPct, strengthSets);
+  // A week with working sets but no measurable load is NOT "no data": the
+  // athlete trained, the session simply lacks a duration/RPE to measure it.
+  const status = currentShare.strengthPct == null && strengthSets > 0
+    ? 'unmeasured-strength'
+    : classify(currentShare.strengthPct, strengthSets);
   const elapsedDays = clamp((daysBetween(currentWeekStart, today) ?? 0) + 1, 1, DAYS_PER_WEEK);
-  const trend = status === 'no-data' ? null : paceMatchedTrend(ordered, elapsedDays);
+  const trend = basis === 'none'
+    ? null
+    : paceMatchedTrend(raw, elapsedDays, basis === 'minutes' ? 'minByDay' : 'loadByDay');
 
+  const currentTotal = basis === 'minutes'
+    ? current.strengthMin + current.enduranceMin
+    : basis === 'srpe' ? weekTotal(current) : 0;
   const modalities = {
-    strength: weeks.some((week) => week.strengthMin > 0),
-    endurance: weeks.some((week) => week.enduranceMin > 0),
+    strength: weeks.some((week) => (basis === 'minutes' ? week.strengthMin : week.strengthLoad) > 0),
+    endurance: weeks.some((week) => (basis === 'minutes' ? week.enduranceMin : week.enduranceLoad) > 0),
   };
   const priorWeeksWithLoad = weeks
     .slice(0, -1)
-    .filter((week) => week.totalMin > 0).length;
+    .filter((week) => (basis === 'minutes'
+      ? week.strengthMin + week.enduranceMin
+      : week.strengthLoad + week.enduranceLoad) > 0).length;
 
   return {
     weekStart: currentWeekStart,
     weekEnd: current.weekEnd,
     weeks,
     priorWeeksWithLoad,
-    strengthMin: current.strengthMin,
-    enduranceMin: current.enduranceMin,
-    totalMin: current.totalMin,
-    strengthPct: current.strengthPct,
-    endurancePct: current.endurancePct,
-    ratio: current.enduranceMin > 0
-      ? Math.round((current.strengthMin / current.enduranceMin) * 100) / 100
-      : null,
+    basis,
+    basisLabel: basis === 'minutes' ? 'Training time' : basis === 'srpe' ? 'Session load' : '',
+    strengthLoad: round1(current.strengthLoad),
+    enduranceLoad: round1(current.enduranceLoad),
+    totalLoad: round1(weekTotal(current)),
+    strengthMin: round1(current.strengthMin),
+    enduranceMin: round1(current.enduranceMin),
+    totalMin: round1(current.strengthMin + current.enduranceMin),
+    strengthPct: currentShare.strengthPct,
+    endurancePct: currentShare.endurancePct,
+    ratio: (() => {
+      const s = basis === 'minutes' ? current.strengthMin : current.strengthLoad;
+      const e = basis === 'minutes' ? current.enduranceMin : current.enduranceLoad;
+      return e > 0 ? Math.round((s / e) * 100) / 100 : null;
+    })(),
     status,
     statusLabel: STATUS_LABELS[status] || STATUS_LABELS['no-data'],
     trend,
-    hasData: current.totalMin > 0,
+    hasData: currentTotal > 0,
     modalities,
     coverage: {
-      // Working sets exist but none of them carry a session duration.
+      // Working sets exist but nothing measures them: no duration, so neither
+      // sRPE nor minutes can split the week.
       strengthDurationMissing: status === 'unmeasured-strength',
       strengthSets,
     },
