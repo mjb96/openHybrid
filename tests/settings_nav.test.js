@@ -46,6 +46,11 @@ test('an unknown card label falls back to Training instead of disappearing', () 
   assert.equal(settingsGroupForLabel(''), 'training');
   assert.equal(settingsGroupForLabel(null), 'training');
   assert.equal(settingsGroupForLabel(undefined), 'training');
+  // Inherited Object.prototype keys are not labels. A truthiness lookup used to
+  // return the constructor function for these.
+  for (const inherited of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    assert.equal(settingsGroupForLabel(inherited), 'training', `${inherited} must fall back to Training`);
+  }
 });
 
 test('every top-level section in index.html maps to a real tab', () => {
@@ -79,4 +84,36 @@ test('search matches visible text, accessible names, tooltips and option labels'
   assert.equal(sectionMatchesQuery(section, 'leg press'), true, 'option text');
   assert.equal(sectionMatchesQuery(section, 'barbell'), false, 'no false positive');
   assert.equal(sectionMatchesQuery(null, 'anything'), false, 'missing section');
+});
+
+test('module-disabled subtrees match neither their text nor their accessible names', () => {
+  const dom = new JSDOM(`<div class="settings-section">
+    <div class="settings-row" data-module="running">
+      <span>Threshold Pace</span>
+      <input aria-label="Threshold pace help">
+      <span title="Pace tooltip"></span>
+    </div>
+    <div class="settings-row"><span>Week Starts On</span></div>
+  </div>`);
+  const section = dom.window.document.querySelector('.settings-section');
+  const runningOn = (id) => id !== 'running';
+
+  assert.equal(sectionMatchesQuery(section, 'threshold pace', { isModuleEnabled: runningOn }), false,
+    'hidden text cannot match');
+  assert.equal(sectionMatchesQuery(section, 'threshold pace help', { isModuleEnabled: () => true }), true,
+    'the same aria-label matches when the module is on');
+  assert.equal(sectionMatchesQuery(section, 'pace tooltip', { isModuleEnabled: runningOn }), false,
+    'a hidden title cannot match');
+  assert.equal(sectionMatchesQuery(section, 'week starts', { isModuleEnabled: runningOn }), true,
+    'enabled content still matches');
+});
+
+test('a card whose own module is off never matches', () => {
+  const dom = new JSDOM(`<div class="settings-section" data-module="fasting">
+    <span>Default Protocol</span>
+  </div>`);
+  const section = dom.window.document.querySelector('.settings-section');
+  const fastingOn = (id) => id !== 'fasting';
+  assert.equal(sectionMatchesQuery(section, 'default protocol', { isModuleEnabled: fastingOn }), false);
+  assert.equal(sectionMatchesQuery(section, 'default protocol', { isModuleEnabled: () => true }), true);
 });

@@ -53,7 +53,10 @@ export const SETTINGS_GROUP_BY_LABEL = Object.freeze({
  */
 export function settingsGroupForLabel(label) {
   const key = String(label || '').trim();
-  return SETTINGS_GROUP_BY_LABEL[key] || 'training';
+  // `Object.hasOwn`, not a truthiness lookup: "constructor" and "toString" are
+  // inherited from Object.prototype and would otherwise resolve to a function
+  // instead of falling back to Training.
+  return Object.hasOwn(SETTINGS_GROUP_BY_LABEL, key) ? SETTINGS_GROUP_BY_LABEL[key] : 'training';
 }
 
 /**
@@ -62,22 +65,53 @@ export function settingsGroupForLabel(label) {
  * `title`, and `<option>` labels. A control whose visible label is short (for
  * example an equipment profile selector listing "Home") must still be findable
  * by its accessible name.
+ *
+ * Module-disabled subtrees are invisible, so their words must not match: a
+ * Running switch that is off cannot make "threshold pace" return a blank card.
+ * `isModuleEnabled` receives the module id; the walk skips every element whose
+ * nearest disabled `[data-module]` ancestor (including the card itself) owns it.
+ *
  * @param {Element|null|undefined} section
  * @param {string|null|undefined} query
+ * @param {{ isModuleEnabled?: (moduleId: string) => boolean }} [options]
  * @returns {boolean}
  */
-export function sectionMatchesQuery(section, query) {
+export function sectionMatchesQuery(section, query, { isModuleEnabled } = {}) {
   const needle = String(query || '').trim().toLowerCase();
   if (!section) return false;
   if (!needle) return true;
 
-  const parts = [section.textContent || ''];
+  const enabled = typeof isModuleEnabled === 'function' ? isModuleEnabled : () => true;
+  const inDisabledSubtree = (element) => {
+    let current = element;
+    while (current && current.nodeType === 1) {
+      if (current.hasAttribute('data-module') && !enabled(current.getAttribute('data-module'))) return true;
+      if (current === section) break;
+      current = current.parentElement;
+    }
+    return false;
+  };
+  if (inDisabledSubtree(section)) return false;
+
+  const parts = [];
+  const doc = section.ownerDocument;
+  if (doc?.createTreeWalker) {
+    const walker = doc.createTreeWalker(section, 4); // NodeFilter.SHOW_TEXT
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!inDisabledSubtree(node.parentElement)) parts.push(node.nodeValue || '');
+    }
+  } else {
+    parts.push(section.textContent || '');
+  }
+
   const ownLabel = section.getAttribute?.('aria-label');
   if (ownLabel) parts.push(ownLabel);
   const ownTitle = section.getAttribute?.('title');
   if (ownTitle) parts.push(ownTitle);
 
   section.querySelectorAll('[aria-label], [title], option').forEach((node) => {
+    if (inDisabledSubtree(node)) return;
     const ariaLabel = node.getAttribute('aria-label');
     if (ariaLabel) parts.push(ariaLabel);
     const title = node.getAttribute('title');

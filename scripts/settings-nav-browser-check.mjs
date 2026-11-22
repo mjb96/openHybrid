@@ -169,16 +169,19 @@ try {
   ok((await visibleLabel()).includes('Equipment'), 'search matches an accessible name');
   await page.fill('#settingsSearch', '');
 
-  // A card switched off with a feature module must not count as a result.
-  const fastingModule = page.locator('.settings-row', { has: page.locator('[data-module-toggle="fasting"]') }).locator('.settings-switch');
-  await fastingModule.click();
-  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'off');
-  await page.fill('#settingsSearch', 'default protocol');
+  // A row switched off with a feature module is invisible, so its words must
+  // not return a blank card that looks like a broken search.
+  const runningModule = page.locator('.settings-row', { has: page.locator('[data-module-toggle="running"]') }).locator('.settings-switch');
+  await runningModule.click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'off');
+  await page.fill('#settingsSearch', 'threshold pace');
   ok(await page.locator('#settingsNoResults').isVisible(),
-    'a module-hidden card does not suppress the no-results explanation');
+    'a module-disabled row cannot suppress the no-results explanation');
+  ok((await page.locator('#settingsPanel .settings-section:not([hidden])').count()) === 0,
+    'a module-off-only term leaves no blank card visible');
   await page.fill('#settingsSearch', '');
-  await fastingModule.click();
-  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'on');
+  await runningModule.click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'on');
 
   await page.evaluate(() => { document.querySelector('#settingsPanel .settings-body').scrollTop = 600; });
   await page.fill('#settingsSearch', 'theme');

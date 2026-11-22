@@ -145,7 +145,9 @@ function _applySettingsFilter() {
   let shown = 0;
   _settingsSections().forEach((section) => {
     const inGroup = !!query || section.dataset.settingsGroup === _settingsGroup;
-    const matches = sectionMatchesQuery(section, query);
+    const matches = sectionMatchesQuery(section, query, {
+      isModuleEnabled: (moduleId) => moduleEnabled(_getState?.(), moduleId),
+    });
     section.hidden = !(inGroup && matches);
     // The no-results state must agree with what the athlete can actually see:
     // a card hidden by a module switch does not count just because its words
