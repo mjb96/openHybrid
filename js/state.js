@@ -24,6 +24,7 @@ import { migrateLegacyRunSessions, runSessionsForDay } from './state/run-session
 import { isCompletedSet, isValidWorkingSet } from './set-utils.js';
 import { sessionSetPlan, clearSessionSetPlan, clearDaySetPlans } from './workout/set-plan.js';
 import { ensureEquipmentProfiles, projectActiveEquipmentProfile } from './equipment-profiles.js';
+import { ensureRoutines } from './routines/store.js';
 import {
   beginRecoveryGate,
   reconcileRecoveryGate,
@@ -50,6 +51,10 @@ export let appState = {
   exerciseStats: {},
   customExercises: [],
   customPrograms: [],
+  // Reusable session templates and their folders. Deliberately NOT programs:
+  // they never resolve through getProgramById and never own a week slot.
+  routines: [],
+  libraryFolders: [],
   bodyWeightLog: [],
   bodyMeasurements: [],
   thresholdPaceSeconds: null,
@@ -837,7 +842,8 @@ export async function pullEngineDataFromStorage() {
   const baseDefaults = {
     schemaVersion: 0, // 0 = legacy/unstamped; migrateState() upgrades + stamps on load
     currentWeek: '1', activeProgramId: 'hybrid_engine', weekStartedAt: null,
-    weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [], bodyWeightLog: [],
+    weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [],
+    routines: [], libraryFolders: [], bodyWeightLog: [],
     thresholdPaceSeconds: null, deloadApplied: null, _deloadDismissedWeek: null,
     streakData: { current: 0, longest: 0, lastActivityDate: null },
     goalData: { milestones: [], completedCount: 0 },
@@ -887,6 +893,9 @@ export async function pullEngineDataFromStorage() {
   if (!appState.weeks) appState.weeks = {};
   if (!appState.customExercises) appState.customExercises = [];
   if (!appState.customPrograms) appState.customPrograms = [];
+  // Routine arrays are additive and independent of the programme; this keeps
+  // imports/backups from an older build readable before the migration stamps.
+  ensureRoutines(appState);
   if (!appState.bodyWeightLog) appState.bodyWeightLog = [];
   if (appState.thresholdPaceSeconds === undefined) appState.thresholdPaceSeconds = null;
   if (appState.deloadApplied === undefined) appState.deloadApplied = null;

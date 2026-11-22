@@ -39,7 +39,7 @@ import {
   dismissDeloadSuggestion,
   applyDeloadToCurrentWeek,
 } from './state.js';
-import { confirmModal } from './ui/confirm-modal.js';
+import { confirmModal, textPromptModal } from './ui/confirm-modal.js';
 import { paintIcons, icon as svgIcon } from './ui/icons.js';
 import { closeManagedModal, initModalStack, openManagedModal, requestCloseTopModal } from './ui/modal-stack.js';
 import { initSentry } from './monitoring/sentry.js';
@@ -116,6 +116,9 @@ import {
   clearActiveOneOffSession, createOneOffStrengthSession,
 } from './workout/one-off-session.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
+import { buildRoutineFromSession } from './routines/model.js';
+import { ensureRoutines, removeRoutine } from './routines/store.js';
+import { showUndo } from './ui/undo-bar.js';
 
 document.addEventListener('app:modules-changed', () => {
   try { hydrateCurrentView(); } catch (err) { console.warn('Module view refresh failed.', err); }
@@ -372,6 +375,52 @@ export function copyPastWorkout(activityId) {
   saveStateToLocalStorage(true);
   closeProgramWorkoutPicker();
   launchActiveWorkoutCockpit();
+}
+
+// Save a finished strength session as a reusable ROUTINE. A routine is a session
+// template, not a programme: it is appended to its own root array (never
+// customPrograms), writes no week slot, and leaves the active programme and all
+// logged history exactly where they are. History stays open behind the prompt.
+export async function saveActivityAsRoutine(activityId) {
+  const menu = document.getElementById('activityActionMenu');
+  if (menu) menu.hidden = true;
+  document.querySelector('[data-action="toggle-activity-menu"]')?.setAttribute('aria-expanded', 'false');
+
+  const row = buildActivityHistory(appState).find((item) => item.kind === 'strength' && item.id === activityId);
+  const sourceWeek = row && appState.weeks?.[row.week];
+  if (!row || !sourceWeek) { showToast('That workout could not be found', true); return; }
+
+  // Suggest the program day's real name ("Push A") rather than the generic
+  // "Strength Workout" fallback, then let the athlete name it.
+  const programTitle = getProgramById(sourceWeek.programId || null)?.days?.[row.day]?.title;
+  const suggested = row.title !== 'Strength Workout'
+    ? row.title
+    : (programTitle && programTitle !== 'Rest' ? programTitle : 'My routine');
+  const name = await textPromptModal({
+    title: 'Save as routine',
+    message: 'Keeps this session’s exercises, sets, loads and rest so you can start it again in one tap. Your program and logged history stay unchanged.',
+    label: 'Routine name',
+    value: suggested,
+    maxLength: 60,
+    confirmLabel: 'Save routine',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A routine needs a name', true); return; }
+
+  const routine = buildRoutineFromSession(appState, sourceWeek, row.day, {
+    name, activityId: row.id,
+  });
+  if (!routine) { showToast('This workout has no completed working sets to save', true); return; }
+
+  ensureRoutines(appState);
+  appState.routines.push(routine);
+  await saveStateToLocalStorage(true);
+  showToast(`“${routine.name}” saved as a routine`);
+  showUndo('Routine saved', async () => {
+    removeRoutine(appState, routine.id);
+    await saveStateToLocalStorage(true);
+    showToast('Routine removed');
+  }, () => {});
 }
 
 // Quick Start (from Home): begin a GPS walk/run untethered from the program on
@@ -1132,6 +1181,12 @@ document.addEventListener('click', (e) => {
   else if (action === 'show-copy-workouts') showCopyWorkouts();
   else if (action === 'show-program-workouts') openProgramWorkoutPicker();
   else if (action === 'copy-past-workout') copyPastWorkout(target.getAttribute('data-activity-id'));
+  else if (action === 'save-as-routine') {
+    saveActivityAsRoutine(target.getAttribute('data-activity-id')).catch((error) => {
+      console.warn('Save as routine failed:', error);
+      showToast('That routine could not be saved', true);
+    });
+  }
   else if (action === 'coach-ask') answerCoachOnHome(target.getAttribute('data-q'));
   else if (action === 'switch-browser-tab') switchBrowserSectionTab(target.getAttribute('data-tab'));
   

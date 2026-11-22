@@ -96,8 +96,9 @@ upgrade have landed:
 - Body composition stops at bodyweight plus six tape sites. There is no body fat
   and no visual history, which is the one place a lifter most expects a
   before/after.
-- History can repeat, edit, delete and share a session, but cannot turn one into
-  a reusable routine, and routines have no folders.
+- History can repeat, edit, delete and share a session, and it can now save one
+  as a reusable routine, but a saved routine cannot yet be started and routines
+  have no folders.
 - Reports stop at the month. Nothing marks a year.
 - Android has no live activity and no widgets, so the phone's own surfaces are
   blind to a session in progress.
@@ -356,13 +357,15 @@ what it does not carry.
 
 ### Phase 4 — Organisation
 
-**Status: LATER.** **Goal:** routines become a first-class library, and a good
+**Status: ACTIVE.** **Goal:** routines become a first-class library, and a good
 session becomes reusable in one action.
 
 Features: P11, S5, S6.
 
 1. **Save as routine** from a History detail, building a routine from the
-   session's actual exercises, sets and rest.
+   session's actual exercises, sets and rest. *Data + action landed (slice 1):
+   root `state.routines`/`state.libraryFolders`, schema v14, and one History
+   action with Undo. Starting a routine and the library surfaces are next.*
 2. **Copy, edit and delete** with Undo — verify the existing actions and close
    the gaps rather than adding a second action row.
 3. **Routine folders** — create, rename, delete, reorder, assign, undo.
@@ -637,6 +640,26 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Routines slice 1: save a workout as a routine.**
+  - A finished strength session can now be saved as a reusable routine from
+    History's action menu. It keeps the session's exercises in order, the count
+    of completed working sets, the heaviest working load, the rep target, the
+    shape (reps / hold / carry) and the rest — and deliberately drops completion
+    flags, PR badges, warm-ups, role stamps, effort, notes and gym stats.
+  - Routines live in new root `routines`/`libraryFolders` arrays (schema v14)
+    and are not programs: they never enter `customPrograms`, never resolve
+    through `getProgramById`, and write no week slot, so saving one cannot touch
+    logged training or the active program. `routineSourceWeek` turns a routine
+    back into the copy shape `createOneOffStrengthSession` already consumes.
+  - The action suggests the program day's name, saves immediately and offers
+    Undo. There is no Plans routine surface yet.
+  - Validation: 11 routine-model tests (exercise order, working-set count,
+    tr→r fallback, rest precedence, shape round-trip, exclusions, zero-set
+    refusal, one-off copy, store repair, full export/import round-trip), a v14
+    migration test, the full node suite, typecheck, smoke, precache and workflow
+    gates.
+  - Next: a routine list and "Start routine", then folders.
 
 - **2026-11-22 — Plans hierarchy: active plan first, one search, real card art.**
   - One session, four commits: the search-heading security fix, the active-plan

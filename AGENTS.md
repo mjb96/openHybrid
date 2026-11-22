@@ -86,6 +86,20 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   into a fresh one-off session (values kept, completion cleared) via
   `createOneOffStrengthSession`. Train and Progress link here; they do not keep
   a competing calendar. The old `js/home/activity-calendar.js` was removed.
+- Routines: `js/routines/store.js` owns the root `state.routines` /
+  `state.libraryFolders` arrays (v13→v14 seeds them) and mints `rtn_`/`fld_` ids;
+  `js/routines/model.js` builds a routine from a finished History session
+  (`buildRoutineFromSession`) and returns a copyable week for
+  `createOneOffStrengthSession` (`routineSourceWeek`). A routine is a reusable
+  SESSION TEMPLATE, never a program: it must never enter `customPrograms`, resolve
+  through `getProgramById`/`resolveProgramForState`, render as a `.prog-card`, or
+  call `startProgramActivation`/`reseedActiveProgramIntoWeek`; it writes no
+  `state.weeks`, `currentWeek` or `activeProgramId`. `prescriptions` is
+  authoritative for sets/reps/load/rest while `days[].lifts` stays bare strings.
+  Only completed working sets are saved — never completion flags, PR badges,
+  warm-ups, role stamps, effort, notes or gym stats. History's action menu owns
+  the one "Save as routine" action (name prompt → append → save → Undo); there is
+  no Plans routine surface yet.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported

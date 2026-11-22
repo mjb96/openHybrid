@@ -394,9 +394,18 @@ const MIGRATIONS = [
       state.settings.measurementUnit = state.settings.weightUnit === 'lbs' ? 'in' : 'cm';
     }
   },
+  // v13 → v14: routines are reusable SESSION TEMPLATES and live in their own root
+  // arrays. They are not programmes, so they never enter `customPrograms` and
+  // every existing programme, week and logged set is untouched. Both arrays are
+  // seeded (and repaired if a snapshot carried a non-array) so readers can rely
+  // on `.length` without guarding.
+  (state) => {
+    if (!Array.isArray(state.routines)) state.routines = [];
+    if (!Array.isArray(state.libraryFolders)) state.libraryFolders = [];
+  },
 ];
 
-export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 13
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 14
 
 /** Error raised when a state upgrade cannot safely commit. */
 export class StateMigrationError extends Error {
@@ -513,6 +522,11 @@ function validateStep(state, version) {
     if (!bands || bands.L !== 10 || bands.M !== 20 || bands.H !== 30) {
       throw new Error('Resistance-band weights are not canonical');
     }
+  }
+
+  if (version === 14) {
+    if (!Array.isArray(state.routines)) throw new Error('Routine library must be an array');
+    if (!Array.isArray(state.libraryFolders)) throw new Error('Routine folders must be an array');
   }
 }
 
