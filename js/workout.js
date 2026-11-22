@@ -769,7 +769,10 @@ export function renderWorkout() {
   // "No lifting scheduled today".
   const timerKey = workoutSessionKey(appState, wk, selectedDay);
   const timerBound = bindWorkoutTimerSession(timerKey);
-  const timerRunning = timerBound && getWorkoutElapsedSeconds(timerKey) > 0;
+  // A BOUND timer is a running session. The old `elapsed > 0` test made the
+  // Start CTA reappear for the first second (a start renders at 0s), so a
+  // one-tap start showed the button again immediately after starting.
+  const timerRunning = timerBound;
   const sessionActive = timerBound || explicitSessionStatus(weekData, selectedDay) === SESSION_STATUS.IN_PROGRESS;
   document.getElementById('view-workout')?.classList.toggle('cockpit-session-active', sessionActive);
   const activeHead = document.getElementById('cockpitActiveHead');

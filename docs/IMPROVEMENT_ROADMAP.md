@@ -96,8 +96,9 @@ upgrade have landed:
 - Body composition stops at bodyweight plus six tape sites. There is no body fat
   and no visual history, which is the one place a lifter most expects a
   before/after.
-- History can repeat, edit, delete and share a session, but cannot turn one into
-  a reusable routine, and routines have no folders.
+- History can repeat, edit, delete and share a session, and it can save one as a
+  reusable routine; routines can be started and filed into folders, but the
+  routine library has no categories or filters yet.
 - Reports stop at the month. Nothing marks a year.
 - Android has no live activity and no widgets, so the phone's own surfaces are
   blind to a session in progress.
@@ -356,19 +357,34 @@ what it does not carry.
 
 ### Phase 4 — Organisation
 
-**Status: LATER.** **Goal:** routines become a first-class library, and a good
-session becomes reusable in one action.
+**Status: ACTIVE — routines landed, the routine library remains.** **Goal:**
+routines become a first-class library, and a good session becomes reusable in
+one action.
 
 Features: P11, S5, S6.
 
+Implemented in the routines slice: save a finished History session as a routine
+(`state.routines`, schema v14), list it in Plans → My Plans and Start it as a
+one-off session, and organise routines into ordered folders
+(`state.libraryFolders`) with Undo. What remains is item 4's **routine library**:
+single-routine categories and filters (programme browsing already exists through
+Plans).
+
 1. **Save as routine** from a History detail, building a routine from the
-   session's actual exercises, sets and rest.
+   session's actual exercises, sets and rest. *Landed: History "Save as routine"
+   (root `state.routines`/`state.libraryFolders`, schema v14, Undo) and the
+   Plans → My Plans routine list — Start, Rename, Delete with Undo, a badge that
+   counts routines, and an honest summary line. Categories and filters are next.*
 2. **Copy, edit and delete** with Undo — verify the existing actions and close
    the gaps rather than adding a second action row.
 3. **Routine folders** — create, rename, delete, reorder, assign, undo.
+   *Landed: sortOrder-ordered folder sections plus an Unfiled bucket, a `•••`
+   folder menu with Move up/down, and a Move-to-folder sheet. Deleting a folder
+   files its routines under Unfiled and Undo restores the folder and membership.*
 4. **Routine library** — categories (at home, travel, dumbbells, band,
    cardio/HIIT, gym, bodyweight, suspension), filters, and saving either a whole
-   programme or a single routine.
+   programme or a single routine. *Landed: saving a single routine from History.
+   Remaining: categories and filters for routines.*
 
 **Data rules:** a plan-changing edit snapshots the PLAN only (`days` +
 `weeklyVolModifiers`), never `state.weeks`, so an Undo can never rewrite logged
@@ -629,14 +645,150 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Navigation | Four intent-led destinations — Home, Train, Progress, Plans — with stable legacy route IDs and origin-aware drilldown Back behaviour |
 | Home | One week surface: optional rail, pinned Today decision, inline day recaps with heat map, bodyweight, one insight, quick actions |
 | Training | Planned/one-off strength, running, set logging, timers, swaps, supersets, bodyweight modes, session completion, focused live-run surface |
-| History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share |
-| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
+| History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share, save as routine |
+| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder, routine list with Start and folders |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
+| Quality | 2,104 node tests, typecheck, smoke, precache/workflow gates, 44 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Routines: save, start and organise reusable workouts (six
+  commits).**
+  - `8652ec7` **save** — History's action menu saves a finished strength session
+    as a routine: exercises in order, completed working sets, heaviest working
+    load, rep target, set shape and rest. Completion flags, PR badges, warm-ups,
+    role stamps, effort, notes and gym stats are deliberately dropped. Routines
+    live in root `state.routines` / `state.libraryFolders` (schema v14) and are
+    never programmes: they do not enter `customPrograms`, resolve through
+    `getProgramById`, render as `.prog-card` or write a week/activation field.
+  - `a9ae2e9` **load identity + import validation** — a bodyweight or assisted
+    set keeps no derived weight (`bw`/`band`/`loadMode` survive), a banded set
+    keeps the band as its load, and a legacy dumbbell set records its pair basis
+    so the pair is not re-read as one bell. Export/import validates, bounds and
+    repairs routines and folders; the import preview counts them.
+  - `f1e9505` **list and start** — Plans → My Plans leads with routines; Start
+    copies `routineSourceWeek` into a one-off `session:` week without touching
+    `activeProgramId`, `currentWeek` or the logged program week. Rename and
+    Delete (+ Undo) live in the `•••` menu.
+  - `ee0b5be` **one-tap start** — the one-off is stamped `in_progress`, the
+    session clock is bound and running, and the cockpit opens in active mode
+    through `beginActiveWorkoutSession`; there is no second start path.
+  - `b99875e` **folders** — ordered folder sections plus an Unfiled bucket with
+    one-way membership on `routine.folderId`; create, rename, delete, Move
+    up/down and Move to folder, with Undo that restores the folder and every
+    member's membership.
+  - `2f1f0bc` **review fixes** — display-order normalisation, a 60-lift /
+    500-routine bound that import can keep, required prescriptions per listed
+    lift, rep-target/anchor pairing, and a Start guard that refuses while another
+    workout is open and offers Resume instead.
+  - Activation isolation holds throughout: no routine action calls
+    `startProgramActivation` or `reseedActiveProgramIntoWeek`, and logged program
+    weeks stay byte-identical after saving, listing, starting and filing.
+  - Validation: 2,104 node tests, typecheck, smoke, precache and workflow gates,
+    and 44/44 real-Chromium checks. Screenshots come from
+    `scripts/routines-browser-check.mjs --screenshots=<dir>`: `routine-card.png`,
+    `routine-start-active.png`, `routine-folders.png`.
+  - Next: routine-library categories and filters (Phase 4, item 4).
+
+- **2026-11-22 — Folder order, bounds and the active-session guard.**
+  - Folder order is now display order everywhere: `normaliseFolderOrder` sorts by
+    `sortOrder` then name before renumbering, `deleteFolder` snapshots the
+    display index, and `restoreFolder` inserts into the display list at that
+    index and renumbers positionally. Undo restores the exact section order (the
+    browser check asserts the DOM order, not just the count).
+  - A new folder normalises an imported `10,20` library first, so it appends last
+    with the next dense number. The builder clamps to 60 lifts and the save path
+    refuses a 501st routine, so the app cannot write a record its own import
+    drops; the rep target now pairs with its anchor set (`tr` then `r`, then any
+    `tr`, then any `r`); imported routines must have a prescription for every
+    listed lift and at least one lift overall; the move sheet files an unknown
+    `folderId` under Unfiled with the same count/current marker as the library.
+  - Start now refuses while another workout is open and offers Resume instead of
+    replacing the clock or orphaning the one-off. The unused `routine.sortOrder`
+    field is dropped (folder membership is the only grouping this slice needs).
+  - Validation: three-folder reorder/delete/Undo tests, the lift/library bounds
+    round-trip, rep-precedence and import-repair tests, and a 98-assertion browser
+    check covering two routines, folder Undo order, orphaned membership, the
+    active-session guard and the unchanged program weeks.
+
+- **2026-11-22 — Routine folders.**
+  - My Plans groups routines into folders ordered by `sortOrder`, then an
+    **Unfiled** bucket for routines with no folder; empty folders stay visible
+    with a quiet "No routines yet" so they can be filled. With no folders the
+    flat Routines list is unchanged.
+  - A folder is `{ id, name, sortOrder, createdAt }` and membership is ONE-WAY on
+    `routine.folderId` — a folder never stores a member list. Create, rename,
+    delete, Move up/down and the bottom-sheet Move to folder (folders + Unfiled)
+    reuse the existing app action pattern and never touch `state.weeks`,
+    `activeProgramId` or `currentWeek`.
+  - Deleting a folder moves its routines to Unfiled and never deletes one; Undo
+    restores the folder at its position AND every member's `folderId`.
+  - Validation: store-helper tests (create/rename/delete/restore/move/reorder,
+    phantom folder refused), the routines browser check (create → move → reload →
+    reorder → delete → Undo at 390×844), plus typecheck, smoke, precache and the
+    Plans / touch-target / ergonomics gates.
+
+- **2026-11-22 — Routine Start is a real start.**
+  - Plans → My Plans → Start now opens the cockpit already in session: the
+    one-off is stamped `in_progress`, the session clock is bound and running, the
+    sticky active header replaces the big Start CTA, and the first exercise is
+    scrolled into view. It reuses the cockpit Start button's own sequence
+    (`beginActiveWorkoutSession`) — there is no second start path.
+  - `renderWorkout` treated a timer as running only once a whole second had
+    elapsed, so the first render after Start (at 0s) put the Start CTA straight
+    back. A bound timer is now a running session.
+  - Validation: the routines browser check asserts no Start CTA, the active clock
+    bar, an in-progress one-off, a clock bound to that session's key, and a set
+    ticked immediately after Start.
+
+- **2026-11-22 — Routines slice 2: list and start them from Plans.**
+  - My Plans now leads with a **Routines** section (Your plans follows). Each
+    `routine-card` shows the name and `N exercises · M working sets`, plus
+    `~N min` only when every prescription's rest is known — never an invented
+    estimate. Start is a 44px target; the quiet `•••` menu renames or deletes,
+    and the My Plans badge counts routines alongside plans.
+  - Start copies `routineSourceWeek` into an ordinary one-off `session:` week and
+    opens the cockpit with the routine's exercises, loads and rep targets. It
+    never activates or reseeds a program: `activeProgramId`, `currentWeek` and
+    the logged program week stay byte-identical.
+  - Delete asks once, then offers Undo that restores the record at its position;
+    rename updates the routine name, its day title and `updatedAt` without
+    rewriting the saved prescriptions. A routine never renders as `.prog-card`
+    and never enters `customPrograms`.
+  - Empty My Plans keeps "Nothing here yet" and now names saving a routine from
+    History; the Routines section itself is hidden when there are none.
+  - Validation: 2,099 node tests (routine summary), typecheck, smoke, the routines
+    browser check (save → list → start → rename → delete/Undo at 390×844) and the
+    plans-json / plans-active-banner / touch-target / core-ergonomics checks.
+
+- **2026-11-22 — Routines slice 1: save a workout as a routine.**
+  - A finished strength session can now be saved as a reusable routine from
+    History's action menu. It keeps the session's exercises in order, the count
+    of completed working sets, the heaviest working load, the rep target, the
+    shape (reps / hold / carry) and the rest — and deliberately drops completion
+    flags, PR badges, warm-ups, role stamps, effort, notes and gym stats.
+  - Routines live in new root `routines`/`libraryFolders` arrays (schema v14)
+    and are not programs: they never enter `customPrograms`, never resolve
+    through `getProgramById`, and write no week slot, so saving one cannot touch
+    logged training or the active program. `routineSourceWeek` turns a routine
+    back into the copy shape `createOneOffStrengthSession` already consumes.
+  - The action suggests the program day's name, saves immediately and offers
+    Undo. There is no Plans routine surface yet.
+  - Validation: 11 routine-model tests (exercise order, working-set count,
+    tr→r fallback, rest precedence, shape round-trip, exclusions, zero-set
+    refusal, one-off copy, store repair, full export/import round-trip), a v14
+    migration test, the full node suite, typecheck, smoke, precache and workflow
+    gates.
+  - Review follow-up: load identity now survives the round trip (bodyweight and
+    assisted sets store no derived weight and keep their `bw`/`band` flag; a
+    banded set keeps the band as its load), a legacy dumbbell set keeps its pair
+    basis (Both), the copy source returns its day with the week, records carry
+    `kind:'routine'`, and imported routines/folders are validated, bounded and
+    counted in the import preview. A real-browser check covers the History
+    action, persistence, Undo and run-detail isolation.
+  - Next: a routine list and "Start routine", then folders.
 
 - **2026-11-22 — Plans hierarchy: active plan first, one search, real card art.**
   - One session, four commits: the search-heading security fix, the active-plan

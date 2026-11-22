@@ -12,6 +12,8 @@ import { icon as svgIcon } from '../ui/icons.js';
 import { toggleBookmark, recordRecentlyViewed, getProgramById, getActiveProgramIssue, saveStateToLocalStorage } from '../state.js';
 import { escapeHtml, safeCssColor } from '../util.js';
 import { buildActivePlanBanner } from './active-plan-banner.js';
+import { routineSummary } from '../routines/model.js';
+import { orderedFolders } from '../routines/store.js';
 
 // V2-6 — the curated home rails (in order) shown on the lean Discover surface.
 // Everything else stays reachable via the category chips + Browse-all grid.
@@ -220,7 +222,8 @@ function renderLibraryTabs() {
   const completedCount = _appState?.programLibrary?.completions?.length || 0;
 
   const customCount = _appState?.customPrograms?.length || 0;
-  const myCount = savedCount + completedCount + customCount;
+  const routinesCount = _appState?.routines?.length || 0;
+  const myCount = savedCount + completedCount + customCount + routinesCount;
   container.innerHTML = `
     <button class="lib-tab ${_activeTab === 'discover' ? 'active' : ''}" data-action="lib-tab" data-tab="discover">
       Discover
@@ -380,6 +383,8 @@ function renderSimpleDiscover(content) {
 }
 
 function renderMyPlans(content) {
+  const routines = Array.isArray(_appState?.routines) ? _appState.routines : [];
+  const folders = orderedFolders(_appState);
   const custom = _appState?.customPrograms || [];
   const savedIds = _appState?.programLibrary?.bookmarks || [];
   const saved = savedIds.map(resolveProgramMeta).filter(Boolean);
@@ -387,22 +392,27 @@ function renderMyPlans(content) {
     .map((completion) => ({ completion, program: resolveProgramMeta(completion.programId) }))
     .filter((item) => item.program);
 
-  if (!custom.length && !saved.length && !completed.length) {
+  if (!routines.length && !folders.length && !custom.length && !saved.length && !completed.length) {
     content.innerHTML = `<div class="lib-empty-state">
       <div class="lib-empty-icon">${svgIcon('bookmark', { size: 30 })}</div>
       <div class="lib-empty-title">Nothing here yet</div>
-      <div class="lib-empty-sub">Save a plan, create your own, or import an openHybrid plan file.</div>
+      <div class="lib-empty-sub">Save a plan, create your own, import an openHybrid plan file, or save a routine from History.</div>
       <button class="lib-empty-cta" data-action="lib-tab" data-tab="discover">Browse programs</button>
       <button class="lib-empty-cta" data-action="import-plan-json">Import a plan (.json)</button>
     </div>`;
     return;
   }
 
-  // Build with DOM nodes + textContent. Plan names/notes can come from an
-  // imported JSON file, so this surface must never reinterpret them as markup.
+  // Build with DOM nodes + textContent. Plan and routine names can come from an
+  // imported JSON file or the athlete, so this surface must never reinterpret
+  // them as markup.
   const nodes = [];
-  const addSection = (title, programs, gap = true) => {
-    if (!programs.length) return;
+  const addSection = (title, items, {
+    gap = true,
+    gridClass = 'program-grid',
+    render = (program) => renderProgramCardNode(program, 'large'),
+  } = {}) => {
+    if (!items.length) return;
     const header = document.createElement('div');
     header.className = `filtered-grid-header mb-4${gap ? ' mb-6' : ''}`;
     const titleEl = document.createElement('div');
@@ -410,18 +420,182 @@ function renderMyPlans(content) {
     titleEl.textContent = title;
     const count = document.createElement('div');
     count.className = 'filtered-grid-count';
-    count.textContent = String(programs.length);
+    count.textContent = String(items.length);
     header.append(titleEl, count);
     const grid = document.createElement('div');
-    grid.className = `program-grid${gap ? ' mb-6' : ''}`;
-    programs.forEach((program) => grid.append(renderProgramCardNode(program, 'large')));
+    grid.className = `${gridClass}${gap ? ' mb-6' : ''}`;
+    items.forEach((item) => grid.append(render(item)));
     nodes.push(header, grid);
   };
 
+  // Routines are saved SESSIONS, so they lead: they are startable right now,
+  // while a plan is the block they sit inside. They never render as a program
+  // card — that would imply an activation and a week slot they do not own.
+  renderRoutineLibrary(nodes, routines, folders);
   addSection('Your plans', custom);
   addSection('Saved', saved);
-  addSection('Completed', completed.map((item) => item.program), false);
+  addSection('Completed', completed.map((item) => item.program), { gap: false });
   content.replaceChildren(...nodes);
+}
+
+/**
+ * One routine card. DOM nodes + textContent only: the name is athlete input.
+ * The Start control and the overflow trigger are the card's two actions; both
+ * are 44px targets (see css/programs.css).
+ * @param {any} routine
+ */
+function renderRoutineCardNode(routine) {
+  const summary = routineSummary(routine);
+  const id = String(routine.id || '');
+  const nameText = String(routine.name || 'Routine');
+
+  const card = document.createElement('div');
+  card.className = 'routine-card';
+  card.setAttribute('data-routine-id', id);
+
+  const main = document.createElement('div');
+  main.className = 'routine-card__main';
+  const name = document.createElement('div');
+  name.className = 'routine-card__name';
+  name.textContent = nameText;
+  const meta = document.createElement('div');
+  meta.className = 'routine-card__meta';
+  const parts = [
+    `${summary.exercises} exercise${summary.exercises === 1 ? '' : 's'}`,
+    `${summary.workingSets} working set${summary.workingSets === 1 ? '' : 's'}`,
+  ];
+  if (summary.minutes != null) parts.push(`~${summary.minutes} min`);
+  meta.textContent = parts.join(' · ');
+  main.append(name, meta);
+
+  const actions = document.createElement('div');
+  actions.className = 'routine-card__actions';
+
+  const start = document.createElement('button');
+  start.type = 'button';
+  start.className = 'routine-card__start';
+  start.setAttribute('data-action', 'start-routine');
+  start.setAttribute('data-routine-id', id);
+  start.textContent = 'Start';
+
+  const menu = document.createElement('button');
+  menu.type = 'button';
+  menu.className = 'routine-card__menu';
+  menu.setAttribute('data-action', 'open-routine-menu');
+  menu.setAttribute('data-routine-id', id);
+  menu.setAttribute('aria-haspopup', 'menu');
+  menu.setAttribute('aria-expanded', 'false');
+  menu.setAttribute('aria-label', `Actions for ${nameText}`);
+  menu.textContent = '•••';
+
+  actions.append(start, menu);
+  card.append(main, actions);
+  return card;
+}
+
+/**
+ * The Routines area of My Plans.
+ *
+ * With no folders it is the flat list this screen already had. With folders it
+ * becomes one section per folder (sortOrder, then name) plus an Unfiled bucket
+ * for routines with no folder (or a folder id that no longer exists). Empty
+ * folders stay visible — an explicitly created folder must be fillable — and say
+ * so quietly. A folder never stores members; grouping reads `routine.folderId`.
+ *
+ * @param {HTMLElement[]} nodes
+ * @param {any[]} routines
+ * @param {any[]} folders
+ */
+function renderRoutineLibrary(nodes, routines, folders) {
+  if (!routines.length && !folders.length) return;
+
+  const header = document.createElement('div');
+  header.className = 'filtered-grid-header mb-4 routine-library-head';
+  const titleWrap = document.createElement('div');
+  titleWrap.className = 'routine-library-head__title';
+  const title = document.createElement('div');
+  title.className = 'filtered-grid-title';
+  title.textContent = 'Routines';
+  const count = document.createElement('div');
+  count.className = 'filtered-grid-count';
+  count.textContent = String(routines.length);
+  titleWrap.append(title, count);
+  const create = document.createElement('button');
+  create.type = 'button';
+  create.className = 'routine-folder-create';
+  create.setAttribute('data-action', 'create-routine-folder');
+  create.textContent = '+ New folder';
+  header.append(titleWrap, create);
+  nodes.push(header);
+
+  if (!folders.length) {
+    const list = document.createElement('div');
+    list.className = 'routine-list mb-6';
+    routines.forEach((routine) => list.append(renderRoutineCardNode(routine)));
+    nodes.push(list);
+    return;
+  }
+
+  const folderIds = new Set(folders.map((folder) => folder.id));
+  for (const folder of folders) {
+    const members = routines.filter((routine) => routine?.folderId === folder.id);
+    nodes.push(renderRoutineFolderNode(folder, members));
+  }
+  const unfiled = routines.filter((routine) => !routine?.folderId || !folderIds.has(routine.folderId));
+  if (unfiled.length) nodes.push(renderRoutineFolderNode(null, unfiled));
+}
+
+/**
+ * One folder section. `folder` null renders the Unfiled bucket (no menu: it is
+ * not a stored record). Built with DOM nodes + textContent — folder names are
+ * athlete input.
+ * @param {any|null} folder
+ * @param {any[]} members
+ */
+function renderRoutineFolderNode(folder, members) {
+  const section = document.createElement('div');
+  section.className = `routine-folder${folder ? '' : ' routine-folder--unfiled'}${members.length ? '' : ' routine-folder--empty'}`;
+  section.setAttribute('data-folder-id', folder ? String(folder.id || '') : '');
+
+  const head = document.createElement('div');
+  head.className = 'routine-folder__head';
+  const title = document.createElement('div');
+  title.className = 'routine-folder__title';
+  const name = document.createElement('span');
+  name.className = 'routine-folder__name';
+  name.textContent = folder ? String(folder.name || 'Folder') : 'Unfiled';
+  const count = document.createElement('span');
+  count.className = 'routine-folder__count';
+  count.textContent = String(members.length);
+  title.append(name, count);
+  head.append(title);
+
+  if (folder) {
+    const menu = document.createElement('button');
+    menu.type = 'button';
+    menu.className = 'routine-folder__menu';
+    menu.setAttribute('data-action', 'open-routine-folder-menu');
+    menu.setAttribute('data-folder-id', String(folder.id || ''));
+    menu.setAttribute('aria-haspopup', 'menu');
+    menu.setAttribute('aria-expanded', 'false');
+    menu.setAttribute('aria-label', `Actions for ${String(folder.name || 'folder')}`);
+    menu.textContent = '•••';
+    head.append(menu);
+  }
+  section.append(head);
+
+  if (members.length) {
+    const list = document.createElement('div');
+    list.className = 'routine-list';
+    members.forEach((routine) => list.append(renderRoutineCardNode(routine)));
+    section.append(list);
+  } else {
+    const empty = document.createElement('p');
+    empty.className = 'routine-folder__empty';
+    empty.textContent = 'No routines yet';
+    section.append(empty);
+  }
+  return section;
 }
 
 function renderCollectionRows(container) {

@@ -157,6 +157,22 @@ test('v13 seeds an empty measurement log and a unit from the weight choice', () 
   assert.deepEqual(chosen.bodyMeasurements, [{ date: '2026-11-01', waist: 84 }]);
 });
 
+test('v13→v14 seeds the routine library and folder arrays without touching programs', () => {
+  const state = {
+    schemaVersion: 13,
+    settings: {},
+    routines: { corrupt: true },
+    libraryFolders: 'corrupt',
+    customPrograms: [{ id: 'prog_user', name: 'Custom', days: {}, totalWeeks: 1 }],
+  };
+  const programsBefore = JSON.stringify(state.customPrograms);
+  migrateState(state);
+  assert.equal(state.schemaVersion, CURRENT_SCHEMA_VERSION);
+  assert.deepEqual(state.routines, [], 'a non-array routine library is repaired, not trusted');
+  assert.deepEqual(state.libraryFolders, []);
+  assert.equal(JSON.stringify(state.customPrograms), programsBefore, 'programs are untouched');
+});
+
 test('migrateState is idempotent — already-current state is untouched', () => {
   const state = {
     schemaVersion: CURRENT_SCHEMA_VERSION,

@@ -2222,6 +2222,20 @@
     <div id="programWorkoutPickerList" class="program-workout-picker__list"></div>
   </div>
 
+  <!-- Routine folder picker — move a routine between folders, no drag required. -->
+  <div id="routineFolderBackdrop" class="sheet-backdrop" data-action="close-routine-folder-sheet"></div>
+  <div id="routineFolderSheet" class="bottom-sheet routine-folder-sheet" role="dialog" aria-labelledby="routineFolderTitle" data-modal-root data-modal-close-action="close-routine-folder-sheet" data-modal-companion="#routineFolderBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <div>
+        <h3 id="routineFolderTitle" class="bottom-sheet-title">Move to folder</h3>
+        <p class="routine-folder-sheet__sub">Folders only organise routines. Your program and logged training stay untouched.</p>
+      </div>
+      <button class="sheet-close-btn" data-action="close-routine-folder-sheet" aria-label="Close">✕</button>
+    </div>
+    <div id="routineFolderList" class="routine-folder-sheet__list"></div>
+  </div>
+
   <!-- Weigh-in sheet — prefilled with the last weight; steppers make the common edits one tap. -->
   <div id="bwSheetBackdrop" class="sheet-backdrop" data-action="close-bw-sheet"></div>
   <div id="bwSheet" class="bottom-sheet" role="dialog" aria-labelledby="bwSheetTitle" data-modal-root data-modal-close-action="close-bw-sheet" data-modal-companion="#bwSheetBackdrop" inert aria-hidden="true">

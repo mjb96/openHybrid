@@ -43,6 +43,7 @@ const checks = [
   'scripts/workout-history-browser-check.mjs',
   'scripts/history-browser-check.mjs',
   'scripts/edit-saved-browser-check.mjs',
+  'scripts/routines-browser-check.mjs',
   'scripts/exercise-picker-browser-check.mjs',
   'scripts/copy-program-browser-check.mjs',
   'scripts/modal-accessibility-check.mjs',

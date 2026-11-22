@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 43 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 44 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -86,6 +86,37 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   into a fresh one-off session (values kept, completion cleared) via
   `createOneOffStrengthSession`. Train and Progress link here; they do not keep
   a competing calendar. The old `js/home/activity-calendar.js` was removed.
+- Routines: `js/routines/store.js` owns the root `state.routines` /
+  `state.libraryFolders` arrays (v13→v14 seeds them) and mints `rtn_`/`fld_` ids;
+  `js/routines/model.js` builds a routine from a finished History session
+  (`buildRoutineFromSession`) and returns a copyable week for
+  `createOneOffStrengthSession` (`routineSourceWeek`). A routine is a reusable
+  SESSION TEMPLATE, never a program: it must never enter `customPrograms`, resolve
+  through `getProgramById`/`resolveProgramForState`, render as a `.prog-card`, or
+  call `startProgramActivation`/`reseedActiveProgramIntoWeek`; it writes no
+  `state.weeks`, `currentWeek` or `activeProgramId`. `prescriptions` is
+  authoritative for sets/reps/load/rest while `days[].lifts` stays bare strings.
+  Only completed working sets are saved — never completion flags, PR badges,
+  warm-ups, role stamps, effort, notes or gym stats. Load IDENTITY is preserved
+  (`bw`/`band`/`loadMode`): a bodyweight or assisted set stores no derived
+  weight, so the next session uses today's bodyweight, and a legacy dumbbell set
+  records `basis:'total'` so the pair is not re-read as one bell. Records carry
+  `kind:'routine'`; `js/state/import-validate.js` bounds and repairs the library
+  on import. History's action menu owns "Save as routine"; Plans → My Plans leads
+  with the routine list (`routine-card`, never `.prog-card`), where Start copies
+  `routineSourceWeek` into a one-off `session:` week and Rename/Move/Delete
+  (+Undo) live in the `•••` menu. Start is a real start: `startRoutine` marks the
+  one-off `in_progress`, binds the session clock and opens the active cockpit
+  through `beginActiveWorkoutSession`, the same sequence the cockpit Start button
+  uses; while another workout is open it refuses and offers Resume instead of
+  replacing or orphaning that session. `libraryFolders`
+  (`{id,name,sortOrder,createdAt}`) group routines with ONE-WAY membership on
+  `routine.folderId`; a folder never stores a member list, deleting one moves its
+  routines to Unfiled and never deletes a routine (Undo restores the folder at its
+  display index and the membership). Folder order is display-based (`sortOrder`,
+  then name) and renormalised on every create/delete/restore/move; a routine has no
+  ordering field of its own. `js/app.js` owns those actions; they never activate
+  or reseed a program.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported
