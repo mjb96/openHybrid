@@ -713,6 +713,26 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P5: Endurance band, and running metrics become run-only.**
+  - `Endurance` answers "is my running improving?" from the same canonical
+    collector the Running screen uses, so the band cannot disagree with the screen
+    it links to: run and walk distance as grouped bars, pace as a stat with a
+    delta (never a second axis), a 12-week run/walk-day strip, and "not in run
+    totals" stated in words.
+  - **Behaviour change:** every `running.*` metric is now run-only. Weekly,
+    4-week and lifetime distance, run count and longest run exclude walks; the
+    filter sits at the aggregation boundary **and** in `evidenceFor`, so a walk can
+    never be offered as evidence for a number it is not part of. Metric copy says
+    "walks are counted separately"; "Weekly Activity Count" / "Total Activities"
+    became "Weekly Run Count" / "Total Runs".
+  - FIT imports now carry the sport: `isWalkingSport` maps walking/hiking files to
+    `type: 'walk'`, so an imported walk cannot become a run.
+  - This was safe to do directly because the project has a single user — no
+    migration note was needed for a community, and the numbers changing is the
+    point rather than a regression.
+  - `npm run verify` green (2,512 tests); hub browser contract passes.
+  - Next: P6 Body and progress photos — the only phase that adds storage.
+
 - **2026-11-23 — Progress P4: main exercises and set records.**
   - `Main exercises` ranks the lifts trained most in the selected window by
     sessions, with best e1RM, the change across the window and a PR flag. The flag

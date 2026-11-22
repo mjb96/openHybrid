@@ -484,6 +484,17 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `setRecords` and must never be re-derived inside a view. Warm-ups never count.
   The drilldown prints the record definition and takes its unit from the model:
   a view may never hardcode `kg` (an existing guard test enforces this).
+- Progress endurance (P5 landed): **every `running.*` metric is run-only.**
+  `aggregate` and `evidenceFor` in `analytics/running-detail.js` both filter
+  `type === 'walk'`, so a walk is neither counted nor offered as evidence.
+  Weekly/4-week/lifetime distance, run count and longest run exclude walks; the
+  metric copy says "walks are counted separately" and the labels are "Weekly Run
+  Count" / "Total Runs". `js/analytics/endurance.js` builds the band from the same
+  canonical `collectRunningHistory` collector, keeps run and walk distance as
+  separate series (grouped bars, never stacked), reports walks as their own count
+  and distance, and gives a walk no pace. FIT imports classify via
+  `isWalkingSport` (`walk|hik` → `type:'walk'`). Any new running metric must keep
+  the run-only filter.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside
