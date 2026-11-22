@@ -278,3 +278,52 @@ test('renderSessionRecapHTML escapes lift names and includes stats', () => {
   assert.ok(!html.includes('<b>Curl</b>'));
   assert.ok(html.includes('kg'));
 });
+
+test('the stored workout note survives into the recap', () => {
+  const wd = {
+    dates: { mon: '2026-07-02' },
+    lifts: { mon: { 'Bench Press': [{ w: 80, r: 5, c: true }] } },
+    notes: { mon: '  Felt strong on the top set.  ' },
+    runs: {},
+  };
+  const recap = buildSessionRecap(stateWith(wd), '1', 'mon');
+  assert.equal(recap.notes, 'Felt strong on the top set.');
+  const html = renderSessionRecapHTML(recap);
+  assert.match(html, /Workout note/);
+  assert.match(html, /Felt strong on the top set\./);
+});
+
+test('a missing workout note is blank and renders no block', () => {
+  const wd = {
+    dates: { mon: '2026-07-02' },
+    lifts: { mon: { 'Bench Press': [{ w: 80, r: 5, c: true }] } },
+    runs: {},
+  };
+  const recap = buildSessionRecap(stateWith(wd), '1', 'mon');
+  assert.equal(recap.notes, '');
+  assert.doesNotMatch(renderSessionRecapHTML(recap), /Workout note/);
+});
+
+test('a run-only day leaves the strength note blank', () => {
+  const wd = {
+    dates: { tue: '2026-07-03' },
+    lifts: {},
+    notes: { tue: 'Run note that belongs to the run detail' },
+    runs: { tue: { dist: 5, time: '25:00', type: 'run' } },
+  };
+  const recap = buildSessionRecap(stateWith(wd), '1', 'tue');
+  assert.equal(recap.notes, '');
+  assert.doesNotMatch(renderSessionRecapHTML(recap), /Run note that belongs to the run detail/);
+});
+
+test('the workout note is escaped, never injected as HTML', () => {
+  const wd = {
+    dates: { mon: '2026-07-02' },
+    lifts: { mon: { 'Bench Press': [{ w: 80, r: 5, c: true }] } },
+    notes: { mon: '<img src=x onerror=alert(1)>' },
+    runs: {},
+  };
+  const html = renderSessionRecapHTML(buildSessionRecap(stateWith(wd), '1', 'mon'));
+  assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(html, /<img src=x onerror/);
+});

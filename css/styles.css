@@ -9376,6 +9376,32 @@ html[data-theme="light"] .activity-filter--active { color: #07566b; }
 .recap-stat__v { display: block; font-size: 1.12rem; font-weight: 800; color: var(--text-primary, #fff); }
 .recap-stat__l { display: block; font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted, #94a3b8); margin-top: 3px; }
 .recap-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted, #94a3b8); font-weight: 700; margin: 20px 0 10px; }
+/* The note the athlete already wrote in the cockpit / finish sheet. Tokens flip
+   with the theme, so one block serves dark and light. It is rendered as TEXT
+   (never innerHTML) and keeps the athlete's own line breaks. */
+.recap-note {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-default, #23272e);
+  border-left: 3px solid var(--accent-blue, #3b82f6);
+  border-radius: 12px;
+  background: var(--bg-card, #161b22);
+  color: var(--text-secondary, #cbd5e1);
+  font-size: 0.84rem;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.recap-note__label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+}
+.recap-note__text { display: block; }
 .recap-quality { padding: 14px; border: 1px solid var(--border, #23272e); border-left: 3px solid var(--accent-blue, #3b82f6); border-radius: 12px; background: var(--bg-card, #161b22); }
 .recap-quality--low, .recap-quality--insufficient { border-left-color: var(--accent-orange, #f97316); }
 .recap-quality__head { display: flex; justify-content: space-between; gap: 12px; color: var(--text-primary, #fff); font-size: 0.86rem; }
