@@ -22,9 +22,11 @@ import { escapeHtml } from './util.js';
 import { buildHomeWeekStrip } from './home/week-strip.js';
 import { HOME_WEEK_HISTORY, buildDayRecap, buildPastWeekView, dayRecapHTML, weekOffsetLabel, weekRecapHTML } from './home/week-view.js';
 import { renderHomeBodyweight } from './home/bodyweight-card.js';
+import { renderHomeHybrid } from './home/hybrid-dashboard.js';
 import { reportHandledError, renderSafely } from './monitoring/report-error.js';
 import { addDaysISO, todayKey } from './dates.js';
 import { buildVolumeGuideModel, hasExplicitMusclePriorities } from './analytics/volume-guide.js';
+import { moduleEnabled } from './modules.js';
 
 let _getState;
 let _getSelectedDay;
@@ -349,8 +351,8 @@ function renderHomeInsight(model, state) {
   const insight = model?.topInsight;
   if (!card || !text || !insight) return;
   const nav = String(insight.nav || 'progress');
-  if (nav === 'custom:fasting' && state?.settings?.modules?.fasting === false) { card.hidden = true; return; }
-  if (nav.startsWith('recovery') && state?.settings?.modules?.recovery === false) { card.hidden = true; return; }
+  if (nav === 'custom:fasting' && !moduleEnabled(state, 'fasting')) { card.hidden = true; return; }
+  if (nav.startsWith('recovery') && !moduleEnabled(state, 'recovery')) { card.hidden = true; return; }
   text.textContent = insight.text;
   if (nav === 'custom:fasting') {
     card.setAttribute('data-action', 'open-fasting-detail');
@@ -533,6 +535,10 @@ export function renderHome() {
 
   renderHomeGreeting(appState);
   renderHomeWeek(appState, activeProgram);
+  // Hybrid cards read calendar weeks directly (not the dashboard model, which
+  // is program-week anchored for load/volume) and are isolated: a failure here
+  // must never blank the decision surface above them.
+  renderSafely('home:hybrid', () => renderHomeHybrid(appState, { today: renderDay }));
   renderHomeBodyweight(document.getElementById('homeBodyweightCard'), appState);
   renderHomeInsight(model, appState);
 

@@ -83,7 +83,7 @@ import {
   setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, stepCurrentWeek, setAutoAdvanceWeek,
   saveThresholdPace as saveSettingsThresholdPace,
   exportData, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
-  triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule,
+  triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule, toggleHybridTraining,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
   deleteActiveEquipmentProfile,
   applySettingsOnBoot,
@@ -1395,6 +1395,10 @@ document.addEventListener('change', (e) => {
       appState.fastingSession.goal = goal;
       saveStateToLocalStorage(true);
     }
+    return;
+  }
+  if (target.matches('[data-hybrid-toggle]')) {
+    toggleHybridTraining(target.checked);
     return;
   }
   if (target.matches('[data-module-toggle]')) {

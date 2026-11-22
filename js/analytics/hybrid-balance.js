@@ -130,7 +130,7 @@ function emptyModel(weekStart, weekEnd) {
  * Build the calendar-week strength/endurance split.
  *
  * @param {any} state
- * @param {{today?:string|Date, weeks?:number, tz?:string}} [options]
+ * @param {{today?:string|Date, weeks?:number, tz?:string, index?:any}} [options]
  */
 export function buildHybridBalance(state, options = {}) {
   const tz = options.tz;
@@ -141,7 +141,7 @@ export function buildHybridBalance(state, options = {}) {
   const currentWeekStart = weekStartOf(today);
   const firstWeekStart = addDaysISO(currentWeekStart, -DAYS_PER_WEEK * (windowWeeks - 1));
 
-  const index = indexSlotsByDate(state, { tz });
+  const index = options.index || indexSlotsByDate(state, { tz });
   const timeline = dailyLoadBreakdownTimeline(state, { throughDate: today, tz, index });
 
   /** @type {Map<string, {strength:number[], endurance:number[]}>} */

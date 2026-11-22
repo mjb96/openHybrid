@@ -157,6 +157,23 @@ test('v13 seeds an empty measurement log and a unit from the weight choice', () 
   assert.deepEqual(chosen.bodyMeasurements, [{ date: '2026-11-01', waist: 84 }]);
 });
 
+test('v14 seeds hybrid training on and leaves every module choice untouched', () => {
+  const legacy = {
+    schemaVersion: 13,
+    settings: { modules: { running: false, health: true } },
+    weekStartedAt: '2026-11-16',
+  };
+  migrateState(legacy);
+  assert.equal(legacy.schemaVersion, CURRENT_SCHEMA_VERSION);
+  assert.equal(legacy.settings.hybridTraining, true);
+  assert.deepEqual(legacy.settings.modules, { running: false, health: true });
+
+  // An athlete who already turned it off keeps that choice.
+  const chosen = { schemaVersion: 13, settings: { hybridTraining: false }, weekStartedAt: '2026-11-16' };
+  migrateState(chosen);
+  assert.equal(chosen.settings.hybridTraining, false);
+});
+
 test('migrateState is idempotent — already-current state is untouched', () => {
   const state = {
     schemaVersion: CURRENT_SCHEMA_VERSION,

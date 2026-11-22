@@ -394,9 +394,18 @@ const MIGRATIONS = [
       state.settings.measurementUnit = state.settings.weightUnit === 'lbs' ? 'in' : 'cm';
     }
   },
+  // v13 → v14: hybrid training is on for everyone who already has the app.
+  // It only controls hybrid-only Home surfaces; the Running/Fasting/Health/
+  // Recovery modules keep their own stored choices.
+  (state) => {
+    if (!state.settings || typeof state.settings !== 'object' || Array.isArray(state.settings)) {
+      state.settings = {};
+    }
+    if (state.settings.hybridTraining == null) state.settings.hybridTraining = true;
+  },
 ];
 
-export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 13
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 14
 
 /** Error raised when a state upgrade cannot safely commit. */
 export class StateMigrationError extends Error {

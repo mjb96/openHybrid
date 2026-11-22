@@ -10143,6 +10143,13 @@ html[data-module-recovery="off"] [data-module="recovery"] {
   display: none !important;
 }
 
+/* Hybrid training off = strength-only dashboard. Only the hybrid-only cards
+   carry [data-hybrid]; the feature modules keep their own switches, so nothing
+   here can hide a surface the athlete chose to keep. */
+html[data-hybrid="off"] [data-hybrid] {
+  display: none !important;
+}
+
 /* Weigh-in sheet — prefilled, stepper-first, no repeated typing. */
 .bw-log-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .bw-log-hint { color: var(--text-muted); font-size: .72rem; }
@@ -10405,6 +10412,47 @@ html[data-theme="dark"][data-palette="ember"] {
 .home-bw__empty { display: flex; align-items: center; min-height: 96px; color: var(--text-muted); font-size: .74rem; }
 .home-bw__meta { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: .68rem; }
 .home-bw__trend { margin-top: 4px; color: var(--text-secondary); font-size: .7rem; }
+
+/* ---- Hybrid section: balance + the two week summaries -------------------- */
+.home-hybrid { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
+.home-hybrid__pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.home-hy {
+  margin: 0; padding: 12px 14px;
+  border: 1px solid var(--border-light); border-radius: 16px;
+}
+.home-hy__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.home-hy__eyebrow { display: block; color: var(--text-muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.home-hy__status {
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border-light);
+  color: var(--text-secondary); font-size: .66rem; font-weight: 800;
+}
+.home-hy__status--balanced { color: var(--color-green); border-color: color-mix(in srgb, var(--color-green) 45%, transparent); }
+.home-hy__status--strength-heavy,
+.home-hy__status--endurance-heavy { color: var(--color-amber); border-color: color-mix(in srgb, var(--color-amber) 45%, transparent); }
+.home-hy__status--unmeasured-strength,
+.home-hy__status--no-data { color: var(--text-muted); }
+.home-hy__body {
+  display: block; width: 100%; min-height: 44px; margin: 10px 0 6px; padding: 0;
+  border: 0; background: none; color: inherit; text-align: left;
+}
+.home-hy__split { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(148, 163, 184, .18); }
+.home-hy__seg { display: block; height: 100%; }
+.home-hy__seg--strength { background: var(--color-cyan); }
+.home-hy__seg--endurance { background: var(--color-green); }
+.home-hy__legend { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; color: var(--text-secondary); font-size: .7rem; }
+.home-hy__legend b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.home-hy__note { margin: 2px 0 0; color: var(--text-secondary); font-size: .74rem; line-height: 1.4; }
+.home-hy__trend { display: block; margin-top: 4px; color: var(--text-muted); font-size: .68rem; }
+.home-hy__mini-body {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 44px;
+  padding: 0; border: 0; background: none; color: inherit; text-align: left;
+}
+.home-hy__value { color: var(--text-primary); font-size: 1.18rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-hy__delta { align-self: flex-start; font-size: .68rem; font-weight: 800; }
+.home-hy__delta--up { color: var(--color-green); }
+.home-hy__delta--down { color: var(--color-amber); }
+.home-hy__delta--flat { color: var(--text-muted); }
+.home-hy__sub { color: var(--text-muted); font-size: .68rem; line-height: 1.35; }
 
 /* Saved-workout editor */
 .edit-saved-sheet { max-height: min(88vh, 760px); }
