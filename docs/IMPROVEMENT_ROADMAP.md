@@ -735,10 +735,12 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - Verified: node tests, typecheck, smoke, precache, and the new
     `hybrid-dashboard-browser-check` plus home-today, customize, module-toggles,
     bodyweight, rest-timer and touch-target checks.
-  - Next: the owner's logger note — a logger setting must apply PER EXERCISE,
-    not per set, and must be remembered once chosen. The exact control still
-    needs confirming (rest, effort/RPE, set type or load default), so confirm it
-    before building. Then return to the gated backlog at Phase 0 → Phase 1.
+  - Next: two owner notes for the logger, to confirm before building —
+    (1) a logger setting must apply PER EXERCISE, not per set, and must be
+    remembered once chosen; (2) the ghost/placeholder values should update in
+    line with what was entered for the PREVIOUS set. Name the exact control in
+    each case (rest, effort/RPE, set type or load default), then return to the
+    gated backlog at Phase 0 → Phase 1.
 
 - **2026-11-23 — 14-site review fixes: display units, disclosure, trend labels.**
   - The per-site chart now receives DISPLAY values: `measurementTrendData`
