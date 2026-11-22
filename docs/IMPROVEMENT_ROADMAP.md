@@ -250,10 +250,11 @@ Features: L3, L9, L10, L12, L13 (see §7).
 2. **RPE constrained.** 6–10 in 0.5 steps, per set and per session, entered
    live, reviewed later, never invented for a set the athlete did not rate.
    Out-of-range legacy values stay readable and are never rewritten.
-3. **Plate calculator.** A sheet from the set row: target total, bar weight,
-   available plate sizes and pair counts, per-side output, and an explicit
-   shortfall when the target is unreachable. It reads the active equipment
-   profile and never invents a plate. The existing inline plate line stays.
+3. **Plate calculator (landed).** A sheet from the set row: target total, bar
+   weight, available plate sizes and pair counts, per-side output, and an
+   explicit shortfall when the target is unreachable. It reads the active
+   equipment profile and never invents a plate. The existing inline plate line
+   stays.
 4. **Warm-up editor.** Editable percentage/reps rows with insert and delete,
    plate and dumbbell rounding through the existing ramp, and per-lift opt-in.
    `liftMeta[...].autoRamp` still prevents resurrection after a dismissal.
@@ -503,7 +504,7 @@ not rebuild a ✅.
 | L6 | Set types | `workout/set-sheet.js` | Normal, warm-up, failure, drop with volume and PR rules | ✅ | — |
 | L7 | Previous values | `workout.js` | Last anywhere vs last in routine, tap-to-fill | ✅ | 1 |
 | L8 | Warm-up calculator | `workout/warmup-ramp.js` | Percentage rows, plate/dumbbell rounding, insert/delete | ✅ | 1 |
-| L9 | Plate calculator | `workout/plates.js` | Target, bar, plates, counts, per-side, shortfall | ◐ | 1 |
+| L9 | Plate calculator | `workout/plates.js`, `workout/plate-sheet-model.js` | Target, bar, plates, counts, per-side, shortfall | ✅ | 1 |
 | L10 | RPE | `workout/set-sheet.js` | 6–10 in half steps, live entry, review later | ◐ | 1 |
 | L11 | Supersets | `workout/superset.js` | Pairs and circuits, stable colours, rest after the group | ✅ | 1 |
 | L12 | Saving a workout | `workout/session-status.js` | Name, duration, date, notes, summary | ✅ | 1 |
@@ -658,9 +659,34 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,128 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,175 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Plate calculator sheet.**
+  - The per-set sheet gains one full-width **Plate calculator**. It opens with
+    the row's typed weight or ghost target and reads the ACTIVE equipment
+    profile, so it can never show a plate the athlete does not own. The result
+    leads with the per-side load, then per-side chips, the pairs off the rack,
+    the total shortfall and the nearest buildable total.
+  - Unreachable and impossible targets are explained instead of rounded away:
+    101 kg on a standard rack reads `25 + 15 · 1 kg short` and names 100 kg; a
+    rack limited to one 25 reports its 40 kg total shortfall; below the bar
+    shows the delta to the empty bar.
+  - **Use this weight** is the only write, and only on a barbell, weighted,
+    unfinished set with a target at or above the bar. It types through the
+    row's existing input/change/blur path (never state directly) and closes the
+    calculator and set sheet; every other set disables it with the reason.
+  - Pure additions: `plateShortfallTotal`, `nearestBuildableTotal` and
+    `platePairs` in `workout/plates.js`, plus `workout/plate-sheet-model.js`.
+    The calculator stacks above the set sheet, returns there on Escape, and is
+    reachable only from the set sheet (no sixth row column, inline plate line
+    unchanged).
+  - Validation: 2,175 node tests (26 plate math/model), typecheck, smoke,
+    precache, set-row at 320/dark + 412/dark with real-profile plate
+    assertions, touch-target (set sheet and plate sheet now measured), modal
+    accessibility, equipment profiles, and all 45 browser checks (245.7 s, one
+    timeout retry).
 
 - **2026-11-22 — Note scopes close the review gaps (`ed459ee`, `78526dc`, `7b3c353`).**
   - The workout note (`week.notes[day]`) now reaches the finish recap and

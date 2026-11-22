@@ -126,6 +126,11 @@ const MEASURE = () => {
   const out = [];
   for (const el of document.querySelectorAll(SEL)) {
     if (!el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
+    // A backdrop is a full-screen dismissal surface, not a labelled control:
+    // it carries `data-action` for the router but no role and no accessible
+    // name. It is exactly as wide and tall as the viewport, so measuring it as
+    // a control can only ever report a missing name.
+    if (el.classList.contains('sheet-backdrop')) continue;
     const view = el.closest('.view-container');
     if (view && !view.classList.contains('active')) continue;
     // Bring it on screen BEFORE probing. elementFromPoint only answers for the
@@ -356,6 +361,39 @@ try {
   await openModal('add-exercise', '[data-action="open-add-exercise"]', '#addExerciseModal.active');
   await openModal('exercise-detail', '[data-action="el-info"]', '#exerciseDetailModal.active');
   await openModal('clear-log', '[data-action="open-reset-modal"]', '#confirmResetModal.active');
+
+  // ---- The per-set sheet and its stacked plate calculator -----------------
+  // Both were previously unmeasured: the set sheet is where rest, effort and
+  // the note live, and the calculator is the densest text surface in the
+  // logger. Open from a real set number so every opener is asserted.
+  {
+    const openSetSheet = async () => {
+      await page.evaluate(() => document.querySelector('#cockpitExercisesContainer .cockpit-set-row .set-num-lbl')?.click());
+      try {
+        await page.waitForSelector('#setSheet.active', { timeout: 6000 });
+      } catch {
+        fail('set-sheet did not open from a set number — the check is not measuring it');
+        return false;
+      }
+      await page.waitForTimeout(400);
+      return true;
+    };
+    if (await openSetSheet()) {
+      await snap('set-sheet');
+      await page.evaluate(() => document.querySelector('#setSheet [data-action="set-sheet-plates"]')?.click());
+      try {
+        await page.waitForSelector('#plateSheet.active', { timeout: 6000 });
+        await page.waitForTimeout(400);
+        await snap('plate-sheet');
+      } catch {
+        fail('plate-sheet did not open from the set sheet — the check is not measuring it');
+      }
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(300);
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(300);
+    }
+  }
 
   // ---- The LIVE run --------------------------------------------------------
   // The one surface operated while the athlete is moving, and the only one whose

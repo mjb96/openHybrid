@@ -52,6 +52,54 @@ export function computePlateBreakdown(total, bar = KG_BAR, plates = KG_PLATES, c
   };
 }
 
+/** Round to the hundredth so binary float noise never leaks into a label. */
+const round2 = (n) => Math.round(Number(n) * 100) / 100;
+
+/**
+ * The target's total shortfall, BOTH sides. `computePlateBreakdown` reports the
+ * per-SIDE leftover because that is what you can load one end at a time; an
+ * athlete asking "how much am I missing?" means the pair, so this doubles it.
+ * Exact, below-bar and junk breakdowns have no shortfall.
+ * @param {{ exact?: boolean, leftover?: number, belowBar?: boolean }|null} breakdown
+ * @returns {number}
+ */
+export function plateShortfallTotal(breakdown) {
+  if (!breakdown || breakdown.exact || breakdown.belowBar) return 0;
+  const leftover = Number(breakdown.leftover);
+  if (!Number.isFinite(leftover) || leftover <= 0) return 0;
+  return round2(leftover * 2);
+}
+
+/**
+ * The nearest total the rack can actually build, or null when the target is
+ * already exact (or is below the bar, where no plate arrangement applies).
+ *
+ * The greedy breakdown leaves `leftover` unbuilt per side; removing that pair
+ * lands exactly on the plates it DID load, so the result is not an estimate.
+ * @param {number|string} total
+ * @param {{ exact?: boolean, leftover?: number, belowBar?: boolean }|null} breakdown
+ * @returns {number|null}
+ */
+export function nearestBuildableTotal(total, breakdown) {
+  const t = Number(total);
+  if (!Number.isFinite(t)) return null;
+  if (!breakdown || breakdown.belowBar || breakdown.exact) return null;
+  const shortfall = plateShortfallTotal(breakdown);
+  if (shortfall <= 0) return null;
+  return round2(t - shortfall);
+}
+
+/**
+ * Every plate on BOTH ends. Per-side counts are the loading instruction; this
+ * is the pair you lift off the rack, which is how plates are actually counted.
+ * @param {{ perSide?: { plate: number, count: number }[] }|null} breakdown
+ * @returns {{ plate: number, count: number }[]}
+ */
+export function platePairs(breakdown) {
+  if (!breakdown?.perSide?.length) return [];
+  return breakdown.perSide.map(({ plate, count }) => ({ plate, count: count * 2 }));
+}
+
 const trimNum = (n) => (Number.isInteger(n) ? String(n) : String(n));
 
 /** Short per-side string, e.g. "20 + 20 + 2.5". Empty when it's just the bar. */

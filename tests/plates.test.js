@@ -4,7 +4,10 @@
 // ==========================================
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { computePlateBreakdown, formatPlates, plateHint } from '../js/workout/plates.js';
+import {
+  LB_PLATES, computePlateBreakdown, formatPlates, nearestBuildableTotal, plateHint,
+  platePairs, plateShortfallTotal,
+} from '../js/workout/plates.js';
 import { applyPlateHint } from '../js/workout/plate-hint-dom.js';
 import { buildExerciseCard } from '../js/templates.js';
 
@@ -62,6 +65,58 @@ test('owned plate counts limit the breakdown instead of inventing plates', () =>
   assert.equal(bd.leftover, 20);
   assert.deepEqual(bd.perSide, [{ plate: 25, count: 1 }]);
   assert.match(plateHint(110, 'kg', { bar: 20, plates: [25, 20], counts: { 25: 1, 20: 0 } }), /20 short/);
+});
+
+test('reports a shortfall for BOTH sides, not just one end', () => {
+  // 110 kg, one 25 and no 20s: per side 45 is capped at 25, so 20 is missing
+  // per side and 40 kg in total. The nearest buildable total is 70 (one 25 a
+  // side on the 20 kg bar), not 90 or 110.
+  const bd = computePlateBreakdown(110, 20, [25, 20], { 25: 1, 20: 0 });
+  assert.equal(bd.leftover, 20);
+  assert.equal(plateShortfallTotal(bd), 40);
+  assert.equal(nearestBuildableTotal(110, bd), 70);
+});
+
+test('nearest buildable snaps a non-exact target down and leaves exact ones alone', () => {
+  const bd = computePlateBreakdown(101, 20); // 40.5 per side → 25 + 15, 0.5 short
+  assert.equal(bd.exact, false);
+  assert.equal(plateShortfallTotal(bd), 1);
+  assert.equal(nearestBuildableTotal(101, bd), 100);
+
+  const exact = computePlateBreakdown(100, 20);
+  assert.equal(plateShortfallTotal(exact), 0);
+  assert.equal(nearestBuildableTotal(100, exact), null);
+  assert.equal(nearestBuildableTotal('nonsense', bd), null);
+});
+
+test('pairs count every plate on both ends of the bar', () => {
+  assert.deepEqual(platePairs(computePlateBreakdown(62.5, 20)), [
+    { plate: 20, count: 2 }, { plate: 1.25, count: 2 },
+  ]);
+  assert.deepEqual(platePairs(computePlateBreakdown(100, 20)), [
+    { plate: 25, count: 2 }, { plate: 15, count: 2 },
+  ]);
+  assert.deepEqual(platePairs(computePlateBreakdown(20, 20)), []);
+  assert.deepEqual(platePairs(null), []);
+});
+
+test('a below-bar load has no shortfall and no nearest total', () => {
+  const bd = computePlateBreakdown(15, 20);
+  assert.equal(bd.belowBar, true);
+  assert.equal(plateShortfallTotal(bd), 0);
+  assert.equal(nearestBuildableTotal(15, bd), null);
+  assert.deepEqual(platePairs(bd), []);
+});
+
+test('lb targets use the lb bar and plates', () => {
+  const exact = computePlateBreakdown(135, 45, LB_PLATES);
+  assert.deepEqual(exact.perSide, [{ plate: 45, count: 1 }]);
+  assert.deepEqual(platePairs(exact), [{ plate: 45, count: 2 }]);
+  assert.equal(plateShortfallTotal(exact), 0);
+
+  const short = computePlateBreakdown(137, 45, LB_PLATES); // 46 per side
+  assert.equal(plateShortfallTotal(short), 2);
+  assert.equal(nearestBuildableTotal(137, short), 135);
 });
 
 test('blank or absent counts keep the historical unlimited behaviour', () => {
