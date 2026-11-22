@@ -26,6 +26,7 @@ import { resolvedLoadMode } from '../workout/load-mode.js';
 import { supportsLoadBasis } from '../workout/load-basis.js';
 import { buildSavedWorkoutDraft } from '../workout/edit-saved.js';
 import { getExerciseRestOverride } from '../workout/exercise-config.js';
+import { normaliseGroupId, pruneSingleMemberGroups } from '../workout/superset.js';
 import { MAX_ROUTINE_LIFTS, MAX_ROUTINE_SETS, newRoutineId } from './store.js';
 
 const ROUTINE_BADGE = 'Routine';
@@ -202,10 +203,18 @@ export function buildRoutineFromSession(state, week, day, options = {}) {
     if (lifts.length >= MAX_ROUTINE_LIFTS) break;
     const prescription = prescriptionForSets(state, lift, draft.lifts?.[lift]);
     if (!prescription) continue;
+    // Circuit membership is a property of the SESSION, not of the sets, so it
+    // has to be copied deliberately: a routine that dropped it could never
+    // rebuild the pair it was saved from.
+    const groupId = normaliseGroupId(week?.liftMeta?.[day]?.[lift]?.groupId);
+    if (groupId) prescription.groupId = groupId;
     prescriptions[lift] = prescription;
     lifts.push(lift);
   }
   if (!lifts.length) return null;
+  // A routine can narrow a circuit (a partner with no completed working set is
+  // skipped). Do not turn the remainder into a one-member "circuit".
+  pruneSingleMemberGroups(prescriptions);
 
   const now = options.now instanceof Date ? options.now : new Date();
   const stamp = now.toISOString();
@@ -320,7 +329,11 @@ export function routineSummary(routine) {
  * today's weekday and get an empty session.
  * @param {any} routine
  * @returns {{
- *   sourceWeek: { lifts: Record<string, Record<string, any[]>>, liftOrder: Record<string, string[]> },
+ *   sourceWeek: {
+ *     lifts: Record<string, Record<string, any[]>>,
+ *     liftOrder: Record<string, string[]>,
+ *     liftMeta: Record<string, Record<string, { groupId: string }>>,
+ *   },
  *   sourceDay: string|null,
  * }}
  */
@@ -329,12 +342,16 @@ export function routineSourceWeek(routine) {
   const lifts = {};
   /** @type {Record<string, string[]>} */
   const liftOrder = {};
+  /** @type {Record<string, Record<string, { groupId: string }>>} */
+  const liftMeta = {};
   const days = routine?.days && typeof routine.days === 'object' ? Object.keys(routine.days) : [];
   for (const day of days) {
     /** @type {Record<string, any[]>} */
     const dayLifts = {};
     /** @type {string[]} */
     const order = [];
+    /** @type {Record<string, { groupId: string }>} */
+    const dayMeta = {};
     const names = Array.isArray(routine.days[day]?.lifts) ? routine.days[day].lifts : [];
     for (const name of names) {
       const prescription = routine.prescriptions?.[day]?.[name];
@@ -344,12 +361,18 @@ export function routineSourceWeek(routine) {
         Math.max(1, Math.round(Number(prescription.sets) || 1)),
       );
       dayLifts[name] = Array.from({ length: count }, () => routineSet(prescription));
+      const groupId = normaliseGroupId(prescription.groupId);
+      if (groupId) dayMeta[name] = { groupId };
       order.push(name);
     }
+    // Import may hand us a tag with no partner; the cockpit must not render a
+    // one-member circuit from it.
+    pruneSingleMemberGroups(dayMeta);
     lifts[day] = dayLifts;
     liftOrder[day] = order;
+    liftMeta[day] = dayMeta;
   }
   const sourceDay = Object.keys(lifts).find((day) => Object.keys(lifts[day]).length > 0)
     || days[0] || null;
-  return { sourceWeek: { lifts, liftOrder }, sourceDay };
+  return { sourceWeek: { lifts, liftOrder, liftMeta }, sourceDay };
 }

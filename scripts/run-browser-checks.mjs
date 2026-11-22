@@ -20,6 +20,7 @@ const checks = [
   'scripts/set-row-browser-check.mjs',
   'scripts/warmup-ramp-browser-check.mjs',
   'scripts/rest-timer-browser-check.mjs',
+  'scripts/superset-browser-check.mjs',
   'scripts/finish-review-browser-check.mjs',
   'scripts/active-run-browser-check.mjs',
   'scripts/recovery-metric-browser-check.mjs',

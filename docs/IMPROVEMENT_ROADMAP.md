@@ -260,8 +260,12 @@ Features: L3, L9, L10, L12, L13 (see §7).
 5. **Rest timer polish.** Per-exercise default, ±15 s adjustments, drop-set
    suppression, inline timer, alert sound/volume, and the existing reload
    persistence.
-6. **Superset polish.** Rest after the pair rather than after each member,
-   stable colours, persistence in the routine, and an explicit unlink.
+6. **Circuit polish (landed).** Same-day lifts share a `groupId`; the group can
+   be a pair or a circuit of three or more. Rest starts after the last member
+   catches up, never after each member. A–F keep their colours and later ids
+   continue through a wider palette; ids run A…Z then AA/AB. The panel adds,
+   removes and unlinks members explicitly, and routines/copied sessions keep
+   the membership.
 7. **Previous values scope.** Verify the `last anywhere` / `last in this
    routine` toggle and tap-to-fill, and make the scope visible where it matters.
    Scope limits the panel and the fill action; it never limits PR detection.
@@ -497,7 +501,7 @@ not rebuild a ✅.
 | L8 | Warm-up calculator | `workout/warmup-ramp.js` | Percentage rows, plate/dumbbell rounding, insert/delete | ✅ | 1 |
 | L9 | Plate calculator | `workout/plates.js` | Target, bar, plates, counts, per-side, shortfall | ◐ | 1 |
 | L10 | RPE | `workout/set-sheet.js` | 6–10 in half steps, live entry, review later | ◐ | 1 |
-| L11 | Supersets | `workout-order.js` | Pairs and circuits, colours, rest after both | ◐ | 1 |
+| L11 | Supersets | `workout/superset.js` | Pairs and circuits, stable colours, rest after the group | ✅ | 1 |
 | L12 | Saving a workout | `workout/session-status.js` | Name, duration, date, notes, summary | ✅ | 1 |
 | L13 | Live PR | `workout.js` | 1RM/weight/volume/reps/duration detection and banner | ◐ | 1 |
 | L14 | Live activity | — | Lock-screen/ongoing notification with set and rest controls | ○ | 6 |
@@ -650,9 +654,38 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,104 node tests, typecheck, smoke, precache/workflow gates, 44 real-browser checks |
+| Quality | 2,123 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Supersets become circuits (commit 1).**
+  - A circuit is memory, not a stored mode: same-day lifts sharing a non-empty
+    `groupId` in `js/workout/superset.js` (pure, no DOM, no `../workout.js`
+    import). Adding a third JOINS the existing letter instead of minting a new
+    one and re-lettering the original pair; a cross-group merge is refused with
+    an explanation. Members render in `liftOrder`; the panel adds, removes
+    (dropping a lone remaining tag) and unlinks explicitly.
+  - Rest belongs to the group. `shouldRestAfterSet` counts only working,
+    non-drop rows and rests only after every other member has done
+    `min(done_ticked, its available rows)`. Warm-up ticks fall through to the
+    existing warm-up tier; drop ticks never rest. Both the manual tick and
+    one-tap quick log gate `triggerRestTimerEngine` through it.
+  - Colours keep A–F and continue through a wider stable palette; ids run A…Z
+    then AA/AB, so the 27th group is no longer `[`. The header reads
+    `SS A · 3 exercises · rest after the last`, each member's SS button carries
+    the count, and connectors use `2 of 3` ordinals.
+  - `prescriptions[day][lift].groupId` persists through routines and one-off
+    copies/repeats; `createOneOffStrengthSession` seeds `liftMeta` from the
+    source week (filtered to live lifts, single-member tags pruned). Routine
+    import validates `^[A-Z]{1,2}$`.
+  - Validation: 16 new circuit/routine tests (join-not-split, remove-one,
+    colours, AA ids, uneven/warm-up/drop rounds, routine restore and
+    Copy/Repeat), the two existing superset logging contracts, and the new
+    `scripts/superset-browser-check.mjs` at 390px: pair → add third → liftOrder
+    order → no rest after A1/B1 → rest after C1 → remove one → unlink all.
+    Screenshot: `hevy-audit/shots/superset-circuit.png`.
+  - Next: exercise-level circuit behaviour after a mid-session swap and a
+    second-pass UI review of the panel on a long day.
 
 - **2026-11-22 — Routines: save, start and organise reusable workouts (six
   commits).**

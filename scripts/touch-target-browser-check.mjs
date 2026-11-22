@@ -299,6 +299,39 @@ try {
   await page.waitForTimeout(400);
   await snap('cockpit-expanded');
 
+  // The circuit panel is an in-place editor, not a modal: it renders between
+  // the card header and its body. Its member Remove buttons and candidate rows
+  // are real controls in the densest session surface.
+  {
+    const opened = await page.evaluate(() => {
+      const button = document.querySelector('#cockpitExercisesContainer [data-action="show-ss-panel"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    });
+    if (!opened) fail('superset-panel: no SS button on any cockpit exercise');
+    try {
+      await page.waitForSelector('.ss-link-panel', { timeout: 6000 });
+    } catch {
+      fail('superset-panel did not open — the check is not measuring it');
+    }
+    // Form a pair so the panel's member Remove rows are measured too, not just
+    // the candidate buttons.
+    const candidate = page.locator('.ss-link-panel [data-action="link-superset"]:not([disabled])').first();
+    if (await candidate.count()) {
+      await candidate.click();
+      await page.waitForSelector('.superset-group', { timeout: 6000 });
+      await page.waitForTimeout(250);
+      await page.evaluate(() => document.querySelector('#cockpitExercisesContainer .superset-group [data-action="show-ss-panel"]')?.click());
+      await page.waitForSelector('.ss-link-panel', { timeout: 6000 });
+    }
+    await page.waitForTimeout(300);
+    await snap('superset-panel');
+    // Clicking elsewhere is the panel's own dismissal path.
+    await page.evaluate(() => document.body.click());
+    await page.waitForTimeout(150);
+  }
+
   // Each modal must actually OPEN before it is measured — a selector that never
   // matches would silently contribute nothing and still let the check pass, so
   // every one of these is asserted rather than best-effort.

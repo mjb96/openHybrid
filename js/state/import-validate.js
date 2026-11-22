@@ -191,6 +191,10 @@ function isValidRoutinePrescription(prescription) {
   if (prescription.loadMode != null && !LOAD_MODES.includes(prescription.loadMode)) return false;
   if (prescription.band != null && !BAND_SIZES.includes(prescription.band)) return false;
   if (prescription.bw != null && prescription.bw !== true) return false;
+  // Circuit membership is optional, but a tag that is not A…Z / AA…ZZ would
+  // render as punctuation or a dead group in the cockpit.
+  if (prescription.groupId != null
+    && (typeof prescription.groupId !== 'string' || !/^[A-Z]{1,2}$/.test(prescription.groupId))) return false;
   return true;
 }
 
