@@ -737,10 +737,23 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     bodyweight, rest-timer and touch-target checks.
   - Next: two owner notes for the logger, to confirm before building —
     (1) a logger setting must apply PER EXERCISE, not per set, and must be
-    remembered once chosen; (2) the ghost/placeholder values should update in
-    line with what was entered for the PREVIOUS set. Name the exact control in
-    each case (rest, effort/RPE, set type or load default), then return to the
-    gated backlog at Phase 0 → Phase 1.
+    remembered once chosen (most likely the set sheet's rest control, which
+    currently writes a per-set `restSec`); (2) the ghost/placeholder values
+    should update in line with what was entered for the PREVIOUS set. Both need
+    the exact control named before building, because per-set rest and the
+    prescribed ghost are deliberate today (the ghost doubles as the adherence
+    target), so the change is a contract change rather than a tweak. Then return
+    to the gated backlog at Phase 0 → Phase 1.
+
+- **2026-11-23 — Session recap lists lifts in the order they were performed.**
+  - `buildSessionRecap` sorted lifts by tonnage, so the finish recap, History
+    detail and share card opened with the heaviest lift instead of the one the
+    athlete actually started with. It now orders by `week.liftOrder[day]` — the
+    cockpit's own order (program seeding, drag reorder, swap) and the only
+    stable record of sequence, since sets carry no completion timestamp — with
+    stored insertion order after the known lifts.
+  - Tests pin three cases: volume no longer decides, an explicit `liftOrder`
+    wins, and a lift missing from it stays after the ordered ones.
 
 - **2026-11-23 — 14-site review fixes: display units, disclosure, trend labels.**
   - The per-site chart now receives DISPLAY values: `measurementTrendData`
