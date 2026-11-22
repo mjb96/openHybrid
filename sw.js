@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-h79f7918e822a';
+const CACHE_NAME = 'openhybrid-v122-h7e79c4948e2b';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -25,6 +25,7 @@ const REQUIRED_ASSETS = [
   "./css/brand-consistency.css",
   "./css/hybrid-score.css",
   "./css/programs.css",
+  "./css/progress.css",
   "./css/styles.css",
   "./icon-192.png",
   "./icon-512.png",
@@ -60,6 +61,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/period-comparison.js",
   "./js/analytics/period-totals.js",
   "./js/analytics/progress-landing.js",
+  "./js/analytics/pulse.js",
   "./js/analytics/recovery-calendar.js",
   "./js/analytics/recovery-detail.js",
   "./js/analytics/recovery-performance.js",
@@ -71,6 +73,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/strength-volume-detail.js",
   "./js/analytics/training-calendar.js",
   "./js/analytics/utils.js",
+  "./js/analytics/views/band-kit.js",
   "./js/analytics/views/metric-contract.js",
   "./js/analytics/views/screen-kit.js",
   "./js/analytics/views/view-bodyweight.js",
@@ -81,6 +84,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/views/view-progress-hub.js",
   "./js/analytics/views/view-progress.js",
   "./js/analytics/views/view-projections.js",
+  "./js/analytics/views/view-pulse.js",
   "./js/analytics/views/view-recovery-metric.js",
   "./js/analytics/views/view-recovery-performance.js",
   "./js/analytics/views/view-recovery.js",

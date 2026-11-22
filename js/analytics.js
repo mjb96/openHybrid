@@ -35,6 +35,7 @@ import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progres
 import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
 import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
+import { buildPulseModel } from './analytics/pulse.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
 let _getState;
@@ -415,6 +416,20 @@ export function renderAnalytics() {
       const isCurrentWeek = weekStart === weekStartOf(today);
       const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
       const dashboard = computeDashboardModel(st, days, program, days[0] || 'mon');
+      // Pulse is built here (not inside the view) so a model failure becomes an
+      // error band rather than an exception that blanks the whole tab.
+      let pulseModel = null;
+      let pulseError = null;
+      try {
+        pulseModel = buildPulseModel(st, {
+          todayISO: today,
+          weekStartISO: weekStart,
+          program,
+          days,
+        });
+      } catch (error) {
+        pulseError = error instanceof Error ? error.message : String(error);
+      }
       renderProgressHub(hubEl, buildProgressLanding(st, {
         days,
         program,
@@ -431,7 +446,12 @@ export function renderAnalytics() {
           range: '12w',
           today: isCurrentWeek ? today : weekEnd,
         }),
-      }), st.settings?.ui?.progress?.hidden || []);
+      }), st.settings?.ui?.progress?.hidden || [], {
+        pulse: pulseModel,
+        pulseError,
+        weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
+        distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
+      });
       break;
     }
     // V2 (S2): the Review screen — weekly-review (Overview) + weekly-summary and

@@ -11,6 +11,7 @@
 // =============================================================================
 
 import { esc, spark } from './screen-kit.js';
+import { renderPulse } from './view-pulse.js';
 import { icon } from '../../ui/icons.js';
 import { formatDist } from '../utils.js';
 import { addDaysISO } from '../weekly-aggregate.js';
@@ -160,7 +161,13 @@ function recentWeeksStrip(model) {
   </section>`;
 }
 
-export function renderProgressHub(container, model, hidden = []) {
+/**
+ * @param {HTMLElement|null} container
+ * @param {ReturnType<import('../progress-landing.js').buildProgressLanding>} model
+ * @param {string[]} [hidden]
+ * @param {{ pulse?: any, pulseError?: string|null, weightUnit?: string, distanceUnit?: string }} [extras]
+ */
+export function renderProgressHub(container, model, hidden = [], extras = {}) {
   if (!container || !model) return;
   const hiddenSet = new Set(Array.isArray(hidden) ? hidden : []);
   const domains = model.domains.filter((domain) => !hiddenSet.has(domain.id));
@@ -182,7 +189,13 @@ export function renderProgressHub(container, model, hidden = []) {
       <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
     </div>
     ${intro}
-    ${model.allEmpty ? '' : weekHero(model)}
+    ${model.allEmpty ? '' : (extras.pulse
+      ? renderPulse(extras.pulse, {
+        weightUnit: extras.weightUnit,
+        distanceUnit: extras.distanceUnit,
+        error: extras.pulseError || null,
+      })
+      : weekHero(model))}
     ${recentWeeksStrip(model)}
     ${!domains.length && !secondary.length ? '<p class="ph-empty">All Progress cards are hidden. Use Customize to bring them back.</p>' : ''}
     <div class="ph-grid">${domains.map(domainCard).join('')}</div>

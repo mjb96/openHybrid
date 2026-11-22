@@ -228,9 +228,12 @@ try {
         says: cards.map((card) => card.querySelector('.ph-card__say')?.textContent?.trim() || ''),
         secondary: [...section.querySelectorAll('.hub-link--quiet')].map((link) => link.getAttribute('data-context')),
         hasMethod: !!section.querySelector('.an-method'),
-        hasWeekHero: !!section.querySelector('.ph-week'),
-        weekHeroText: section.querySelector('.ph-week')?.textContent?.trim() || '',
-        heroEyebrow: section.querySelector('.ph-week__eyebrow')?.textContent?.trim() || '',
+        // The Pulse band replaced the old week hero: same contract, same
+        // assertions — the top of the page names the SELECTED week in real
+        // dates and follows the navigator.
+        hasWeekHero: !!section.querySelector('[data-band="pulse"]'),
+        weekHeroText: section.querySelector('[data-band="pulse"]')?.textContent?.trim() || '',
+        heroEyebrow: section.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
         weekBars: section.querySelectorAll('.ph-weeks__bar').length,
         weekBarsHidden: [...section.querySelectorAll('.ph-weeks__bar')].every((bar) => bar.getAttribute('aria-hidden') === 'true'),
         weekHead: section.querySelector('.ph-weeks__head')?.textContent?.trim() || '',
@@ -291,13 +294,13 @@ try {
       await page.click('#weekNavPrev:not([disabled])', { timeout: 2000 });
       if (!(await waitForNavLabel(page, 'Previous week'))) failures.push(`${width}px: stepping back did not label the previous week`);
       const previous = await page.$eval('#analytics-hub', (el) => ({
-        heroEyebrow: el.querySelector('.ph-week__eyebrow')?.textContent?.trim() || '',
-        heroLabel: el.querySelector('.ph-week')?.getAttribute('aria-label') || '',
+        heroEyebrow: el.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
+        heroLabel: el.querySelector('[data-band="pulse"]')?.getAttribute('aria-label') || '',
         weekHead: el.querySelector('.ph-weeks__head')?.textContent?.trim() || '',
         weekScale: el.querySelector('.ph-weeks__scale')?.textContent?.trim() || '',
         runningValue: el.querySelector('.ph-card[data-context="running"] .ph-card__value')?.textContent?.trim() || '',
         runningSay: el.querySelector('.ph-card[data-context="running"] .ph-card__say')?.textContent?.trim() || '',
-        hasHero: !!el.querySelector('.ph-week'),
+        hasHero: !!el.querySelector('[data-band="pulse"]'),
       }));
       const previousDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
       if (previous.heroEyebrow !== previousDates) failures.push(`${width}px: the overview eyebrow did not follow the navigator (${previous.heroEyebrow} vs ${previousDates})`);
@@ -319,7 +322,7 @@ try {
         await page.click('#weekNavPrev:not([disabled])', { timeout: 2000 });
         if (!(await waitForNavLabel(page, '2 weeks ago'))) failures.push(`${width}px: second step back did not reach two weeks ago`);
         const twoBack = await page.$eval('#analytics-hub', (el) => ({
-          heroEyebrow: el.querySelector('.ph-week__eyebrow')?.textContent?.trim() || '',
+          heroEyebrow: el.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
           weekHead: el.querySelector('.ph-weeks__head')?.textContent?.trim() || '',
         }));
         const twoBackDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());

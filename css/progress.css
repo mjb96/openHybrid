@@ -1,0 +1,445 @@
+/* ==========================================================================
+   PROGRESS TAB — band system (css/progress.css)
+   --------------------------------------------------------------------------
+   Deliberately a separate sheet from analytics.css (2,122 lines, and the
+   roadmap already flags its specificity as a risk). Every selector here is
+   `pg-*`, so the new surface and the old hub can coexist while the redesign
+   rolls out, and reverting a phase cannot collide with the legacy chrome.
+
+   Rules:
+   - tokens only (css/styles.css), no hard-coded colours except documented
+     light-mode overrides
+   - dark first; light overrides live together at the bottom
+   - 44px minimum on anything tappable
+   - no hover-only affordances
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- 1. BAND */
+.pg-band {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.07));
+  border-radius: 14px;
+  padding: 14px 13px;
+  margin-bottom: 12px;
+}
+
+.pg-band__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pg-band__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pg-band__eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pg-band__value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-band__unit {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pg-band__chip {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--overlay-md, rgba(255, 255, 255, 0.06));
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.pg-band__sub {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.pg-band__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pg-band__action {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-cyan, #22d3ee);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pg-band__action:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; border-radius: 8px; }
+
+/* --------------------------------------------------------------- 2. STATES */
+.pg-state {
+  margin-top: 12px;
+}
+
+.pg-state--loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Reserved geometry: the skeleton must occupy the space its data will, or
+     every visit jumps when the real chart lands. */
+  min-height: var(--pg-state-h, 180px);
+}
+
+.pg-skeleton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    var(--overlay-sm, rgba(255, 255, 255, 0.03)),
+    var(--overlay-md, rgba(255, 255, 255, 0.06)),
+    var(--overlay-sm, rgba(255, 255, 255, 0.03)));
+  background-size: 200% 100%;
+  animation: pg-sheen 1.4s ease-in-out infinite;
+}
+
+.pg-skeleton--title { width: 45%; height: 14px; }
+.pg-skeleton--chart { width: 100%; height: calc(var(--pg-state-h, 180px) - 76px); }
+.pg-skeleton--row { width: 70%; height: 12px; }
+
+@keyframes pg-sheen {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.pg-state__message {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pg-state--empty { padding: 10px 0 4px; }
+.pg-state--empty .pg-band__action { padding: 0 12px; }
+
+.pg-state--error {
+  border: 1px solid var(--color-red, #ef4444);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--red-alpha, rgba(239, 68, 68, 0.12));
+}
+
+.pg-state--error .pg-state__message { color: var(--text-primary); }
+
+.pg-state__detail {
+  margin-top: 6px;
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+}
+
+.pg-state--offline .pg-state__message,
+.pg-state--stale { font-size: 0.62rem; color: var(--text-secondary); }
+
+.pg-state--stale {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-skeleton { animation: none; }
+}
+
+/* ------------------------------------------------------------- 3. DATA TABLE */
+.pg-data {
+  margin-top: 10px;
+  border-top: 1px solid var(--overlay-sm, rgba(255, 255, 255, 0.03));
+  padding-top: 8px;
+}
+
+.pg-data > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.pg-data__wrap { overflow-x: auto; }
+
+.pg-data__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-data__table th,
+.pg-data__table td {
+  padding: 5px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--overlay-sm, rgba(255, 255, 255, 0.03));
+  white-space: nowrap;
+}
+
+.pg-data__table th { color: var(--text-secondary); font-weight: 800; }
+
+/* ----------------------------------------------------------------- 4. LEGEND */
+.pg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pg-legend__item.is-muted { opacity: 0.7; }
+
+.pg-legend__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--overlay-xl, rgba(255, 255, 255, 0.12));
+  flex: 0 0 8px;
+}
+
+/* ------------------------------------------------------------------ 5. ROWS */
+.pg-rows {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-row { margin: 0; }
+
+.pg-row__hit {
+  display: grid;
+  grid-template-columns: 78px 1fr 30px 54px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.pg-row__hit { cursor: pointer; min-height: 44px; }
+button.pg-row__hit:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; border-radius: 8px; }
+
+.pg-row__name {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-row__track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--overlay-md, rgba(255, 255, 255, 0.06));
+  overflow: hidden;
+}
+
+.pg-row__bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-cyan, #22d3ee);
+}
+
+.pg-row__value {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-row__status {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------- 6. PULSE SPECIFICS */
+.pg-rail {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.pg-day__mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--overlay-md, rgba(255, 255, 255, 0.06));
+  display: block;
+}
+
+.pg-day.is-trained .pg-day__mark { background: var(--color-cyan, #22d3ee); }
+
+.pg-day.is-today .pg-day__mark {
+  box-shadow: inset 0 0 0 2px var(--color-cyan, #22d3ee);
+  background: rgba(34, 211, 238, 0.18);
+}
+
+.pg-day.is-trained.is-today .pg-day__mark {
+  background: var(--color-cyan, #22d3ee);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35);
+}
+
+.pg-day.is-future .pg-day__mark { opacity: 0.45; }
+
+.pg-day__label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pg-pulse__summary {
+  margin: 12px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.pg-pulse__delta {
+  margin: 6px 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.pg-pulse__delta--up { color: var(--color-green, #10b981); }
+.pg-pulse__delta--down { color: var(--color-amber, #f59e0b); }
+.pg-pulse__delta--flat { color: var(--text-secondary); }
+
+/* --------------------------------------------------- 7. COLLAPSED BAND ROW */
+.pg-band--collapsed { padding: 0; }
+
+.pg-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 13px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pg-collapsed:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -2px; border-radius: 14px; }
+
+.pg-collapsed__value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-collapsed__delta {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--color-green, #10b981);
+}
+
+.pg-collapsed__cue {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--color-cyan, #22d3ee);
+}
+
+/* --------------------------------------------------------- 8. WIDE LAYOUT */
+@media (min-width: 600px) {
+  .pg-band { padding: 16px 16px 14px; }
+  /* Two columns inside a band, never a wider chart. */
+  .pg-band--wide .pg-band__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+}
+
+/* ------------------------------------------------------- 9. LIGHT OVERRIDES */
+html[data-theme="light"] .pg-band {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .pg-band__eyebrow,
+html[data-theme="light"] .pg-band__sub,
+html[data-theme="light"] .pg-pulse__summary,
+html[data-theme="light"] .pg-state__message,
+html[data-theme="light"] .pg-row__status,
+html[data-theme="light"] .pg-legend__item,
+html[data-theme="light"] .pg-day__label {
+  /* 5.35:1 on white — measured, same precedent as the bodyweight chart. */
+  color: #475569;
+}
+
+html[data-theme="light"] .pg-band__value,
+html[data-theme="light"] .pg-row__name,
+html[data-theme="light"] .pg-collapsed__value { color: #0f172a; }
+
+html[data-theme="light"] .pg-band__action,
+html[data-theme="light"] .pg-collapsed__cue { color: #0e7490; }
+
+html[data-theme="light"] .pg-day__mark { background: rgba(15, 23, 42, 0.08); }
+html[data-theme="light"] .pg-day.is-trained .pg-day__mark { background: #0e7490; }
+html[data-theme="light"] .pg-day.is-today .pg-day__mark { box-shadow: inset 0 0 0 2px #0e7490; }
+html[data-theme="light"] .pg-row__track { background: rgba(15, 23, 42, 0.08); }
+html[data-theme="light"] .pg-state--error { background: rgba(239, 68, 68, 0.06); }
