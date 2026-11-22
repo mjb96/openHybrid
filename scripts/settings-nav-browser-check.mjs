@@ -68,9 +68,16 @@ try {
   ok((await visibleLabel()).includes('Training'), 'Training tab shows Training');
   ok(!(await visibleLabel()).includes('Profile'), 'Training tab hides Profile');
 
-  // Logging settings used to be hidden power-user markup. They are now a
-  // first-class group: rest tiers, presets, progression step and last-performed
-  // scope must all be reachable.
+  // Logging settings used to be hidden power-user markup buried inside the
+  // Training card. They are now a first-class card in a fixed order, so a
+  // setting cannot drift back into an unrelated group.
+  ok((await visibleLabel()).includes('Logging'), 'Training tab shows the Logging card');
+  ok((await visibleLabel()).join('|') === 'Training|Logging|Program Week|Equipment|Modules',
+    `Training cards are ordered Units → Logging → Program → Equipment → Modules (got ${(await visibleLabel()).join('|')})`);
+  const hintsCard = await page.locator('#settingsShowPlateHints').evaluate((el) => (
+    el.closest('.settings-section')?.querySelector('.settings-section-label')?.textContent?.trim()
+  ));
+  ok(hintsCard === 'Logging', 'plate hints live in the Logging card');
   ok(await page.locator('#settingsRestWarmup').isVisible(), 'warm-up rest tier is visible');
   ok(await page.locator('#settingsRestCompound').isVisible(), 'compound rest tier is visible');
   ok(await page.locator('#settingsRestAccessory').isVisible(), 'accessory rest tier is visible');

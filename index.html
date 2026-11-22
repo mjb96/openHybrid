@@ -1532,36 +1532,53 @@
               <button class="settings-toggle-btn" data-action="set-dist-unit" data-unit="mi">miles</button>
             </div>
           </div>
-          <div class="settings-row" style="display:block;">
-            <div class="settings-section-label settings-section-label--sub">Logging</div>
-            <label class="hc-data-toggle"><input type="checkbox" id="settingsRestEnabled" checked><span>Auto rest timer between sets</span></label>
-            <label class="hc-data-toggle"><input type="checkbox" id="settingsAutoWarmup"><span>Auto warm-up ramp</span></label>
-            <div class="settings-hint">After you enter the first working weight, add editable 40/60/80% warm-up sets. Only for barbell lifts; never added twice.</div>
-            <div class="settings-hint">Rest by exercise type. These are the defaults; the timer's ± buttons remember a per-exercise override.</div>
-            <div class="settings-toggle-group" style="margin:8px 0;">
-              <button class="settings-toggle-btn" data-action="rest-preset" data-preset="efficient">Efficient</button>
-              <button class="settings-toggle-btn" data-action="rest-preset" data-preset="hypertrophy">Standard</button>
-              <button class="settings-toggle-btn" data-action="rest-preset" data-preset="strength">Strength</button>
+          <div class="settings-row" data-module="running">
+            <label class="settings-row-label">Threshold Pace</label>
+            <div class="settings-input-unit-row">
+              <input type="text" class="settings-input settings-input-short" id="settingsThresholdPace" placeholder="4:30" maxlength="5">
+              <span class="settings-unit-badge">min/km</span>
             </div>
-            <div class="settings-row">
-              <label class="settings-row-label" for="settingsRestWarmup">Warm-up rest</label>
-              <input type="text" class="settings-input settings-input-short" id="settingsRestWarmup" inputmode="numeric" placeholder="0:45" style="text-align:center;">
-            </div>
-            <div class="run-grid-inputs" style="grid-template-columns: repeat(3, 1fr);">
-              <label><span class="set-num-lbl block mb-1 text-accent-red">Compound</span><input type="text" id="settingsRestCompound" inputmode="numeric" placeholder="3:00" style="text-align:center;"></label>
-              <label><span class="set-num-lbl block mb-1 text-accent-amber">Accessory</span><input type="text" id="settingsRestAccessory" inputmode="numeric" placeholder="2:00" style="text-align:center;"></label>
-              <label><span class="set-num-lbl block mb-1 text-accent-green">Isolation</span><input type="text" id="settingsRestIsolation" inputmode="numeric" placeholder="1:30" style="text-align:center;"></label>
-            </div>
-            <label class="hc-data-toggle"><input type="checkbox" id="settingsRestAlertSound" checked><span>Rest alert sound</span></label>
-            <div class="settings-row">
-              <label class="settings-row-label" for="settingsRestAlertVolume">Alert volume</label>
-              <div class="settings-input-unit-row">
-                <input type="range" id="settingsRestAlertVolume" min="0" max="100" step="5" value="40" style="flex:1;">
-                <span class="settings-unit-badge" id="settingsRestAlertVolumeValue">40%</span>
-              </div>
-            </div>
-            <button class="settings-toggle-btn" data-action="reset-rest-overrides">Reset remembered rests</button>
           </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Week Starts On</label>
+            <div class="settings-toggle-group">
+              <button class="settings-toggle-btn active" data-action="set-week-start" data-day="mon">Monday</button>
+              <button class="settings-toggle-btn" data-action="set-week-start" data-day="sun">Sunday</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logging -->
+        <div class="settings-section">
+          <div class="settings-section-label">Logging</div>
+          <div class="settings-hint">How sets are logged and what the logger remembers between sessions.</div>
+          <label class="hc-data-toggle"><input type="checkbox" id="settingsRestEnabled" checked><span>Auto rest timer between sets</span></label>
+          <label class="hc-data-toggle"><input type="checkbox" id="settingsAutoWarmup"><span>Auto warm-up ramp</span></label>
+          <div class="settings-hint">After you enter the first working weight, add editable 40/60/80% warm-up sets. Only for barbell lifts; never added twice.</div>
+          <div class="settings-hint">Rest by exercise type. These are the defaults; the timer's ± buttons remember a per-exercise override.</div>
+          <div class="settings-toggle-group" style="margin:8px 0;">
+            <button class="settings-toggle-btn" data-action="rest-preset" data-preset="efficient">Efficient</button>
+            <button class="settings-toggle-btn" data-action="rest-preset" data-preset="hypertrophy">Standard</button>
+            <button class="settings-toggle-btn" data-action="rest-preset" data-preset="strength">Strength</button>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label" for="settingsRestWarmup">Warm-up rest</label>
+            <input type="text" class="settings-input settings-input-short" id="settingsRestWarmup" inputmode="numeric" placeholder="0:45" style="text-align:center;">
+          </div>
+          <div class="run-grid-inputs" style="grid-template-columns: repeat(3, 1fr);">
+            <label><span class="set-num-lbl block mb-1 text-accent-red">Compound</span><input type="text" id="settingsRestCompound" inputmode="numeric" placeholder="3:00" style="text-align:center;"></label>
+            <label><span class="set-num-lbl block mb-1 text-accent-amber">Accessory</span><input type="text" id="settingsRestAccessory" inputmode="numeric" placeholder="2:00" style="text-align:center;"></label>
+            <label><span class="set-num-lbl block mb-1 text-accent-green">Isolation</span><input type="text" id="settingsRestIsolation" inputmode="numeric" placeholder="1:30" style="text-align:center;"></label>
+          </div>
+          <label class="hc-data-toggle"><input type="checkbox" id="settingsRestAlertSound" checked><span>Rest alert sound</span></label>
+          <div class="settings-row">
+            <label class="settings-row-label" for="settingsRestAlertVolume">Alert volume</label>
+            <div class="settings-input-unit-row">
+              <input type="range" id="settingsRestAlertVolume" min="0" max="100" step="5" value="40" style="flex:1;">
+              <span class="settings-unit-badge" id="settingsRestAlertVolumeValue">40%</span>
+            </div>
+          </div>
+          <button class="settings-toggle-btn" data-action="reset-rest-overrides">Reset remembered rests</button>
           <div class="settings-row">
             <label class="settings-row-label">Progression Step</label>
             <div class="settings-toggle-group">
@@ -1579,41 +1596,9 @@
             </div>
             <div class="settings-hint">Applies to the Last performed panel and Use previous values. PR detection always checks all history.</div>
           </div>
-          <div class="settings-row" data-module="running">
-            <label class="settings-row-label">Threshold Pace</label>
-            <div class="settings-input-unit-row">
-              <input type="text" class="settings-input settings-input-short" id="settingsThresholdPace" placeholder="4:30" maxlength="5">
-              <span class="settings-unit-badge">min/km</span>
-            </div>
-          </div>
           <div class="settings-row">
-            <label class="settings-row-label">Week Starts On</label>
-            <div class="settings-toggle-group">
-              <button class="settings-toggle-btn active" data-action="set-week-start" data-day="mon">Monday</button>
-              <button class="settings-toggle-btn" data-action="set-week-start" data-day="sun">Sunday</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Modules -->
-        <div class="settings-section" id="settingsModules">
-          <div class="settings-section-label">Modules</div>
-          <div class="settings-hint">Hide parts of openHybrid you do not use. Your data stays on this device and can be shown again at any time.</div>
-          <div class="settings-row">
-            <label class="settings-row-label">Running &amp; GPS</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="running" checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-row-label">Fasting</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="fasting" checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-row-label">Health Connect</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="health" checked><span class="settings-switch-track"></span></label>
-          </div>
-          <div class="settings-row">
-            <label class="settings-row-label">Recovery &amp; Load</label>
-            <label class="settings-switch"><input type="checkbox" data-module-toggle="recovery" checked><span class="settings-switch-track"></span></label>
+            <label class="settings-row-label" for="settingsShowPlateHints">Show plate hints in workouts</label>
+            <label class="settings-switch"><input type="checkbox" id="settingsShowPlateHints"><span class="settings-switch-track"></span></label>
           </div>
         </div>
 
@@ -1683,10 +1668,6 @@
               <div class="settings-hint">Optional. Leave a size blank for unlimited; enter 0 if you have none.</div>
               <div class="settings-plate-counts" id="settingsPlateCounts"></div>
             </div>
-            <div class="settings-row">
-              <label class="settings-row-label" for="settingsShowPlateHints">Show hints in workouts</label>
-              <label class="settings-switch"><input type="checkbox" id="settingsShowPlateHints"><span class="settings-switch-track"></span></label>
-            </div>
             <button type="button" class="settings-text-btn" data-action="equipment-plates-reset">Reset to standard plates</button>
           </div>
 
@@ -1727,6 +1708,28 @@
               <label><span class="set-num-lbl block mb-1 text-accent-amber">🟡 Medium</span><input type="number" id="settingsBandMed" min="0" step="0.5" placeholder="20" aria-label="Medium band weight" style="text-align:center;"></label>
               <label><span class="set-num-lbl block mb-1 text-accent-red">🔴 Heavy</span><input type="number" id="settingsBandHeavy" min="0" step="0.5" placeholder="30" aria-label="Heavy band weight" style="text-align:center;"></label>
             </div>
+          </div>
+        </div>
+
+        <!-- Modules -->
+        <div class="settings-section" id="settingsModules">
+          <div class="settings-section-label">Modules</div>
+          <div class="settings-hint">Hide parts of openHybrid you do not use. Your data stays on this device and can be shown again at any time.</div>
+          <div class="settings-row">
+            <label class="settings-row-label">Running &amp; GPS</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="running" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Fasting</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="fasting" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Health Connect</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="health" checked><span class="settings-switch-track"></span></label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Recovery &amp; Load</label>
+            <label class="settings-switch"><input type="checkbox" data-module-toggle="recovery" checked><span class="settings-switch-track"></span></label>
           </div>
         </div>
 
