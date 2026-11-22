@@ -423,6 +423,29 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   Progress destination, weekly-review card or onboarding reveal; the computation
   remains for the morning briefing/notifications and for the one-release
   compatibility window before cleanup.
+- Progress tab (P1 landed): the hub opens on the **Pulse band**
+  (`js/analytics/pulse.js` + `views/view-pulse.js`) — the SELECTED calendar week,
+  its streak and its run/walk split, following the shared week navigator so the
+  band and the navigator can never name different weeks. Sessions are counted as
+  sessions (a strength + run day is two); a warm-up-only day is rest; an untrained
+  current week keeps the streak alive and labels it at risk. Runs and walks never
+  merge: `runKm` excludes walks, `walkKm` excludes runs. `js/analytics/ranges.js`
+  is the one time-window contract (trailing windows end today, so comparisons are
+  elapsed-matched by construction; labels are real dates). `views/band-kit.js`
+  owns the five required states, the text-alternative table, legend and ranked
+  rows for every band. `js/analytics/progress-dashboard.js` composes bands and
+  keeps three answers distinct — hidden by the athlete, module off, no data yet —
+  and renders a throwing band as an error instead of blanking the tab. Customize
+  is the eight bands (`pulse, balance, muscles, exercises, endurance, body,
+  fasting, reports`); `PROGRESS_CARD_ALIASES` maps the pre-band ids so saved
+  choices survive the rename, nothing is pinned, and the last visible card cannot
+  be hidden. **Stylesheets are hand-listed in `scripts/gen-precache.mjs` CORE and
+  are not discovered by the module graph** — `tests/precache_manifest.test.js`
+  now scans `<link>` as well as `<script src>`, so a new sheet cannot ship
+  uncached and render unstyled offline. Design and work order:
+  `docs/progress-tab-plan.md` (product, display, invariants),
+  `docs/progress-tab-execution.md` (contracts, tasks, phases), mockups in
+  `docs/mockups/`.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

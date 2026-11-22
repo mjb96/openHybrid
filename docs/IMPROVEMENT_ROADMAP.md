@@ -69,7 +69,8 @@ upgrade have landed:
 - **History** is a full destination: Calendar | List, search, provenance, a
   source filter, a calendar day sheet, exact detail, lossless editing
   (add/remove exercise and set), delete/undo, Repeat workout and Share workout.
-- **Progress** leads with a this-week hero and 12-week strip, then Strength,
+- **Progress** leads with the Pulse band (the selected week, streak and run/walk split)
+  and a 12-week strip, then Strength,
   Running, Recovery and Review, with body measurements (waist, chest, hips,
   arm, thigh, neck) beside the bodyweight trend. Calendar-week attribution is
   used throughout; the Training Report covers 30 days or 12 months; the exercise
@@ -711,6 +712,32 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | 2,319 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — Progress P1: Pulse band, one range vocabulary, eight-band catalogue.**
+  - The Progress hub now opens on **Pulse** — the selected calendar week, its
+    streak and its run/walk split — instead of the old week hero. It follows the
+    shared week navigator, so the band and the navigator can never name different
+    weeks. A warm-up-only day reads as rest; an untrained current week keeps the
+    streak alive and labels it at risk rather than resetting it.
+  - `analytics/ranges.js` is the one time-window contract: trailing windows end
+    today (so a comparison is elapsed-matched by construction) and `all` never
+    invents a start date. Labels state real dates.
+  - `analytics/views/band-kit.js` implements the five required states, the
+    text-alternative table, legend and ranked rows once for every future band.
+  - `Customize Progress` moves from six legacy cards to the eight bands.
+    `PROGRESS_CARD_ALIASES` maps old ids onto their successors so saved choices
+    survive the rename; nothing is pinned, but the last visible card cannot be
+    hidden.
+  - `progress-dashboard.js` composes bands and keeps "hidden by the athlete",
+    "module off" and "no data yet" as three distinct answers. A throwing band
+    renders an error rather than blanking the tab.
+  - **Fixed a silent offline gap:** stylesheets are hand-listed in
+    `gen-precache.mjs` but were not covered by `precache_manifest.test.js`, so a
+    new `<link>` could ship uncached and render the tab unstyled offline. The
+    test now scans stylesheet links the way it scans `<script src>`.
+  - Design + work order live in `docs/progress-tab-plan.md` and
+    `docs/progress-tab-execution.md`; mockups in `docs/mockups/`.
+  - Next: P2 Balance, then P3 Muscles.
 
 - **2026-11-23 — Hybrid week on Home, a Hybrid training switch, and the shared
   bodyweight chart.**
