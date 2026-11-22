@@ -14,7 +14,10 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek, routineSummary } from '../js/routines/model.js';
-import { ensureRoutines, MAX_ROUTINE_SETS, newFolderId, removeRoutine } from '../js/routines/store.js';
+import {
+  createFolder, deleteFolder, ensureRoutines, findFolder, MAX_ROUTINE_SETS, moveFolder,
+  moveRoutineToFolder, newFolderId, orderedFolders, removeRoutine, renameFolder, restoreFolder,
+} from '../js/routines/store.js';
 import { createOneOffStrengthSession } from '../js/workout/one-off-session.js';
 import { buildSetRow } from '../js/templates.js';
 import { wrapExport, parseImport } from '../js/state/route-portability.js';
@@ -309,6 +312,52 @@ test('routineSummary counts exercises and working sets, and estimates time only 
   assert.equal(capped.workingSets, MAX_ROUTINE_SETS, 'the summary reads the same bound the copy path applies');
 });
 
+test('folders group routines one-way; deleting a folder never deletes a routine', () => {
+  const push = build();
+  const pull = build({ name: 'Pull day' });
+  const state = { routines: [push, pull], libraryFolders: [] };
+
+  const travel = createFolder(state, 'Travel');
+  const home = createFolder(state, 'Home');
+  assert.match(travel.id, /^fld_/);
+  assert.deepEqual(Object.keys(travel).sort(), ['createdAt', 'id', 'name', 'sortOrder']);
+  assert.equal(travel.sortOrder, 0);
+  assert.equal(home.sortOrder, 1);
+  assert.equal(findFolder(state, travel.id), travel);
+  assert.equal(createFolder(state, '   '), null, 'a blank folder name is refused');
+
+  assert.equal(moveRoutineToFolder(state, push.id, travel.id), true);
+  assert.equal(push.folderId, travel.id);
+  assert.equal(moveRoutineToFolder(state, push.id, 'fld_missing'), false, 'a phantom folder is refused');
+  assert.equal(push.folderId, travel.id);
+  assert.equal(moveRoutineToFolder(state, pull.id, null), true);
+  assert.equal(pull.folderId, null);
+
+  assert.equal(renameFolder(state, travel.id, 'Trips'), true);
+  assert.equal(travel.name, 'Trips');
+  assert.equal(renameFolder(state, 'fld_missing', 'Nope'), false);
+
+  assert.equal(moveFolder(state, home.id, -1), true);
+  assert.equal(moveFolder(state, home.id, -1), false, 'the first folder cannot move up');
+  assert.equal(moveFolder(state, home.id, 1), true);
+  assert.equal(moveFolder(state, home.id, 2), false, 'only ±1 is a real direction');
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Trips', 'Home']);
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.sortOrder), [0, 1]);
+
+  const snapshot = deleteFolder(state, travel.id);
+  assert.equal(snapshot.folder.id, travel.id);
+  assert.deepEqual(snapshot.routineIds, [push.id]);
+  assert.equal(state.routines.length, 2, 'deleting a folder never deletes its routines');
+  assert.equal(push.folderId, null, 'members move to Unfiled');
+  assert.equal(findFolder(state, travel.id), null);
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Home']);
+
+  assert.equal(restoreFolder(state, snapshot), true);
+  assert.equal(findFolder(state, travel.id)?.name, 'Trips');
+  assert.equal(push.folderId, travel.id, 'Undo restores membership too');
+  assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Trips', 'Home']);
+});
+
 test('the store seeds and repairs both root arrays, and Undo can remove a routine', () => {
   const blank = {};
   assert.equal(ensureRoutines(blank), true);
@@ -334,6 +383,7 @@ test('a full-state export/import round-trips routines and folders', () => {
     id: newFolderId(), name: 'Travel', sortOrder: 0,
     createdAt: '2026-11-16T10:00:00.000Z', updatedAt: '2026-11-16T10:00:00.000Z',
   };
+  routine.folderId = folder.id;
   const saved = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     currentWeek: '1',

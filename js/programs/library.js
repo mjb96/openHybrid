@@ -13,6 +13,7 @@ import { toggleBookmark, recordRecentlyViewed, getProgramById, getActiveProgramI
 import { escapeHtml, safeCssColor } from '../util.js';
 import { buildActivePlanBanner } from './active-plan-banner.js';
 import { routineSummary } from '../routines/model.js';
+import { orderedFolders } from '../routines/store.js';
 
 // V2-6 — the curated home rails (in order) shown on the lean Discover surface.
 // Everything else stays reachable via the category chips + Browse-all grid.
@@ -383,6 +384,7 @@ function renderSimpleDiscover(content) {
 
 function renderMyPlans(content) {
   const routines = Array.isArray(_appState?.routines) ? _appState.routines : [];
+  const folders = orderedFolders(_appState);
   const custom = _appState?.customPrograms || [];
   const savedIds = _appState?.programLibrary?.bookmarks || [];
   const saved = savedIds.map(resolveProgramMeta).filter(Boolean);
@@ -390,7 +392,7 @@ function renderMyPlans(content) {
     .map((completion) => ({ completion, program: resolveProgramMeta(completion.programId) }))
     .filter((item) => item.program);
 
-  if (!routines.length && !custom.length && !saved.length && !completed.length) {
+  if (!routines.length && !folders.length && !custom.length && !saved.length && !completed.length) {
     content.innerHTML = `<div class="lib-empty-state">
       <div class="lib-empty-icon">${svgIcon('bookmark', { size: 30 })}</div>
       <div class="lib-empty-title">Nothing here yet</div>
@@ -429,7 +431,7 @@ function renderMyPlans(content) {
   // Routines are saved SESSIONS, so they lead: they are startable right now,
   // while a plan is the block they sit inside. They never render as a program
   // card — that would imply an activation and a week slot they do not own.
-  addSection('Routines', routines, { gridClass: 'routine-list', render: renderRoutineCardNode });
+  renderRoutineLibrary(nodes, routines, folders);
   addSection('Your plans', custom);
   addSection('Saved', saved);
   addSection('Completed', completed.map((item) => item.program), { gap: false });
@@ -489,6 +491,111 @@ function renderRoutineCardNode(routine) {
   actions.append(start, menu);
   card.append(main, actions);
   return card;
+}
+
+/**
+ * The Routines area of My Plans.
+ *
+ * With no folders it is the flat list this screen already had. With folders it
+ * becomes one section per folder (sortOrder, then name) plus an Unfiled bucket
+ * for routines with no folder (or a folder id that no longer exists). Empty
+ * folders stay visible — an explicitly created folder must be fillable — and say
+ * so quietly. A folder never stores members; grouping reads `routine.folderId`.
+ *
+ * @param {HTMLElement[]} nodes
+ * @param {any[]} routines
+ * @param {any[]} folders
+ */
+function renderRoutineLibrary(nodes, routines, folders) {
+  if (!routines.length && !folders.length) return;
+
+  const header = document.createElement('div');
+  header.className = 'filtered-grid-header mb-4 routine-library-head';
+  const titleWrap = document.createElement('div');
+  titleWrap.className = 'routine-library-head__title';
+  const title = document.createElement('div');
+  title.className = 'filtered-grid-title';
+  title.textContent = 'Routines';
+  const count = document.createElement('div');
+  count.className = 'filtered-grid-count';
+  count.textContent = String(routines.length);
+  titleWrap.append(title, count);
+  const create = document.createElement('button');
+  create.type = 'button';
+  create.className = 'routine-folder-create';
+  create.setAttribute('data-action', 'create-routine-folder');
+  create.textContent = '+ New folder';
+  header.append(titleWrap, create);
+  nodes.push(header);
+
+  if (!folders.length) {
+    const list = document.createElement('div');
+    list.className = 'routine-list mb-6';
+    routines.forEach((routine) => list.append(renderRoutineCardNode(routine)));
+    nodes.push(list);
+    return;
+  }
+
+  const folderIds = new Set(folders.map((folder) => folder.id));
+  for (const folder of folders) {
+    const members = routines.filter((routine) => routine?.folderId === folder.id);
+    nodes.push(renderRoutineFolderNode(folder, members));
+  }
+  const unfiled = routines.filter((routine) => !routine?.folderId || !folderIds.has(routine.folderId));
+  if (unfiled.length) nodes.push(renderRoutineFolderNode(null, unfiled));
+}
+
+/**
+ * One folder section. `folder` null renders the Unfiled bucket (no menu: it is
+ * not a stored record). Built with DOM nodes + textContent — folder names are
+ * athlete input.
+ * @param {any|null} folder
+ * @param {any[]} members
+ */
+function renderRoutineFolderNode(folder, members) {
+  const section = document.createElement('div');
+  section.className = `routine-folder${folder ? '' : ' routine-folder--unfiled'}${members.length ? '' : ' routine-folder--empty'}`;
+  section.setAttribute('data-folder-id', folder ? String(folder.id || '') : '');
+
+  const head = document.createElement('div');
+  head.className = 'routine-folder__head';
+  const title = document.createElement('div');
+  title.className = 'routine-folder__title';
+  const name = document.createElement('span');
+  name.className = 'routine-folder__name';
+  name.textContent = folder ? String(folder.name || 'Folder') : 'Unfiled';
+  const count = document.createElement('span');
+  count.className = 'routine-folder__count';
+  count.textContent = String(members.length);
+  title.append(name, count);
+  head.append(title);
+
+  if (folder) {
+    const menu = document.createElement('button');
+    menu.type = 'button';
+    menu.className = 'routine-folder__menu';
+    menu.setAttribute('data-action', 'open-routine-folder-menu');
+    menu.setAttribute('data-folder-id', String(folder.id || ''));
+    menu.setAttribute('aria-haspopup', 'menu');
+    menu.setAttribute('aria-expanded', 'false');
+    menu.setAttribute('aria-label', `Actions for ${String(folder.name || 'folder')}`);
+    menu.textContent = '•••';
+    head.append(menu);
+  }
+  section.append(head);
+
+  if (members.length) {
+    const list = document.createElement('div');
+    list.className = 'routine-list';
+    members.forEach((routine) => list.append(renderRoutineCardNode(routine)));
+    section.append(list);
+  } else {
+    const empty = document.createElement('p');
+    empty.className = 'routine-folder__empty';
+    empty.textContent = 'No routines yet';
+    section.append(empty);
+  }
+  return section;
 }
 
 function renderCollectionRows(container) {

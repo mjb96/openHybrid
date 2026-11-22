@@ -96,9 +96,9 @@ upgrade have landed:
 - Body composition stops at bodyweight plus six tape sites. There is no body fat
   and no visual history, which is the one place a lifter most expects a
   before/after.
-- History can repeat, edit, delete and share a session, and it can now save one
-  as a reusable routine, but a saved routine cannot yet be started and routines
-  have no folders.
+- History can repeat, edit, delete and share a session, and it can save one as a
+  reusable routine; routines can be started and filed into folders, but the
+  routine library has no categories or filters yet.
 - Reports stop at the month. Nothing marks a year.
 - Android has no live activity and no widgets, so the phone's own surfaces are
   blind to a session in progress.
@@ -366,11 +366,13 @@ Features: P11, S5, S6.
    session's actual exercises, sets and rest. *Landed: History "Save as routine"
    (root `state.routines`/`state.libraryFolders`, schema v14, Undo) and the
    Plans → My Plans routine list — Start, Rename, Delete with Undo, a badge that
-   counts routines, and an honest summary line. Folders and categories are
-   next.*
+   counts routines, and an honest summary line. Categories and filters are next.*
 2. **Copy, edit and delete** with Undo — verify the existing actions and close
    the gaps rather than adding a second action row.
 3. **Routine folders** — create, rename, delete, reorder, assign, undo.
+   *Landed: sortOrder-ordered folder sections plus an Unfiled bucket, a `•••`
+   folder menu with Move up/down, and a Move-to-folder sheet. Deleting a folder
+   files its routines under Unfiled and Undo restores the folder and membership.*
 4. **Routine library** — categories (at home, travel, dumbbells, band,
    cardio/HIIT, gym, bodyweight, suspension), filters, and saving either a whole
    programme or a single routine.
@@ -642,6 +644,23 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Routine folders.**
+  - My Plans groups routines into folders ordered by `sortOrder`, then an
+    **Unfiled** bucket for routines with no folder; empty folders stay visible
+    with a quiet "No routines yet" so they can be filled. With no folders the
+    flat Routines list is unchanged.
+  - A folder is `{ id, name, sortOrder, createdAt }` and membership is ONE-WAY on
+    `routine.folderId` — a folder never stores a member list. Create, rename,
+    delete, Move up/down and the bottom-sheet Move to folder (folders + Unfiled)
+    reuse the existing app action pattern and never touch `state.weeks`,
+    `activeProgramId` or `currentWeek`.
+  - Deleting a folder moves its routines to Unfiled and never deletes one; Undo
+    restores the folder at its position AND every member's `folderId`.
+  - Validation: store-helper tests (create/rename/delete/restore/move/reorder,
+    phantom folder refused), the routines browser check (create → move → reload →
+    reorder → delete → Undo at 390×844), plus typecheck, smoke, precache and the
+    Plans / touch-target / ergonomics gates.
 
 - **2026-11-22 — Routine Start is a real start.**
   - Plans → My Plans → Start now opens the cockpit already in session: the

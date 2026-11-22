@@ -104,12 +104,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `kind:'routine'`; `js/state/import-validate.js` bounds and repairs the library
   on import. History's action menu owns "Save as routine"; Plans → My Plans leads
   with the routine list (`routine-card`, never `.prog-card`), where Start copies
-  `routineSourceWeek` into a one-off `session:` week and Rename/Delete (+Undo)
-  live in the `•••` menu. Start is a real start: `startRoutine` marks the one-off
-  `in_progress`, binds the session clock and opens the active cockpit through
-  `beginActiveWorkoutSession`, the same sequence the cockpit Start button uses.
-  `js/app.js` owns those actions; they never activate or reseed a program. There
-  are no routine folders yet.
+  `routineSourceWeek` into a one-off `session:` week and Rename/Move/Delete
+  (+Undo) live in the `•••` menu. Start is a real start: `startRoutine` marks the
+  one-off `in_progress`, binds the session clock and opens the active cockpit
+  through `beginActiveWorkoutSession`, the same sequence the cockpit Start button
+  uses. `libraryFolders`
+  (`{id,name,sortOrder,createdAt}`) group routines with ONE-WAY membership on
+  `routine.folderId`; a folder never stores a member list, deleting one moves its
+  routines to Unfiled and never deletes a routine (Undo restores the folder and
+  membership). `js/app.js` owns those actions; they never activate or reseed a
+  program.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported

@@ -118,7 +118,10 @@ import {
 import { markSessionInProgress } from './workout/session-status.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
 import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
-import { ensureRoutines, findRoutine, removeRoutine } from './routines/store.js';
+import {
+  createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, moveFolder,
+  moveRoutineToFolder, orderedFolders, removeRoutine, renameFolder, restoreFolder,
+} from './routines/store.js';
 import { showUndo } from './ui/undo-bar.js';
 
 document.addEventListener('app:modules-changed', () => {
@@ -548,6 +551,178 @@ export async function deleteRoutine(routineId) {
     renderLibrary();
     showToast(restored ? 'Routine restored' : 'The routine could not be restored', !restored);
   }, () => {});
+}
+
+// ── Routine folders ──────────────────────────────────────────────────────────
+//
+// Folders are organisation only. Deleting one moves its routines to Unfiled and
+// never deletes a routine; no folder action reads or writes state.weeks.
+
+let _routineFolderRoutineId = null;
+
+export async function createRoutineFolder() {
+  const name = await textPromptModal({
+    title: 'New folder',
+    message: 'Folders organise routines. Deleting a folder moves its routines to Unfiled — it never deletes them.',
+    label: 'Folder name',
+    placeholder: 'Travel, Home, …',
+    maxLength: 40,
+    confirmLabel: 'Create folder',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A folder needs a name', true); return; }
+  const folder = createFolder(appState, name);
+  if (!folder) { showToast('The folder could not be created', true); return; }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    appState.libraryFolders = appState.libraryFolders.filter((entry) => entry?.id !== folder.id);
+    showToast('The folder could not be saved', true);
+    return;
+  }
+  renderLibrary();
+  showToast(`Folder “${folder.name}” created`);
+}
+
+export async function renameRoutineFolder(folderId) {
+  const folder = findFolder(appState, folderId);
+  if (!folder) { showToast('That folder could not be found', true); return; }
+  const previousName = String(folder.name || '');
+  const name = await textPromptModal({
+    title: 'Rename folder',
+    label: 'Folder name',
+    value: previousName,
+    maxLength: 40,
+    confirmLabel: 'Save name',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A folder needs a name', true); return; }
+  if (name === previousName) return;
+  if (!renameFolder(appState, folderId, name)) {
+    showToast('That folder could not be renamed', true);
+    return;
+  }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    folder.name = previousName;
+    showToast('The folder could not be renamed', true);
+    return;
+  }
+  renderLibrary();
+  showToast('Folder renamed');
+}
+
+export async function deleteRoutineFolder(folderId) {
+  const folder = findFolder(appState, folderId);
+  if (!folder) { showToast('That folder could not be found', true); return; }
+  const count = (appState.routines || []).filter((routine) => routine?.folderId === folderId).length;
+  const confirmed = await confirmModal({
+    title: `Delete “${folder.name}”?`,
+    message: count
+      ? `${count} routine${count === 1 ? '' : 's'} will move to Unfiled and stay in your library. Logged training is untouched.`
+      : 'The empty folder is removed. Logged training is untouched.',
+    confirmLabel: 'Delete folder',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  const snapshot = deleteFolder(appState, folderId);
+  if (!snapshot) return;
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    restoreFolder(appState, snapshot);
+    showToast('The folder could not be deleted', true);
+    return;
+  }
+  renderLibrary();
+  showUndo('Folder deleted', async () => {
+    restoreFolder(appState, snapshot);
+    const restored = await saveStateToLocalStorage(true);
+    renderLibrary();
+    showToast(restored ? 'Folder restored' : 'The folder could not be restored', !restored);
+  }, () => {});
+}
+
+export async function moveRoutineFolder(folderId, direction) {
+  if (!moveFolder(appState, folderId, direction)) return;
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    moveFolder(appState, folderId, Number(direction) === -1 ? 1 : -1);
+    showToast('The folder order could not be saved', true);
+    return;
+  }
+  renderLibrary();
+}
+
+function renderRoutineFolderChoices(routine) {
+  const list = document.getElementById('routineFolderList');
+  if (!list) return;
+  const current = routine.folderId || null;
+  const countIn = (folderId) => (appState.routines || [])
+    .filter((entry) => (entry?.folderId || null) === folderId).length;
+  const choices = [{ id: null, name: 'Unfiled' }, ...orderedFolders(appState)];
+  // Folder names are athlete input; escape every one before it reaches HTML.
+  list.innerHTML = choices.map((folder) => {
+    const id = folder.id == null ? null : folder.id;
+    const isCurrent = current === id;
+    const count = countIn(id);
+    return `<button type="button" class="program-workout-choice routine-folder-choice${isCurrent ? ' is-current' : ''}"
+        data-action="choose-routine-folder" data-folder-id="${escapeHtml(id == null ? '' : String(id))}"
+        aria-pressed="${isCurrent}">
+      <span class="program-workout-choice__day" aria-hidden="true">${id == null ? '—' : '📁'}</span>
+      <span class="program-workout-choice__main">
+        <strong>${escapeHtml(String(folder.name || ''))}</strong>
+        <span>${count} routine${count === 1 ? '' : 's'}</span>
+      </span>
+      <span class="program-workout-choice__chev" aria-hidden="true">${isCurrent ? '✓' : '›'}</span>
+    </button>`;
+  }).join('');
+}
+
+export function openRoutineFolderSheet(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const sheet = document.getElementById('routineFolderSheet');
+  const backdrop = document.getElementById('routineFolderBackdrop');
+  if (!sheet || !backdrop) return;
+  _routineFolderRoutineId = routineId;
+  renderRoutineFolderChoices(routine);
+  sheet.classList.add('active');
+  backdrop.classList.add('active');
+  openManagedModal(sheet, { initialFocus: '.routine-folder-choice' });
+}
+
+export function closeRoutineFolderSheet() {
+  const sheet = document.getElementById('routineFolderSheet');
+  const backdrop = document.getElementById('routineFolderBackdrop');
+  sheet?.classList.remove('active');
+  backdrop?.classList.remove('active');
+  if (sheet) closeManagedModal(sheet);
+  _routineFolderRoutineId = null;
+}
+
+export async function chooseRoutineFolder(folderId) {
+  const routineId = _routineFolderRoutineId;
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { closeRoutineFolderSheet(); return; }
+  const targetId = folderId || null;
+  const previousId = routine.folderId || null;
+  if (targetId === previousId) { closeRoutineFolderSheet(); return; }
+  if (!moveRoutineToFolder(appState, routineId, targetId)) {
+    closeRoutineFolderSheet();
+    showToast('That folder could not be found', true);
+    return;
+  }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    moveRoutineToFolder(appState, routineId, previousId);
+    closeRoutineFolderSheet();
+    showToast('The routine could not be moved', true);
+    return;
+  }
+  closeRoutineFolderSheet();
+  renderLibrary();
+  const folder = targetId ? findFolder(appState, targetId) : null;
+  showToast(folder ? `Moved to “${folder.name}”` : 'Moved to Unfiled');
 }
 
 // Quick Start (from Home): begin a GPS walk/run untethered from the program on
@@ -1352,8 +1527,10 @@ document.addEventListener('click', (e) => {
     const routineId = target.getAttribute('data-routine-id');
     if (isActionMenuOpen()) closeActionMenu();
     else if (routineId) {
+      const hasFolders = orderedFolders(appState).length > 0;
       openActionMenu(target, [
         { label: 'Rename', action: 'rename-routine', routineId },
+        ...(hasFolders ? [{ label: 'Move to folder', action: 'move-routine-to-folder', routineId }] : []),
         { label: 'Delete', action: 'delete-routine', routineId, danger: true },
       ], { label: 'Routine actions' });
     }
@@ -1368,6 +1545,58 @@ document.addEventListener('click', (e) => {
     deleteRoutine(target.getAttribute('data-routine-id')).catch((error) => {
       console.warn('Routine delete failed:', error);
       showToast('The routine could not be deleted', true);
+    });
+  }
+  else if (action === 'move-routine-to-folder') openRoutineFolderSheet(target.getAttribute('data-routine-id'));
+  else if (action === 'choose-routine-folder') {
+    chooseRoutineFolder(target.getAttribute('data-folder-id') || null).catch((error) => {
+      console.warn('Routine move failed:', error);
+      showToast('The routine could not be moved', true);
+    });
+  }
+  else if (action === 'close-routine-folder-sheet') closeRoutineFolderSheet();
+  else if (action === 'create-routine-folder') {
+    createRoutineFolder().catch((error) => {
+      console.warn('Folder create failed:', error);
+      showToast('The folder could not be created', true);
+    });
+  }
+  else if (action === 'open-routine-folder-menu') {
+    const folderId = target.getAttribute('data-folder-id');
+    if (isActionMenuOpen()) closeActionMenu();
+    else if (folderId) {
+      const folders = orderedFolders(appState);
+      const index = folders.findIndex((folder) => folder.id === folderId);
+      openActionMenu(target, [
+        { label: 'Rename', action: 'rename-routine-folder', folderId },
+        ...(index > 0 ? [{ label: 'Move up', action: 'move-routine-folder-up', folderId }] : []),
+        ...(index >= 0 && index < folders.length - 1 ? [{ label: 'Move down', action: 'move-routine-folder-down', folderId }] : []),
+        { label: 'Delete', action: 'delete-routine-folder', folderId, danger: true },
+      ], { label: 'Folder actions' });
+    }
+  }
+  else if (action === 'rename-routine-folder') {
+    renameRoutineFolder(target.getAttribute('data-folder-id')).catch((error) => {
+      console.warn('Folder rename failed:', error);
+      showToast('The folder could not be renamed', true);
+    });
+  }
+  else if (action === 'delete-routine-folder') {
+    deleteRoutineFolder(target.getAttribute('data-folder-id')).catch((error) => {
+      console.warn('Folder delete failed:', error);
+      showToast('The folder could not be deleted', true);
+    });
+  }
+  else if (action === 'move-routine-folder-up') {
+    moveRoutineFolder(target.getAttribute('data-folder-id'), -1).catch((error) => {
+      console.warn('Folder reorder failed:', error);
+      showToast('The folder order could not be saved', true);
+    });
+  }
+  else if (action === 'move-routine-folder-down') {
+    moveRoutineFolder(target.getAttribute('data-folder-id'), 1).catch((error) => {
+      console.warn('Folder reorder failed:', error);
+      showToast('The folder order could not be saved', true);
     });
   }
   else if (action === 'open-program-menu') {

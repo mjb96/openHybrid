@@ -5,8 +5,9 @@
 // session's completion/PR/note detail, the program and logged weeks are
 // untouched, the routine survives a reload, Undo removes it, and a run detail
 // has no such action. Plans → My Plans then lists it as a routine card (never a
-// program card), Start opens the cockpit from the routine's own day, and
-// rename / delete-with-Undo stay inside the routine library.
+// program card), Start opens the cockpit from the routine's own day, rename /
+// delete-with-Undo stay inside the routine library, and folders group routines
+// without ever deleting or duplicating one.
 // =============================================================================
 import { createServer } from 'node:http';
 import { mkdir, readFile } from 'node:fs/promises';
@@ -108,6 +109,29 @@ async function openPlansMyPlans(page) {
 
 async function openRoutineMenu(page, action) {
   await page.click('#progLibraryContent .routine-card [data-action="open-routine-menu"]');
+  await page.waitForSelector(`.action-menu [data-action="${action}"]`);
+  await page.click(`.action-menu [data-action="${action}"]`);
+}
+
+async function createFolder(page, name) {
+  await page.click('#progLibraryContent [data-action="create-routine-folder"]');
+  await page.waitForSelector('.cmodal-overlay [data-cm="input"]');
+  await page.fill('.cmodal-overlay [data-cm="input"]', name);
+  await page.click('.cmodal-overlay [data-cm="ok"]');
+  await page.waitForFunction(
+    ([key, folderName]) => (JSON.parse(localStorage.getItem(key) || '{}').libraryFolders || [])
+      .some((folder) => folder.name === folderName),
+    [STORAGE_KEY, name],
+  );
+  await page.waitForFunction(
+    (folderName) => [...document.querySelectorAll('#progLibraryContent .routine-folder__name')]
+      .some((el) => el.textContent === folderName),
+    name,
+  );
+}
+
+async function openFolderMenu(page, folderId, action) {
+  await page.click(`#progLibraryContent [data-action="open-routine-folder-menu"][data-folder-id="${folderId}"]`);
   await page.waitForSelector(`.action-menu [data-action="${action}"]`);
   await page.click(`.action-menu [data-action="${action}"]`);
 }
@@ -333,6 +357,127 @@ try {
     && JSON.stringify(restored.weeks['1']) === JSON.stringify(baseline.weeks['1']),
   'the routine library actions never touched the program or its weeks');
 
+  // ── Folders: create, move, reorder, delete with Undo ────────────────────
+  const folderBaseline = await readState(page);
+  ok(await page.locator('#progLibraryContent .routine-folder__name').count() === 0,
+    'the flat Routines list has no folder headers yet');
+  const newFolderBox = await page.locator('#progLibraryContent [data-action="create-routine-folder"]').boundingBox();
+  ok(!!newFolderBox && newFolderBox.height >= 44,
+    `New folder is a 44px target (${newFolderBox ? Math.round(newFolderBox.height) : 'missing'}px high)`);
+
+  await createFolder(page, 'Travel');
+  await createFolder(page, 'Home');
+  const folderState = await readState(page);
+  const travel = folderState.libraryFolders.find((folder) => folder.name === 'Travel');
+  const home = folderState.libraryFolders.find((folder) => folder.name === 'Home');
+  ok(!!travel && !!home && travel.sortOrder === 0 && home.sortOrder === 1, 'folders are created in display order');
+  ok(folderState.libraryFolders.every((folder) => !('routines' in folder) && !('members' in folder) && !('routineIds' in folder)),
+    'folders store no member list — membership is one-way on the routine');
+  ok(await page.locator('.routine-folder--unfiled .routine-card').count() === 1,
+    'the unfiled routine moves to the Unfiled bucket');
+  ok(await page.locator('.routine-folder--empty').count() === 2,
+    'empty folders stay visible so they can be filled');
+  const folderMenuBox = await page.locator(`#progLibraryContent [data-action="open-routine-folder-menu"][data-folder-id="${travel.id}"]`).boundingBox();
+  ok(!!folderMenuBox && folderMenuBox.width >= 44 && folderMenuBox.height >= 44,
+    `the folder menu is a 44px target (${folderMenuBox ? `${Math.round(folderMenuBox.width)}×${Math.round(folderMenuBox.height)}` : 'missing'})`);
+
+  // Move the routine into Travel through the routine's own menu.
+  await openRoutineMenu(page, 'move-routine-to-folder');
+  await page.waitForSelector('#routineFolderSheet.active');
+  const choiceNames = await page.locator('#routineFolderList .routine-folder-choice strong').allTextContents();
+  ok(JSON.stringify(choiceNames) === JSON.stringify(['Unfiled', 'Travel', 'Home']),
+    `the move sheet lists folders in order (${choiceNames.join(', ')})`);
+  const choiceBox = await page.locator('#routineFolderList .routine-folder-choice').first().boundingBox();
+  ok(!!choiceBox && choiceBox.height >= 44, `each folder choice is a 44px target (${choiceBox ? Math.round(choiceBox.height) : 'missing'}px high)`);
+  await page.locator('#routineFolderList .routine-folder-choice', { hasText: 'Travel' }).click();
+  await page.waitForFunction(
+    ([key, folderId]) => (JSON.parse(localStorage.getItem(key) || '{}').routines || [])[0]?.folderId === folderId,
+    [STORAGE_KEY, travel.id],
+  );
+  await page.waitForFunction(
+    (folderId) => document.querySelectorAll(`#progLibraryContent .routine-folder[data-folder-id="${folderId}"] .routine-card`).length === 1,
+    travel.id,
+  );
+  await page.waitForFunction(() => !document.getElementById('routineFolderSheet')?.classList.contains('active'));
+  ok(await page.locator('#routineFolderSheet.active, #routineFolderBackdrop.active').count() === 0,
+    'choosing a folder closes the move sheet');
+  await page.waitForTimeout(350); // let the 0.3s sheet slide-down finish before the screenshot
+  ok((await page.locator(`.routine-folder[data-folder-id="${travel.id}"] .routine-card__name`).innerText()) === 'Push day A',
+    'the routine renders inside its folder');
+  ok(await page.locator('.routine-folder--unfiled').count() === 0, 'an empty Unfiled bucket is not rendered');
+
+  const travelBox = await page.locator(`.routine-folder[data-folder-id="${travel.id}"]`).boundingBox();
+  ok(!!travelBox && travelBox.y >= 0 && travelBox.y + travelBox.height <= 844,
+    `the folder with its routine is inside the 390×844 viewport (y ${travelBox ? Math.round(travelBox.y) : '?'}, h ${travelBox ? Math.round(travelBox.height) : '?'})`);
+  // Let the "Moved to …" toast finish its fade so the audit shot shows the
+  // folder list, not a translucent toast over it.
+  await page.waitForFunction(() => !document.getElementById('sysToast')?.classList.contains('show'), null, { timeout: 5000 });
+  await page.waitForTimeout(400);
+  await capture(page, 'routine-folders.png');
+
+  // Reorder: move Home above Travel, then prove the order survives a reload.
+  await openFolderMenu(page, home.id, 'move-routine-folder-up');
+  await page.waitForFunction(
+    ([key, homeId]) => {
+      const folders = JSON.parse(localStorage.getItem(key) || '{}').libraryFolders || [];
+      return folders.find((folder) => folder.id === homeId)?.sortOrder === 0;
+    },
+    [STORAGE_KEY, home.id],
+  );
+  const folderOrder = () => page.$$eval(
+    '#progLibraryContent .routine-folder:not(.routine-folder--unfiled) .routine-folder__name',
+    (els) => els.map((el) => el.textContent),
+  );
+  ok(JSON.stringify(await folderOrder()) === JSON.stringify(['Home', 'Travel']), 'Move up reorders the folder sections');
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForFunction(() => document.querySelectorAll('#homeWeekDays .home-week-day').length === 7);
+  await openPlansMyPlans(page);
+  const reloadedFolders = await readState(page);
+  const reloadedOrder = reloadedFolders.libraryFolders.slice()
+    .sort((a, b) => (Number(a.sortOrder) || 0) - (Number(b.sortOrder) || 0))
+    .map((folder) => folder.name);
+  ok(JSON.stringify(reloadedOrder) === JSON.stringify(['Home', 'Travel']), 'folder order survives a reload');
+  ok(JSON.stringify(await folderOrder()) === JSON.stringify(['Home', 'Travel']), 'the reloaded My Plans renders the saved order');
+  ok(reloadedFolders.routines[0].folderId === travel.id, 'folder membership survives a reload');
+  ok(await page.locator(`.routine-folder[data-folder-id="${travel.id}"] .routine-card`).count() === 1,
+    'the reloaded list keeps the routine in its folder');
+
+  // Deleting the folder must keep the routine and file it under Unfiled.
+  await openFolderMenu(page, travel.id, 'delete-routine-folder');
+  await page.waitForSelector('.cmodal-overlay [data-cm="ok"]');
+  await page.click('.cmodal-overlay [data-cm="ok"]');
+  await page.waitForFunction(
+    ([key, expected]) => (JSON.parse(localStorage.getItem(key) || '{}').libraryFolders || []).length === expected,
+    [STORAGE_KEY, 1],
+  );
+  const afterFolderDelete = await readState(page);
+  ok(afterFolderDelete.routines.length === 1 && afterFolderDelete.routines[0].folderId === null,
+    'deleting a folder moves its routines to Unfiled and deletes none');
+  ok(JSON.stringify(afterFolderDelete.routines[0].prescriptions) === JSON.stringify(folderBaseline.routines[0].prescriptions),
+    'deleting a folder never rewrites the routine');
+  ok(await page.locator('.routine-folder--unfiled .routine-card').count() === 1, 'the routine renders under Unfiled');
+
+  await page.waitForSelector('#activityUndoBar.show');
+  ok(/Folder deleted/.test(await page.locator('#activityUndoMessage').innerText()), 'folder deletion offers Undo');
+  await page.click('#activityUndoBar [data-action="undo-activity-delete"]');
+  await page.waitForFunction(
+    ([key, expected]) => (JSON.parse(localStorage.getItem(key) || '{}').libraryFolders || []).length === expected,
+    [STORAGE_KEY, 2],
+  );
+  const afterFolderUndo = await readState(page);
+  const travelAfterUndo = afterFolderUndo.libraryFolders.find((folder) => folder.name === 'Travel');
+  ok(!!travelAfterUndo && afterFolderUndo.routines[0].folderId === travelAfterUndo.id,
+    'Undo restores the folder and its membership');
+  await page.waitForFunction(
+    (folderId) => document.querySelectorAll(`#progLibraryContent .routine-folder[data-folder-id="${folderId}"] .routine-card`).length === 1,
+    travelAfterUndo.id,
+  );
+  ok(JSON.stringify(afterFolderUndo.weeks) === JSON.stringify(folderBaseline.weeks)
+    && afterFolderUndo.activeProgramId === folderBaseline.activeProgramId
+    && afterFolderUndo.currentWeek === folderBaseline.currentWeek,
+  'folder actions never touch weeks, the active program or the program week');
+
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 } finally {
@@ -344,4 +489,4 @@ if (failures.length) {
   for (const failure of failures) console.error(`  - ${failure}`);
   process.exit(1);
 }
-console.log('\nroutines-browser-check: PASS — save, list, start, rename, delete/Undo and run isolation.');
+console.log('\nroutines-browser-check: PASS — save, list, start, rename, delete/Undo, folders and run isolation.');
