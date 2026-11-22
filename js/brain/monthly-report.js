@@ -52,8 +52,21 @@ function avgScoreInWindow(state, startISO, endISO) {
 }
 
 /**
+ * Name a window from its ACTUAL length. A 28-day window is four weeks, not the
+ * "30 days" this label used to claim while the maths measured 28 — the view's
+ * control said 4 weeks and the shared text said 30 days.
+ * @param {number} span
+ */
+function windowLabel(span) {
+  if (span >= 365) return 'Last 12 months';
+  if (!(span > 0)) return 'Recent training';
+  if (span % 7 === 0 && span > 7) return `Last ${span / 7} weeks`;
+  return `Last ${span} days`;
+}
+
+/**
  * One period rollup: totals + the same-length prior window. `windowDays` drives
- * both the range and the comparison window, so a 30-day and a 12-month report
+ * both the range and the comparison window, so a four-week and a 12-month report
  * are the same maths with different bounds.
  */
 export function buildPeriodReport(state, days, program, { windowDays = 28, now = new Date() } = {}) {
@@ -63,7 +76,7 @@ export function buildPeriodReport(state, days, program, { windowDays = 28, now =
   const startISO = addDaysISO(todayISO, -(span - 1));
   const prevEndISO = startISO;
   const prevStartISO = addDaysISO(startISO, -span);
-  const label = span >= 365 ? 'Last 12 months' : span >= 90 ? 'Last 90 days' : 'Last 30 days';
+  const label = windowLabel(span);
   const comparisonWord = span >= 365 ? 'year' : span >= 90 ? '90 days' : 'month';
 
   const sessions = datedSessions(state, days);
@@ -106,10 +119,14 @@ export function buildYearReport(state, days, program, now = new Date()) {
 }
 
 export function reportToText(r, distUnit = 'km', weightUnit = 'kg') {
-  if (!r.hasData) return 'Your 30-day report will build as you train.';
+  const span = Number(r.window?.days) || 0;
+  // Name the span the report actually measured: 28 days is a 28-day report, not
+  // the "30-day" copy this shared text carried while the window was four weeks.
+  const windowWord = span >= 365 ? '12-month' : span > 0 ? `${span}-day` : 'training';
+  if (!r.hasData) return `Your ${windowWord} report will build as you train.`;
   const dist = distUnit === 'mi' ? `${Math.round(r.totals.distanceKm * 0.621371)} mi` : `${r.totals.distanceKm} km`;
   const bits = [`${r.totals.sessions} sessions`, `${r.totals.volume.toLocaleString()} ${weightUnit}`, dist];
-  const label = r.window?.label || 'Last 30 days';
+  const label = r.window?.label || windowLabel(span);
   const comparisonWord = r.window?.comparisonWord || 'month';
   let txt = `${label} on openHybrid: ${bits.join(' · ')}.`;
   if (r.hybridScore.avg !== null) txt += ` Avg Hybrid Score ${r.hybridScore.avg}${r.hybridScore.delta ? ` (${r.hybridScore.delta > 0 ? '+' : ''}${r.hybridScore.delta} vs prior ${comparisonWord})` : ''}.`;

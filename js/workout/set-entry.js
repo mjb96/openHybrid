@@ -191,6 +191,87 @@ export function previousSetLabel(previousSet, unit = 'kg') {
   return { text: `Last ${text}`, label: `Last time: ${text}` };
 }
 
+/**
+ * The row's set label: `S1` for working, `W1`/`D1`/`F1` for the special types.
+ * One source for the template and the live update so they cannot drift.
+ * @param {string} type
+ * @param {number} setIndex
+ */
+export function setRowNumberLabel(type, setIndex) {
+  if (type === 'W') return 'W';
+  if (type === 'D') return 'D';
+  if (type === 'F') return 'F';
+  return `S${setIndex + 1}`;
+}
+
+/**
+ * How this set compares with the same set index last session.
+ *
+ * ONE rule, used by the row template and by the in-place refresh after a tick —
+ * otherwise the comparison would only appear on the next full re-render, which
+ * is exactly the "did it save?" doubt the column exists to remove. A hold/carry
+ * compares its seconds/metres first; a rep set keeps weight first (heavier at
+ * the same reps is the stronger signal), then reps.
+ *
+ * @param {{ c?: any, w?: any, r?: any, sec?: any, dist?: any, mode?: string } | null | undefined} current
+ * @param {{ c?: any, w?: any, r?: any, sec?: any, dist?: any, mode?: string } | null | undefined} prior
+ * @returns {{ glyph: string, tone: 'up'|'down'|'same', label: string } | null}
+ */
+export function compareWithPrevious(current, prior) {
+  if (!current || !prior || !current.c) return null;
+  const mode = setModeOf(current);
+  if (mode !== setModeOf(prior)) return null;
+  const value = (set) => mode === SET_MODE.TIME ? Number(set.sec) || 0
+    : mode === SET_MODE.DISTANCE ? Number(set.dist) || 0
+    : parseInt(set.r, 10) || 0;
+  const currentValue = value(current);
+  const priorValue = value(prior);
+  if (currentValue <= 0 || priorValue <= 0) return null;
+  const currentWeight = Number.parseFloat(current.w);
+  const priorWeight = Number.parseFloat(prior.w);
+  const delta = mode === SET_MODE.REPS
+    ? ((Number.isFinite(currentWeight) ? currentWeight : 0) - (Number.isFinite(priorWeight) ? priorWeight : 0)) || currentValue - priorValue
+    : currentValue - priorValue
+      || ((Number.isFinite(currentWeight) ? currentWeight : 0) - (Number.isFinite(priorWeight) ? priorWeight : 0));
+  return delta > 0 ? { glyph: '↑', tone: 'up', label: 'better than last time' }
+    : delta < 0 ? { glyph: '↓', tone: 'down', label: 'lower than last time' }
+      : { glyph: '=', tone: 'same', label: 'matched last time' };
+}
+
+/**
+ * The PREVIOUS column of a set row: the same prior set, compressed to one
+ * glanceable token. `60×6`, `60×1:30`, `20×20m`, or `8` for an unloaded set.
+ * Returns null when there is no honest prior set to show — the row then renders
+ * an em dash rather than a blank that reads as "loading".
+ * @param {any} previousSet
+ * @param {string} [unit]
+ * @returns {{ text: string, label: string } | null}
+ */
+export function previousSetCompact(previousSet, unit = 'kg') {
+  if (!previousSet) return null;
+  const mode = setModeOf(previousSet);
+  const weight = Number(String(previousSet.w ?? '').trim());
+  const hasWeight = Number.isFinite(weight) && weight > 0;
+
+  let value = '';
+  if (mode === SET_MODE.TIME) {
+    const seconds = Number(previousSet.sec);
+    if (Number.isFinite(seconds) && seconds > 0) value = formatDuration(seconds);
+  } else if (mode === SET_MODE.DISTANCE) {
+    const metres = Number(previousSet.dist);
+    if (Number.isFinite(metres) && metres > 0) value = `${formatDistance(metres)}m`;
+  } else {
+    const reps = Number(String(previousSet.r ?? '').trim());
+    if (Number.isFinite(reps) && reps > 0) value = trimNumber(reps);
+  }
+  if (!value && !hasWeight) return null;
+
+  const weightPart = hasWeight ? trimNumber(weight) : '';
+  const text = weightPart && value ? `${weightPart}×${value}` : (weightPart || value);
+  const full = previousSetLabel(previousSet, unit);
+  return { text, label: full?.label || `Last time: ${text}` };
+}
+
 /** 100.0 → "100", 102.5 → "102.5". Stored weights are strings of both shapes. */
 function trimNumber(value) {
   return Number.isInteger(value) ? String(value) : String(Math.round(value * 100) / 100);

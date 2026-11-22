@@ -26,7 +26,7 @@
 // PURE. No DOM, no state mutation.
 // =============================================================================
 
-import { addDaysISO, localDayKey, todayKey } from '../dates.js';
+import { addDaysISO, formatDayMonthShort, localDayKey, todayKey } from '../dates.js';
 import { comparePeriodValues } from './period-comparison.js';
 
 export const RECOVERY_RANGE_OPTIONS = Object.freeze([
@@ -218,7 +218,7 @@ export function buildRecoveryMetricDetail(state, metricId, options = {}) {
     range,
     rangeOptions: RECOVERY_RANGE_OPTIONS,
     value,
-    period: { start: periodStart, end: today, label: `${days} days to ${today}` },
+    period: { start: periodStart, end: today, label: `Last ${days} days · through ${formatDayMonthShort(today) || 'Date unavailable'}` },
     comparison,
     // Oldest → newest, one point per real reading. No zero-filling: a day
     // without a reading is missing data, not a zero-hour night.
@@ -227,6 +227,9 @@ export function buildRecoveryMetricDetail(state, metricId, options = {}) {
     readingCount: current.length,
     recordCount: usable.length,
     empty: value == null,
+    // Self-reported metrics have "check-ins"; device metrics have "readings".
+    // The visible headline names the missing evidence instead of a bare dash.
+    emptyHeadline: definition.sourceKind === SOURCE_KIND.SELF ? 'No check-ins' : 'No readings',
     exclusions: { future, implausible },
     interpretation: interpretationFor(definition, value, current.length, comparison),
   };
