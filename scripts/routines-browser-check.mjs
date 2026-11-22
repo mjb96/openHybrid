@@ -238,6 +238,28 @@ try {
   // three Bench rows seed 105 and the Deadlift row 140.
   ok(JSON.stringify(cockpitWeights) === JSON.stringify(['105', '105', '105', '140']), `Start seeds the routine's loads (${cockpitWeights.join(', ')})`);
   ok(JSON.stringify(cockpitReps) === JSON.stringify(['8', '8', '8', '5']), `Start seeds the routine's rep targets (${cockpitReps.join(', ')})`);
+
+  // Start must be a REAL start. A started session has no big Start CTA, shows
+  // the running clock bar and active-session chrome, and is bound to the one-off.
+  const chrome = await page.evaluate(() => {
+    const startBtn = document.getElementById('startWorkoutBtn');
+    const durationBar = document.getElementById('workoutDurationBar');
+    const view = document.getElementById('view-workout');
+    return {
+      startButtonVisible: !!startBtn && getComputedStyle(startBtn).display !== 'none',
+      clockRunning: !!durationBar && durationBar.classList.contains('active'),
+      sessionActive: !!view && view.classList.contains('cockpit-session-active'),
+      activeHeadShown: !document.getElementById('cockpitActiveHead')?.hidden,
+      activeSets: document.getElementById('cockpitActiveSets')?.textContent || '',
+      statusText: document.getElementById('cockpitSessionStatus')?.textContent || '',
+    };
+  });
+  ok(!chrome.startButtonVisible, 'Start removes the big START WORKOUT button');
+  ok(chrome.clockRunning, 'Start leaves the session clock running (duration bar active)');
+  ok(chrome.sessionActive && chrome.activeHeadShown, 'the cockpit switches to its active-session chrome');
+  ok(chrome.activeSets === '0/4', `the active header counts the routine's sets (${chrome.activeSets})`);
+  ok(/one-off/i.test(chrome.statusText), `the cockpit names the one-off session (${chrome.statusText.trim()})`);
+
   await capture(page, 'routine-start.png');
 
   const started = await readState(page);
@@ -248,6 +270,30 @@ try {
     'starting a routine creates no program week slot');
   const oneOffKey = Object.keys(started.weeks).find((key) => key.startsWith('session:'));
   ok(!!oneOffKey && started.weeks[oneOffKey].sessionTitle === 'Push day', 'the routine opened as a one-off copy session');
+  const oneOff = started.weeks[oneOffKey] || {};
+  const oneOffDay = oneOff.sessionDay;
+  const timer = await page.evaluate(() => ({
+    start: localStorage.getItem('hybrid_workoutStartTime'),
+    session: localStorage.getItem('hybrid_workoutSessionKey'),
+  }));
+  ok(oneOff.sessionStatus?.[oneOffDay] === 'in_progress', 'the one-off session is persisted as in progress');
+  ok(timer.session === `session:${oneOff.sessionId}:${oneOffDay}` && Number(timer.start) > 0,
+    'the running clock is bound to the one-off session');
+
+  // A started session accepts work immediately: tick the first seeded set.
+  await page.check('#cockpitExercisesContainer .cockpit-exercise:first-of-type .cockpit-set-row:first-of-type .gym-check');
+  await page.waitForFunction(
+    ([key, weekKey]) => {
+      const state = JSON.parse(localStorage.getItem(key) || '{}');
+      const week = state.weeks?.[weekKey];
+      return week?.lifts?.[week.sessionDay]?.['Bench Press']?.[0]?.c === true;
+    },
+    [STORAGE_KEY, oneOffKey],
+  );
+  const ticked = await readState(page);
+  ok(ticked.weeks[oneOffKey].lifts[oneOffDay]['Bench Press'][0].c === true, 'a set can be ticked straight after Start');
+  ok((await page.locator('#cockpitActiveSets').innerText()) === '1/4', 'the active header counts the ticked set');
+  await capture(page, 'routine-start-active.png');
 
   // Rename: persisted, and the card re-renders with it.
   await openPlansMyPlans(page);

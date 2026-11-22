@@ -643,6 +643,19 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Routine Start is a real start.**
+  - Plans → My Plans → Start now opens the cockpit already in session: the
+    one-off is stamped `in_progress`, the session clock is bound and running, the
+    sticky active header replaces the big Start CTA, and the first exercise is
+    scrolled into view. It reuses the cockpit Start button's own sequence
+    (`beginActiveWorkoutSession`) — there is no second start path.
+  - `renderWorkout` treated a timer as running only once a whole second had
+    elapsed, so the first render after Start (at 0s) put the Start CTA straight
+    back. A bound timer is now a running session.
+  - Validation: the routines browser check asserts no Start CTA, the active clock
+    bar, an in-progress one-off, a clock bound to that session's key, and a set
+    ticked immediately after Start.
+
 - **2026-11-22 — Routines slice 2: list and start them from Plans.**
   - My Plans now leads with a **Routines** section (Your plans follows). Each
     `routine-card` shows the name and `N exercises · M working sets`, plus

@@ -115,6 +115,7 @@ import { buildActivityHistory } from './activities/model.js';
 import {
   clearActiveOneOffSession, createOneOffStrengthSession,
 } from './workout/one-off-session.js';
+import { markSessionInProgress } from './workout/session-status.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
 import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
 import { ensureRoutines, findRoutine, removeRoutine } from './routines/store.js';
@@ -275,6 +276,22 @@ export function launchActiveWorkoutCockpit() {
   switchGlobalAppTab('workout');
   setTrainFace('cockpit');
   setCockpitActiveDay(selectedDay);
+}
+
+/**
+ * The ONE tap that turns "a workout is open" into "a session is running".
+ *
+ * The cockpit's own Start button and every programmatic start (a routine) must
+ * run this same sequence: start the session clock for the active session key,
+ * redraw so the Start CTA is replaced by the sticky active header, and bring the
+ * first exercise into view. `startWorkoutTimer` alone is not enough — the very
+ * next workspace render re-evaluates the CTA, so the clock key has to be bound
+ * before that render happens.
+ */
+export function beginActiveWorkoutSession() {
+  startWorkoutTimer(activeWorkoutTimerKey());
+  try { renderWorkout(); } catch (err) { console.warn(err); }
+  try { scrollCockpitToActiveExercise(); } catch (_) { /* best-effort */ }
 }
 
 // Was a local, timezone-naive copy of the same lookup; `todayProgramDay`
@@ -455,8 +472,14 @@ export function startRoutine(routineId) {
     kind: 'copy', title: routine.name, sourceWeek, sourceDay,
   });
   setSelectedDay(session.day);
+  // Start means START: the copied session is opened in progress, with the same
+  // one-tap sequence the cockpit's Start button uses, so the athlete never lands
+  // on a second "Start Workout" gate. The programme and its weeks are untouched;
+  // the only new week key is this one-off session.
+  markSessionInProgress(session.week, session.day);
   saveStateToLocalStorage(true);
   launchActiveWorkoutCockpit();
+  beginActiveWorkoutSession();
 }
 
 export async function renameRoutine(routineId) {
@@ -1295,11 +1318,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'switch-browser-tab') switchBrowserSectionTab(target.getAttribute('data-tab'));
   
   // Timers
-  else if (action === 'start-timer') {
-    startWorkoutTimer(activeWorkoutTimerKey());
-    try { renderWorkout(); } catch (err) { console.warn(err); }
-    try { scrollCockpitToActiveExercise(); } catch (_) { /* best-effort */ }
-  }
+  else if (action === 'start-timer') beginActiveWorkoutSession();
   else if (action === 'dismiss-rest') dismissRestTimer();
   else if (action === 'rest-pause') toggleRestPause();
 
