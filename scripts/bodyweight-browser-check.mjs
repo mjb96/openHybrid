@@ -71,6 +71,10 @@ try {
   await page.click('#homeBodyweightCard [data-action="open-bw-sheet"]');
   await page.waitForSelector('#bwSheet.active');
   ok((await page.locator('#bwSheetWeight').inputValue()) === '85.9', 'Home Log opens the prefilled sheet');
+  // The soft keyboard must not open on its own: focus belongs on the sheet's
+  // close button, not the number field. (A focused input is what raises it.)
+  ok((await page.evaluate(() => document.activeElement?.id)) !== 'bwSheetWeight', 'opening the weigh-in sheet does not focus the weight input');
+  ok((await page.evaluate(() => document.activeElement?.classList?.contains('sheet-close-btn'))) === true, 'focus starts on the sheet close button');
   await page.click('#bwSheet .sheet-close-btn');
   await page.waitForFunction(() => !document.getElementById('bwSheet')?.classList.contains('active'));
 

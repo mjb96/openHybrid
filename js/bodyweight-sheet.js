@@ -60,7 +60,11 @@ export function openBodyweightSheet(date) {
   renderRecent(entriesNewest.filter((entry) => entry.date !== chosen).slice(0, 4));
   sheet.classList.add('active');
   backdrop?.classList.add('active');
-  openManagedModal(sheet, { initialFocus: '#bwSheetWeight' });
+  // Focus the close button, NOT the weight input. Autofocusing a number field
+  // raised the mobile keyboard the moment the sheet opened, covering the
+  // steppers and the recent list — the athlete is usually adjusting the
+  // prefilled value with ±0.1/±0.5/±1, not typing. The input stays one tap away.
+  openManagedModal(sheet, { initialFocus: '.sheet-close-btn' });
 }
 
 /** @param {Array<{date:string, weight:number}>} recent */
