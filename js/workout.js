@@ -22,6 +22,7 @@ import {
 } from './set-utils.js';
 import { effectiveSetMode } from './workout/set-shape.js';
 import { handleSetSheetAction, openSetSheet } from './workout/set-sheet.js';
+import { handlePlateSheetAction } from './workout/plate-sheet.js';
 import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession, getRestTiers } from './timers.js';
 import { mountExerciseDragAndDropSystems } from './dragdrop.js';
 import { showToast, saveNewCustomExerciseToLibrary } from './state.js';
@@ -2361,6 +2362,13 @@ document.addEventListener('click', (e) => {
     return;
   }
   if (action === 'open-set-sheet') { openSetSheet(liftName, sIdx); return; }
+  // The calculator is its own stacked dialog: its controls live outside any
+  // `.cockpit-exercise`, so they carry no lift context and read it from module
+  // state instead.
+  if (action === 'close-plate-sheet' || action === 'plate-use-weight') {
+    handlePlateSheetAction(target, action);
+    return;
+  }
 
   if (action === 'log-all-target') logAllAtTarget(liftName);
   else if (action === 'use-previous-values') usePreviousValues(liftName);

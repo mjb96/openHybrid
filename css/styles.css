@@ -10514,6 +10514,98 @@ html[data-theme="light"] .set-sheet-seg button { background: rgba(15, 23, 42, 0.
 html[data-theme="light"] .set-sheet-seg button.is-active {
   background: color-mix(in srgb, var(--color-cyan) 18%, transparent);
 }
+.set-sheet-btn--wide { grid-column: 1 / -1; }
+
+/* ============================================================================
+   PLATE CALCULATOR SHEET
+   Stacked ABOVE the per-set sheet it opens from: the backdrop and the sheet
+   each sit one level higher, and the sheet follows its sibling in the DOM so
+   an equal z-index still paints on top. Everything except the target field is
+   read-only text; "Use this weight" is the sole write and states why it is off
+   when the set cannot take a plate total.
+   ========================================================================== */
+.sheet-backdrop--plate { z-index: 999; }
+.plate-sheet {
+  z-index: 1000;
+  max-height: 90vh;
+  max-height: 90dvh;
+}
+.plate-sheet-field { display: block; margin: 2px 0 10px; }
+.plate-sheet-lbl { display: block; margin: 0 0 6px; }
+.plate-sheet-input {
+  width: 100%;
+  min-height: var(--touch-target);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: var(--overlay-sm);
+  color: var(--text-primary);
+  font: inherit; font-size: 1.05rem; font-weight: 800;
+  padding: 0 12px;
+}
+.plate-sheet-input.is-invalid { border-color: rgba(239, 68, 68, 0.55); }
+.plate-sheet-kit {
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  font-size: 0.68rem; font-weight: 650; color: var(--text-muted);
+  line-height: 1.5;
+}
+.plate-sheet-result {
+  margin-top: 14px; padding: 12px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: var(--overlay-sm);
+}
+.plate-sheet-headline {
+  font-size: 1.4rem; font-weight: 850; line-height: 1.15;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.plate-sheet-note {
+  margin: 8px 0 0;
+  font-size: 0.72rem; font-weight: 650; line-height: 1.45;
+  color: var(--text-secondary);
+}
+.plate-sheet-note.is-warn { color: var(--color-amber); }
+.plate-sheet-group { margin-top: 10px; }
+.plate-sheet-group .set-sheet-lbl { margin: 0 0 6px; }
+.plate-sheet-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.plate-sheet-chip {
+  display: inline-flex; align-items: center;
+  min-height: 30px; padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--glass-border);
+  background: var(--overlay-md);
+  color: var(--text-primary);
+  font-size: 0.72rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.plate-sheet-use {
+  width: 100%; min-height: 48px; margin-top: 14px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--color-cyan) 48%, transparent);
+  background: color-mix(in srgb, var(--color-cyan) 16%, transparent);
+  color: var(--color-cyan);
+  font: inherit; font-size: 0.82rem; font-weight: 850;
+}
+.plate-sheet-use:disabled {
+  opacity: 0.45;
+  border-color: var(--glass-border);
+  background: var(--overlay-sm);
+  color: var(--text-muted);
+}
+.plate-sheet-reason {
+  margin: 8px 0 0; min-height: 1.2em;
+  font-size: 0.7rem; font-weight: 650; line-height: 1.4;
+  color: var(--text-muted);
+}
+html[data-theme="light"] .plate-sheet-input,
+html[data-theme="light"] .plate-sheet-result,
+html[data-theme="light"] .plate-sheet-chip {
+  background: rgba(15, 23, 42, 0.03);
+}
+/* Amber (#f59e0b) is only ~2.2:1 on white. #b45309 measures 5.02:1 on white
+   and 4.54:1 on this light card, so a shortfall or limited-rack caveat stays
+   legible in light theme. */
+html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
 
 /* ============================================================================
    THEME PALETTES

@@ -2363,9 +2363,57 @@
     <div class="set-sheet-actions">
       <button type="button" class="set-sheet-btn" data-action="set-sheet-note">Note <span id="setSheetNoteState"></span></button>
       <button type="button" class="set-sheet-btn" data-action="set-sheet-custom-rest">Custom rest…</button>
+      <button type="button" class="set-sheet-btn set-sheet-btn--wide" data-action="set-sheet-plates">Plate calculator</button>
     </div>
 
     <button type="button" class="set-sheet-remove" data-action="set-sheet-remove">Remove set</button>
+  </div>
+
+  <!-- Plate calculator — opened from the per-set sheet. It reads the ACTIVE
+       equipment profile, so it can never show a plate the athlete does not
+       own. Stacked above the set sheet: Escape closes it back to the set
+       sheet, and "Use this weight" is the only path that writes anything.
+       The set sheet deliberately stays exposed to assistive technology behind
+       this dialog (the stack keeps it non-inert); see the nested-modal note in
+       js/workout/plate-sheet.js for the residual aria-modal caveat. -->
+  <div id="plateSheetBackdrop" class="sheet-backdrop sheet-backdrop--plate" data-action="close-plate-sheet"></div>
+  <div id="plateSheet" class="bottom-sheet plate-sheet" role="dialog" aria-labelledby="plateSheetTitle" data-modal-root data-modal-close-action="close-plate-sheet" data-modal-companion="#plateSheetBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="plateSheetTitle" class="bottom-sheet-title">Plate calculator</h3>
+      <button class="sheet-close-btn" data-action="close-plate-sheet" aria-label="Close">✕</button>
+    </div>
+    <p id="plateSheetSub" class="set-sheet-sub"></p>
+
+    <label class="plate-sheet-field" for="plateTarget">
+      <span class="set-sheet-lbl plate-sheet-lbl">Target total</span>
+      <input id="plateTarget" class="plate-sheet-input" type="number" inputmode="decimal"
+             step="any" min="0" autocomplete="off"
+             aria-describedby="plateSheetHeadline plateUseReason" aria-invalid="false">
+    </label>
+
+    <div class="plate-sheet-kit">
+      <span id="plateSheetBar" class="plate-sheet-kit__item"></span>
+      <span id="plateSheetPlates" class="plate-sheet-kit__item"></span>
+    </div>
+
+    <div id="plateSheetResult" class="plate-sheet-result" role="status" aria-live="polite">
+      <div id="plateSheetHeadline" class="plate-sheet-headline"></div>
+      <p id="plateSheetShortfall" class="plate-sheet-note is-warn" hidden></p>
+      <p id="plateSheetBelowBar" class="plate-sheet-note is-warn" hidden></p>
+      <p id="plateSheetLimited" class="plate-sheet-note is-warn" hidden></p>
+      <div class="plate-sheet-group" id="plateSheetPerSideGroup" hidden>
+        <p class="set-sheet-lbl">Per side</p>
+        <div class="plate-sheet-chips" id="plateSheetPerSide"></div>
+      </div>
+      <div class="plate-sheet-group" id="plateSheetPairsGroup" hidden>
+        <p class="set-sheet-lbl">From the rack · both sides</p>
+        <div class="plate-sheet-chips" id="plateSheetPairs"></div>
+      </div>
+    </div>
+
+    <button type="button" id="plateUseWeight" class="plate-sheet-use" data-action="plate-use-weight" aria-describedby="plateUseReason">Use this weight</button>
+    <p id="plateUseReason" class="plate-sheet-reason" aria-live="polite"></p>
   </div>
 
   <!-- Quick-start sheet — opened from Train; start another workout, run, walk or fast. -->

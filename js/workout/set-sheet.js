@@ -26,6 +26,7 @@ import { effectiveSetMode } from './set-shape.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
 import { getSelectedDay, getState } from './context.js';
+import { openPlateSheet } from './plate-sheet.js';
 
 /** The set the sheet is currently editing, so a redraw can refresh in place. */
 let _open = /** @type {{ liftName: string, setIndex: number } | null} */ (null);
@@ -165,6 +166,12 @@ export async function handleSetSheetAction(target, action, liftName, sIdx) {
   const index = Number.isFinite(sIdx) ? sIdx : _open.setIndex;
 
   if (action === 'close-set-sheet') { closeSetSheet(); return; }
+  if (action === 'set-sheet-plates') {
+    // The set sheet stays open underneath, so Escape on the calculator comes
+    // back here; the callback closes it only after a real weight was applied.
+    openPlateSheet(name, index, { onApplied: closeSetSheet });
+    return;
+  }
   if (action === 'set-sheet-type') {
     setSetType(name, index, /** @type {any} */ (target.getAttribute('data-type') || ''));
     refreshSetSheet();
