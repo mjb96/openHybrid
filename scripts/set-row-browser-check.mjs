@@ -251,16 +251,27 @@ try {
       const badge = row.querySelector('.pr-badge');
       const tick = row.querySelector('.gym-check-wrap');
       const value = row.querySelector('.input-reps-node');
+      const weight = row.querySelector('.input-weight-node');
       const b = rect(badge);
       const t = rect(tick);
       const v = rect(value);
+      const style = value ? getComputedStyle(value) : null;
+      const inlinePadding = style
+        ? (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
+        : 0;
       return {
         label: badge?.textContent || '',
         badge: b && { left: b.left, right: b.right, bottom: b.bottom },
         tick: t && { left: t.left },
         value: v && { top: v.top, bottom: v.bottom },
         valueText: value?.value || '',
+        valuePadding: inlinePadding,
+        // A number input's clientWidth includes padding. This is the actual box
+        // the digits can use; the old 12px-per-side padding left it at zero.
+        valueContentWidth: value ? value.clientWidth - inlinePadding : 0,
         valueClipped: value ? value.scrollWidth > value.clientWidth : true,
+        weightText: weight?.value || '',
+        weightClipped: weight ? weight.scrollWidth > weight.clientWidth : true,
         rowOverflow: row.scrollWidth - row.clientWidth,
       };
     });
@@ -274,6 +285,10 @@ try {
       }
       if (prLayout.valueText !== '8') fail(`${tag}: PR row lost its value (${prLayout.valueText})`);
       if (prLayout.valueClipped) fail(`${tag}: the value input clips its number`);
+      if (prLayout.valueContentWidth < 24) {
+        fail(`${tag}: the value field has no usable content box (${prLayout.valueContentWidth}px after ${prLayout.valuePadding}px padding)`);
+      }
+      if (prLayout.weightClipped) fail(`${tag}: the weight input clips its load (${prLayout.weightText})`);
       if (prLayout.rowOverflow > 0) fail(`${tag}: the PR row overflows horizontally by ${prLayout.rowOverflow}px`);
       if (prLayout.badge && prLayout.value
         && prLayout.badge.bottom > (prLayout.value.top + prLayout.value.bottom) / 2) {

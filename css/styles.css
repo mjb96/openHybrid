@@ -9787,6 +9787,26 @@ input[type="checkbox"].gym-check {
 }
 .cockpit-set-row input { min-width: 0; }
 .cockpit-set-row input { min-height: var(--touch-target); }
+/* The VALUE track is a fixed 54px and time/reps/distance all render through
+   `.input-set-value-node`. The global input rule above 380px keeps 12px of
+   inline padding each side, leaving no content box at all — a two-digit number
+   overflowed on Linux Chromium while the 320px media query below (4px) hid the
+   defect on macOS. Give the value field its own 4px padding; the weight field
+   keeps its roomier padding because its track is flexible. */
+.cockpit-set-row .input-set-value-node { padding-inline: 4px; }
+/* Touch-first row: a platform number spinner would steal the same 54px
+   content box. Hide the inner/outer buttons; arrow-key stepping still works. */
+.cockpit-set-row input[type="number"] {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.cockpit-set-row input[type="number"]::-webkit-inner-spin-button,
+.cockpit-set-row input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
 .set-entry { min-width: 0; display: grid; gap: 3px; }
 .set-entry small {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

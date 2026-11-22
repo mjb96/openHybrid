@@ -689,7 +689,10 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     with the all-time prior best derived from its ONE history scan (shared with
     "Last time"); the share card stays e1RM-only. Holds and carries show their
     time/distance instead of `0 kg × 0`, and the badge sits left of the ✓ at
-    320/390/412 (measured in the set-row browser check).
+    320/390/412 (measured in the set-row browser check). That check also pins
+    the 54px VALUE track's content box: Linux Chromium exposed the global 12px
+    inline input padding as a zero-width content box, so `.input-set-value-node`
+    now pads 4px and the set-row number spinners are hidden.
   - PR COUNT POPULATION — Home and Progress agree on **e1RM PR lifts**. Home's
     session/day recap counts `prKind: 'e1rm'` (a legacy stamp with no `prKind`
     was always an e1RM and still counts), and Progress counts the same e1RM lifts
