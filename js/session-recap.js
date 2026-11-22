@@ -26,7 +26,10 @@ import { formatRunDistance, formatRunPace } from './workout/run-units.js';
 import { showToast, getProgramById } from './state.js';
 import { suggestProgression } from './engine.js';
 import { sanitizeGpsQuality } from './gps/route-quality.js';
-import { estimatedE1rmForSet, isE1rmPr } from './strength/e1rm.js';
+import { estimatedE1rmForSet } from './strength/e1rm.js';
+import {
+  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel,
+} from './strength/records.js';
 import { exercisePerformanceHistory } from './workout/exercise-history.js';
 
 let _getState = null;
@@ -61,8 +64,9 @@ let _recapTab = 'summary';
 let _recapCtx = { week: null, day: null, sessionId: null };
 
 // Best working-set e1RM for a lift across every OTHER logged session (all
-// weeks/days except the one being recapped). Used to decide if this session set
-// a new personal best. Pure scan of state; tolerates sparse data.
+// weeks/days except the one being recapped). Used for the "Last time" line; the
+// PR decision itself compares against the all-time best of each record kind in
+// `bestRecordBefore`, never only the most recent session.
 function priorPerformance(state, week, day, liftName) {
   const beforeDate = state?.weeks?.[week]?.dates?.[day];
   return exercisePerformanceHistory(state, liftName, {
@@ -71,6 +75,13 @@ function priorPerformance(state, week, day, liftName) {
     beforeDate,
   })[0] || null;
 }
+
+const PR_TITLES = Object.freeze({
+  e1rm: 'New estimated 1RM best',
+  hold: 'Longest hold',
+  carry: 'Longest carry',
+  reps: 'Most reps at this load',
+});
 
 function timeToSeconds(t) {
   if (!t) return 0;
@@ -168,11 +179,33 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
       }
     }
 
-    // PR: this session's best e1RM beats the lift's best in every prior session
-    // (needs an established previous best — a first-ever lift isn't a "PR").
+    // PR: this session's best of each shape compares against the all-time best
+    // of that SAME shape from every prior session. A hold never competes with a
+    // rep set, a carry never becomes an e1RM, and a mixed session can earn one
+    // badge per kind. Prior history is required — a first-ever lift is a baseline.
     const priorRow = priorPerformance(state, week, day, name);
-    const priorBest = Math.max(0, Number(priorRow?.e1rm) || 0);
-    const pr = isE1rmPr(bestE1, priorBest);
+    const sessionRecords = bestRecordForSession(name, done);
+    const priorRecords = bestRecordBefore(state, name, {
+      excludeWeekKey: week,
+      excludeDay: day,
+      beforeDate: dateISO,
+    });
+    const prKinds = Object.values(RECORD_KIND)
+      .map((kind) => {
+        const candidate = sessionRecords[kind];
+        if (!candidate || !isRecord(kind, candidate, priorRecords[kind])) return null;
+        return {
+          kind,
+          label: prKindLabel(kind),
+          title: PR_TITLES[kind],
+          value: candidate.value,
+          previousBest: Number(priorRecords[kind]?.value) || 0,
+          load: candidate.load,
+        };
+      })
+      .filter(Boolean);
+    const pr = prKinds.length > 0;
+    const e1rmPr = prKinds.some((entry) => entry.kind === RECORD_KIND.E1RM);
 
     // The closure openGym gets right: show what was done last time and what the
     // current progression would prescribe next time. Only when the session
@@ -200,7 +233,8 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
 
     lifts.push({
       name, sets: done.length, reps: liftReps, volume: Math.round(liftVol),
-      shape, topSet, topShape, e1rm: Math.round(bestE1), pr, setList, previous, next,
+      shape, topSet, topShape, e1rm: Math.round(bestE1), pr, prKinds, e1rmPr,
+      setList, previous, next,
     });
   }
   lifts.sort((a, b) => b.volume - a.volume);
@@ -321,7 +355,7 @@ function _liftSummaryRows(r) {
       : '';
     return `
     <div class="recap-lift">
-      <div class="recap-lift__name">${esc(l.name)}${l.pr ? ` <span class="recap-pr" title="New estimated 1RM best">🏆 PR</span>` : ''}</div>
+      <div class="recap-lift__name">${esc(l.name)}${_prBadges(l)}</div>
       <div class="recap-lift__detail">
         ${l.topSet ? `${l.topSet.w} ${unit} × ${l.topSet.r}`
           : l.topShape
@@ -333,6 +367,21 @@ function _liftSummaryRows(r) {
       ${next}
     </div>`;
   }).join('');
+}
+
+// One badge per record kind the session actually earned. The label names the
+// shape ("Hold PR", "Carry PR", "Rep PR") so a 60-second plank is never read as
+// a 1RM trophy; an e1RM keeps the plain "PR" it has always used.
+function _prBadges(l) {
+  const kinds = Array.isArray(l.prKinds) ? l.prKinds : [];
+  if (!kinds.length) return l.pr ? ' <span class="recap-pr" title="New estimated 1RM best">🏆 PR</span>' : '';
+  return kinds.map((entry) => `<span class="recap-pr" title="${esc(entry.title || 'New record')}">🏆 ${esc(entry.label || prKindLabel(entry.kind))}</span>`).join(' ');
+}
+
+function _prPlain(l) {
+  const kinds = Array.isArray(l.prKinds) ? l.prKinds : [];
+  if (!kinds.length) return l.pr ? 'PR' : '';
+  return kinds.map((entry) => entry.label || prKindLabel(entry.kind)).join(' · ');
 }
 
 // Pace-per-km bar chart: bar length relative to the fastest split, coloured by
@@ -385,7 +434,7 @@ function _liftSetGrid(r) {
     return `
     <div class="rc-exercise">
       <div class="rc-exercise__head">
-        <span class="rc-exercise__name">${esc(l.name)}${l.pr ? ' 🏆' : ''}</span>
+        <span class="rc-exercise__name">${esc(l.name)}${l.pr ? ` 🏆 ${esc(_prPlain(l))}` : ''}</span>
         <span class="rc-exercise__meta">${l.sets} sets${l.shape === SET_MODE.TIME ? ' · timed holds' : l.shape === SET_MODE.DISTANCE ? ' · carries' : ` · ${l.reps} reps · ${l.volume.toLocaleString()} ${unit}`}</span>
       </div>
       <div class="rc-sets">${rows}</div>
@@ -486,14 +535,17 @@ export function renderSessionRecapHTML(r, insights = [], thresholdSec = null, ta
   // this row there would share whatever session the recap last opened — so the
   // caller can opt out.
   const showShareRow = options.share !== false;
-  const hasPR = (r.lifts || []).some(l => l.pr);
+  // The share card is e1RM-only by design (a 60-second hold has no weight to
+  // draw), so only an e1RM record offers "Share your PR". A hold/carry/rep PR
+  // still earns its badge, its confetti and its place in the lift list.
+  const hasShareablePR = (r.lifts || []).some(l => l.e1rmPr === true || (l.pr && l.e1rm > 0 && l.e1rmPr !== false));
   const head = `
     <div class="recap-head">
       <div class="recap-date">${fmtDate(r.dateISO)}</div>
       <div class="recap-badges">${r.types.map(typeBadge).join('')}</div>
     </div>
     ${showShareRow ? `<div class="recap-share-row">
-      ${hasPR ? '<button class="recap-share-btn tactile-scale" data-action="share-pr-card">🏆 Share your PR</button>' : ''}
+      ${hasShareablePR ? '<button class="recap-share-btn tactile-scale" data-action="share-pr-card">🏆 Share your PR</button>' : ''}
       <button class="recap-share-btn tactile-scale" data-action="share-workout-card">📤 Share workout</button>
     </div>` : ''}`;
   const tabBar = `
