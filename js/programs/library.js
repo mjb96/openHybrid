@@ -82,9 +82,8 @@ export function renderLibrary() {
   if (_activeTab === 'saved' || _activeTab === 'completed') _activeTab = 'my';
 
   renderActiveProgramBanner();
+  renderUtilityRow();
   renderLibraryTabs();
-  const searchBar = document.querySelector('#programLibraryScreen .prog-search-bar');
-  if (searchBar) searchBar.style.display = _activeTab === 'discover' ? '' : 'none';
   const chips = document.getElementById('progFilterChips');
   const diffs = document.getElementById('progDifficultyChips');
   if (chips) { chips.innerHTML = ''; chips.style.display = 'none'; }
@@ -154,7 +153,7 @@ export function renderActiveProgramBanner() {
            data-action="open-program-detail" data-program-id="${escapeHtml(activeId)}"
            aria-label="${escapeHtml(`${model.name}. ${model.week.label}. Open plan`)}">
         <div class="active-prog-left">
-          <span class="active-prog-badge">NOW TRAINING</span>
+          <span class="active-prog-badge">ACTIVE PLAN</span>
           <div class="active-prog-name">${escapeHtml(model.name)}</div>
           <div class="active-prog-meta">${escapeHtml(model.week.label)}${
             model.thisWeek ? `<span class="active-prog-meta-sep">·</span>${escapeHtml(model.thisWeek.label)}` : ''
@@ -185,6 +184,29 @@ export function renderActiveProgramBanner() {
                 data-action="${escapeHtml(model.action.action)}"${dayAttr}>${escapeHtml(model.action.label)}</button>
       </div>
     </div>
+  `;
+}
+
+// ── Plan utility row ─────────────────────────────────────────────────────────
+
+/**
+ * Plan-level utilities: create, import, and — only while a plan is actually
+ * running — open it. Kept quiet and in one row under the active card so the
+ * running plan stays the only primary thing on this screen.
+ *
+ * "Manage plan" VIEWS the active plan. It never activates, switches or restarts
+ * anything: those decisions belong to the plan itself.
+ */
+function renderUtilityRow() {
+  const row = document.getElementById('plansUtilityRow');
+  if (!row) return;
+
+  const activeId = _appState?.activeProgramId;
+  const hasActive = !!activeId && !getActiveProgramIssue(_appState);
+  row.innerHTML = `
+    <button type="button" class="plans-utility-btn" data-action="open-create-program">+ New plan</button>
+    <button type="button" class="plans-utility-btn" data-action="import-plan-json">Import plan (.json)</button>
+    ${hasActive ? '<button type="button" class="plans-utility-btn plans-utility-btn--accent" data-action="open-active-plan-manage">Manage plan</button>' : ''}
   `;
 }
 
@@ -300,21 +322,26 @@ function renderLibraryContent() {
   const content = document.getElementById('progLibraryContent');
   const searchResults = document.getElementById('progSearchResults');
   if (!content || !searchResults) return;
+
+  // One search: a query searches the whole library from either tab, so it is
+  // checked before the tab rather than being a Discover-only mode.
+  if (_searchQuery.length >= 2) {
+    content.style.display = 'none';
+    searchResults.style.display = 'block';
+    renderSearchResults(_searchQuery);
+    return;
+  }
+
   if (_activeTab === 'my') {
     content.style.display = 'block';
     searchResults.style.display = 'none';
     renderMyPlans(content);
     return;
   }
-  if (_searchQuery.length >= 2) {
-    content.style.display = 'none';
-    searchResults.style.display = 'block';
-    renderSearchResults(_searchQuery);
-  } else {
-    content.style.display = 'block';
-    searchResults.style.display = 'none';
-    renderSimpleDiscover(content);
-  }
+
+  content.style.display = 'block';
+  searchResults.style.display = 'none';
+  renderSimpleDiscover(content);
 }
 
 function renderSimpleDiscover(content) {
@@ -934,6 +961,12 @@ export function handleLibraryAction(action, el, event) {
       }
       break;
     }
+    case 'open-active-plan-manage': {
+      // VIEW the running plan; never activate or switch it. The plan view owns
+      // its own actions once open.
+      document.dispatchEvent(new CustomEvent('library:view-active'));
+      break;
+    }
     case 'lib-tab': {
       const tab = el.getAttribute('data-tab') === 'my' ? 'my' : 'discover';
       if (tab !== _activeTab) {
@@ -1001,6 +1034,7 @@ export function returnToLibrary() {
   detailScreen.style.display = 'none';
   libraryScreen.style.display = 'block';
   renderActiveProgramBanner();
+  renderUtilityRow();
 }
 
 // Expose for use from detail page

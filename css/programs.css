@@ -3314,7 +3314,9 @@ html[data-theme="light"] .hero-badge {
 #progLibraryTabs {
   display: flex;
   gap: 4px;
-  padding: 0 16px 12px;
+  /* The screen already sits inside .view-container's horizontal padding; a
+     second 16px here indented the tabs from everything above and below. */
+  padding: 0 0 12px;
   border-bottom: 1px solid var(--border-default);
   margin-bottom: 4px;
 }
@@ -3756,21 +3758,33 @@ html[data-theme="light"] .prog-phase { background: rgba(0,0,0,0.02); }
   line-height: 1.5;
 }
 
-/* Simplified Plans landing */
-.plans-actions {
-  display: flex; gap: 8px; margin: 2px 0 12px;
+/* Simplified Plans landing — the plan-level utilities are deliberately quiet:
+   the active plan's own action is the only primary on this screen. */
+.plans-utility {
+  display: flex;
+  gap: 8px;
+  margin: 2px 0 12px;
 }
-.plans-action-btn {
-  flex: 1 1 0; min-height: 44px; padding: 0 12px;
-  border: 1px solid var(--border-default); border-radius: 11px;
-  background: var(--overlay-sm, rgba(255,255,255,.04));
-  color: var(--text-secondary); font: inherit; font-size: .72rem; font-weight: 750;
+.plans-utility-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--touch-target, 44px);
+  padding: 6px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
   cursor: pointer;
 }
-.plans-action-btn:first-child {
-  border-color: transparent;
-  background: var(--brand-gradient, var(--color-blue));
-  color: #04121a;
+.plans-utility-btn--accent {
+  border-color: color-mix(in srgb, var(--brand-cobalt, #22d3ee) 42%, transparent);
+  background: color-mix(in srgb, var(--brand-cobalt, #22d3ee) 12%, transparent);
+  color: var(--brand-ice, var(--color-cyan));
 }
 .lib-empty-cta + .lib-empty-cta { margin-top: 8px; }
 

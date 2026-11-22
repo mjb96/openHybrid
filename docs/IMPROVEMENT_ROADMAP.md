@@ -79,7 +79,9 @@ upgrade have landed:
   defaults, warm-up rest, a rest timer that survives reload/backgrounding, a
   `+ Drop` shortcut that seeds a lighter typed row, and a Last time / Next time
   recap.
-- **Plans** keeps the active plan first, recommends from athlete fit, and has an
+- **Plans** keeps the active plan first — its Start/Resume is the only primary,
+  with quiet create/import/manage utilities and one "Search plans" field shared
+  by Discover and My Plans — recommends from athlete fit, and has an
   Overview | Structure | Plan detail with week-stepped targets.
 
 ### What holds the experience back
@@ -627,13 +629,47 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Home | One week surface: optional rail, pinned Today decision, inline day recaps with heat map, bodyweight, one insight, quick actions |
 | Training | Planned/one-off strength, running, set logging, timers, swaps, supersets, bodyweight modes, session completion, focused live-run surface |
 | History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share |
-| Plans | 58-program catalogue, active-plan lead, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
+| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Plans hierarchy: active plan first, one primary, one search.**
+  - Plans now reads top to bottom as active plan → plan utilities →
+    Discover | My Plans → search → content. The running plan's Start/Resume is
+    the only primary action; New plan and Import are quiet 44px utilities in one
+    row beneath the card.
+  - Added a quiet **Manage plan** that only opens the active plan view. It never
+    activates, switches or restarts anything; activation remains the plan's own
+    confirmed action and the banner's Continue is untouched.
+  - One search: the field is visible on both tabs, a query is checked before the
+    tab, and its placeholder/accessible name is "Search plans". My Plans no
+    longer hides search or loses catalogue search.
+  - Security: the results heading moved to pure `searchResultsHeading(query,
+    count)` in `js/programs/search.js`, which entity-escapes the query once.
+    Typing `<img src=x onerror=…>` into `#progSearchInput` now renders as text
+    (`&lt;img`) instead of executing; a normal query still reads
+    `3 results for "bench"`.
+  - CSS: `.plans-actions`/`.plans-action-btn` became `.plans-utility`/
+    `.plans-utility-btn` (44px, quiet, accent only on Manage), and the extra
+    16px inset on `#progLibraryTabs` was removed so tabs align with the screen
+    instead of double-padding against `.view-container`.
+  - Banner copy only: the active card's badge reads `ACTIVE PLAN` (was
+    `NOW TRAINING`); no state, attribute or action changed.
+  - Validation: 2,077 node tests (including a hostile-query heading test),
+    typecheck, smoke, precache/workflow, and the Plans banner, Plans JSON,
+    recommendation, program-detail viewport, core ergonomics, touch-target and
+    copy-program browser checks. The recommendation check gained two guards: at
+    390px "All programs" starts above the fold (702 < 844), and every
+    recommended card is brought fully inside the viewport before its edges are
+    asserted. The row is a horizontal 140px rail, so "all cards visible at
+    rest" is not a valid contract — that would either clip them or push "All
+    programs" below the fold; the check scrolls each card fully into view, which
+    still catches a card wider than the row or unreachable by scrolling.
+  - Next: Progress domain detail hierarchy.
 
 - **2026-11-22 — Home hierarchy: date headline, week chip, one Start; compact
   rail; one-line bodyweight; insight inside Today.**
