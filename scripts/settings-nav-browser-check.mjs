@@ -112,6 +112,19 @@ try {
   await page.click('[data-action="set-previous-scope"][data-scope="program"]');
   ok(await page.locator('[data-action="set-previous-scope"][data-scope="program"]').evaluate((el) => el.classList.contains('active')), 'previous-values scope persists its active state');
 
+  // Threshold pace is a running baseline, not free text: a typo must be
+  // rejected without rewriting the stored seconds.
+  const storedThresholdPace = () => page.evaluate(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.thresholdPaceSeconds);
+  await page.fill('#settingsThresholdPace', '4.30');
+  await page.locator('#settingsThresholdPace').press('Tab');
+  ok((await page.textContent('#sysToast')) === 'Enter pace as mm:ss', 'a dotted pace shows the mm:ss error');
+  const invalidPace = await storedThresholdPace();
+  ok(invalidPace === null || invalidPace === undefined, 'invalid pace leaves the stored value untouched');
+  await page.fill('#settingsThresholdPace', '4:30');
+  await page.locator('#settingsThresholdPace').press('Tab');
+  ok((await storedThresholdPace()) === 270, '4:30 stores 270 seconds');
+  ok((await page.textContent('#sysToast')) === 'Threshold pace saved', 'a valid pace confirms the save');
+
   // Fasting stage nudges are a real, persisted toggle under Notifications, and
   // the module switch gates both the control and the delivery path.
   await page.click('#settingsTabs [data-settings-tab="health"]');

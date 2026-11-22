@@ -4,7 +4,7 @@
 import { getProgramById, saveStateToLocalStorage } from './state.js';
 import { isCompletedSet, setVolume } from './set-utils.js';
 import { todayKey } from './dates.js';
-import { parsePaceSeconds } from './analytics/utils.js';
+import { parsePaceSeconds, parseThresholdPace } from './analytics/utils.js';
 import { renderStrengthAnalytics, setStrengthTab } from './analytics/views/view-strength.js';
 import { renderRunningAnalytics, setRunningTab } from './analytics/views/view-running.js';
 import { renderRecoveryLoad, setRecoveryTab } from './analytics/views/view-recovery.js';
@@ -87,23 +87,23 @@ export function initAnalytics(getStateFn, getDaysFn) {
 // ==========================================
 // LOCAL STATE MUTATORS
 // ==========================================
+/**
+ * Persist a threshold pace entered as `mm:ss` (or legacy seconds).
+ * Returns false — and leaves the stored pace untouched — for empty, malformed
+ * (`4.30`) or implausible input, so a typo cannot silently rewrite the athlete's
+ * running zones as a four-second pace.
+ * @param {string|number|null|undefined} val
+ * @returns {boolean}
+ */
 export function saveThresholdPace(val) {
-  if (!_getState) return;
+  if (!_getState) return false;
+  const seconds = parseThresholdPace(val);
+  if (seconds == null) return false;
   const appState = _getState();
-  // Accept mm:ss (matching the Settings threshold-pace field) so the same
-  // setting isn't asked for in two different units. A bare integer is still
-  // read as legacy seconds.
-  const s = String(val || '').trim();
-  let secs;
-  if (s.includes(':')) {
-    const parts = s.split(':');
-    secs = (parseInt(parts[0], 10) || 0) * 60 + (parseInt(parts[1], 10) || 0);
-  } else {
-    secs = parseInt(s, 10) || 0;
-  }
-  appState.thresholdPaceSeconds = secs;
+  appState.thresholdPaceSeconds = seconds;
   saveStateToLocalStorage(true);
   renderAnalytics();
+  return true;
 }
 
 /** Persist the target weight and optional weekly-rate corridor. */

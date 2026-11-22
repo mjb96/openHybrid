@@ -1988,7 +1988,10 @@ document.addEventListener('blur', (e) => {
   const id = e.target.id;
   if (id === 'settingsNameInput') saveName();
   else if (id === 'settingsBodyWeight') saveBodyWeight();
-  else if (id === 'settingsThresholdPace') { saveThresholdPace(e.target.value); showToast('Threshold pace saved'); }
+  else if (id === 'settingsThresholdPace') {
+    const saved = saveThresholdPace(e.target.value);
+    showToast(saved ? 'Threshold pace saved' : 'Enter pace as mm:ss', !saved);
+  }
   else if (id === 'settingsStepGoal') saveStepGoal();
   else if (id === 'settingsReminderTime')    saveReminderTime();
   else if (id === 'settingsStreakAlertTime') saveStreakAlertTime();
