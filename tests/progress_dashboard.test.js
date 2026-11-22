@@ -28,11 +28,11 @@ function trainedState(overrides = {}) {
 
 const ctx = { todayISO: TODAY };
 
-test('a trained athlete gets a Pulse band with a real model', () => {
+test('a trained athlete gets Pulse and Muscles, each with a real model', () => {
   const model = buildProgressDashboard(trainedState(), ctx);
-  assert.equal(model.bands.length, 1);
-  assert.equal(model.bands[0].id, 'pulse');
-  assert.equal(model.bands[0].model.sessions, 1);
+  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'muscles']);
+  const pulse = model.bands.find((band) => band.id === 'pulse');
+  assert.equal(pulse.model.sessions, 1);
   assert.equal(model.availability.pulse.hasData, true);
   assert.equal(model.range.id, '30d');
   assert.ok(model.previous, 'a comparable previous window exists');
@@ -41,8 +41,9 @@ test('a trained athlete gets a Pulse band with a real model', () => {
 test('bands that are declared but not built never reach the surface', () => {
   const model = buildProgressDashboard(trainedState(), ctx);
   const ids = model.bands.map((band) => band.id);
-  assert.deepEqual(ids, ['pulse']);
-  assert.equal(model.availability.muscles.pending, true);
+  assert.ok(!ids.includes('balance'), 'Balance has nothing to say yet');
+  assert.ok(ids.includes('muscles'), 'Muscles is built now');
+  assert.equal(model.availability.exercises.pending, true);
   assert.equal(model.availability.body.pending, true);
   // Balance IS built, but a strength-only fixture gives it nothing to say, so
   // it reports no data rather than pending and never reaches the surface.
@@ -53,7 +54,7 @@ test('bands that are declared but not built never reach the surface', () => {
 test('a hidden band is absent from the surface but still reported', () => {
   const state = trainedState({ settings: { ui: { progress: { hidden: ['pulse'] } } } });
   const model = buildProgressDashboard(state, ctx);
-  assert.deepEqual(model.bands, []);
+  assert.equal(model.bands.some((band) => band.id === 'pulse'), false);
   assert.equal(model.availability.pulse.hidden, true);
   assert.equal(model.availability.pulse.hasData, true, 'availability is not visibility');
   assert.equal(model.visibleCount, 7);
@@ -81,8 +82,8 @@ test('a failing band becomes an error entry instead of blanking the page', () =>
     ...ctx,
     builders: { pulse: () => { throw new Error('kaboom'); } },
   });
-  assert.equal(model.bands.length, 1);
-  assert.equal(model.bands[0].error, 'kaboom');
+  const pulse = model.bands.find((band) => band.id === 'pulse');
+  assert.equal(pulse.error, 'kaboom');
   assert.equal(model.availability.pulse.error, 'kaboom');
 });
 
@@ -92,7 +93,7 @@ test('a failing hidden band is not rendered at all', () => {
     ...ctx,
     builders: { pulse: () => { throw new Error('kaboom'); } },
   });
-  assert.deepEqual(model.bands, []);
+  assert.equal(model.bands.some((band) => band.id === 'pulse'), false, 'hidden and failing: absent');
 });
 
 test('focus collapses the other modality and never Balance', () => {

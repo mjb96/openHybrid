@@ -14,7 +14,7 @@ import { esc } from './screen-kit.js';
 
 /**
  * @typedef {Object} BandAction
- * @property {string} label
+ * @property {string} [label]   omitted for row actions, where only the attrs matter
  * @property {string} [action]   data-action
  * @property {string} [target]   data-target
  * @property {string} [context]  data-context
@@ -76,7 +76,7 @@ function actionButton(action) {
     action.target ? `data-target="${esc(action.target)}"` : '',
     action.context ? `data-context="${esc(action.context)}"` : '',
   ].filter(Boolean).join(' ');
-  return `<button type="button" class="pg-band__action" ${attrs}>${esc(action.label)}</button>`;
+  return `<button type="button" class="pg-band__action" ${attrs}>${esc(action.label || 'View')}</button>`;
 }
 
 /**

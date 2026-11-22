@@ -2,9 +2,8 @@
 // PROGRESS VIEW (analytics/views/view-progress.js)
 // ==========================================
 import { formatDist, formatWeight, weightUnitOf } from '../utils.js';
-import { renderVolumeChart, renderConsistencyHeatmap } from '../charts.js';
+import { renderConsistencyHeatmap } from '../charts.js';
 import { getProgramById } from '../../state.js';
-import { isCompletedSet, setVolume } from '../../set-utils.js';
 import { streakFreezeInfo } from '../../brain/streak.js';
 import { activeTrainingDates, computeStreak } from '../../home/dashboard-model.js';
 
@@ -37,45 +36,6 @@ export function renderProgressAnalytics(data, getState) {
       `<td class="py-2" style="color:#fff;">${week.distanceKm > 0 ? formatDist(week.distanceKm, distUnit, 1) : '--'}</td>`;
     tbody.appendChild(tr);
   });
-}
-
-export function renderWeeklyVolumeDetail(data, getState, getDays) {
-  const appState    = getState();
-  const defaultDays = getDays();
-  const unit        = weightUnitOf(appState);
-  const wk          = appState.currentWeek || '1';
-  const weekData    = appState.weeks?.[wk];
-
-  let totalSets = 0, totalReps = 0, totalVol = 0;
-  if (weekData) {
-    defaultDays.forEach(d => {
-      const dayLifts = weekData.lifts?.[d] || {};
-      for (const lift in dayLifts) {
-        if (Array.isArray(dayLifts[lift])) {
-          dayLifts[lift].forEach(s => {
-            if (isCompletedSet(s)) {
-              totalVol += setVolume(s);
-              totalSets += 1;
-              totalReps += parseInt(s.r, 10) || 0;
-            }
-          });
-        }
-      }
-    });
-  }
-
-  const setsEl    = document.getElementById('weekVolTotalSets');
-  const repsEl    = document.getElementById('weekVolTotalReps');
-  const tonnageEl = document.getElementById('weekVolTonnage');
-
-  if (setsEl)    setsEl.textContent    = totalSets.toLocaleString();
-  if (repsEl)    repsEl.textContent    = totalReps.toLocaleString();
-  if (tonnageEl) tonnageEl.textContent = totalVol >= 1000
-    ? `${(totalVol / 1000).toFixed(2)}t`
-    : formatWeight(totalVol, unit, { empty: '0 ' + unit });
-
-  const chartEl = document.getElementById('weekVolChartContainer');
-  if (chartEl) renderVolumeChart(chartEl, data.weekLabels || [], data.volData || [], data.runData || []);
 }
 
 export function renderStreakDetail(data, getState, getDays) {

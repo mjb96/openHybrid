@@ -52,6 +52,7 @@ let _lastScoreResult = null;   // most recent Score-detail result, for the Share
 // mode last week" silently hides half the dashboard, which reads as a bug.
 let _progressRangeId = '30d';
 let _progressFocus = 'all';
+let _progressGrouping = 'week';
 
 // V2-5 — share the Hybrid Score card. Uses the result last rendered into the
 // Score detail (falls back to a fresh compute so the button always works).
@@ -90,12 +91,17 @@ export function setAnalyticsContext(ctx, options = {}) {
  */
 function onProgressControlClick(event) {
   const target = event.target instanceof Element
-    ? event.target.closest('[data-pg-range], [data-pg-focus]')
+    ? event.target.closest('[data-pg-range], [data-pg-focus], [data-pg-grouping]')
     : null;
   if (!target) return;
   const range = target.getAttribute('data-pg-range');
   const focus = target.getAttribute('data-pg-focus');
-  if (range) {
+  const grouping = target.getAttribute('data-pg-grouping');
+  if (grouping) {
+    const next = grouping === 'month' || grouping === 'year' ? grouping : 'week';
+    if (next === _progressGrouping) return;
+    _progressGrouping = next;
+  } else if (range) {
     if (!isRangeId(range) || range === _progressRangeId) return;
     _progressRangeId = range;
   } else if (focus) {
@@ -122,6 +128,10 @@ export function setProgressRange(rangeId) {
 
 export function setProgressFocus(focus) {
   _progressFocus = focus === 'strength' || focus === 'endurance' ? focus : 'all';
+}
+
+export function setProgressGrouping(grouping) {
+  _progressGrouping = grouping === 'month' || grouping === 'year' ? grouping : 'week';
 }
 
 // ==========================================
@@ -462,6 +472,7 @@ export function renderAnalytics() {
         weekStartISO: weekStart,
         rangeId: _progressRangeId,
         focus: _progressFocus,
+        grouping: _progressGrouping,
         program,
         days,
       });

@@ -22,6 +22,7 @@ import { normalizeUi } from '../ui/customize.js';
 import { previousRange, resolveRange } from './ranges.js';
 import { buildPulseModel } from './pulse.js';
 import { buildBalanceModel } from './balance.js';
+import { buildMuscleModel } from './muscles.js';
 
 /**
  * @typedef {'pulse'|'balance'|'muscles'|'exercises'|'endurance'|'body'|'fasting'|'reports'} BandId
@@ -59,6 +60,11 @@ export const BAND_BUILDERS = Object.freeze({
     range: ctx.range,
     previous: ctx.previous,
   }),
+  muscles: (state, ctx) => buildMuscleModel(state, {
+    range: ctx.range,
+    previous: ctx.previous,
+    grouping: ctx.grouping,
+  }),
 });
 
 /** @param {unknown} value */
@@ -84,6 +90,7 @@ const STRENGTH_BANDS = ['muscles', 'exercises'];
  *   program?: any,
  *   days?: string[],
  *   weekStartISO?: string|null,
+ *   grouping?: 'week'|'month'|'year',
  *   focus?: Focus|string,
  *   unit?: string,
  *   distanceUnit?: string,
@@ -138,6 +145,7 @@ export function buildProgressDashboard(state, options = {}) {
         program: options.program,
         days: options.days,
         weekStartISO: options.weekStartISO || null,
+        grouping: options.grouping || 'week',
         unit: options.unit || 'kg',
         distanceUnit: options.distanceUnit || 'km',
       });

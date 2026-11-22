@@ -13,10 +13,11 @@
 import { esc, spark } from './screen-kit.js';
 import { renderPulse } from './view-pulse.js';
 import { renderBalance } from './view-balance.js';
+import { renderMuscles } from './view-muscles.js';
 import { focusBar, rangeBar } from './band-kit.js';
 import { RANGE_PRESETS } from '../ranges.js';
 
-const BAND_VIEWS = Object.freeze({ pulse: renderPulse, balance: renderBalance });
+const BAND_VIEWS = Object.freeze({ pulse: renderPulse, balance: renderBalance, muscles: renderMuscles });
 
 /**
  * Render the bands the composer produced, in its order. A band with an error
