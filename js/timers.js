@@ -2,7 +2,7 @@
 // TIMERS: REST TIMER + SESSION DURATION
 // ==========================================
 import { hapticRestDone } from './haptics.js';
-import { recommendedRestFor as recommendedRestForTiers, resolveRestDuration } from './workout/rest-duration.js';
+import { DEFAULT_REST_TIERS, recommendedRestFor as recommendedRestForTiers, resolveRestDuration } from './workout/rest-duration.js';
 
 // Session duration timer
 let workoutStartTime = null;
@@ -35,7 +35,7 @@ const REST_TIMER_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 // and fall back to the user's configured default for anything unrecognised.
 // Tier defaults (seconds), tunable from Settings (settings.restPeriods). Pushed
 // in via setRestTiers on boot/change so this leaf module needs no state import.
-let _restTiers = { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
+let _restTiers = { ...DEFAULT_REST_TIERS };
 let _restTimerEnabled = true;
 let _restAlertSound = true;
 let _restAlertVolume = 0.4;

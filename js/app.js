@@ -81,7 +81,6 @@ import {
   initSettings, openSettings, closeSettings,
   saveName, saveBodyWeight, setWeightUnit,
   setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, stepCurrentWeek, setAutoAdvanceWeek,
-  saveThresholdPace as saveSettingsThresholdPace,
   exportData, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
   triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
@@ -1988,7 +1987,7 @@ document.addEventListener('blur', (e) => {
   const id = e.target.id;
   if (id === 'settingsNameInput') saveName();
   else if (id === 'settingsBodyWeight') saveBodyWeight();
-  else if (id === 'settingsThresholdPace') saveSettingsThresholdPace();
+  else if (id === 'settingsThresholdPace') { saveThresholdPace(e.target.value); showToast('Threshold pace saved'); }
   else if (id === 'settingsStepGoal') saveStepGoal();
   else if (id === 'settingsReminderTime')    saveReminderTime();
   else if (id === 'settingsStreakAlertTime') saveStreakAlertTime();

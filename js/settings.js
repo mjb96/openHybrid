@@ -57,11 +57,6 @@ const _parseRest = (str) => {
   const n = parseInt(s, 10);
   return Number.isFinite(n) ? n : null;
 };
-const REST_PRESETS = {
-  strength:    { warmup: 60, compound: 240, accessory: 180, isolation: 120 },
-  hypertrophy: { warmup: 45, compound: 180, accessory: 120, isolation: 90 },
-  efficient:   { warmup: 30, compound: 120, accessory: 90,  isolation: 60 },
-};
 import { showToast } from './state.js';
 import { rearmReminder, notificationsGranted } from './notifications.js';
 import { confirmModal } from './ui/confirm-modal.js';
@@ -75,6 +70,8 @@ import {
   importReasonMessage,
 } from './state/import-validate.js';
 import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery } from './settings/nav.js';
+import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
+import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
 let _getState;
 let _autoBackupUiRequest = 0;
@@ -258,9 +255,6 @@ function _syncPlateSetupUI(appState) {
   const dumbbellUnit = document.getElementById('settingsDumbbellUnit');
   if (dumbbellUnit) dumbbellUnit.textContent = unit;
   _renderMachineStacks(appState, unit);
-
-  const showHints = document.getElementById('settingsShowPlateHints');
-  if (showHints) showHints.checked = appState.settings?.showPlateHints === true;
 }
 
 function _syncSettingsUI() {
@@ -356,16 +350,22 @@ function _syncSettingsUI() {
   // Plate setup for the active profile and current weight unit.
   _syncPlateSetupUI(appState);
 
+  // The plate-hint preference is a logger default, not part of the profile's
+  // plate data, so it is synced here even if the equipment card is rebuilt.
+  const showHints = document.getElementById('settingsShowPlateHints');
+  if (showHints) showHints.checked = s.showPlateHints === true;
+
   // Rest tiers + auto-timer toggle
-  const rp = s.restPeriods || { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
+  const rp = s.restPeriods || { ...DEFAULT_REST_TIERS };
   const rw = document.getElementById('settingsRestWarmup');
   const rc = document.getElementById('settingsRestCompound');
   const ra = document.getElementById('settingsRestAccessory');
   const ri = document.getElementById('settingsRestIsolation');
-  if (rw) rw.value = _fmtRest(rp.warmup ?? 45);
+  if (rw) rw.value = _fmtRest(rp.warmup ?? DEFAULT_REST_TIERS.warmup);
   if (rc) rc.value = _fmtRest(rp.compound);
   if (ra) ra.value = _fmtRest(rp.accessory);
   if (ri) ri.value = _fmtRest(rp.isolation);
+  _setRestPresetActive(restPresetFor(rp));
   const rEnabled = document.getElementById('settingsRestEnabled');
   if (rEnabled) rEnabled.checked = s.restTimerEnabled !== false;
   const rSound = document.getElementById('settingsRestAlertSound');
@@ -471,6 +471,13 @@ function _setToggleActive(groupSelector, activeSelector) {
   // in the DOM, so an unscoped querySelector would highlight the wrong element (or
   // nothing in this group). Compound the selectors so we always hit this group's button.
   document.querySelector(groupSelector + activeSelector)?.classList.add('active');
+}
+
+/** Highlight the preset whose tiers exactly match the stored ones; none if custom. */
+function _setRestPresetActive(name) {
+  document.querySelectorAll('[data-action="rest-preset"]').forEach((button) => {
+    button.classList.toggle('active', !!name && button.getAttribute('data-preset') === name);
+  });
 }
 
 // ==========================================
@@ -828,18 +835,19 @@ export async function deleteActiveEquipmentProfile() {
 // Persist the three rest tiers from the Settings inputs (clamped 30–600s).
 export function saveRestPeriods() {
   const appState = _ensureSettings();
-  const cur = appState.settings.restPeriods || { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
+  const cur = appState.settings.restPeriods || { ...DEFAULT_REST_TIERS };
   const read = (id, fallback, min = 30) => {
     const sec = _parseRest(document.getElementById(id)?.value);
     return sec != null ? Math.min(600, Math.max(min, sec)) : fallback;
   };
   appState.settings.restPeriods = {
-    warmup:   read('settingsRestWarmup',   cur.warmup ?? 45, 0),
+    warmup:   read('settingsRestWarmup',   cur.warmup ?? DEFAULT_REST_TIERS.warmup, 0),
     compound:  read('settingsRestCompound',  cur.compound),
     accessory: read('settingsRestAccessory', cur.accessory),
     isolation: read('settingsRestIsolation', cur.isolation),
   };
   setRestTiers(appState.settings.restPeriods);
+  _setRestPresetActive(restPresetFor(appState.settings.restPeriods));
   saveStateToLocalStorage(true);
 }
 
@@ -854,10 +862,11 @@ export function applyRestPreset(name) {
   const rc = document.getElementById('settingsRestCompound');
   const ra = document.getElementById('settingsRestAccessory');
   const ri = document.getElementById('settingsRestIsolation');
-  if (rw) rw.value = _fmtRest(preset.warmup ?? 45);
+  if (rw) rw.value = _fmtRest(preset.warmup ?? DEFAULT_REST_TIERS.warmup);
   if (rc) rc.value = _fmtRest(preset.compound);
   if (ra) ra.value = _fmtRest(preset.accessory);
   if (ri) ri.value = _fmtRest(preset.isolation);
+  _setRestPresetActive(name);
   saveStateToLocalStorage(true);
 }
 
@@ -1012,19 +1021,6 @@ export function toggleModule(id, on) {
   // A card hidden by the module switch must stop counting as a search result
   // immediately, while the panel is open.
   _applySettingsFilter();
-}
-
-export function saveThresholdPace() {
-  const val = document.getElementById('settingsThresholdPace')?.value?.trim() || '';
-  const parts = val.split(':');
-  if (parts.length !== 2) return;
-  const mins = parseInt(parts[0], 10);
-  const secs = parseInt(parts[1], 10);
-  if (isNaN(mins) || isNaN(secs)) return;
-  const appState = _getState();
-  appState.thresholdPaceSeconds = mins * 60 + secs;
-  saveStateToLocalStorage(true);
-  showToast('Threshold pace saved');
 }
 
 // ==========================================

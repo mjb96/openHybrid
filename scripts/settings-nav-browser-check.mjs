@@ -87,6 +87,8 @@ try {
     'the active filter reports aria-pressed=true');
   ok((await page.getAttribute('#settingsTabs [data-settings-tab="profile"]', 'aria-pressed')) === 'false',
     'an inactive filter reports aria-pressed=false');
+  ok((await page.locator('[data-action="rest-preset"].active').getAttribute('data-preset')) === 'hypertrophy',
+    'the default rest tiers show Standard as active');
 
   ok(await page.locator('#settingsRestWarmup').isVisible(), 'warm-up rest tier is visible');
   ok(await page.locator('#settingsRestCompound').isVisible(), 'compound rest tier is visible');
@@ -100,6 +102,13 @@ try {
   await page.click('[data-action="rest-preset"][data-preset="efficient"]');
   ok((await page.inputValue('#settingsRestCompound')) === '2:00', 'rest preset updates the compound tier');
   ok((await page.inputValue('#settingsRestWarmup')) === '0:30', 'rest preset updates the warm-up tier');
+  ok(await page.locator('[data-action="rest-preset"][data-preset="efficient"]').evaluate((el) => el.classList.contains('active')),
+    'the applied preset shows as active');
+  await page.fill('#settingsRestCompound', '2:15');
+  await page.locator('#settingsRestCompound').press('Tab');
+  ok((await page.locator('[data-action="rest-preset"].active').count()) === 0,
+    'custom rests leave no preset falsely active');
+  await page.click('[data-action="rest-preset"][data-preset="hypertrophy"]');
   await page.click('[data-action="set-previous-scope"][data-scope="program"]');
   ok(await page.locator('[data-action="set-previous-scope"][data-scope="program"]').evaluate((el) => el.classList.contains('active')), 'previous-values scope persists its active state');
 
