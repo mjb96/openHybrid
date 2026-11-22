@@ -638,81 +638,63 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
-- **2026-11-22 — Plans card art: a three-up recommendation row.**
+- **2026-11-22 — Plans hierarchy: active plan first, one search, real card art.**
+  - One session, four commits: the search-heading security fix, the active-plan
+    hierarchy, the quiet utility/tab chrome, and the three-up recommendation
+    row. Plans now reads top to bottom as active plan → plan utilities →
+    Discover | My Plans → search → content.
+  - **Security:** the results heading is pure `searchResultsHeading(query,
+    count)` in `js/programs/search.js`, which entity-escapes the query once and
+    normalises the count. Typing `<img src=x onerror="alert(1)">` into
+    `#progSearchInput` renders as text (`&lt;img`) instead of executing, while
+    `3 results for "bench"` still reads naturally; a hostile-query test locks
+    both.
+  - The running plan's Start/Resume is the only primary action, and its badge
+    reads `ACTIVE PLAN` (was `NOW TRAINING`; copy only — no state, attribute or
+    action changed). Beneath the card sits one quiet 44px utility row:
+    `+ New plan`, `Import plan (.json)` and — only while a plan is actually
+    running — `Manage plan`.
+  - Manage only VIEWS the active plan: it dispatches `library:view-active` and
+    never activates, switches or restarts anything. Activation remains the
+    plan's own confirmed action and the banner's Continue is untouched.
+  - One search: the field is visible on both tabs with placeholder/accessible
+    name "Search plans", a query is checked before the tab, and its order is
+    tabs above search, so the whole order is Discover | My Plans → search →
+    content. My Plans no longer hides search or loses catalogue search.
+  - The utility row is inline text — no border, fill or shadow, 44px targets,
+    2px side padding, muted `.74rem`/700; only Manage carries accent text, so
+    New plan is no longer a competing filled primary. The library tabs are a
+    text bar: transparent, no segmented card, 22px gap, a 2px cyan underline on
+    the active tab, `--text-primary` against muted and a quiet grey count pill.
+  - Vertical stack: utility margin 4px; tabs 44px plus a 1px subtle rule with
+    4px below; search margin 8px; the recommendation section's outer gaps
+    collapse (header 0, basis 0, 2px before All programs) because its heading,
+    44px basis summary and cards carry their own internal padding. All programs
+    moved 711px → 639px at 390×844 against the 640px target; cards, art and the
+    44px controls are untouched. The three-up row below then took it to 605px.
   - "Recommended For You" is one 3-up tile grid (request 3) instead of a
-    horizontal rail, so all three cards sit fully inside 390px at rest. It keeps
-    the `.prog-basis` block and its three groups, then All programs, the real
-    `${all.length} plans` count and Show all.
-  - New `tile` size in `program-card.js` (and its DOM mirror): accent-tinted
-    gradient from `accentColor` / `coverGradient[1]`, 1:1 cover, 44px glyph
-    bottom-left, 44px bookmark top-right, name + reason only. `small` and
-    `large` are untouched, so detail Similar programs keeps its rail card.
+    horizontal rail, so all three cards sit fully inside 390px at rest —
+    16–130 / 138–252 / 260–374, with no clipped third card. New `tile` size in
+    `program-card.js` (and its DOM mirror): accent-tinted gradient from
+    `accentColor`/`coverGradient[1]`, 1:1 cover, 44px glyph bottom-left, 44px
+    bookmark top-right, name + reason only. `small` and `large` are untouched,
+    so detail Similar programs keeps its rail card.
   - Cover glyphs stop treating every athletic category as the flame:
     hyrox→trophy, functional→activity, tactical→gauge, conditioning→flame,
-    triathlon→activity; hybrid keeps bolt.
-  - Search's popularity tiebreaker now reads `Number(program.popularity) || 0`,
-    so a custom/imported plan without that catalogue field cannot score NaN and
-    disappear from results.
+    triathlon→activity; hybrid keeps bolt. Search's popularity tiebreaker now
+    reads `Number(program.popularity) || 0`, so a custom/imported plan without
+    that catalogue field cannot score NaN and disappear from results.
   - 390×844 audit (same seed/clock as the quiet-row shot): All programs is
-    605px, inside the 620px target and down from 639px; tiles occupy
-    16–130 / 138–252 / 260–374. Screenshot `shots/plans-after-art.png`.
-  - Validation: 2,081 node tests (tile glyph/markup and no-popularity search
-    probes added), typecheck, smoke, precache, and the Plans
-    banner/JSON/recommendation, detail viewport, core ergonomics and
-    touch-target browser checks.
-
-- **2026-11-22 — Plans follow-up: quiet utility row and tab bar.**
-  - The plan utilities are inline text now — no border, fill or shadow, 44px
-    targets, 2px side padding, muted `.74rem`/700. Only `Manage plan` carries
-    accent text; New plan is no longer a competing filled primary.
-  - The library tabs are a text bar: transparent, no segmented card, 22px gap,
-    a 2px cyan underline on the active tab, `--text-primary` against muted, and
-    a quiet grey count pill.
-  - Vertical stack: utility margin 4px; tabs 44px plus a 1px subtle rule with
-    4px below; search margin 8px; the recommendation row's outer gaps collapse
-    (header 0, basis 0, 2px before All programs, no extra rail padding) because
-    its heading, 44px basis summary and cards already carry their own internal
-    padding. All programs moved from 711px to 639px at 390×844 with the same
-    seed/clock, inside the 640px target. Cards, art and the 44px controls are
-    untouched; only the section's outer spacing moved.
-  - Validation: screenshot `shots/plans-after-quiet.png` (390×844, same
-    seed/clock as the earlier before/after), node tests, typecheck, smoke,
-    precache, Plans banner/JSON/recommendation, detail viewport, core ergonomics
-    and touch-target checks.
-
-- **2026-11-22 — Plans hierarchy: active plan first, one primary, one search.**
-  - Plans now reads top to bottom as active plan → plan utilities →
-    Discover | My Plans → search → content. The running plan's Start/Resume is
-    the only primary action; New plan and Import are quiet 44px utilities in one
-    row beneath the card.
-  - Added a quiet **Manage plan** that only opens the active plan view. It never
-    activates, switches or restarts anything; activation remains the plan's own
-    confirmed action and the banner's Continue is untouched.
-  - One search: the field is visible on both tabs, a query is checked before the
-    tab, and its placeholder/accessible name is "Search plans". My Plans no
-    longer hides search or loses catalogue search.
-  - Security: the results heading moved to pure `searchResultsHeading(query,
-    count)` in `js/programs/search.js`, which entity-escapes the query once.
-    Typing `<img src=x onerror=…>` into `#progSearchInput` now renders as text
-    (`&lt;img`) instead of executing; a normal query still reads
-    `3 results for "bench"`.
-  - CSS: `.plans-actions`/`.plans-action-btn` became `.plans-utility`/
-    `.plans-utility-btn` (44px, quiet, accent only on Manage), and the extra
-    16px inset on `#progLibraryTabs` was removed so tabs align with the screen
-    instead of double-padding against `.view-container`.
-  - Banner copy only: the active card's badge reads `ACTIVE PLAN` (was
-    `NOW TRAINING`); no state, attribute or action changed.
-  - Validation: 2,077 node tests (including a hostile-query heading test),
-    typecheck, smoke, precache/workflow, and the Plans banner, Plans JSON,
-    recommendation, program-detail viewport, core ergonomics, touch-target and
-    copy-program browser checks. The recommendation check gained two guards: at
-    390px "All programs" starts above the fold (702 < 844), and every
-    recommended card is brought fully inside the viewport before its edges are
-    asserted. The row is a horizontal 140px rail, so "all cards visible at
-    rest" is not a valid contract — that would either clip them or push "All
-    programs" below the fold; the check scrolls each card fully into view, which
-    still catches a card wider than the row or unreachable by scrolling.
-  - Next: Progress domain detail hierarchy.
+    605px, inside the 620px target and down from 639px; the recommendation
+    check's own fixture measures 598px. Screenshots `shots/plans-after-quiet.png`
+    and `shots/plans-after-art.png`.
+  - Validation: 2,081 node tests (hostile-query heading, tile glyph/markup and
+    no-popularity search probes added), typecheck, smoke, precache/workflow, and
+    the Plans active-banner, Plans JSON, plan-recommendations,
+    program-detail-viewport, core-ergonomics and touch-target browser checks.
+  - Next: Progress domain detail hierarchy. The recommendation reasons are
+    still identical for athletes who share a goal ("Matches your strength goal"
+    three times) and should name level or equipment next.
 
 - **2026-11-22 — Home hierarchy: date headline, week chip, one Start; compact
   rail; one-line bodyweight; insight inside Today.**
