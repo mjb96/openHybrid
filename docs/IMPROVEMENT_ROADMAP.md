@@ -296,7 +296,8 @@ Work:
    share, with a pace-matched trend and an honest `unmeasured-strength` state.
 2. **Home hybrid section.** Training balance, Strength this week and Endurance
    this week below the week surface, each hideable and each linking to the
-   owning Progress surface.
+   owning Progress surface. Endurance carries an aerobic-fitness estimate that
+   is always labelled as an estimate — there is no measured VO₂ max source.
 3. **Hybrid training preference.** `settings.hybridTraining` hides hybrid-only
    cards and never rewrites the four feature modules.
 4. **Repairs found while wiring it.** Quick-start Run/Walk/Fast now carry
@@ -676,7 +677,9 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - Home gains one hybrid section below the week surface: a calendar-week
     strength/endurance sRPE split with a pace-matched 5-week trend, this week's
     tonnage/e1RM/PRs, and distance/pace. Each card is hideable and links to the
-    owning Progress surface; the endurance card respects the Running module.
+    owning Progress surface; the endurance card respects the Running module and
+    shows aerobic fitness from `effectiveVdot`, labelled `(est.)` because the app
+    has no measured VO₂ max source.
   - `dailyLoadBreakdownTimeline` makes the split and rolling ATL/CTL one formula;
     sets without a session duration report `unmeasured-strength` rather than a
     fabricated endurance-only week.

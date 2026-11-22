@@ -129,7 +129,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   weeks. `js/home/hybrid-dashboard.js` renders the three Home cards from it plus
   `buildCalendarWeekStrength`, `calendarStrengthSummary` and
   `collectCalendarWeek` — no metric is re-derived. Endurance merges same-day runs
-  through `runDaySummary`, and the card disappears when the Running module is off.
+  through `runDaySummary`, shows an aerobic-fitness estimate from
+  `effectiveVdot` ALWAYS labelled `(est.)` (the app has no measured VO₂ max
+  source), and the card disappears when the Running module is off.
 - Body measurements: `js/metrics/measurements.js` is the pure model behind the
   Measurements card beside the bodyweight trend — waist, chest, hips, arm,
   thigh and neck, stored canonically in CENTIMETRES with one record per date

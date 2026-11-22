@@ -94,6 +94,7 @@ try {
   const enduranceText = await page.locator('#homeEnduranceWeekCard').innerText();
   ok(/10\.00 km/.test(enduranceText), 'the endurance card shows this week\'s distance');
   ok(/5:00 \/km/.test(enduranceText), 'the endurance card shows pace');
+  ok(/Aerobic \d+ \(est\.\)/.test(enduranceText), 'aerobic fitness is labelled as an estimate');
 
   const order = await page.evaluate(() => {
     const week = document.getElementById('homeWeekStrip');

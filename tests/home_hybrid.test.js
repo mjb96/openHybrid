@@ -132,3 +132,34 @@ test('an empty week is an honest empty state, not a zero-filled ratio', () => {
   assert.match(strengthCardHTML(model), /No working sets yet this week/);
   assert.match(enduranceCardHTML(model), /No runs logged this week/);
 });
+
+test('aerobic fitness is shown as an ESTIMATE, never a measured VO2 max', () => {
+  const state = {
+    settings: {},
+    weeks: { '1': runSlot(TUESDAY, [{ sessionId: 'r1', dist: 10, time: '50:00', rpe: '6' }]) },
+  };
+  const model = buildHomeHybrid(state, { today: TUESDAY });
+  assert.equal(model.endurance.aerobic?.source, 'estimated');
+  const html = enduranceCardHTML(model);
+  assert.match(html, /Aerobic \d+ \(est\.\)/);
+  assert.match(html, /not a measured VO₂ max/);
+});
+
+test('a threshold pace the athlete entered is presented without the estimate label', () => {
+  const state = {
+    settings: {},
+    thresholdPaceSeconds: 300,
+    weeks: { '1': runSlot(TUESDAY, [{ sessionId: 'r1', dist: 10, time: '50:00', rpe: '6' }]) },
+  };
+  const model = buildHomeHybrid(state, { today: TUESDAY });
+  assert.equal(model.endurance.aerobic?.source, 'threshold');
+  const html = enduranceCardHTML(model);
+  assert.match(html, /Aerobic \d+/);
+  assert.doesNotMatch(html, /\(est\.\)/);
+});
+
+test('no aerobic estimate is invented when there is no qualifying run', () => {
+  const model = buildHomeHybrid({ settings: {}, weeks: {} }, { today: TUESDAY });
+  assert.equal(model.endurance.aerobic, null);
+  assert.doesNotMatch(enduranceCardHTML(model), /Aerobic/);
+});

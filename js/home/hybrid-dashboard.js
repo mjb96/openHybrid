@@ -18,6 +18,7 @@ import {
   addDaysISO, buildCalendarWeekStrength, collectCalendarWeek, indexSlotsByDate,
 } from '../analytics/weekly-aggregate.js';
 import { calendarStrengthSummary } from '../analytics/strength-calendar.js';
+import { effectiveVdot } from '../analytics/calculations/running-calcs.js';
 import { runDaySummary } from '../state/run-sessions.js';
 import { daysBetween, localDayKey, todayKey } from '../dates.js';
 import { formatRunDistance, formatRunPace } from '../workout/run-units.js';
@@ -102,6 +103,12 @@ export function buildHomeHybrid(state, options = {}) {
   const priorRuns = collectCalendarWeek(state, priorWeekStart, { index, tz });
   const runTotals = runWeekTotals(currentRuns.runSessions, elapsedDay);
   const priorRunTotals = runWeekTotals(priorRuns.runSessions, elapsedDay);
+  // Aerobic fitness is a max-based rolling estimate (best recent effort), not a
+  // weekly bucket, so it is naturally partial-week safe. It is NEVER presented
+  // as measured VO2 max: the card always labels an estimate as one.
+  const weekNums = Object.keys(state?.weeks || {}).map(Number).filter(Number.isFinite);
+  const maxWeek = weekNums.length ? Math.max(...weekNums) : 0;
+  const aerobic = maxWeek > 0 ? effectiveVdot(state, DAY_KEYS, maxWeek) : null;
   const endurance = {
     km: runTotals.km,
     sessions: runTotals.sessions,
@@ -109,6 +116,9 @@ export function buildHomeHybrid(state, options = {}) {
     priorSamePointKm: priorRunTotals.km,
     deltaPct: signedPct(runTotals.km, priorRunTotals.km),
     hasWork: runTotals.sessions > 0,
+    aerobic: aerobic
+      ? { vdot: aerobic.vdot, source: aerobic.source }
+      : null,
   };
 
   return {
@@ -219,6 +229,11 @@ export function enduranceCardHTML(model) {
   const sub = e.hasWork
     ? `${e.sessions} run${e.sessions === 1 ? '' : 's'}${pace ? ` · ${pace}` : ''}`
     : 'No runs logged this week';
+  // Never claim a measured VO2 max: the app has no VO2 max source, only an
+  // estimate derived from recent efforts (or the athlete's own threshold pace).
+  const aerobic = e.aerobic
+    ? `<span class="home-hy__sub" title="Estimated from your best recent run — not a measured VO₂ max.">Aerobic ${Math.round(e.aerobic.vdot)}${e.aerobic.source === 'estimated' ? ' (est.)' : ''}</span>`
+    : '';
 
   return `<article class="card-dark home-hy home-hy__mini">
     <button type="button" class="home-hy__mini-body" data-action="open-analytics" data-context="running">
@@ -226,6 +241,7 @@ export function enduranceCardHTML(model) {
       <span class="home-hy__value">${distance}</span>
       ${deltaChip(e.deltaPct)}
       <span class="home-hy__sub">${escapeHtml(sub)}</span>
+      ${aerobic}
     </button>
   </article>`;
 }
