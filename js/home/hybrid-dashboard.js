@@ -19,7 +19,7 @@ import {
 } from '../analytics/weekly-aggregate.js';
 import { calendarStrengthSummary } from '../analytics/strength-calendar.js';
 import { runDaySummary } from '../state/run-sessions.js';
-import { daysBetween, formatDayMonth, localDayKey, todayKey } from '../dates.js';
+import { daysBetween, localDayKey, todayKey } from '../dates.js';
 import { formatRunDistance, formatRunPace } from '../workout/run-units.js';
 import { formatWeight, parsePaceSeconds, weightUnitOf } from '../analytics/utils.js';
 import { escapeHtml } from '../util.js';
@@ -228,12 +228,6 @@ export function enduranceCardHTML(model) {
       <span class="home-hy__sub">${escapeHtml(sub)}</span>
     </button>
   </article>`;
-}
-
-/** Week label for the card's aria context, e.g. "13/7–19/7". */
-export function hybridWeekLabel(model) {
-  if (!model?.weekStart) return '';
-  return `${formatDayMonth(model.weekStart)}–${formatDayMonth(model.weekEnd)}`;
 }
 
 /**
