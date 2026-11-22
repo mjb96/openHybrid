@@ -16,10 +16,9 @@
 // using at the time, so a cross-unit annual delta would be a false claim.
 // =============================================================================
 import { indexSlotsByDate } from '../analytics/weekly-aggregate.js';
-import { liftE1rmByCalendarWeek } from '../analytics/strength-calendar.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { resolveExercise } from '../exercises/catalog.js';
-import { isE1rmPr } from '../strength/e1rm.js';
+import { estimatedE1rmForSet, isE1rmPr } from '../strength/e1rm.js';
 import { addDaysISO, localDayKey, todayKey } from '../dates.js';
 
 const MONTH_LABELS = [
@@ -79,33 +78,57 @@ function slotDistanceKm(slot) {
 }
 
 /**
- * Annual e1RM PR EVENTS: one per lift per calendar week whose best set falls
- * inside `year` and beats every PRIOR week's best for that lift. A first-ever
- * lift is a baseline, never a record. Prior weeks include the year's earlier
- * weeks and everything before it.
+ * Annual e1RM PR EVENTS, scanned PER DATE rather than per calendar week.
  *
- * @param {object} state
+ * A week-keyed scan is blind at a Dec/Jan boundary (the week containing both
+ * dates belongs to one year) and can see only one strength slot per date. Here
+ * every valid set from EVERY deduplicated slot on a date contributes to that
+ * date's best for its canonical lift. Dates are then read in order and a date
+ * is a PR when it beats every earlier date for that lift. A first-ever lift is a
+ * baseline, and `isE1rmPr` refuses a tie. Same-date sessions therefore produce
+ * at most ONE event, and it is the best of both.
+ *
+ * @param {Map<string, any[]>} allByDate deduplicated slot index
  * @param {number} year
  */
-function collectPrEvents(state, year) {
-  const byLift = liftE1rmByCalendarWeek(state);
+function collectPrEvents(allByDate, year) {
+  /** @type {Map<string, Map<string, number>>} canonical lift → (date → best e1RM) */
+  const bestByLiftDate = new Map();
+
+  for (const [date, slots] of allByDate) {
+    for (const slot of slots) {
+      for (const [lift, sets] of Object.entries(slot.lifts || {})) {
+        if (!Array.isArray(sets)) continue;
+        let best = 0;
+        for (const set of sets) {
+          if (!isValidWorkingSet(set)) continue;
+          const e = estimatedE1rmForSet(lift, set);
+          if (e > best) best = e;
+        }
+        if (best <= 0) continue;
+        const identity = resolveExercise(lift)?.name || lift;
+        const dates = bestByLiftDate.get(identity) || new Map();
+        if (best > (dates.get(date) || 0)) dates.set(date, best);
+        bestByLiftDate.set(identity, dates);
+      }
+    }
+  }
+
   const prefix = `${year}-`;
   const events = [];
-  for (const [lift, weeks] of Object.entries(byLift)) {
-    const ordered = [...weeks.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  for (const [lift, dates] of bestByLiftDate) {
+    const ordered = [...dates.entries()].sort((a, b) => a[0].localeCompare(b[0]));
     let priorBest = 0;
-    for (const [weekStart, rec] of ordered) {
-      const date = rec?.bestSet?.date || '';
-      if (date.startsWith(prefix) && isE1rmPr(rec.best, priorBest)) {
+    for (const [date, best] of ordered) {
+      if (date.startsWith(prefix) && isE1rmPr(best, priorBest)) {
         events.push({
           lift,
-          e1rm: Math.round(rec.best),
+          e1rm: Math.round(best),
           date,
-          weekStart,
           previousBest: Math.round(priorBest),
         });
       }
-      if (rec.best > priorBest) priorBest = rec.best;
+      if (best > priorBest) priorBest = best;
     }
   }
   return events.sort((a, b) => b.e1rm - a.e1rm
@@ -147,7 +170,7 @@ function longestStreakIn(dates) {
  *     workingSets:number, volumeKg:number, distanceKm:number }>,
  *   bestMonth:{ month:number, label:string, sessions:number, activeDays:number,
  *     workingSets:number, volumeKg:number, distanceKm:number }|null,
- *   prs:Array<{ lift:string, e1rm:number, date:string, weekStart:string,
+ *   prs:Array<{ lift:string, e1rm:number, date:string,
  *     previousBest:number }>,
  *   topExercises:Array<{ name:string, sets:number, volumeKg:number }>
  * }}
@@ -234,7 +257,7 @@ export function buildYearInReview(state, _days, opts = {}) {
       || a.month - b.month)[0]
     : null;
 
-  const prs = collectPrEvents(state, year);
+  const prs = collectPrEvents(index.allByDate, year);
   const topExercises = [...exerciseTotals.values()]
     .sort((a, b) => b.sets - a.sets
       || b.volumeKg - a.volumeKg

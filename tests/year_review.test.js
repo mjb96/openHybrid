@@ -89,6 +89,39 @@ test('two runs on one day add their distance instead of replacing it', () => {
   assert.equal(review.totals.distanceKm, 15);
 });
 
+test('two legacy run objects (no runSessions) still sum their distance', () => {
+  const state = stateOf({
+    '1': {
+      dates: { mon: '2026-05-10', tue: '2026-05-10' },
+      runs: {
+        mon: { dist: '5.0', time: '25:00' },
+        tue: { dist: '10.0', time: '55:00' },
+      },
+    },
+  });
+  const review = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(review.totals.sessions, 2);
+  assert.equal(review.totals.distanceKm, 15);
+  assert.equal(review.totals.activeDays, 1);
+});
+
+test('a gym-time-only session counts even with no sets or runs', () => {
+  const state = stateOf({
+    '1': {
+      dates: { mon: '2026-04-10' },
+      gymStats: { mon: { time: '45:00' } },
+    },
+  });
+  const review = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(review.hasData, true);
+  assert.equal(review.totals.sessions, 1);
+  assert.equal(review.totals.activeDays, 1);
+  assert.equal(review.totals.activeMonths, 1);
+  assert.equal(review.totals.workingSets, 0);
+  assert.equal(review.totals.volumeKg, 0);
+  assert.equal(review.months[3].sessions, 1);
+});
+
 test('a first-ever lift is a baseline; a later improvement is a PR; a tie is not', () => {
   const baseline = stateOf({
     '1': { dates: { mon: '2026-01-10' }, lifts: { mon: { 'Bench Press': [work(100, 5)] } } },
@@ -110,6 +143,67 @@ test('a first-ever lift is a baseline; a later improvement is a PR; a tie is not
   assert.equal(review.prs[0].e1rm, 128);
 });
 
+test('a lift can set more than one annual PR; the count is the event count', () => {
+  const state = stateOf({
+    '1': { dates: { mon: '2026-01-10' }, lifts: { mon: { 'Bench Press': [work(100, 5)] } } },
+    '2': { dates: { mon: '2026-03-10' }, lifts: { mon: { 'Bench Press': [work(110, 5)] } } },
+    '3': { dates: { mon: '2026-06-10' }, lifts: { mon: { 'Bench Press': [work(120, 5)] } } },
+  });
+  const review = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(review.totals.prCount, 2);
+  assert.deepEqual(review.prs.map((pr) => pr.date), ['2026-06-10', '2026-03-10']);
+  assert.deepEqual(review.prs.map((pr) => pr.e1rm), [140, 128]);
+});
+
+test('a prior-year baseline makes this year’s improvement a real PR', () => {
+  const state = stateOf({
+    '1': { dates: { mon: '2025-12-10' }, lifts: { mon: { 'Bench Press': [work(100, 5)] } } },
+    '2': { dates: { mon: '2026-02-10' }, lifts: { mon: { 'Bench Press': [work(105, 5)] } } },
+  });
+  const review = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(review.totals.prCount, 1);
+  assert.equal(review.prs[0].date, '2026-02-10');
+  assert.equal(review.prs[0].e1rm, 123);
+  assert.equal(review.prs[0].previousBest, 117);
+});
+
+test('a December PR and a higher January set each count in their own year', () => {
+  const state = stateOf({
+    '1': { dates: { mon: '2025-01-10' }, lifts: { mon: { 'Bench Press': [work(100, 5)] } } },
+    '2': { dates: { mon: '2025-12-30' }, lifts: { mon: { 'Bench Press': [work(110, 5)] } } },
+    '3': { dates: { mon: '2026-01-02' }, lifts: { mon: { 'Bench Press': [work(120, 5)] } } },
+  });
+  const prior = buildYearInReview(state, [], { year: 2025, today: '2026-12-15' });
+  assert.equal(prior.totals.prCount, 1);
+  assert.equal(prior.prs[0].date, '2025-12-30');
+  assert.equal(prior.prs[0].e1rm, 128);
+
+  const current = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(current.totals.prCount, 1);
+  assert.equal(current.prs[0].date, '2026-01-02');
+  assert.equal(current.prs[0].e1rm, 140);
+  assert.equal(current.prs[0].previousBest, 128);
+});
+
+test('two same-date sessions contribute to one date best, not two PRs', () => {
+  const state = stateOf({
+    '1': { dates: { mon: '2025-12-01' }, lifts: { mon: { 'Bench Press': [work(90, 5)] } } },
+    '2': {
+      dates: { mon: '2026-03-10', tue: '2026-03-10' },
+      lifts: {
+        mon: { 'Bench Press': [work(100, 5)] },
+        tue: { 'Bench Press': [work(110, 5)] },
+      },
+    },
+  });
+  const review = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(review.prs.length, 1);
+  assert.equal(review.prs[0].date, '2026-03-10');
+  assert.equal(review.prs[0].e1rm, 128, 'the best of both same-date sessions is the date best');
+  assert.equal(review.prs[0].previousBest, 105, 'the prior date (not the same date) is the baseline');
+  assert.equal(review.totals.prCount, 1);
+});
+
 test('best month is the busiest, then the heaviest, then the earlier month', () => {
   const tied = stateOf({
     '1': {
@@ -125,6 +219,7 @@ test('best month is the busiest, then the heaviest, then the earlier month', () 
   });
   const tie = buildYearInReview(tied, [], { year: 2026, today: '2026-12-15' });
   assert.equal(tie.bestMonth.month, 1, 'equal sessions AND volume break toward the earlier month');
+  assert.equal(tie.totals.activeMonths, 2);
 
   const heavier = stateOf({
     '1': {

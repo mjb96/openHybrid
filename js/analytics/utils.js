@@ -29,6 +29,29 @@ export function weightUnitOf(state) {
 }
 
 /**
+ * Format a training volume (weight × reps) in the athlete's unit.
+ *
+ * Volume is stored in whatever unit the athlete entered, exactly like a set's
+ * load: openHybrid never converts stored weights, so this LABELS the number
+ * rather than scaling it. A pound athlete's stored 14,050 is 14,050 lb, not
+ * 14,050 kg. Tonnes are metric, so only kg gets the `t` compaction; pounds stay
+ * grouped as pounds.
+ *
+ * One helper because Weekly Review, the Training Report and the Year in Review
+ * quote the same number and must not disagree.
+ *
+ * @param {number|string|null|undefined} volume
+ * @param {string} unit  from weightUnitOf ('kg' | 'lbs')
+ */
+export function formatVolume(volume, unit = 'kg') {
+  const value = Number(volume);
+  if (!Number.isFinite(value) || value <= 0) return unit === 'lbs' ? '0 lb' : '0 kg';
+  if (unit === 'lbs') return `${Math.round(value).toLocaleString('en-AU')} lb`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}t`;
+  return `${Math.round(value)} kg`;
+}
+
+/**
  * Format a weight for display in the athlete's unit.
  * @param {number|string|null|undefined} value
  * @param {string} unit  from weightUnitOf

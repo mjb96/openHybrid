@@ -416,13 +416,14 @@ Features: P3 (share), P12.
 1. **Monthly report share card** built from the Phase 2 model, using the one
    share pipeline.
 2. **Year in Review** — *Landed (P12):* a December/January section at the top of
-   Review → Stats with annual totals, best month, in-year longest streak, annual
-   e1RM PR events and top exercises. It is seasonal by design: December recaps
-   the current partial year, January the year just ended, and every other month
-   renders nothing. Sessions are counted by identity on their stamped date (a
-   strength + run day is two; a copied slot is one); bodyweight is omitted
-   because weigh-ins are stored in the unit the athlete was using then. No share
-   card in this slice.
+   Review → Stats with annual totals, best month, the in-year consecutive run,
+   per-date annual e1RM PR events and top exercises. It is seasonal by design:
+   December recaps the current partial year, January the year just ended, and
+   every other month renders nothing. Sessions are counted by identity on their
+   stamped date (a strength + run day is two; a copied slot is one); volume is
+   labelled in the athlete's stored unit and bodyweight is omitted because
+   weigh-ins are stored in the unit the athlete was using then. No share card in
+   this slice.
 
 **Data rules:** date-strict, using the same calendar series as Phase 2. No
 fabricated comparison when the prior period has no data. No "supporters" or
@@ -496,7 +497,7 @@ not rebuild a ✅.
 | P9 | Exercise performance | `analytics/exercise-detail.js` | Graph, PR summary, set records by rep target, history | ◐ | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js` | Calendar, consecutive-week streak, rest days, year zoom | ◐ | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
-| P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, annual e1RM PRs, in-year streak, top exercises; no share card | ✅ | — |
+| P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — |
 
 P7 stays ◐ on purpose: body fat is now an ENTERED reading on the measurements
 record (scale/caliper/DEXA, never a formula), and six tape sites ship, but the
@@ -669,52 +670,69 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,291 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
-
-## 13. Session log
-
+| Quality | 2,309 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
 - **2026-11-23 — Year in Review (P12).**
   - Review → Stats now leads with a seasonal calendar-year recap. In December it
     recaps the current (partial) year; in January it recaps the year that just
-    ended; in every other month the heading and container are absent. January
-    never borrows the new year's empty January, and December never waits for the
-    year to finish.
+    ended; in every other month the section is absent. The `<h2>` lives inside
+    `#yearReviewContainer`, because `.analytics-section h2.section-header` is
+    `display:flex !important` and a `hidden` attribute on the heading alone did
+    nothing. A pinned June 2027 context proves the container and heading are
+    both gone while the rest of Stats still renders.
   - `js/brain/year-review.js` is the pure builder, mounted by
     `js/analytics/views/view-year-review.js`: a year hero (sessions and the
     explicit date range), Lifted / Run / Working sets / e1RM PRs, the busiest
-    month, the in-year longest streak, up to five top exercises and the top five
-    annual PR events.
+    month, the in-year longest CONSECUTIVE run (worded so it cannot be confused
+    with the freeze-aware Streak card), up to five top exercises and the top
+    five annual PR events.
   - Sessions are counted by DISTINCT identity on the real stamped date through
     `indexSlotsByDate(state).allByDate`: one strength session plus every run is
     two on a strength+run day, two runs are two, a copied slot is one, and two
     different programmed days completed on one date are two. The best month is
-    chosen by sessions, then volume, then the earlier month. The streak never
-    reaches back before 1 January.
-  - Annual e1RM PRs are week events from `liftE1rmByCalendarWeek` +
-    `isE1rmPr`: the week's best set must fall inside the year and beat every
-    prior week. A first-ever lift is a baseline; a tie is not a record. The
-    builder returns every event and the view caps the list at five.
-  - Top exercises resolve aliases to canonical names and count holds/carries as
-    working sets with zero tonnage. Bodyweight is deliberately omitted — a
-    weigh-in is stored in the unit the athlete was using then. No share card, no
-    new route, no schema change, no network surface.
-  - `scripts/progress-hub-browser-check.mjs` gained one clock-pinned December
-    context (15 Dec 2026) over 12 monthly weeks of 2026 plus a January streak
-    and one Bench Press PR; it asserts the visible section, year, partial range,
-    26 sessions / 28 working sets, best month, top exercises, PR, streak and no
-    390px overflow. The existing width suite is untouched, and the check left the
-    unpinned backlog.
-  - Validation: 2,278 node tests, typecheck, smoke, precache/workflow gates,
-    progress-hub and all 45 real-browser checks. Screenshot:
-    `year-review.png` at 390×844.
+    chosen by sessions, then volume, then the earlier month. The consecutive run
+    never reaches back before 1 January.
+  - Annual e1RM PRs are now PER-DATE events, not calendar-week events. Every
+    valid set from every deduplicated slot on a date contributes to that date's
+    best for its canonical lift; dates are scanned in order and `isE1rmPr`
+    compares against every earlier date. This is safe at the Dec/Jan boundary (a
+    30 Dec PR and a higher 2 Jan set count in their own years), never emits two
+    PRs from two same-date sessions, and still treats a first-ever lift as a
+    baseline and a tie as no record. The builder returns every event; the view
+    caps the list at five and labels a capped list "Biggest e1RM PRs".
+  - Volume is formatted by the shared `formatVolume` in
+    `js/analytics/utils.js`: kg keeps the existing `14.1t` / `550 kg` output
+    byte-for-byte, while lbs is grouped and labelled `14,050 lb` — never
+    converted, because stored weights are already in the athlete's entered unit.
+    Weekly Review and the Training Report now use the same helper. Top exercises
+    resolve aliases to canonical names, count holds/carries as working sets with
+    zero tonnage, and an unbroken 50-character custom name wraps at 320/412.
+  - Bodyweight is deliberately omitted — a weigh-in is stored in the unit the
+    athlete was using then. No share card, no new route, no schema change, no
+    network surface.
+  - `scripts/progress-hub-browser-check.mjs` gained clock-pinned December
+    contexts over 12 monthly weeks in real numeric/`arch:*` keys: 390 kg, 390
+    light lbs (Lifted/Run asserted in both units), and 320/412 light contexts
+    with the long custom name (no document or container overflow). A pinned
+    June 2027 context proves the off-season section is hidden. The existing
+    three-width and empty-profile assertions are untouched.
+  - Clock guard: the five existing width contexts still derive `today`/`MON`
+    from the wall clock; the new pinned block covers only its own context. The
+    file therefore remains a FILE-LEVEL exemption in
+    `tests/browser_check_clock_guard.test.js` — its `UNPINNED_BACKLOG` entry was
+    removed because the shrink-only rule rejects a check that now contains
+    `pinClock`. The residual risk is recorded here rather than blessing the
+    whole file as fixed.
+  - Validation: 2,309 node tests, typecheck, smoke, precache/workflow gates,
+    progress-hub and all 45 real-browser checks. The 390×844 visual check is
+    reproduced from the pinned December block in
+    `scripts/progress-hub-browser-check.mjs`
+    (`node scripts/progress-hub-browser-check.mjs`); no PNG is committed.
   - Next: the monthly-report share card, then a Year in Review share image built
     from the values this screen shows.
 
-
-## 13. Session log
 
 - **2026-11-23 — Body fat as an entered reading.**
   - Body fat joins the body-measurements record as an additive `bodyFat`

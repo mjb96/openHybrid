@@ -8,7 +8,7 @@
 // the Share button.
 // =============================================================================
 import { showToast, getProgramById } from '../../state.js';
-import { weightUnitOf } from '../utils.js';
+import { weightUnitOf, formatVolume } from '../utils.js';
 import { reviewToText, buildWeeklyReview } from '../../brain/weekly-review.js';
 import { statCard } from '../charts/chart-primitives.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
@@ -48,7 +48,6 @@ export function renderReview(data, getState, getDays, onTabChange) {
 
   if (_reviewTab === 'stats') {
     body.innerHTML = `
-      <h2 id="yearReviewHeading" class="section-header mt-2">Year in Review</h2>
       <div id="yearReviewContainer"></div>
       <h2 class="section-header mt-2">Week in Review</h2>
       <div id="weeklyReviewContainer"></div>
@@ -85,8 +84,18 @@ export function renderReview(data, getState, getDays, onTabChange) {
     `;
     renderWeeklyReview(review, state);
     // Seasonal (December/January) and independent of the selected week: the
-    // calendar year, not a program week or the navigator.
-    renderYearInReview(state, getDays());
+    // calendar year, not a program week or the navigator. A failure here must
+    // not blank Week in Review, the report, streak, goals or the log below.
+    try {
+      renderYearInReview(state, getDays());
+    } catch (error) {
+      console.error('Year in Review failed to render', error);
+      const container = document.getElementById('yearReviewContainer');
+      if (container) {
+        container.hidden = true;
+        container.innerHTML = '';
+      }
+    }
     renderMonthlyReport(getState, getDays, () => program);
     // Folded in from the retired progress / streak / goal-progress leaves.
     renderStreakDetail(data, getState, getDays);
@@ -178,7 +187,7 @@ export function renderWeeklyReview(review, state) {
     : `${review.totals.distanceKm} km`;
 
   const stats = [
-    { v: review.totals.volume >= 1000 ? `${(review.totals.volume / 1000).toFixed(1)}t` : `${review.totals.volume} ${weightUnitOf(state)}`, k: 'Lifted', d: deltaChip(review.deltas.volumePct) },
+    { v: formatVolume(review.totals.volume, weightUnitOf(state)), k: 'Lifted', d: deltaChip(review.deltas.volumePct) },
     { v: dist, k: 'Run', d: deltaChip(review.deltas.distancePct) },
     { v: String(review.totals.sessions), k: 'Sessions', d: '' },
     { v: String(review.totals.prCount), k: 'e1RM PR lifts', d: review.totals.prCount > 0 ? '<span class="wrev-delta" style="color:var(--color-amber)">🏆</span>' : '' },

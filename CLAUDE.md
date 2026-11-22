@@ -223,11 +223,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   "of N planned" and the adherence bar appear only for the live week. Review
   Stats leads with the seasonal **Year in Review** (`js/brain/year-review.js` +
   `views/view-year-review.js`): December recaps the current partial year, January
-  the year just ended, and the section is absent in every other month. It counts
+  the year just ended, and the section is absent in every other month. The
+  heading lives inside `#yearReviewContainer` because `.section-header` is
+  `display:flex !important`, so only hiding the container hides both. It counts
   distinct sessions by stamped date (one strength session + each run), and
-  reports totals, best month, the in-year longest streak, annual e1RM PR events
-  and top exercises. Bodyweight is deliberately omitted because weigh-ins are
-  stored in the athlete's then-current unit. Review
+  reports totals, best month, the in-year consecutive-day run, per-DATE annual
+  e1RM PR events and top exercises. Volume goes through the shared
+  `formatVolume` (`js/analytics/utils.js`), which LABELS the athlete's stored
+  unit and never converts it — kg keeps its `t` compaction, lbs stays lbs.
+  Bodyweight is deliberately omitted because weigh-ins are stored in the
+  athlete's then-current unit. Review
   Stats' Training Calendar and Consistency Log use the same calendar weeks (no
   `W1..Wn` program grid).
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
