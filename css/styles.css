@@ -10506,6 +10506,28 @@ html[data-theme="light"] .bw-ms-site--bodyfat { border-left-color: #155e75; }
 /* Body fat is a percentage, not a tape length: it spans the whole grid and gets
    its own divider so it never reads like a seventh centimetre site. */
 .ms-sheet-field--full { grid-column: 1 / -1; }
+/* Bilateral sites live behind one disclosure: six primary fields stay scannable,
+   and a 14-field wall never greets someone who only measures their waist. */
+.ms-sheet-more {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  background: var(--overlay-md); padding: 0 10px;
+}
+.ms-sheet-more summary {
+  display: flex; align-items: center; gap: 8px;
+  min-height: var(--touch-target); cursor: pointer;
+  color: var(--text-secondary); font-size: .7rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  list-style: none;
+}
+.ms-sheet-more summary::-webkit-details-marker { display: none; }
+.ms-sheet-more summary::after {
+  content: '⌄'; margin-left: auto; font-size: .9rem; line-height: 1;
+  transition: transform .16s ease;
+}
+.ms-sheet-more[open] summary::after { transform: rotate(180deg); }
+.ms-sheet-more .ms-sheet-hint { margin: 0 0 8px; }
+.ms-sheet-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-bottom: 10px; }
 .ms-sheet-field--bodyfat {
   border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 2px;
 }

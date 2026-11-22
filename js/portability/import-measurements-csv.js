@@ -2,12 +2,14 @@
 // =============================================================================
 // BODY MEASUREMENTS CSV IMPORT
 //
-// Reads the file Settings → Data writes (`Date,Waist (cm),…,Body fat (%)`) and
-// the same shape hand-made in a spreadsheet. Storage is canonical centimetres,
-// so `_in` / `(in)` columns convert on the way in and bare columns follow the
-// athlete's unit. Body fat is always a percentage (`body_fat`, `bodyfat`,
-// `body_fat_pct`, `body_fat_percent`) and is never converted from cm/in.
-// Existing dates are never overwritten — the same rule as the bodyweight reader.
+// Reads the file Settings → Data writes (`Date,Neck (cm),…,Body fat (%)`) and
+// the same 14-site shape hand-made in a spreadsheet. Storage is canonical
+// centimetres, so `_in` / `(in)` columns convert on the way in and bare columns
+// follow the athlete's unit. The legacy single `arm`/`thigh` columns still
+// import, so a pre-14-site file is not lost. Body fat is always a percentage
+// (`body_fat`, `bodyfat`, `body_fat_pct`, `body_fat_percent`) and is never
+// converted from cm/in. Existing dates are never overwritten — the same rule as
+// the bodyweight reader.
 //
 // KNOWN LIMITATION: a file carrying a weight column belongs to the bodyweight
 // reader, so a combined weigh-in + body-fat export (`date,weight_kg,body_fat`)
@@ -18,7 +20,7 @@
 // =============================================================================
 import { parseCsv, CSV_IMPORT_LIMITS } from './import-workout-csv.js';
 import {
-  MEASUREMENT_SITES, MIN_MEASUREMENT_CM, MAX_MEASUREMENT_CM, bodyFatPercent,
+  MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, MIN_MEASUREMENT_CM, MAX_MEASUREMENT_CM, bodyFatPercent,
 } from '../metrics/measurements.js';
 
 const normalizeHeader = (h) => String(h || '')
@@ -53,7 +55,12 @@ function headersOf(text) {
 }
 
 /** @type {Set<string>} */
-const SITE_KEYS = new Set(MEASUREMENT_SITES.map((site) => site.key));
+const SITE_KEYS = new Set([
+  ...MEASUREMENT_SITES.map((site) => site.key),
+  ...LEGACY_MEASUREMENT_SITES.map((site) => site.key),
+]);
+/** Longest key first so `arm_l` is matched before `arm` can claim the prefix. */
+const SITE_PATTERN = [...SITE_KEYS].sort((a, b) => b.length - a.length).join('|');
 
 /** Normalized headers that carry an entered body-fat percentage. */
 const BODY_FAT_HEADERS = new Set(['body_fat', 'bodyfat', 'body_fat_pct', 'body_fat_percent']);
@@ -74,14 +81,17 @@ export function hasBodyFatColumn(text) {
 
 /**
  * Which column feeds which site, and whether that column is centimetres or
- * inches. `waist` with no suffix is resolved by the caller's unit.
+ * inches. `waist` with no suffix is resolved by the caller's unit. The 14
+ * canonical keys and the historical `arm`/`thigh` both resolve, so an old
+ * six-site export still imports into the preserved legacy fields.
  * @param {string[]} headers
  */
 function columnMap(headers) {
   /** @type {Record<string, { index: number, unit: 'cm'|'in'|null }>} */
   const map = {};
+  const pattern = new RegExp(`^(${SITE_PATTERN})(?:_(cm|in))?$`);
   headers.forEach((header, index) => {
-    const match = header.match(/^(waist|chest|hips|arm|thigh|neck)(?:_(cm|in))?$/);
+    const match = header.match(pattern);
     if (!match || !SITE_KEYS.has(match[1]) || map[match[1]]) return;
     map[match[1]] = { index, unit: match[2] === 'cm' ? 'cm' : match[2] === 'in' ? 'in' : null };
   });

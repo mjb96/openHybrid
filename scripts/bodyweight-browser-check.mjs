@@ -6,7 +6,7 @@
 // data.
 // =============================================================================
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrowserContext, resolveChromium, pinClock } from './browser-runtime.mjs';
@@ -16,6 +16,8 @@ const runtime = await resolveChromium();
 if (!runtime) process.exit(process.argv.includes('--required') ? 1 : 0);
 const { chromium, executablePath } = runtime;
 const STORAGE_KEY = 'hybrid_engine_v2_state';
+const shotArg = process.argv.find((arg) => arg.startsWith('--screenshot='));
+const shotPath = shotArg ? shotArg.slice('--screenshot='.length) : '';
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = createServer(async (req, res) => {
   try {
@@ -54,10 +56,20 @@ const state = {
   wellnessLog: [], healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
   programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
   hybridScore: { history: [], xp: 0, lastRecordedDate: null }, loadMetrics: { atl: 0, ctl: 0 },
+  // A pre-14-site reading: it must stay readable, appear on the card and survive
+  // an edit made in the new bilateral sheet.
+  bodyMeasurements: [{ date: '2026-11-05', arm: 36, thigh: 58 }],
 };
 const browser = await chromium.launch({ headless: true, executablePath });
 const failures = [];
 const ok = (condition, label) => { if (condition) console.log(`  ok · ${label}`); else { failures.push(label); console.error(`FAIL: ${label}`); } };
+/** @param {import('playwright').Page} target */
+async function ensureBilateralOpen(target) {
+  const open = await target.locator('#measurementsSheet .ms-sheet-more').evaluate((el) => /** @type {HTMLDetailsElement} */ (el).open);
+  if (open) return;
+  await target.click('#measurementsSheet .ms-sheet-more summary');
+  await target.waitForSelector('#measurementsSheet .ms-sheet-more[open]');
+}
 try {
   const context = await createBrowserContext(browser, { viewport: { width: 390, height: 844 }, timezoneId: 'Australia/Sydney' });
   await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(state)]);
@@ -175,6 +187,23 @@ try {
   ok(bfField.type === 'number' && bfField.min === '2' && bfField.max === '70' && bfField.step === '0.1' && bfField.inputmode === 'decimal',
     'body fat is a 2–70 percentage field with a 0.1 step');
   ok(bfField.width >= bfField.gridWidth - 2, `body fat spans the full sheet width (${Math.round(bfField.width)} of ${Math.round(bfField.gridWidth)}px)`);
+  ok((await page.locator('#msSheet_arm').count()) === 0, 'the old single Arm input is gone, not a hidden duplicate');
+  const moreClosed = await page.evaluate(() => {
+    const more = document.querySelector('#measurementsSheet .ms-sheet-more');
+    return { open: more?.open ?? null, summary: more?.querySelector('summary')?.textContent || '', height: more?.querySelector('summary')?.getBoundingClientRect().height || 0 };
+  });
+  ok(moreClosed.open === false && /arms, thighs and calves/i.test(moreClosed.summary), 'bilateral sites sit behind a closed disclosure');
+  ok(moreClosed.height >= 44, `the bilateral disclosure is ${Math.round(moreClosed.height)}px, at least 44px`);
+  await page.click('#measurementsSheet .ms-sheet-more summary');
+  await page.waitForSelector('#measurementsSheet .ms-sheet-more[open]');
+  await page.fill('#msSheet_shoulders', '120');
+  await page.fill('#msSheet_glutes', '100');
+  await page.fill('#msSheet_arm_l', '34');
+  await page.fill('#msSheet_arm_r', '35');
+  await page.fill('#msSheet_thigh_l', '55');
+  await page.fill('#msSheet_thigh_r', '56');
+  await page.fill('#msSheet_calf_l', '37');
+  await page.fill('#msSheet_calf_r', '38');
   await page.fill('#msSheet_waist', '84.5');
   await page.fill('#msSheet_chest', '102');
   await page.fill('#msSheet_bodyFat', '18.4');
@@ -182,7 +211,11 @@ try {
   await page.waitForFunction((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     const day = stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-19');
-    return Number(day?.waist) === 84.5 && Number(day?.chest) === 102 && Number(day?.bodyFat) === 18.4;
+    return Number(day?.waist) === 84.5 && Number(day?.chest) === 102 && Number(day?.bodyFat) === 18.4
+      && Number(day?.shoulders) === 120 && Number(day?.glutes) === 100
+      && Number(day?.arm_l) === 34 && Number(day?.arm_r) === 35
+      && Number(day?.thigh_l) === 55 && Number(day?.thigh_r) === 56
+      && Number(day?.calf_l) === 37 && Number(day?.calf_r) === 38;
   }, STORAGE_KEY);
   await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
   const cardText = () => page.locator('#bwMeasurements').innerText();
@@ -197,7 +230,53 @@ try {
   ok(msTargets.log >= 44, `the Log measurements button is ${msTargets.log}px, at least 44px`);
   ok(/84\.5 cm/.test(await cardText()), 'the card shows the saved waist in centimetres');
   ok(/102\.0 cm/.test(await cardText()), 'the card shows the saved chest');
+  ok(/120\.0 cm/.test(await cardText()), 'the card shows shoulders');
+  ok(/100\.0 cm/.test(await cardText()), 'the card shows glutes');
+  ok(/arm l/i.test(await cardText()) && /34\.0 cm/.test(await cardText()), 'the card shows the left arm reading');
+  ok(/arm r/i.test(await cardText()) && /35\.0 cm/.test(await cardText()), 'the card shows the right arm reading');
+  ok(/thigh l/i.test(await cardText()) && /55\.0 cm/.test(await cardText()), 'the card shows the left thigh reading');
+  ok(/calf r/i.test(await cardText()) && /38\.0 cm/.test(await cardText()), 'the card shows the right calf reading');
   ok(/body fat/i.test(await cardText()) && /18[.]4\s*%/.test(await cardText()), 'the card shows the entered body fat percentage');
+  ok(/arm \(old\)/i.test(await cardText()) && /36\.0 cm/.test(await cardText()), 'the card keeps a legacy Arm reading visible');
+
+  if (shotPath) {
+    // The requested file is the card; its `-sheet` companion is the same
+    // bilateral sheet with the disclosure open, because a bottom sheet covers
+    // the card it belongs to.
+    await page.waitForTimeout(2600);
+    await page.evaluate(() => document.getElementById('bwMeasurements')?.scrollIntoView({ block: 'center' }));
+    await mkdir(path.dirname(shotPath), { recursive: true });
+    await page.screenshot({ path: shotPath });
+    console.log(`  shot · ${shotPath}`);
+    await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
+    await page.waitForSelector('#measurementsSheet.active');
+    await ensureBilateralOpen(page);
+    const sheetShot = shotPath.replace(/\.png$/i, '-sheet.png');
+    await page.screenshot({ path: sheetShot });
+    console.log(`  shot · ${sheetShot}`);
+    await page.click('#measurementsSheet .sheet-close-btn');
+    await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
+  }
+
+  // Editing an old single-Arm/Thigh date must carry those readings across:
+  // the new sheet has no input that could represent them.
+  await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
+  await page.waitForSelector('#measurementsSheet.active');
+  await page.fill('#msSheetDate', '2026-11-05');
+  await page.locator('#msSheetDate').dispatchEvent('change');
+  ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Edit measurements', 'the legacy date opens in edit mode');
+  ok((await page.locator('#msSheet_waist').inputValue()) === '', 'the legacy date has no canonical reading to prefill');
+  await page.fill('#msSheet_waist', '81');
+  await page.click('[data-action="save-measurements-sheet"]');
+  await page.waitForFunction((key) => {
+    const stored = JSON.parse(localStorage.getItem(key) || '{}');
+    const day = stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-05');
+    return Number(day?.waist) === 81 && Number(day?.arm) === 36 && Number(day?.thigh) === 58;
+  }, STORAGE_KEY);
+  await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
+  ok(/waist/i.test(await cardText()) && /\+3\.5/.test(await cardText()), 'the edited legacy date now feeds the waist trend');
+  ok(/arm \(old\)/i.test(await cardText()) && /36\.0 cm/.test(await cardText()), 'editing another site preserves the legacy Arm');
+  ok(/thigh \(old\)/i.test(await cardText()) && /58\.0 cm/.test(await cardText()), 'editing another site preserves the legacy Thigh');
 
   await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await page.waitForSelector('#measurementsSheet.active');
@@ -215,14 +294,14 @@ try {
   await page.click('[data-action="save-measurements-sheet"]');
   await page.waitForFunction((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    return stored.bodyMeasurements?.length === 2;
+    return stored.bodyMeasurements?.length === 3;
   }, STORAGE_KEY);
   ok(await page.evaluate((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     const day = stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-10');
     return day?.bodyFat === 19;
   }, STORAGE_KEY), 'the earlier date stores its own body-fat reading');
-  ok(/2 entries/.test(await cardText()), 'the card counts both measurement dates');
+  ok(/3 entries/.test(await cardText()), 'the card counts the two canonical dates and the preserved legacy date');
 
   const bfDelta = page.locator('#bwMeasurements .bw-ms-site--bodyfat .bw-ms-delta');
   ok((await bfDelta.innerText()) === '-0.6 pp', 'the card reports the body-fat change in percentage points');
@@ -283,11 +362,11 @@ try {
   await page.click('[data-action="delete-ms-row"]');
   await page.waitForSelector('.cmodal [data-cm="ok"]');
   await page.click('.cmodal [data-cm="ok"]');
-  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.bodyMeasurements?.length === 1, STORAGE_KEY);
+  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.bodyMeasurements?.length === 2, STORAGE_KEY);
   ok(await page.evaluate((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
-    const day = stored.bodyMeasurements?.[0];
-    return day?.date === '2026-11-10' && Number(day?.bodyFat) === 19;
+    const day = stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-10');
+    return Number(day?.bodyFat) === 19;
   }, STORAGE_KEY), 'delete removes the newer body-fat entry with its date');
   ok(/19[.]0\s*%/.test(await cardText()), 'the older body-fat reading remains on the card');
   await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
@@ -300,8 +379,22 @@ try {
   await page.click('[data-action="delete-ms-row"]');
   await page.waitForSelector('.cmodal [data-cm="ok"]');
   await page.click('.cmodal [data-cm="ok"]');
-  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.bodyMeasurements?.length === 0, STORAGE_KEY);
+  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.bodyMeasurements?.length === 1, STORAGE_KEY);
   ok(!/body fat/i.test(await cardText()), 'deleting the last body-fat entry removes it from the card');
+  ok(/arm \(old\)/i.test(await cardText()), 'the legacy-only date still shows its Arm reading');
+  ok(/log measurements/i.test(await cardText()), 'a legacy-only card still offers logging');
+  await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
+
+  await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
+  await page.waitForSelector('#measurementsSheet.active');
+  await page.fill('#msSheetDate', '2026-11-04');
+  await page.locator('#msSheetDate').dispatchEvent('change');
+  ok((await page.locator('[data-action="delete-ms-row"]').first().getAttribute('data-date')) === '2026-11-05', 'the legacy date is listed for deletion');
+  await page.click('[data-action="delete-ms-row"]');
+  await page.waitForSelector('.cmodal [data-cm="ok"]');
+  await page.click('.cmodal [data-cm="ok"]');
+  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.bodyMeasurements?.length === 0, STORAGE_KEY);
+  ok(!/arm \(old\)/i.test(await cardText()), 'deleting the last legacy entry clears it from the card');
   ok(/log measurements/i.test(await cardText()), 'the empty measurements card still offers logging');
   await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
 
@@ -322,19 +415,26 @@ try {
   await narrowPage.waitForSelector('#analytics-bodyweight.active');
   await narrowPage.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await narrowPage.waitForSelector('#measurementsSheet.active');
+  await ensureBilateralOpen(narrowPage);
   const narrowFit = await narrowPage.evaluate(() => {
     const input = document.getElementById('msSheet_bodyFat');
     const rect = input?.getBoundingClientRect();
+    const calf = document.getElementById('msSheet_calf_r')?.getBoundingClientRect();
     return {
       left: rect?.left ?? -1,
       right: rect?.right ?? -1,
+      calfLeft: calf?.left ?? -1,
+      calfRight: calf?.right ?? -1,
       viewport: window.innerWidth,
       scrollWidth: document.documentElement.scrollWidth,
       label: input?.closest('.ms-sheet-field')?.querySelector('span')?.textContent || '',
+      moreHeight: document.querySelector('#measurementsSheet .ms-sheet-more summary')?.getBoundingClientRect().height || 0,
     };
   });
   ok(narrowFit.label === 'Body fat (%)', 'the narrow sheet labels the body-fat field');
   ok(narrowFit.left >= 0 && narrowFit.right <= narrowFit.viewport, `the body-fat field fits a 320px viewport (${Math.round(narrowFit.left)}–${Math.round(narrowFit.right)} of ${narrowFit.viewport})`);
+  ok(narrowFit.calfLeft >= 0 && narrowFit.calfRight <= narrowFit.viewport, `the right calf field fits a 320px viewport (${Math.round(narrowFit.calfLeft)}–${Math.round(narrowFit.calfRight)} of ${narrowFit.viewport})`);
+  ok(narrowFit.moreHeight >= 44, `the 320px bilateral disclosure is ${Math.round(narrowFit.moreHeight)}px, at least 44px`);
   ok(narrowFit.scrollWidth <= narrowFit.viewport + 1, `the 320px sheet does not overflow sideways (${narrowFit.scrollWidth}px)`);
   await narrowContext.close();
 

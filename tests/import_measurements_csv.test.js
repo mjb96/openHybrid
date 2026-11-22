@@ -39,15 +39,31 @@ test('round-trips the CSV that Settings → Data writes', () => {
 });
 
 test('inch columns and bare headers convert to canonical centimetres', () => {
-  const inches = parseMeasurementsCsv('date,waist_in,arm_in\n2026-11-01,34,14');
+  const inches = parseMeasurementsCsv('date,waist_in,arm_in,arm_l_in,calf_r_in\n2026-11-01,34,14,13,15');
   assert.equal(inches.entries[0].waist, 86.4);   // 34 × 2.54
   assert.equal(inches.entries[0].arm, 35.6);
+  assert.equal(inches.entries[0].arm_l, 33);
+  assert.equal(inches.entries[0].calf_r, 38.1);
 
   const bare = parseMeasurementsCsv('date,waist\n2026-11-01,34', { unit: 'lbs' });
   assert.equal(bare.entries[0].waist, 86.4);
 
   const bareCm = parseMeasurementsCsv('date,waist\n2026-11-01,84', { unit: 'kg' });
   assert.equal(bareCm.entries[0].waist, 84);
+});
+
+test('the 14-site export round-trips with legacy readings and body fat', () => {
+  const state = { bodyMeasurements: [
+    {
+      date: '2026-11-01', neck: 38, shoulders: 120, chest: 104, waist: 86.5, hips: 98, glutes: 100,
+      arm_l: 34, arm_r: 35, forearm_l: 27, forearm_r: 27.5, thigh_l: 55, thigh_r: 56, calf_l: 37, calf_r: 38,
+      arm: 36, thigh: 58, bodyFat: 18.4,
+    },
+    { date: '2026-11-15', waist: 85.9, bodyFat: 17.8 },
+  ] };
+  const parsed = parseMeasurementsCsv(buildMeasurementsCsv(state));
+  assert.deepEqual(parsed.entries, state.bodyMeasurements);
+  assert.equal(parsed.skipped, 0);
 });
 
 test('rows for the same date merge site by site', () => {
@@ -118,9 +134,21 @@ test('old six-site files still import without a body-fat column', () => {
     '2026-11-01,84,102,98,36,58,38',
   ].join('\n'));
   assert.deepEqual(parsed.entries, [
-    { date: '2026-11-01', waist: 84, chest: 102, hips: 98, arm: 36, thigh: 58, neck: 38 },
+    { date: '2026-11-01', neck: 38, chest: 102, waist: 84, hips: 98, arm: 36, thigh: 58 },
   ]);
   assert.equal('bodyFat' in parsed.entries[0], false);
+});
+
+test('all fourteen canonical keys and both legacy keys import', () => {
+  const parsed = parseMeasurementsCsv([
+    'Date,Neck (cm),Shoulders (cm),Chest (cm),Waist (cm),Hips (cm),Glutes (cm),Arm L (cm),Arm R (cm),Forearm L (cm),Forearm R (cm),Thigh L (cm),Thigh R (cm),Calf L (cm),Calf R (cm),Arm (cm),Thigh (cm),Body fat (%)',
+    '2026-11-01,38,120,104,86.5,98,100,34,35,27,27.5,55,56,37,38,36,58,18.4',
+  ].join('\n'));
+  assert.deepEqual(parsed.entries, [{
+    date: '2026-11-01', neck: 38, shoulders: 120, chest: 104, waist: 86.5, hips: 98, glutes: 100,
+    arm_l: 34, arm_r: 35, forearm_l: 27, forearm_r: 27.5, thigh_l: 55, thigh_r: 56, calf_l: 37, calf_r: 38,
+    arm: 36, thigh: 58, bodyFat: 18.4,
+  }]);
 });
 
 test('implausible readings are skipped rather than imported', () => {

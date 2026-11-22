@@ -499,9 +499,10 @@ not rebuild a ✅.
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
 | P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — |
 
-P7 stays ◐ on purpose: body fat is now an ENTERED reading on the measurements
-record (scale/caliper/DEXA, never a formula), and six tape sites ship, but the
-plan's 14-site catalogue and per-site graph are still open.
+P7 stays ◐ on purpose: the measurements record now carries an entered body fat
+and 14 canonical bilateral tape sites (neck to calves, with pre-14-site single
+Arm/Thigh readings preserved and exported), but the per-site graph is still
+open.
 
 ### Workout logging (14)
 
@@ -670,7 +671,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,309 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,315 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
@@ -733,6 +734,34 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - Next: the monthly-report share card, then a Year in Review share image built
     from the values this screen shows.
 
+- **2026-11-23 — Fourteen measurement sites, legacy readings preserved.**
+  - The measurements record now tracks 14 canonical length sites: neck,
+    shoulders, chest, waist, hips, glutes, arm_l/r, forearm_l/r, thigh_l/r and
+    calf_l/r (`MEASUREMENT_SITES`). Left and right are independent readings;
+    nothing derives one side from the other.
+  - The sheet keeps six primary fields visible and puts the eight bilateral
+    fields behind an “Arms, thighs and calves” disclosure, with a hint that
+    earlier single Arm/Thigh readings are preserved and exported. Body fat stays
+    a full-width percentage field.
+  - The old single `arm`/`thigh` keys are `LEGACY_MEASUREMENT_SITES`
+    (“Arm (old)”/“Thigh (old)”). Normalization keeps them, `measurementSiteTrends`
+    returns them only with `{ includeLegacy: true }`, and the card asks for
+    them so no historical reading disappears. `buildMeasurementRecord` is
+    canonical only, and `preserveLegacySites` carries an existing Arm/Thigh into
+    the replacement record, so editing a waist cannot drop them.
+  - CSV columns are the 14 canonical labels, then `Arm (cm)`/`Thigh (cm)`, then
+    `Body fat (%)`. The reader resolves all 16 length keys with `_cm`/`_in`
+    suffixes; old six-site files still import into the legacy keys, and a new
+    export round-trips canonical + legacy + body fat.
+  - Validation: 6 new node tests (2,286 combined), typecheck, smoke, precache
+    and workflow gates. The extended bodyweight browser check seeds a legacy
+    `{2026-11-05, arm 36, thigh 58}`, edits that date (waist 81) and asserts the
+    legacy pair survives, fills shoulders/glutes/arm_l/arm_r/thigh_l/thigh_r/
+    calf_l/calf_r on 2026-11-19 behind the disclosure, and covers stored values,
+    the card, legacy deletion and 320px fit. 390×844 screenshots:
+    `shots/measurements-14-sites.png` (card) and
+    `shots/measurements-14-sites-sheet.png` (details open).
+  - Next: the P7 per-site graph.
 
 - **2026-11-23 — Body fat as an entered reading.**
   - Body fat joins the body-measurements record as an additive `bodyFat`

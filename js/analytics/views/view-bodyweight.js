@@ -114,7 +114,7 @@ function measurementsHtml(model) {
         <strong class="bw-ms-title">Measurements</strong>
         <small class="text-muted">${model.count
           ? `Updated ${formatDayMonth(model.latestDate)} · ${model.count} ${model.count === 1 ? 'entry' : 'entries'}`
-          : 'Waist, chest, arm and more'}</small>
+          : 'Neck to calves · 14 tape sites'}</small>
       </div>
       ${toggle}
     </div>`;

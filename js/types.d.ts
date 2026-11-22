@@ -156,8 +156,14 @@ export interface AppState {
   /** Routine folders; metadata only, routines never leave appState. */
   libraryFolders?: RoutineFolder[];
   bodyWeightLog: Array<{ weight: number; date?: string }>;
-  /** Canonical centimetres, one record per date; any site and `bodyFat` may be absent. */
-  bodyMeasurements: Array<{ date: string; waist?: number; chest?: number; hips?: number; arm?: number; thigh?: number; neck?: number; bodyFat?: number }>;
+  /** Canonical centimetres, one record per date; any site and `bodyFat` may be absent. `arm`/`thigh` are pre-14-site readings, preserved but not editable. */
+  bodyMeasurements: Array<{
+    date: string;
+    neck?: number; shoulders?: number; chest?: number; waist?: number; hips?: number; glutes?: number;
+    arm_l?: number; arm_r?: number; forearm_l?: number; forearm_r?: number;
+    thigh_l?: number; thigh_r?: number; calf_l?: number; calf_r?: number;
+    arm?: number; thigh?: number; bodyFat?: number;
+  }>;
   thresholdPaceSeconds: number | null;
   deloadApplied: any;
   _deloadDismissedWeek: string | null;
