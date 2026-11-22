@@ -28,7 +28,8 @@ import { suggestProgression } from './engine.js';
 import { sanitizeGpsQuality } from './gps/route-quality.js';
 import { estimatedE1rmForSet } from './strength/e1rm.js';
 import {
-  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel,
+  bestRecordForSession, bestRecordFromHistory, isRecord, prKindLabel,
+  recordCandidates, recordPreviousValue,
 } from './strength/records.js';
 import { exercisePerformanceHistory } from './workout/exercise-history.js';
 
@@ -65,15 +66,15 @@ let _recapCtx = { week: null, day: null, sessionId: null };
 
 // Best working-set e1RM for a lift across every OTHER logged session (all
 // weeks/days except the one being recapped). Used for the "Last time" line; the
-// PR decision itself compares against the all-time best of each record kind in
-// `bestRecordBefore`, never only the most recent session.
-function priorPerformance(state, week, day, liftName) {
+// PR decision itself compares against the all-time best of each record kind,
+// derived from the SAME one history scan (see the loop in buildSessionRecap).
+function priorRowsFor(state, week, day, liftName) {
   const beforeDate = state?.weeks?.[week]?.dates?.[day];
   return exercisePerformanceHistory(state, liftName, {
     scope: 'all',
     exclude: { weekKey: week, day },
     beforeDate,
-  })[0] || null;
+  });
 }
 
 const PR_TITLES = Object.freeze({
@@ -184,30 +185,29 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
     // PR: this session's best of each shape compares against the all-time best
     // of that SAME shape from every prior session. A hold never competes with a
     // rep set, a carry never becomes an e1RM, and a mixed session can earn one
-    // badge per kind. Prior history is required — a first-ever lift is a baseline.
-    const priorRow = priorPerformance(state, week, day, name);
+    // badge per kind. Rep records are compared PER LOAD BUCKET, not only at the
+    // heaviest load, so a 60 kg rep record is not missed because the same
+    // session also trained 80 kg. Prior history is required — a first-ever lift
+    // is a baseline.
+    //
+    // "Last time" and the PR baseline share ONE history scan: the rows power
+    // both, so the recap does not walk the archive twice per lift.
+    const priorRows = priorRowsFor(state, week, day, name);
+    const priorRow = priorRows[0] || null;
     const sessionRecords = bestRecordForSession(name, done);
-    const priorRecords = bestRecordBefore(state, name, {
-      excludeWeekKey: week,
-      excludeDay: day,
-      beforeDate: dateISO,
-    });
-    const prKinds = Object.values(RECORD_KIND)
-      .map((kind) => {
-        const candidate = sessionRecords[kind];
-        if (!candidate || !isRecord(kind, candidate, priorRecords[kind])) return null;
-        return {
-          kind,
-          label: prKindLabel(kind),
-          title: PR_TITLES[kind],
-          value: candidate.value,
-          previousBest: Number(priorRecords[kind]?.value) || 0,
-          load: candidate.load,
-        };
-      })
-      .filter(Boolean);
+    const priorRecords = bestRecordFromHistory(name, priorRows, state);
+    const prKinds = recordCandidates(sessionRecords)
+      .filter((candidate) => isRecord(candidate.kind, candidate, priorRecords[candidate.kind]))
+      .map((candidate) => ({
+        kind: candidate.kind,
+        label: prKindLabel(candidate.kind),
+        title: PR_TITLES[candidate.kind],
+        value: candidate.value,
+        previousBest: recordPreviousValue(candidate.kind, candidate, priorRecords[candidate.kind]),
+        load: candidate.load,
+      }));
     const pr = prKinds.length > 0;
-    const e1rmPr = prKinds.some((entry) => entry.kind === RECORD_KIND.E1RM);
+    const e1rmPr = prKinds.some((entry) => entry.kind === 'e1rm');
 
     // The closure openGym gets right: show what was done last time and what the
     // current progression would prescribe next time. Only when the session
@@ -373,17 +373,33 @@ function _liftSummaryRows(r) {
 
 // One badge per record kind the session actually earned. The label names the
 // shape ("Hold PR", "Carry PR", "Rep PR") so a 60-second plank is never read as
-// a 1RM trophy; an e1RM keeps the plain "PR" it has always used.
+// a 1RM trophy; an e1RM keeps the plain "PR" it has always used. Rep records can
+// exist at several loads but remain ONE badge: the heaviest earned bucket is
+// shown, because repeating "Rep PR" four times is noise.
+function _preferredKindEntries(l) {
+  const kinds = Array.isArray(l.prKinds) ? l.prKinds : [];
+  const byKind = new Map();
+  for (const entry of kinds) {
+    const current = byKind.get(entry.kind);
+    if (!current || (entry.kind === 'reps' && Number(entry.load) > Number(current.load))) {
+      byKind.set(entry.kind, entry);
+    }
+  }
+  return [...byKind.values()];
+}
+
 function _prBadges(l) {
   const kinds = Array.isArray(l.prKinds) ? l.prKinds : [];
   if (!kinds.length) return l.pr ? ' <span class="recap-pr" title="New estimated 1RM best">🏆 PR</span>' : '';
-  return kinds.map((entry) => `<span class="recap-pr" title="${esc(entry.title || 'New record')}">🏆 ${esc(entry.label || prKindLabel(entry.kind))}</span>`).join(' ');
+  return _preferredKindEntries(l).map((entry) => {
+    return `<span class="recap-pr" title="${esc(entry.title || 'New record')}">🏆 ${esc(entry.label || prKindLabel(entry.kind))}</span>`;
+  }).join(' ');
 }
 
 function _prPlain(l) {
   const kinds = Array.isArray(l.prKinds) ? l.prKinds : [];
   if (!kinds.length) return l.pr ? 'PR' : '';
-  return kinds.map((entry) => entry.label || prKindLabel(entry.kind)).join(' · ');
+  return _preferredKindEntries(l).map((entry) => entry.label || prKindLabel(entry.kind)).join(' · ');
 }
 
 // Pace-per-km bar chart: bar length relative to the fastest split, coloured by

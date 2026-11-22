@@ -44,11 +44,12 @@ const server = createServer(async (req, res) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const BASE = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`;
 const TZ = 'Australia/Sydney';
-// PINNED. This fixture starts its programme week exactly seven days "ago", so an
-// unpinned clock opened the "Time to Advance?" confirmation over the app on any
-// Monday seven days after 16 Nov and made the bottom nav inert (the check went
-// red for a calendar accident, not a product regression). Pin a Monday inside
-// the week the fixture describes.
+// PINNED. The fixture's programme week is anchored at
+// `weekStartedAt: '2026-11-16'`. With an unpinned clock, the app offered "Time
+// to Advance?" once that week was seven days old, and its sheet covered the app
+// and made the bottom nav inert on 2026-11-23 (the check went red for a calendar
+// accident, not a product regression). Pin a time INSIDE the anchored week so
+// the check asserts the circuit, not the date.
 const TODAY = '2026-11-16';
 const CLOCK = Date.parse(`${TODAY}T09:00:00+10:00`);
 const DAY = 'thu';

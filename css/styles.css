@@ -4038,7 +4038,11 @@ html[data-theme="light"] .global-timer-bar {
 .pr-badge {
   position: absolute;
   top: 4px;
-  right: 4px;
+  /* Left of the tick. The DONE column is 44px plus an 8px gap, so `right: 4px`
+     sat on top of the ✓; 34px still overlapped it by 14px at 320/390. 56px puts
+     the badge's right edge 4px clear of the column. It overlays only the TOP of
+     the value cell — the number is vertically centred, below the badge. */
+  right: 56px;
   font-size: 0.52rem;
   font-weight: 900;
   letter-spacing: 0.06em;

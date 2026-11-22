@@ -44,10 +44,18 @@ export function formatGymDuration(value) {
 }
 
 /**
- * PR count in LIFTS, the unit every surface now uses: three record sets on one
- * lift are one PR lift, not three PRs. Explicit catalogue aliases collapse to
- * one identity, and the set must be completed working work (a warm-up stamp
- * from an old import must not count).
+ * PR count in e1RM LIFTS — the population Home and Progress share.
+ *
+ * One unit: three record sets on one lift are one PR lift, not three PRs.
+ * Explicit catalogue aliases collapse to one identity, and the set must be
+ * completed working work (a warm-up stamp from an old import must not count).
+ *
+ * One population: only `prKind: 'e1rm'` counts. Hold, carry and rep records are
+ * real achievements and keep their badges in the session recap, but Progress
+ * computes its count from the e1RM history (`calendarStrengthSummary.prCount`),
+ * so counting a Hold PR here would make the two surfaces disagree. A legacy
+ * stamp with no `prKind` predates shape-aware records and was always an e1RM,
+ * so it still counts.
  *
  * @param {Record<string, any[]>} lifts
  * @returns {number}
@@ -56,9 +64,10 @@ export function countPrLifts(lifts) {
   const prLifts = new Set();
   for (const [name, rows] of Object.entries(lifts || {})) {
     if (!Array.isArray(rows)) continue;
-    if (rows.some((set) => set?.isPR === true && isValidWorkingSet(set))) {
-      prLifts.add(canonicalExerciseId(name) || name);
-    }
+    const e1rmPr = rows.some((set) => set?.isPR === true
+      && (set.prKind == null || set.prKind === 'e1rm')
+      && isValidWorkingSet(set));
+    if (e1rmPr) prLifts.add(canonicalExerciseId(name) || name);
   }
   return prLifts.size;
 }
@@ -121,7 +130,7 @@ export function sessionSummaryHTML(summary, options = {}) {
   if (summary.distanceKm > 0) stats.push({ value: distanceText(summary.distanceKm, distanceUnit), label: 'Distance' });
 
   const prs = summary.prs > 0
-    ? `<span class="session-summary__pr">🏆 ${summary.prs} PR lift${summary.prs === 1 ? '' : 's'}</span>`
+    ? `<span class="session-summary__pr">🏆 ${summary.prs} e1RM PR lift${summary.prs === 1 ? '' : 's'}</span>`
     : '';
   const chips = summary.muscles.hasData
     ? `<div class="session-summary__muscles" aria-label="Muscles worked">

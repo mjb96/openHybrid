@@ -112,8 +112,9 @@ function summariseSlots(state, date, slots, programLookup = null) {
       sets += 1;
     }
   }
-  // PR counts are in LIFTS — the same unit as Home's session summary and
-  // Progress, so three record sets on one lift are one PR.
+  // PR counts are e1RM LIFTS — the same unit and population as Home's session
+  // summary and Progress, so three record sets on one lift are one PR and a
+  // hold/carry badge does not inflate the count.
   const prs = countPrLifts(dayLifts);
   const volume = dayVolume(dayLifts);
   const muscles = buildSessionMuscles(dayLifts);
@@ -313,7 +314,7 @@ export function weekRecapHTML(view, options = {}) {
     ? `<div class="session-summary__stats">${statItems.join('')}</div>`
     : '';
   const prs = view.prs > 0
-    ? `<span class="session-summary__pr">🏆 ${view.prs} PR lift${view.prs === 1 ? '' : 's'}</span>`
+    ? `<span class="session-summary__pr">🏆 ${view.prs} e1RM PR lift${view.prs === 1 ? '' : 's'}</span>`
     : '';
   const chips = view.muscles.hasData
     ? `<div class="session-summary__muscles" aria-label="Muscles worked">

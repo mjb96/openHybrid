@@ -15,7 +15,15 @@
 // mass or band assistance, so two "80 kg × 10" sets are not the same
 // achievement for two athletes (or even for one athlete at two body weights).
 // Holds and carries stay comparable because they are measured in seconds and
-// metres, not in a fabricated load.
+// metres, not in a fabricated load. A bodyweight movement that arrives with a
+// bare `w` (an imported "Pull Up 80 kg" with no `bw`/`loadMode`) is refused by
+// its identity too: the number cannot open a rep bucket just because the e1RM
+// estimate declined it.
+//
+// Rep records are bucketed by (load, loadMode): 20 reps at 60 kg and 15 reps at
+// 80 kg are different achievements, so a session exposes one best per bucket and
+// every caller must iterate them. Comparing only the heaviest bucket silently
+// threw away a record at a lighter load.
 //
 // Every rule here is ALL-TIME and date-strict: the previous best is scanned
 // across every stored activation, including archived `arch:*` weeks, and a
@@ -29,9 +37,13 @@ import {
   SET_MODE, isWarmupSet, isValidWorkingSet, setModeOf,
 } from '../set-utils.js';
 import { E1RM_PR_EPSILON, estimatedE1rmForSet } from './e1rm.js';
-import { resolvedLoadMode } from '../workout/load-mode.js';
+import { isBodyweightExercise, resolvedLoadMode } from '../workout/load-mode.js';
 import { exercisePerformanceHistory } from '../workout/exercise-history.js';
-import { exerciseStatForName } from '../exercises/catalog.js';
+import { exerciseStatForName, resolveExercise } from '../exercises/catalog.js';
+
+// Re-exported so every existing importer keeps one import path. The template
+// imports the leaf module directly so a row render cannot pull the catalogue.
+export { PR_KIND_LABELS, prKindLabel } from './pr-labels.js';
 
 export const RECORD_KIND = Object.freeze({
   E1RM: 'e1rm',
@@ -39,19 +51,6 @@ export const RECORD_KIND = Object.freeze({
   CARRY: 'carry',
   REPS: 'reps',
 });
-
-/** The badge/copy label for one record kind. */
-export const PR_KIND_LABELS = Object.freeze({
-  e1rm: 'PR',
-  hold: 'Hold PR',
-  carry: 'Carry PR',
-  reps: 'Rep PR',
-});
-
-/** @param {string|null|undefined} kind */
-export function prKindLabel(kind) {
-  return PR_KIND_LABELS[kind] || 'PR';
-}
 
 function numeric(value) {
   const n = Number.parseFloat(String(value ?? ''));
@@ -75,12 +74,33 @@ function hasComparableRepLoad(set, exerciseName) {
 }
 
 /**
+ * Does this exercise's load mean body mass rather than external resistance?
+ *
+ * The NAME pattern catches pull-ups/dips/push-ups even outside the catalogue;
+ * the catalogue's own `bodyweight` flag catches everything else (inverted rows,
+ * glute-ham raises). Both are needed because an imported set can arrive with a
+ * bare numeric `w` and no `bw`/`loadMode` for either.
+ * @param {string} exerciseName
+ */
+function hasBodyweightLoadMeaning(exerciseName) {
+  if (isBodyweightExercise(exerciseName)) return true;
+  return resolveExercise(exerciseName)?.bodyweight === true;
+}
+
+/**
  * Which record a single set can set, or null when it cannot set one.
  *
  * Shape wins: a timed set is a hold and a distance set is a carry, even if the
  * same exercise also has rep sessions. A completed rep set with a comparable
  * load is an e1RM when the shared estimate accepts it and a rep record when it
- * does not (too many reps, or an exercise the estimate refuses).
+ * does not (too many reps, or a conditioning exercise the estimate refuses).
+ *
+ * The rep fallback is deliberately closed to bodyweight movements. The estimate
+ * refuses a pull-up because its `w` is body mass, but an import can carry a
+ * numeric `w` with no `bw`/`loadMode`; treating that as "80 kg of pull-up" would
+ * award a Rep PR that no other surface can reproduce. Both the exercise-name
+ * pattern and the catalogue's own `bodyweight` flag are consulted. Sled Push and
+ * other loaded conditioning work keep their rep buckets.
  *
  * Warm-ups are never records but completion is not required here — the live
  * cockpit evaluates the set it is about to complete, and the session scanners
@@ -97,7 +117,8 @@ export function recordKindForSet(set, exerciseName) {
   if (mode === SET_MODE.DISTANCE) return numeric(set.dist) > 0 ? RECORD_KIND.CARRY : null;
   if ((parseInt(String(set.r ?? ''), 10) || 0) <= 0) return null;
   if (!hasComparableRepLoad(set, exerciseName)) return null;
-  return estimatedE1rmForSet(exerciseName, set) > 0 ? RECORD_KIND.E1RM : RECORD_KIND.REPS;
+  if (estimatedE1rmForSet(exerciseName, set) > 0) return RECORD_KIND.E1RM;
+  return hasBodyweightLoadMeaning(exerciseName) ? null : RECORD_KIND.REPS;
 }
 
 /**
@@ -134,41 +155,19 @@ function recordForSet(kind, set, exerciseName) {
   };
 }
 
-/**
- * The best record of each kind inside one session's set list.
- *
- * A mixed session can legitimately hold an e1RM, a hold and a carry at once;
- * they are returned side by side and never compared with each other. `reps`
- * keeps ONE bucket: the heaviest stored load, then the most reps at it, because
- * a lighter 20-rep set is not a better achievement than a heavier 6-rep set.
- *
- * @param {string} exerciseName
- * @param {any[]} sets
- * @returns {{e1rm:any, hold:any, carry:any, reps:any}}
- */
-export function bestRecordForSession(exerciseName, sets) {
-  /** @type {{e1rm:any, hold:any, carry:any, reps:any}} */
-  const best = { e1rm: null, hold: null, carry: null, reps: null };
-  for (const set of sets || []) {
-    if (!isValidWorkingSet(set)) continue;
-    const kind = recordKindForSet(set, exerciseName);
-    if (!kind) continue;
-    const record = recordForSet(kind, set, exerciseName);
-    if (kind === RECORD_KIND.REPS) {
-      if (!best.reps || record.load > best.reps.load
-        || (record.load === best.reps.load && record.value > best.reps.value)) {
-        best.reps = record;
-      }
-    } else if (!best[kind] || record.value > best[kind].value) {
-      best[kind] = record;
-    }
-  }
-  return best;
+/** Are two rep records the same comparable load? Stored strings are numeric. */
+function sameLoad(a, b) {
+  return numeric(a?.load) === numeric(b?.load)
+    && String(a?.loadMode || 'weighted') === String(b?.loadMode || 'weighted');
 }
 
-/** Merge one record into a best-map, keeping rep records bucketed by load. */
+/** Merge one record (or an array of buckets) into a best-map. */
 function mergeRecord(target, record) {
   if (!target || !record) return;
+  if (Array.isArray(record)) {
+    for (const entry of record) mergeRecord(target, entry);
+    return;
+  }
   if (record.kind === RECORD_KIND.REPS) {
     const bucket = target.reps.find((entry) => sameLoad(entry, record));
     if (!bucket) target.reps.push(record);
@@ -181,12 +180,59 @@ function mergeRecord(target, record) {
 }
 
 /**
+ * The best record of each kind inside one session's set list.
+ *
+ * A mixed session can legitimately hold an e1RM, a hold and a carry at once;
+ * they are returned side by side and never compared with each other. `reps` is
+ * an ARRAY with one best per (load, load mode) bucket — the same shape
+ * `bestRecordBefore` returns — because reps at 60 kg are only comparable with
+ * reps at 60 kg. Callers use `recordCandidates` to walk every earned record.
+ *
+ * @param {string} exerciseName
+ * @param {any[]} sets
+ * @returns {{e1rm:any, hold:any, carry:any, reps:any[]}}
+ */
+export function bestRecordForSession(exerciseName, sets) {
+  /** @type {{e1rm:any, hold:any, carry:any, reps:any[]}} */
+  const best = { e1rm: null, hold: null, carry: null, reps: [] };
+  for (const set of sets || []) {
+    if (!isValidWorkingSet(set)) continue;
+    const kind = recordKindForSet(set, exerciseName);
+    if (!kind) continue;
+    mergeRecord(best, recordForSet(kind, set, exerciseName));
+  }
+  return best;
+}
+
+/**
+ * Flatten a per-kind best map into every candidate record it holds.
+ *
+ * e1rm/hold/carry yield at most one record each; reps yields one per load
+ * bucket. Callers that must not miss a bucket (the recap, the finish review,
+ * the exercise drilldown) iterate this instead of `Object.values(RECORD_KIND)`
+ * and indexing `records[kind]`.
+ *
+ * @param {{e1rm:any, hold:any, carry:any, reps:any[]}|null|undefined} records
+ * @returns {any[]}
+ */
+export function recordCandidates(records) {
+  if (!records) return [];
+  const out = [];
+  for (const kind of Object.values(RECORD_KIND)) {
+    const value = records[kind];
+    if (Array.isArray(value)) out.push(...value.filter(Boolean));
+    else if (value) out.push(value);
+  }
+  return out;
+}
+
+/**
  * Merge one session's per-kind bests into a running best-map. Exposed for the
  * exercise drilldown, which walks history oldest → newest and needs the same
  * all-time baseline without rescanning every prior session per row.
  *
  * @param {{e1rm:any, hold:any, carry:any, reps:any[]}} target
- * @param {{e1rm:any, hold:any, carry:any, reps:any}} records
+ * @param {{e1rm:any, hold:any, carry:any, reps:any[]}} records
  */
 export function mergeRecordBests(target, records) {
   if (!target || !records) return target;
@@ -195,40 +241,30 @@ export function mergeRecordBests(target, records) {
 }
 
 /**
- * The best record of each kind from every OTHER session before a date.
+ * The best record of each kind from an already-scanned history.
  *
- * Uses the canonical exercise history (aliases merged, archived `arch:*` weeks
- * included, dates required), so switching programmes or importing an old log
- * cannot hand out a fresh set of records for a lift the athlete already beat.
+ * `exercisePerformanceHistory` is the expensive part of a PR decision; the
+ * recap also needs its newest row for the "Last time" line. Calling both
+ * `bestRecordBefore` and the history query scanned the same weeks twice, so the
+ * recap passes its one scan here instead.
+ *
  * The pre-catalogue `legacyMax` aggregate is kept as an e1RM floor because its
  * source sets no longer exist; without it a genuine old best would be re-awarded.
  *
- * `reps` returns an ARRAY of buckets (load + load mode) rather than one value:
- * reps at 60 kg are only comparable with reps at 60 kg. `isRecord` performs that
- * lookup; a session whose reps are at a load never trained before is a baseline.
- *
- * @param {any} state
  * @param {string} exerciseName
- * @param {{excludeWeekKey?:string|number, excludeDay?:string, beforeDate?:string|Date}} [opts]
+ * @param {any[]} rows rows from `exercisePerformanceHistory`
+ * @param {any} [state] used only for the legacy e1RM floor
  * @returns {{e1rm:any, hold:any, carry:any, reps:any[]}}
  */
-export function bestRecordBefore(state, exerciseName, opts = {}) {
+export function bestRecordFromHistory(exerciseName, rows, state = null) {
   /** @type {{e1rm:any, hold:any, carry:any, reps:any[]}} */
   const best = { e1rm: null, hold: null, carry: null, reps: [] };
-  const rows = exercisePerformanceHistory(state, exerciseName, {
-    scope: 'all',
-    exclude: opts.excludeWeekKey == null
-      ? undefined
-      : { weekKey: opts.excludeWeekKey, day: opts.excludeDay },
-    beforeDate: opts.beforeDate,
-  });
-  for (const row of rows) {
-    for (const set of row.workingSets || []) {
+  for (const row of rows || []) {
+    for (const set of row?.workingSets || []) {
       if (!isValidWorkingSet(set)) continue;
       const kind = recordKindForSet(set, exerciseName);
       if (!kind) continue;
-      const record = recordForSet(kind, set, exerciseName);
-      mergeRecord(best, record);
+      mergeRecord(best, recordForSet(kind, set, exerciseName));
     }
   }
   const legacyMax = numeric(exerciseStatForName(state?.exerciseStats, exerciseName)?.legacyMax);
@@ -248,16 +284,60 @@ export function bestRecordBefore(state, exerciseName, opts = {}) {
   return best;
 }
 
-/** Are two rep records the same comparable load? Stored strings are numeric. */
-function sameLoad(a, b) {
-  return numeric(a?.load) === numeric(b?.load)
-    && String(a?.loadMode || 'weighted') === String(b?.loadMode || 'weighted');
+/**
+ * The best record of each kind from every OTHER session before a date.
+ *
+ * Uses the canonical exercise history (aliases merged, archived `arch:*` weeks
+ * included, dates required), so switching programmes or importing an old log
+ * cannot hand out a fresh set of records for a lift the athlete already beat.
+ *
+ * `reps` returns an ARRAY of buckets (load + load mode) rather than one value:
+ * reps at 60 kg are only comparable with reps at 60 kg. `isRecord` performs that
+ * lookup; a session whose reps are at a load never trained before is a baseline.
+ *
+ * @param {any} state
+ * @param {string} exerciseName
+ * @param {{excludeWeekKey?:string|number, excludeDay?:string, beforeDate?:string|Date}} [opts]
+ * @returns {{e1rm:any, hold:any, carry:any, reps:any[]}}
+ */
+export function bestRecordBefore(state, exerciseName, opts = {}) {
+  const rows = exercisePerformanceHistory(state, exerciseName, {
+    scope: 'all',
+    exclude: opts.excludeWeekKey == null
+      ? undefined
+      : { weekKey: opts.excludeWeekKey, day: opts.excludeDay },
+    beforeDate: opts.beforeDate,
+  });
+  return bestRecordFromHistory(exerciseName, rows, state);
 }
 
 function priorValue(previousBest) {
   if (previousBest == null) return 0;
   if (typeof previousBest === 'number') return numeric(previousBest);
   return numeric(previousBest.value);
+}
+
+/**
+ * The previous best the candidate is actually compared with.
+ *
+ * For reps that is the bucket at the candidate's own (load, load mode), never
+ * "whichever bucket happened to be heaviest". Callers that show a delta or a
+ * "previous best" figure use this so a Rep PR cannot report a prior value of 0.
+ *
+ * @param {'e1rm'|'hold'|'carry'|'reps'} kind
+ * @param {any} candidate
+ * @param {any} previousBest
+ * @returns {number}
+ */
+export function recordPreviousValue(kind, candidate, previousBest) {
+  if (kind === RECORD_KIND.REPS) {
+    const buckets = Array.isArray(previousBest)
+      ? previousBest
+      : (previousBest ? [previousBest] : []);
+    const bucket = buckets.find((entry) => sameLoad(entry, candidate));
+    return priorValue(bucket);
+  }
+  return priorValue(previousBest);
 }
 
 /**
@@ -300,6 +380,10 @@ export function isRecord(kind, candidate, previousBest) {
  * day's stamps consistent when a set is added or removed. Returns the number of
  * PR sets stamped.
  *
+ * An UNDATED day is refused (0): `beforeDate: null` means "no date cut-off", so
+ * the day's own sets would be part of its baseline and a saved edit could award
+ * itself a record against itself. History without a date is not a baseline.
+ *
  * @param {any} state
  * @param {string|number} weekKey
  * @param {string} day
@@ -310,6 +394,7 @@ export function restampSessionRecords(state, weekKey, day) {
   const dayLifts = week?.lifts?.[day];
   if (!dayLifts || typeof dayLifts !== 'object') return 0;
   const beforeDate = week?.dates?.[day] || null;
+  if (!beforeDate) return 0;
   let stamped = 0;
   for (const [liftName, sets] of Object.entries(dayLifts)) {
     if (!Array.isArray(sets)) continue;

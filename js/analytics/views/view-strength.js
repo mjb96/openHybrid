@@ -424,7 +424,7 @@ function _renderStrengthOverview(body, data, sa, insights, appState, days, maxWe
     // from. A live-week spark beside a historical PR chip described two periods.
     const series = calendarWeekE1rmSeriesForLift(appState, top.name, { weeks: 12, today: getSelectedWeekStart() });
     const prChip = cs.prCount > 0
-      ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new PR lift${cs.prCount === 1 ? '' : 's'} ${_periodWord(cs.weekKey)}</span>`
+      ? `<span class="an-hero__delta" style="color:#10b981">🏆 ${cs.prCount} new e1RM PR lift${cs.prCount === 1 ? '' : 's'} ${_periodWord(cs.weekKey)}</span>`
       : '';
     hero = `<article class="card-dark an-hero">
       <div class="an-hero__k">All-time est. 1RM · ${esc(top.name)}</div>
@@ -633,7 +633,7 @@ export function render1RMList(container, dynamicStats, calStats = null, unit = '
 
   const summaryBar = prCount > 0
     ? `<div class="flex-between mb-4 p-3 card-dark" style="border:1px solid rgba(16,185,129,0.3);">
-        <span class="text-sm text-muted">PR lifts ${period}</span>
+        <span class="text-sm text-muted">e1RM PR lifts ${period}</span>
         <span class="font-heavy" style="color:#10b981;">${prCount} lift${prCount !== 1 ? 's' : ''}</span>
        </div>`
     : '';

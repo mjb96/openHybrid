@@ -14,6 +14,7 @@ import { buildSessionReview, reviewHighlightLine } from '../js/workout/session-r
 import { generateStrengthInsights } from '../js/analytics/insights/insight-engine.js';
 import { computeStrengthAnalytics } from '../js/analytics/calculations/strength-calcs.js';
 import { buildExerciseDetailModel } from '../js/analytics/exercise-detail.js';
+import { calendarStrengthSummary } from '../js/analytics/strength-calendar.js';
 
 const work = (w, r, extra = {}) => ({ c: true, w: String(w), r: String(r), ...extra });
 const hold = (sec, extra = {}) => ({ c: true, w: '', sec: String(sec), mode: 'time', ...extra });
@@ -25,7 +26,7 @@ function stateWith(weeks, extra = {}) {
 
 // ── Home counts lifts ───────────────────────────────────────────────────────
 
-test('three PR sets on one lift are ONE PR lift on Home', () => {
+test('three PR sets on one lift are ONE e1RM PR lift on Home', () => {
   const lifts = {
     'Back Squat': [
       work(110, 5, { isPR: true, prKind: 'e1rm' }),
@@ -40,8 +41,42 @@ test('three PR sets on one lift are ONE PR lift on Home', () => {
   const summary = buildSessionSummary(state, '2', 'mon');
   assert.equal(summary.prs, 2);
   const html = sessionSummaryHTML(summary);
-  assert.match(html, /2 PR lifts/);
+  assert.match(html, /2 e1RM PR lifts/);
   assert.doesNotMatch(html, /4 PR/);
+});
+
+test('hold, carry and rep records keep their badges but do not join the e1RM count', () => {
+  // Progress counts e1RM lifts; a recap may show all four shapes. Counting the
+  // shape records here would make Home disagree with Progress for the same week.
+  const lifts = {
+    'Back Squat': [work(110, 5, { isPR: true, prKind: 'e1rm' })],
+    Plank: [{ c: true, w: '', sec: '60', mode: 'time', isPR: true, prKind: 'hold' }],
+    'Farmer Carry': [{ c: true, w: '20', dist: '55', mode: 'distance', isPR: true, prKind: 'carry' }],
+    'Sled Push': [work(60, 20, { isPR: true, prKind: 'reps' })],
+  };
+  assert.equal(countPrLifts(lifts), 1, 'one e1RM lift, whatever else the recap badges');
+});
+
+test('Home and Progress count the SAME e1RM PR lifts for a week', () => {
+  const state = stateWith({
+    '1': {
+      dates: { mon: '2026-06-01' },
+      lifts: { mon: { 'Back Squat': [work(100, 5)], Plank: [hold(45)] } },
+    },
+    '2': {
+      dates: { mon: '2026-06-08' },
+      lifts: {
+        mon: {
+          'Back Squat': [work(110, 5, { isPR: true, prKind: 'e1rm' })],
+          Plank: [hold(60, { isPR: true, prKind: 'hold' })],
+        },
+      },
+    },
+  });
+  const home = buildSessionSummary(state, '2', 'mon');
+  const progress = calendarStrengthSummary(state, { weekStart: '2026-06-08' });
+  assert.equal(home.prs, 1, 'the Hold PR keeps its badge but is not an e1RM PR lift');
+  assert.equal(progress.prCount, 1);
 });
 
 test('a warm-up carrying a legacy isPR stamp does not count as a PR lift', () => {
@@ -167,6 +202,22 @@ test('a carry session highlights a Carry PR', () => {
   assert.equal(review.highlights[0].value, 55);
 });
 
+test('the finish review sees a rep record at the lighter load', () => {
+  // 60×20 + 80×15 vs prior 60×10 + 80×20. The 80 kg bucket is not a record,
+  // the 60 kg one is, and its delta must be measured against 10 reps.
+  const state = stateWith({
+    hist: { dates: { mon: '2026-06-01' }, lifts: { mon: { 'Sled Push': [work(60, 10), work(80, 20)] } } },
+    cur: { dates: { mon: '2026-07-08' }, lifts: { mon: { 'Sled Push': [work(60, 20), work(80, 15)] } } },
+  });
+  const review = buildSessionReview(state, { weekKey: 'cur', day: 'mon' });
+  const reps = review.highlights.filter((entry) => entry.kind === 'reps');
+  assert.equal(reps.length, 1);
+  assert.equal(reps[0].load, 60);
+  assert.equal(reps[0].previousBest, 10);
+  assert.equal(reps[0].delta, 10);
+  assert.match(reviewHighlightLine(review), /\+10 reps at this load/);
+});
+
 test('bodyweight work is silent in the finish review', () => {
   const state = stateWith({
     hist: { dates: { mon: '2026-06-01' }, lifts: { mon: { 'Pull-Up': [work(0, 10, { bw: true })] } } },
@@ -202,4 +253,14 @@ test('exercise detail compares holds with holds and carries with carries', () =>
   const carryModel = buildExerciseDetailModel(state, 'Farmer Carry', { range: 'all' });
   assert.equal(carryModel.sessions[0].isPr, true);
   assert.equal(carryModel.sessions[0].top.dist, 55);
+});
+
+test('exercise detail marks a lighter-load rep record as a PR', () => {
+  const state = stateWith({
+    '1': { dates: { mon: '2026-06-01' }, lifts: { mon: { 'Sled Push': [work(60, 10), work(80, 20)] } } },
+    '2': { dates: { mon: '2026-06-08' }, lifts: { mon: { 'Sled Push': [work(60, 20), work(80, 15)] } } },
+  });
+  const model = buildExerciseDetailModel(state, 'Sled Push', { range: 'all' });
+  const newest = model.sessions[0];
+  assert.equal(newest.isPr, true, 'the 60 kg bucket beats 60×10 even though 80×15 does not beat 80×20');
 });

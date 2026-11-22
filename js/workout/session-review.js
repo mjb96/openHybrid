@@ -25,7 +25,8 @@
 // =============================================================================
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import {
-  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel,
+  bestRecordBefore, bestRecordForSession, isRecord, prKindLabel,
+  recordCandidates, recordPreviousValue,
 } from '../strength/records.js';
 
 /**
@@ -76,10 +77,13 @@ export function buildSessionReview(state, opts = /** @type {any} */ ({})) {
       excludeDay: day,
       beforeDate: week?.dates?.[day],
     });
-    for (const kind of Object.values(RECORD_KIND)) {
-      const candidate = sessionBest[kind];
-      if (!candidate || !isRecord(kind, candidate, previous[kind])) continue;
-      const prior = Number(previous[kind]?.value) || 0;
+    // Every record the session earned, including each rep load bucket. A
+    // session that set 60×20 and also trained 80 kg must not have its 60 kg
+    // record hidden behind the heavier bucket.
+    for (const candidate of recordCandidates(sessionBest)) {
+      const kind = candidate.kind;
+      if (!isRecord(kind, candidate, previous[kind])) continue;
+      const prior = recordPreviousValue(kind, candidate, previous[kind]);
       highlights.push({
         lift,
         kind,
@@ -87,7 +91,7 @@ export function buildSessionReview(state, opts = /** @type {any} */ ({})) {
         value: candidate.value,
         // `e1rm`/`delta` stay for the existing finish-sheet contract; a hold or
         // carry carries no estimated 1RM, so its weight figure is deliberately 0.
-        e1rm: kind === RECORD_KIND.E1RM ? candidate.value : 0,
+        e1rm: kind === 'e1rm' ? candidate.value : 0,
         load: candidate.load,
         previousBest: prior,
         delta: candidate.value - prior,

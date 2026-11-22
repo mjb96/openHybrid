@@ -68,10 +68,10 @@ import { createReferenceLink } from './workout/reference-link.js';
 import { openExerciseOptions } from './workout/exercise-options.js';
 import { isE1rmExercise } from './strength/e1rm.js';
 import {
-  bestRecordBefore, bestRecordForSession, isRecord, prKindLabel, recordKindForSet,
+  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel, recordKindForSet,
 } from './strength/records.js';
 import {
-  activeOneOffSession, activeWorkoutDay, activeWorkoutWeekKey,
+  activeOneOffSession, activeWorkoutDay, activeWorkoutDayForWeek, activeWorkoutWeekKey,
   clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
@@ -1083,7 +1083,11 @@ function applySetComparison(parentRow, value, mode = SET_MODE.REPS, weight = 0) 
 // the record (a corrected-down weight, a shape change, a bodyweight load) it
 // removes the class, badge and stored stamp. That removal branch is why a set
 // edited after it was ticked cannot keep a trophy it no longer deserves.
-export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, weekKey, day) {
+//
+// `options.justTicked` marks the unticked→ticked transition. The baseline toast
+// ("Baseline set — not a trophy") belongs to that moment only; a completed row
+// corrected on blur must not re-announce it.
+export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, weekKey, day, options = {}) {
   if (!parentRow || !liftName || setIndex < 0) return null;
   const storedSet = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex] || null;
   const live = { ...(storedSet || {}), ...(candidate || {}), c: true };
@@ -1096,11 +1100,18 @@ export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, 
     excludeDay: day,
     beforeDate: appState.weeks?.[weekKey]?.dates?.[day] || dateKey(),
   });
-  const record = bestRecordForSession(liftName, [live])[kind];
+  // Rep records are bucketed by load. A single-set candidate has exactly one
+  // bucket, so take it rather than indexing an array as if it were a record.
+  const sessionRecords = bestRecordForSession(liftName, [live]);
+  const record = kind === RECORD_KIND.REPS ? (sessionRecords.reps[0] || null) : sessionRecords[kind];
   if (!record || !isRecord(kind, record, before[kind])) {
-    const noPrior = !(Number(before?.[kind]?.value) > 0);
+    const noPrior = kind === RECORD_KIND.REPS
+      ? !(Array.isArray(before?.reps) && before.reps.length > 0)
+      : !(Number(before?.[kind]?.value) > 0);
     clearSetPR(parentRow, storedSet);
-    if (!wasPR && kind === 'e1rm' && noPrior) showToast(`Baseline set — ${liftName} ✓`);
+    if (options.justTicked === true && !wasPR && kind === 'e1rm' && noPrior) {
+      showToast(`Baseline set — ${liftName} ✓`);
+    }
     return null;
   }
   parentRow.classList.add('is-pr');
@@ -1309,7 +1320,7 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
     w: targetW,
     mode: setShape,
     c: true,
-  }, appState, wk, selectedDay);
+  }, appState, wk, selectedDay, { justTicked: true });
   applySetComparison(parentRow, _setRowValue(setShape, targetV), setShape, quickW);
 
   _saveState(true);
@@ -1505,9 +1516,10 @@ export function updateInputState(inputNode) {
     setObj.r = inputNode.value;
     if (ph != null && setObj.tr == null) setObj.tr = ph;
   }
-  // A COMPLETED row can still be corrected. Re-evaluate its record so a weight
-  // typed down removes the trophy it no longer earns (and one typed up can earn
-  // it) without waiting for an untick/re-tick round trip.
+  // A COMPLETED row can still be corrected. `updateInputState` is driven by
+  // `change`/blur, not by every keystroke, so this re-evaluation costs one
+  // history scan when the athlete leaves the field — not one per typed digit.
+  // Tick, quick-log and log-all stay immediate (they pass `justTicked`).
   if (isCompletedSet(setObj)) {
     detectSetPR(row, liftName, sIdx, setObj, appState, wk, selectedDay);
   }
@@ -1635,8 +1647,8 @@ export function toggleGymCheckLoggingState(checkboxNode) {
   const parentRow = checkboxNode.closest('.cockpit-set-row');
   const exCard = checkboxNode.closest('.cockpit-exercise');
   const lifecycleState = _getState();
-  const lifecycleDay = activeWorkoutDay(lifecycleState, _getSelectedDay());
   const lifecycleWeek = activeWorkoutWeekKey(lifecycleState);
+  const lifecycleDay = activeWorkoutDayForWeek(lifecycleState, lifecycleWeek, _getSelectedDay());
   markSessionInProgress(lifecycleState.weeks?.[lifecycleWeek], lifecycleDay);
   
   if (checkboxNode.checked) {
@@ -1724,8 +1736,11 @@ export function toggleGymCheckLoggingState(checkboxNode) {
       const gymRpeEl = document.getElementById('sessionGymRpeCockpit');
       const setRpe = gymRpeEl && gymRpeEl.value ? parseFloat(gymRpeEl.value) : null;
       const _appState = _getState();
-      const _selDay = _getSelectedDay();
       const _wk = activeWorkoutWeekKey(_appState);
+      // Resolve the day FROM the week the tick will write to. `activeWorkoutDay`
+      // alone answers for the active one-off and can disagree with `_wk` when a
+      // programme day is selected, which would stamp one slot and untick another.
+      const _selDay = activeWorkoutDayForWeek(_appState, _wk, _getSelectedDay());
       const _sIdx = exCard ? Array.from(exCard.querySelectorAll('.cockpit-set-row')).indexOf(parentRow) : -1;
       const storedForRest = _appState.weeks[_wk].lifts?.[_selDay]?.[liftName]?.[_sIdx] || {};
       const setType = storedForRest.type || '';
@@ -1753,7 +1768,7 @@ export function toggleGymCheckLoggingState(checkboxNode) {
         if (rowMode === SET_MODE.TIME) candidate.sec = parseDuration(valueIn?.value) || '';
         else if (rowMode === SET_MODE.DISTANCE) candidate.dist = parseFloat(valueIn?.value) || '';
         else candidate.r = valueIn?.value ?? storedForRest.r;
-        detectSetPR(parentRow, liftName, _sIdx, candidate, _appState, _wk, _selDay);
+        detectSetPR(parentRow, liftName, _sIdx, candidate, _appState, _wk, _selDay, { justTicked: true });
         applySetComparison(parentRow, _setRowValue(rowMode, valueIn?.value), rowMode, w);
       }
     } catch(e) { console.warn(e); }
@@ -1768,7 +1783,8 @@ export function toggleGymCheckLoggingState(checkboxNode) {
         const sIdx = Array.from(exCard.querySelectorAll('.cockpit-set-row')).indexOf(parentRow);
         const appState = _getState();
         const wk = activeWorkoutWeekKey(appState);
-        const selDay = activeWorkoutDay(appState, _getSelectedDay());
+        // Same pair the tick used: the week decides its own day.
+        const selDay = activeWorkoutDayForWeek(appState, wk, _getSelectedDay());
         const stored = appState.weeks?.[wk]?.lifts?.[selDay]?.[liftName]?.[sIdx];
         clearSetPR(parentRow, stored);
       }

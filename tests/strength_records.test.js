@@ -11,7 +11,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel,
-  recordKindForSet, restampSessionRecords,
+  recordKindForSet, recordPreviousValue, restampSessionRecords,
 } from '../js/strength/records.js';
 import { E1RM_PR_EPSILON, estimatedE1rm } from '../js/strength/e1rm.js';
 
@@ -100,22 +100,50 @@ test('holds and carries compare strictly, with no epsilon', () => {
   assert.equal(isRecord(RECORD_KIND.CARRY, bestRecordForSession('Farmer Carry', [carry(20, 41)]).carry, priorCarry), true);
 });
 
-test('reps at 100×8 beat 100×6, but 60×20 does not beat 100×5', () => {
+test('rep records are bucketed per load within one session', () => {
   // Sled Push is a conditioning exercise, so the e1RM estimate refuses it and
   // both sets are rep records at their own load.
-  const priorEight = bestRecordForSession('Sled Push', [work(100, 8)]).reps;
+  const priorEight = bestRecordForSession('Sled Push', [work(100, 8)]).reps[0];
   assert.equal(priorEight.kind, RECORD_KIND.REPS);
-  const priorSix = bestRecordForSession('Sled Push', [work(100, 6)]).reps;
+  const priorSix = bestRecordForSession('Sled Push', [work(100, 6)]).reps[0];
   const state = stateWith(history({ 'Sled Push': [work(100, 6)] }));
   const prior = bestRecordBefore(state, 'Sled Push', { excludeWeekKey: 'cur', excludeDay: 'mon' });
-  const candidate = bestRecordForSession('Sled Push', [work(100, 8)]).reps;
+  const candidate = bestRecordForSession('Sled Push', [work(100, 8)]).reps[0];
   assert.equal(isRecord(RECORD_KIND.REPS, candidate, prior.reps), true);
 
   // A lighter, longer set belongs to a different load bucket. It is a baseline
   // at 60 kg, never a victory over the 100 kg bucket.
-  const lighter = bestRecordForSession('Sled Push', [work(60, 20)]).reps;
+  const lighter = bestRecordForSession('Sled Push', [work(60, 20)]).reps[0];
   assert.equal(isRecord(RECORD_KIND.REPS, lighter, prior.reps), false);
   assert.equal(priorSix.load, candidate.load);
+});
+
+test('a session exposes EVERY rep load bucket, not only the heaviest', () => {
+  // 60×20 + 80×15 against a prior 60×10 + 80×20. Only the 60 kg bucket is a
+  // record: the old single-best map kept 80×15 (heaviest load) and compared it
+  // with 80×20, so the genuine 60 kg record was silently missed.
+  const state = stateWith({
+    hist: { dates: { mon: '2026-06-01' }, lifts: { mon: { 'Sled Push': [work(60, 10), work(80, 20)] } } },
+  });
+  const session = bestRecordForSession('Sled Push', [work(60, 20), work(80, 15)]);
+  assert.deepEqual(session.reps.map((record) => record.load), [60, 80]);
+  const prior = bestRecordBefore(state, 'Sled Push', { beforeDate: '2026-07-08' });
+  const earned = session.reps.filter((record) => isRecord(RECORD_KIND.REPS, record, prior.reps));
+  assert.deepEqual(earned.map((record) => [record.load, record.value]), [[60, 20]]);
+  assert.equal(recordPreviousValue(RECORD_KIND.REPS, earned[0], prior.reps), 10,
+    'the previous best is the MATCHED bucket, never 0');
+});
+
+test('an imported bodyweight lift with a bare load is not a rep record', () => {
+  // Legacy imports can carry "Pull Up 80 kg" with no `bw`/`loadMode`. The e1RM
+  // estimate refuses the movement, and the 80 is not a comparable external load,
+  // so the rep fallback must stay closed or every import mints a Rep PR.
+  assert.equal(recordKindForSet({ c: true, w: '80', r: '10' }, 'Pull Up'), null);
+  assert.equal(recordKindForSet({ c: true, w: '80', r: '10' }, 'Pull-Up'), null);
+  // The catalogue's bodyweight flag covers movements the name pattern misses.
+  assert.equal(recordKindForSet({ c: true, w: '80', r: '10' }, 'Inverted Row'), null);
+  // Loaded conditioning work still uses its rep buckets.
+  assert.equal(recordKindForSet(work(100, 8), 'Sled Push'), RECORD_KIND.REPS);
 });
 
 test('a first-ever performance is a baseline in every kind', () => {
@@ -132,7 +160,7 @@ test('a mixed session picks the best of each kind without comparing them', () =>
   assert.equal(best.e1rm.value, estimatedE1rm(110, 3));
   assert.equal(best.hold.value, 60);
   assert.equal(best.carry.value, 25);
-  assert.equal(best.reps, null);
+  assert.deepEqual(best.reps, []);
 });
 
 // ── Prior-history scanning ───────────────────────────────────────────────────
@@ -206,4 +234,21 @@ test('restamping a saved day clears a corrected-down PR and keeps the rest silen
   assert.equal(after, 0);
   assert.equal(squat.isPR, undefined);
   assert.equal(squat.prKind, undefined);
+});
+
+test('restamping an undated day refuses instead of comparing the day with itself', () => {
+  const state = stateWith({
+    hist: { dates: { mon: '2026-06-01' }, lifts: { mon: { 'Back Squat': [work(100, 5)] } } },
+    cur: {
+      lifts: {
+        mon: {
+          'Back Squat': [{ ...work(130, 5), isPR: true, prKind: 'e1rm' }],
+        },
+      },
+    },
+  });
+  assert.equal(restampSessionRecords(state, 'cur', 'mon'), 0,
+    'no date means no defensible "before"');
+  assert.equal(state.weeks.cur.lifts.mon['Back Squat'][0].isPR, true,
+    'refusing leaves the stored day untouched rather than deleting a claim it cannot judge');
 });

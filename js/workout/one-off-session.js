@@ -38,6 +38,24 @@ export function activeWorkoutDay(state, fallbackDay) {
   return activeOneOffSession(state)?.week?.sessionDay || fallbackDay;
 }
 
+/**
+ * The day that belongs to an explicitly resolved workout week.
+ *
+ * The cockpit reads the week and the day as one pair. Resolving the day from
+ * `activeWorkoutDay()` alone ignores which week the caller already chose, so a
+ * one-off session and a programme day can be paired wrongly and a tick and its
+ * untick can touch different stored slots. Both paths resolve through this.
+ *
+ * @param {any} state
+ * @param {string|number|null|undefined} weekKey
+ * @param {string|null|undefined} fallbackDay
+ */
+export function activeWorkoutDayForWeek(state, weekKey, fallbackDay) {
+  const active = activeOneOffSession(state);
+  if (active && String(active.key) === String(weekKey)) return active.week.sessionDay || fallbackDay;
+  return fallbackDay;
+}
+
 export function clearActiveOneOffSession(state) {
   if (state && state.activeStrengthSessionKey) delete state.activeStrengthSessionKey;
 }

@@ -11,7 +11,9 @@ import {
 import { compareWithPrevious, previousSetCompact, setRowNumberLabel } from './workout/set-entry.js';
 import { effectiveSetMode } from './workout/set-shape.js';
 import { formatDistance, formatDuration, setModeOf } from './set-utils.js';
-import { prKindLabel } from './strength/records.js';
+// Leaf import: the row template needs the label only. Importing the records
+// model here pulled the exercise catalogue and history scan into every render.
+import { prKindLabel } from './strength/pr-labels.js';
 
 export function buildEmptyWorkoutCard() {
   return '<div class="card-dark text-xs-muted empty-state-card">No lifting scheduled today.</div>';

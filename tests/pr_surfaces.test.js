@@ -197,6 +197,24 @@ test('the recap compares against the all-time best, not only the latest session'
   assert.deepEqual(r.lifts[0].prKinds, []);
 });
 
+test('the recap finds a rep record at a lighter load instead of the heaviest bucket', () => {
+  // 60×20 + 80×15 against a prior 60×10 + 80×20: the 60 kg bucket is the
+  // record. A session-level best that only kept the heaviest load would compare
+  // 80×15 with 80×20, report no PR, and miss the real one.
+  const state = {
+    weeks: {
+      hist: { dates: { mon: '2026-06-01' }, lifts: { mon: { 'Sled Push': [work(60, 10), work(80, 20)] } } },
+      cur: { dates: { mon: '2026-07-08' }, lifts: { mon: { 'Sled Push': [work(60, 20), work(80, 15)] } } },
+    },
+  };
+  const r = recap.buildSessionRecap(state, 'cur', 'mon');
+  const reps = r.lifts[0].prKinds.filter((entry) => entry.kind === 'reps');
+  assert.equal(reps.length, 1);
+  assert.equal(reps[0].load, 60);
+  assert.equal(reps[0].previousBest, 10, 'the matched bucket is the previous best, never 0');
+  assert.match(recap.renderSessionRecapHTML(r), /🏆 Rep PR/);
+});
+
 test('a mixed session earns one badge per shape and renders the kind names', () => {
   const state = stateWith(
     {

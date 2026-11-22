@@ -659,7 +659,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,238 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,247 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
@@ -667,29 +667,53 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - `js/strength/records.js` is now the one record model: e1RM (shared
     eligibility + `E1RM_PR_EPSILON`), hold (`sec`), carry (`dist`) and rep
     records at the same stored load and load mode. Bodyweight/assisted/banded
-    sets are silent because `w` is mass or assistance, not a comparable load;
+    sets are silent because `w` is mass or assistance, not a comparable load.
+    The rep fallback is also closed to a bodyweight NAME: an imported
+    "Pull Up 80 kg" with no `bw`/`loadMode` is refused instead of becoming a
+    Rep PR, while loaded conditioning work (Sled Push) keeps its rep buckets.
     `bestRecordBefore` scans every activation including `arch:*` and requires
     prior history, so a first-ever log stays a baseline.
-  - The cockpit detects every shape at tick, quick-log and completed-row edits,
-    persists `prKind`, and synchronises both ways: a corrected-down set or an
-    unticked one loses its class, badge and stored stamp. The recap compares each
-    kind with the all-time prior best (not the latest session) and renders
-    PR / Hold PR / Carry PR / Rep PR; the share card stays e1RM-only. Holds and
-    carries now show their time/distance in the recap instead of `0 kg × 0`.
-  - Progress, the finish review and the exercise drilldown share the model. The
-    tie-as-PR `|cur − lifetime| < 0.5` rule and the `0.995` insight threshold are
-    gone, `isWeeklyPR` was deleted, and PR counts are LIFTS everywhere (Home
-    session/day recap, Progress hub + Strength list, Week in Review). A saved
-    edit re-derives the day's stamps against the baseline excluding that
-    week/day and rebuilds `exerciseStats`.
-  - Validation: 2,238 node tests, typecheck, smoke, precache, finish-review,
-    edit-saved, set-row, workout-history, touch-target (2,759 controls) and all
-    45 browser checks. Real 390×844 recap showing Hold PR + Carry PR at
-    `hevy-audit/shots/pr-types.png`.
-  - The superset browser check's fixture is now clock-pinned: its programme week
-    started exactly seven days before the wall clock, so the "Time to Advance?"
-    sheet covered the app and made the nav inert on 2026-11-23. Reproduced on
-    `origin/main`; the pin makes the check assert the circuit, not the date.
+  - Rep records are bucketed by `(load, loadMode)` — the shape
+    `bestRecordBefore` already stored. `bestRecordForSession` exposes every
+    bucket (`reps: []`), `recordCandidates` flattens them, and the recap, finish
+    review, exercise drilldown and cockpit detection iterate all of them, so a
+    60×20 record is not hidden by 80×15 in the same session. The recap still
+    shows ONE Rep PR badge (the heaviest earned bucket) and the delta/previous
+    best come from the matched bucket, never `0`.
+  - The cockpit detects every shape at tick, quick-log and completed-row edits
+    (`change`/blur, not per keystroke), persists `prKind`, and synchronises both
+    ways: a corrected-down set or an unticked one loses its class, badge and
+    stored stamp. The baseline toast fires only on the unticked→ticked
+    transition. Untick resolves the week and day as one pair, so it withdraws the
+    stamp the tick wrote even in a one-off session. The recap compares each kind
+    with the all-time prior best derived from its ONE history scan (shared with
+    "Last time"); the share card stays e1RM-only. Holds and carries show their
+    time/distance instead of `0 kg × 0`, and the badge sits left of the ✓ at
+    320/390/412 (measured in the set-row browser check).
+  - PR COUNT POPULATION — Home and Progress agree on **e1RM PR lifts**. Home's
+    session/day recap counts `prKind: 'e1rm'` (a legacy stamp with no `prKind`
+    was always an e1RM and still counts), and Progress counts the same e1RM lifts
+    through `calendarStrengthSummary`. Hold/carry/rep records keep their recap
+    badges but are not counted; the labels say `e1RM PR lifts` / `e1RM PRs` so
+    the population is explicit. The Week in Review uses the same e1RM count and
+    label. A saved edit re-derives the day's stamps against the baseline
+    excluding that week/day, refuses an UNDATED day rather than comparing it with
+    itself, and rebuilds `exerciseStats`.
+  - `PR_KIND_LABELS` moved to the leaf `js/strength/pr-labels.js`, so the set-row
+    template no longer pulls exercise history and the catalogue. The dead
+    `priorBestMax` in `js/analytics.js` was removed; the live baseline is
+    `computeStrengthAnalytics().liftProgression[lift].priorBestMax`.
+  - Validation: 2,247 node tests, typecheck, smoke, precache, finish-review,
+    edit-saved, set-row, workout-history, touch-target and all 45 browser checks.
+    The recap's Hold PR + Carry PR was inspected in a local 390×844 screenshot
+    under the untracked `hevy-audit/shots/pr-types.png` — an inspection artifact,
+    not a committed asset or product dependency.
+  - The superset browser check's fixture is now clock-pinned. Its programme week
+    is anchored at `weekStartedAt: '2026-11-16'`; with an unpinned clock the
+    week-old programme offered "Time to Advance?", whose sheet covered the app
+    and made the nav inert on 2026-11-23. Reproduced on `origin/main`; pinning a
+    time inside that anchored week makes the check assert the circuit, not the
+    date.
   - Next: Android device checklist and the remaining capability-backlog rows.
 
 - **2026-11-22 — Half-step effort ratings: review fixes.**

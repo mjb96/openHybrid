@@ -10,7 +10,7 @@
 import { exercisePerformanceHistory } from '../workout/exercise-history.js';
 import { estimatedE1rmForSet } from '../strength/e1rm.js';
 import {
-  RECORD_KIND, bestRecordForSession, isRecord, mergeRecordBests,
+  bestRecordForSession, isRecord, mergeRecordBests, recordCandidates,
 } from '../strength/records.js';
 import { addDaysISO, localDayKey } from './weekly-aggregate.js';
 import {
@@ -89,8 +89,8 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     const seconds = sets.reduce((sum, set) => sum + (Number(set?.sec) || 0), 0);
     const metres = sets.reduce((sum, set) => sum + (Number(set?.dist) || 0), 0);
     const sessionRecords = bestRecordForSession(exerciseName, sets);
-    const isPr = Object.values(RECORD_KIND)
-      .some((kind) => sessionRecords[kind] && isRecord(kind, sessionRecords[kind], priorRecords[kind]));
+    const isPr = recordCandidates(sessionRecords)
+      .some((candidate) => isRecord(candidate.kind, candidate, priorRecords[candidate.kind]));
     mergeRecordBests(priorRecords, sessionRecords);
     all.push({
       date: row.date,
