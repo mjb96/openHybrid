@@ -11,7 +11,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { createBrowserContext, resolveChromium, pinClock } from './browser-runtime.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const required = process.argv.includes('--required');
@@ -82,6 +82,33 @@ function fixture(theme) {
       { date: today, sleep: 7.5, mood: 4, soreness: 2 },
       { date: addDays(today, -1), sleep: 8, mood: 4, soreness: 2 },
     ],
+  };
+}
+
+// A calendar year of training for the seasonal Year in Review: one strength +
+// run week in each month of 2026, a three-day January streak, and exactly one
+// e1RM PR (June's Bench Press improvement). January is the busiest month.
+function yearReviewFixture() {
+  const weeks = {};
+  const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+  months.forEach((month, i) => {
+    const date = `2026-${month}-10`;
+    weeks[`yir-${i + 1}`] = {
+      dates: { mon: date },
+      lifts: { mon: {
+        'Back Squat': [set(100, 5)],
+        'Bench Press': [set(i === 5 ? 110 : 100, 5)],
+      } },
+      runs: { mon: { dist: '5.0', time: '25:00' } },
+    };
+  });
+  // Two more consecutive January days: a three-day streak inside 2026.
+  weeks['yir-1b'] = { dates: { tue: '2026-01-11' }, lifts: { tue: { 'Back Squat': [set(100, 5), set(100, 5)] } } };
+  weeks['yir-1c'] = { dates: { wed: '2026-01-12' }, lifts: { wed: { 'Back Squat': [set(100, 5), set(100, 5)] } } };
+  return {
+    schemaVersion: 5, currentWeek: '1', activeProgramId: 'hybrid_engine', activeActivationId: 'current',
+    settings: { name: 'Year Athlete', theme: 'dark', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon', onboardingComplete: true },
+    weeks,
   };
 }
 
@@ -426,6 +453,67 @@ try {
     if (empty.hasWeekHero) failures.push('empty profile: rendered a this-week hero with no data');
     if (empty.cards !== 4) failures.push('empty profile: expected all four domains to still render');
     if (empty.deltas !== 0) failures.push('empty profile: rendered a comparison with nothing to compare');
+    await context.close();
+  }
+
+  // The Year in Review is seasonal, so its real surface can only be exercised
+  // with a pinned December clock. One fixture spans 2026 with a strength + run
+  // week in every month, a January streak and exactly one e1RM PR.
+  {
+    const context = await createBrowserContext(browser, { viewport: { width: 390, height: 844 }, timezoneId: TZ, colorScheme: 'dark' });
+    await context.addInitScript(pinClock, Date.parse('2026-12-15T09:00:00+11:00'));
+    await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(yearReviewFixture())]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error' && !/frame-ancestors.*ignored.*meta/i.test(message.text()) && !/net::ERR_/.test(message.text())) errors.push(message.text());
+    });
+
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await openHub(page);
+    await page.waitForSelector('#analytics-hub.active .ph-card');
+    await page.click('.ph-card[data-context="weekly-review"]', { timeout: 2000 }).catch(() => {
+      failures.push('year review: Review card did not open');
+    });
+    await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => {});
+    await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => {
+      failures.push('year review: Review Stats tab did not open');
+    });
+    await page.waitForSelector('#yearReviewContainer .an-hero', { timeout: 4000 }).catch(() => {
+      failures.push('year review: the pinned December did not render a Year in Review');
+    });
+
+    const seen = await page.$eval('#analytics-weekly-review', (section) => {
+      const el = document.getElementById('yearReviewContainer');
+      const heading = document.getElementById('yearReviewHeading');
+      return {
+        visible: !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().height > 0,
+        headingVisible: !!heading && getComputedStyle(heading).display !== 'none',
+        text: el?.textContent?.replace(/\s+/g, ' ').trim() || '',
+        sectionText: section.textContent || '',
+        statLabels: [...(el?.querySelectorAll('.wrev-stats .wrev-stat__k') || [])].map((node) => node.textContent.trim()),
+        statValues: [...(el?.querySelectorAll('.wrev-stats .wrev-stat__v') || [])].map((node) => node.textContent.trim()),
+        overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      };
+    });
+    console.log('Year in Review (pinned December):', JSON.stringify({ ...seen, text: seen.text.slice(0, 320) }));
+
+    if (!seen.visible || !seen.headingVisible) failures.push('year review: the container or its heading is hidden in December');
+    if (!/Year in Review/.test(seen.sectionText)) failures.push('year review: missing the Year in Review heading');
+    if (!/2026/.test(seen.text)) failures.push('year review: the hero does not name the year');
+    if (!seen.text.includes('Jan 1 – Dec 15, 2026')) failures.push(`year review: missing the explicit partial-year range (${seen.text.slice(0, 120)})`);
+    if (!/\b26 sessions\b/.test(seen.text)) failures.push('year review: the hero does not report the annual session count');
+    if (!seen.statLabels.includes('Working sets')) failures.push('year review: missing the working-sets stat');
+    if (seen.statValues[2] !== '28') failures.push(`year review: working sets should be 28 (got ${seen.statValues[2]})`);
+    if (!/Most trained/.test(seen.text) || !/January/.test(seen.text)) failures.push('year review: missing the best month');
+    if (!/Longest streak/.test(seen.text) || !/3 days/.test(seen.text)) failures.push('year review: missing the in-year longest streak');
+    if (!/Top exercises/.test(seen.text)) failures.push('year review: missing the top exercises');
+    if (!/e1RM PRs/.test(seen.text) || !/Barbell Bench Press/.test(seen.text) || !/128 kg/.test(seen.text)) {
+      failures.push('year review: missing the annual e1RM PR');
+    }
+    if (seen.overflow) failures.push('year review: page-level horizontal overflow at 390px');
+    if (errors.length) failures.push(`year review: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
 } finally {

@@ -415,8 +415,14 @@ Features: P3 (share), P12.
 
 1. **Monthly report share card** built from the Phase 2 model, using the one
    share pipeline.
-2. **Year in Review** — a December entry with annual totals, best month, PRs,
-   longest streak, body-part distribution, top exercises and a share image.
+2. **Year in Review** — *Landed (P12):* a December/January section at the top of
+   Review → Stats with annual totals, best month, in-year longest streak, annual
+   e1RM PR events and top exercises. It is seasonal by design: December recaps
+   the current partial year, January the year just ended, and every other month
+   renders nothing. Sessions are counted by identity on their stamped date (a
+   strength + run day is two; a copied slot is one); bodyweight is omitted
+   because weigh-ins are stored in the unit the athlete was using then. No share
+   card in this slice.
 
 **Data rules:** date-strict, using the same calendar series as Phase 2. No
 fabricated comparison when the prior period has no data. No "supporters" or
@@ -490,7 +496,7 @@ not rebuild a ✅.
 | P9 | Exercise performance | `analytics/exercise-detail.js` | Graph, PR summary, set records by rep target, history | ◐ | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js` | Calendar, consecutive-week streak, rest days, year zoom | ◐ | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
-| P12 | Year in Review | — | December annual recap with totals, best month, PRs, streak | ○ | 5 |
+| P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, annual e1RM PRs, in-year streak, top exercises; no share card | ✅ | — |
 
 P7 stays ◐ on purpose: body fat is now an ENTERED reading on the measurements
 record (scale/caliper/DEXA, never a formula), and six tape sites ship, but the
@@ -663,7 +669,50 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,280 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,291 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+
+## 13. Session log
+
+
+## 13. Session log
+
+- **2026-11-23 — Year in Review (P12).**
+  - Review → Stats now leads with a seasonal calendar-year recap. In December it
+    recaps the current (partial) year; in January it recaps the year that just
+    ended; in every other month the heading and container are absent. January
+    never borrows the new year's empty January, and December never waits for the
+    year to finish.
+  - `js/brain/year-review.js` is the pure builder, mounted by
+    `js/analytics/views/view-year-review.js`: a year hero (sessions and the
+    explicit date range), Lifted / Run / Working sets / e1RM PRs, the busiest
+    month, the in-year longest streak, up to five top exercises and the top five
+    annual PR events.
+  - Sessions are counted by DISTINCT identity on the real stamped date through
+    `indexSlotsByDate(state).allByDate`: one strength session plus every run is
+    two on a strength+run day, two runs are two, a copied slot is one, and two
+    different programmed days completed on one date are two. The best month is
+    chosen by sessions, then volume, then the earlier month. The streak never
+    reaches back before 1 January.
+  - Annual e1RM PRs are week events from `liftE1rmByCalendarWeek` +
+    `isE1rmPr`: the week's best set must fall inside the year and beat every
+    prior week. A first-ever lift is a baseline; a tie is not a record. The
+    builder returns every event and the view caps the list at five.
+  - Top exercises resolve aliases to canonical names and count holds/carries as
+    working sets with zero tonnage. Bodyweight is deliberately omitted — a
+    weigh-in is stored in the unit the athlete was using then. No share card, no
+    new route, no schema change, no network surface.
+  - `scripts/progress-hub-browser-check.mjs` gained one clock-pinned December
+    context (15 Dec 2026) over 12 monthly weeks of 2026 plus a January streak
+    and one Bench Press PR; it asserts the visible section, year, partial range,
+    26 sessions / 28 working sets, best month, top exercises, PR, streak and no
+    390px overflow. The existing width suite is untouched, and the check left the
+    unpinned backlog.
+  - Validation: 2,278 node tests, typecheck, smoke, precache/workflow gates,
+    progress-hub and all 45 real-browser checks. Screenshot:
+    `year-review.png` at 390×844.
+  - Next: the monthly-report share card, then a Year in Review share image built
+    from the values this screen shows.
+
 
 ## 13. Session log
 

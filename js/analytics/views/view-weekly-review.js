@@ -12,6 +12,7 @@ import { weightUnitOf } from '../utils.js';
 import { reviewToText, buildWeeklyReview } from '../../brain/weekly-review.js';
 import { statCard } from '../charts/chart-primitives.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
+import { renderYearInReview } from './view-year-review.js';
 import { renderProgressAnalytics, renderStreakDetail, renderGoalProgressDetail } from './view-progress.js';
 import { screenTabBar, mountScreenTabs } from './screen-kit.js';
 import { getSelectedWeekStart } from '../week-nav.js';
@@ -47,6 +48,8 @@ export function renderReview(data, getState, getDays, onTabChange) {
 
   if (_reviewTab === 'stats') {
     body.innerHTML = `
+      <h2 id="yearReviewHeading" class="section-header mt-2">Year in Review</h2>
+      <div id="yearReviewContainer"></div>
       <h2 class="section-header mt-2">Week in Review</h2>
       <div id="weeklyReviewContainer"></div>
       <h2 class="section-header mt-4">Training Report</h2>
@@ -81,6 +84,9 @@ export function renderReview(data, getState, getDays, onTabChange) {
       </article>
     `;
     renderWeeklyReview(review, state);
+    // Seasonal (December/January) and independent of the selected week: the
+    // calendar year, not a program week or the navigator.
+    renderYearInReview(state, getDays());
     renderMonthlyReport(getState, getDays, () => program);
     // Folded in from the retired progress / streak / goal-progress leaves.
     renderStreakDetail(data, getState, getDays);

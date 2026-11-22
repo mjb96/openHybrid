@@ -221,6 +221,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   selected week renders an honest `0 sessions · <range>` hero rather than
   vanishing, and a historical week is never scored against the active plan —
   "of N planned" and the adherence bar appear only for the live week. Review
+  Stats leads with the seasonal **Year in Review** (`js/brain/year-review.js` +
+  `views/view-year-review.js`): December recaps the current partial year, January
+  the year just ended, and the section is absent in every other month. It counts
+  distinct sessions by stamped date (one strength session + each run), and
+  reports totals, best month, the in-year longest streak, annual e1RM PR events
+  and top exercises. Bodyweight is deliberately omitted because weigh-ins are
+  stored in the athlete's then-current unit. Review
   Stats' Training Calendar and Consistency Log use the same calendar weeks (no
   `W1..Wn` program grid).
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
