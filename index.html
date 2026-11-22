@@ -427,7 +427,10 @@
       <header class="home-header">
         <div class="home-header-meta">
           <span class="home-greeting" id="homeGreeting">Good morning</span>
-          <h1 id="homeWeekBlockIndicator" class="home-week-label">Week 1</h1>
+          <!-- The headline is the calendar day; the chip underneath carries the
+               program week. The fallback must never claim "Week 1" before the
+               first render, which is why it is a neutral day word. -->
+          <h1 id="homeWeekBlockIndicator" class="home-week-label">Today</h1>
           <span class="home-phase-label" id="homePhaseLabelTag"></span>
         </div>
         <div class="home-header-actions">
@@ -487,6 +490,13 @@
         </div>
         <!-- Pinned: the strip may be hidden in Customize; the decision cannot. -->
         <div id="homeTodayCard"></div>
+        <!-- One coach line lives inside Today's surface: it follows the settled
+             day/week selection and never competes as a separate card. -->
+        <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
+          <span class="home-insight__eyebrow">Coach</span>
+          <span class="home-insight__text" id="homeInsightText"></span>
+          <span class="home-insight__arrow" aria-hidden="true">›</span>
+        </button>
       </section>
 
       <!-- A live fast is status, not a menu: never hide an in-progress timer. -->
@@ -499,20 +509,13 @@
 
       <div id="homeBodyweightCard" data-home-card="bodyweight"></div>
 
-      <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
-        <span class="home-insight__eyebrow">Coach</span>
-        <span class="home-insight__text" id="homeInsightText"></span>
-        <span class="home-insight__arrow" aria-hidden="true">›</span>
-      </button>
-
+      <!-- One Start lives on the Today decision above. A second "Workout"
+           quick start here competed with it, so these three are secondary
+           destinations only. -->
       <div class="home-quick-actions" id="homeQuickActions" aria-label="Quick actions">
         <button class="home-quick-btn" data-action="open-analytics" data-context="bodyweight">
           <span class="home-quick-btn__icon">⚖️</span>
           <span>Weight</span>
-        </button>
-        <button class="home-quick-btn" data-action="open-quick-start">
-          <span class="home-quick-btn__icon">⚡</span>
-          <span>Workout</span>
         </button>
         <button class="home-quick-btn" data-action="open-run-logger" data-module="running">
           <span class="home-quick-btn__icon">🏃</span>

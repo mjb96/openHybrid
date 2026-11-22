@@ -67,6 +67,23 @@ try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('#homeWeekStrip');
   await page.waitForSelector('#homeBodyweightCard .home-bw__spark');
+  const bwCard = await page.evaluate(() => {
+    const card = document.getElementById('homeBodyweightCard');
+    const row = card?.querySelector('.home-bw__line');
+    return {
+      height: card ? card.getBoundingClientRect().height : 0,
+      rowHeight: row ? row.getBoundingClientRect().height : 0,
+      action: row?.getAttribute('data-action') || '',
+      openers: card?.querySelectorAll('[data-action="open-bw-sheet"]').length || 0,
+      nestedButtons: card?.querySelectorAll('button button').length || 0,
+      sparkHeight: card?.querySelector('.home-bw__spark')?.getBoundingClientRect().height || 0,
+    };
+  });
+  ok(bwCard.height > 0 && bwCard.height < 100, `the Home card is one compact line (${Math.round(bwCard.height)}px)`);
+  ok(bwCard.rowHeight >= 44, `the card row is ${Math.round(bwCard.rowHeight)}px, at least 44px`);
+  ok(bwCard.action === 'open-bw-sheet' && bwCard.openers === 1, 'one row opens the prefilled weigh-in sheet');
+  ok(bwCard.nestedButtons === 0, 'the row contains no nested button');
+  ok(bwCard.sparkHeight >= 24 && bwCard.sparkHeight <= 32, `the spark is ${Math.round(bwCard.sparkHeight)}px tall`);
   ok(/85\.9 kg/.test(await page.locator('#homeBodyweightCard').innerText()), 'Home shows the latest weigh-in');
   await page.click('#homeBodyweightCard [data-action="open-bw-sheet"]');
   await page.waitForSelector('#bwSheet.active');

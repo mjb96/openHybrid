@@ -635,6 +635,42 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Home hierarchy: date headline, week chip, one Start; compact
+  rail; one-line bodyweight; insight inside Today.**
+  - Home's `h1` is the real calendar day ("Mon 3 Aug"), not the program week, so
+    a cold boot can never flash "Week 1" as the screen's name. The week moved to
+    the compact chip beneath it: "Week 1 of 4 · Working Sets".
+  - The chip only claims a range when the active plan has a `totalWeeks` and the
+    current week is inside it — a legacy or unknown plan renders "Week N"
+    instead of inventing "of 4". With no active program the phase is omitted
+    rather than falling back to the resolver's "Training" placeholder.
+  - Removed the duplicate Home "Workout" quick action. Start on the Today
+    decision is the only strength start; the secondary row keeps Weight, Run and
+    History, and the Today card's meta no longer repeats the week a third time.
+  - Header CSS: the meta column gets `min-width: 0`, the headline uses
+    `clamp(1.15rem, 5.2vw, 1.5rem)` with `overflow-wrap: anywhere`, and the
+    phase label is a compact single-line pill (bordered, 999px radius,
+    ellipsis). No brand-token changes; the palette and type scale are untouched.
+  - Week rail: every cell is a 48px target (was 66px) with tighter padding,
+    gaps and type. Done, today, planned, missed and rest all keep their own
+    label, dot and colour — the states are compressed, not removed.
+  - Bodyweight: one 44px row (measured 64px card) with the latest value, a
+    one-line meta and a 28px 30-day spark. The whole row opens the prefilled
+    weigh-in sheet, so the card no longer carries a separate chart button and a
+    separate Log button.
+  - Coach insight moved from a standalone card below the week surface into
+    Today's own surface, rendered after the Today mount so it always describes
+    the settled day. It hides on a past-week recap or a picked day, and
+    Customize still controls it as `data-home-card="insight"`.
+  - Validation: 2,074 node tests, typecheck, smoke, precache/workflow, 43/43
+    real-browser checks, and the 2,240-control touch-target check. Two browser
+    contracts were adjusted to the new intent: the bodyweight check asserts one
+    ≤100px row with a single opener and a 24–32px spark rather than the old
+    chart/Log split, and the Home Today check asserts the coach line sits inside
+    `#homeWeekStrip` after `#homeTodayCard`, is at least 44px tall, and is
+    hidden on a past week or picked day.
+  - Next: Progress domain detail hierarchy.
+
 - **2026-11-22 — Progress hub: calendar-week control and honest empty states.**
   - The hub now shows the shared calendar-week navigator and rebuilds the hero,
     all four domain cards and the 12-week strip for the selected Monday–Sunday

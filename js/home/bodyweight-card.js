@@ -3,8 +3,8 @@
 // HOME BODYWEIGHT CARD (js/home/bodyweight-card.js)
 //
 // Home keeps the daily weigh-in one tap away: latest value, a compact 30-day
-// line with the goal, the weekly trend, and a Log button that opens the
-// prefilled sheet. The full graph stays in Progress → Body Weight.
+// line with the goal, and one row that opens the prefilled sheet. The full
+// graph stays in Progress → Body Weight.
 // =============================================================================
 import { buildBodyweightModel } from '../metrics/bodyweight.js';
 import { formatDayMonth } from '../dates.js';
@@ -21,7 +21,7 @@ export function buildHomeBodyweight(state, { now = Date.now(), days = 30 } = {})
 
 /** @param {number[]} values @param {number|null} goal */
 function sparkline(values, goal) {
-  const W = 320, H = 62, PAD = 4;
+  const W = 120, H = 28, PAD = 2;
   if (values.length < 2) return '';
   let min = Math.min(...values);
   let max = Math.max(...values);
@@ -33,14 +33,14 @@ function sparkline(values, goal) {
   const line = values.map((value, index) => `${index ? 'L' : 'M'}${x(index).toFixed(1)},${y(value).toFixed(1)}`).join(' ');
   const area = `${line} L${x(values.length - 1).toFixed(1)},${H - PAD} L${PAD},${H - PAD} Z`;
   const goalLine = goal != null && Number.isFinite(goal)
-    ? `<line x1="${PAD}" y1="${y(goal).toFixed(1)}" x2="${W - PAD}" y2="${y(goal).toFixed(1)}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4 3"/>`
+    ? `<line x1="${PAD}" y1="${y(goal).toFixed(1)}" x2="${W - PAD}" y2="${y(goal).toFixed(1)}" stroke="#f59e0b" stroke-width="1" stroke-dasharray="3 2"/>`
     : '';
   return `<svg viewBox="0 0 ${W} ${H}" aria-hidden="true" class="home-bw__spark">
     <defs><linearGradient id="homeBwFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3ee" stop-opacity=".26"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#homeBwFill)"/>
     ${goalLine}
     <path d="${line}" fill="none" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="${x(values.length - 1).toFixed(1)}" cy="${y(values[values.length - 1]).toFixed(1)}" r="2.8" fill="#a3e635"/>
+    <circle cx="${x(values.length - 1).toFixed(1)}" cy="${y(values[values.length - 1]).toFixed(1)}" r="2.6" fill="#a3e635"/>
   </svg>`;
 }
 
@@ -54,24 +54,30 @@ export function renderHomeBodyweight(container, state) {
   const unit = model.unit;
   const values = model.points.map((point) => point.weight);
   const latest = model.latest;
+  const delta = model.delta == null ? '' : `${model.delta > 0 ? '+' : ''}${model.delta.toFixed(1)} ${unit} / 30d`;
   const trend = model.rate.enough
-    ? `Trend ${model.rate.perWeek > 0 ? '+' : ''}${model.rate.perWeek.toFixed(2)} ${unit}/week`
-    : 'Log a few more mornings for a weekly trend';
-  const delta = model.delta == null ? '' : `${model.delta > 0 ? '+' : ''}${model.delta.toFixed(1)} ${unit} · 30d`;
-  const target = model.targetWeight ? `Goal ${model.targetWeight} ${unit}` : '';
+    ? `${model.rate.perWeek > 0 ? '+' : ''}${model.rate.perWeek.toFixed(2)} ${unit}/wk`
+    : delta;
+  const meta = [
+    latest ? formatDayMonth(latest.date) : '',
+    trend,
+    model.targetWeight ? `Goal ${model.targetWeight} ${unit}` : '',
+  ].filter(Boolean).join(' · ');
+  const aria = latest
+    ? `Log bodyweight, latest ${latest.weight.toFixed(1)} ${unit}`
+    : 'Log bodyweight';
 
   container.innerHTML = `<article class="card-dark home-bw">
-    <div class="home-bw__head">
-      <div><span class="home-bw__eyebrow">Bodyweight</span><strong class="home-bw__title">${latest ? `${latest.weight.toFixed(1)} ${unit}` : 'No weigh-ins yet'}</strong></div>
-      <button type="button" class="home-bw__log" data-action="open-bw-sheet">Log</button>
-    </div>
-    <button type="button" class="home-bw__chart" data-action="open-analytics" data-context="bodyweight" aria-label="Open bodyweight progress">
-      ${values.length >= 2 ? sparkline(values, model.targetWeight) : '<span class="home-bw__empty">Log a weigh-in to start the curve</span>'}
+    <button type="button" class="home-bw__line" data-action="open-bw-sheet" aria-label="${escapeHtml(aria)}">
+      <span class="home-bw__copy">
+        <span class="home-bw__eyebrow">Bodyweight</span>
+        <strong class="home-bw__title">${latest ? `${latest.weight.toFixed(1)} ${unit}` : 'No weigh-ins yet'}</strong>
+        <span class="home-bw__meta">${escapeHtml(meta)}</span>
+      </span>
+      <span class="home-bw__chart">
+        ${values.length >= 2 ? sparkline(values, model.targetWeight) : '<span class="home-bw__empty">Log a weigh-in</span>'}
+      </span>
+      <span class="home-bw__log" aria-hidden="true">Log</span>
     </button>
-    <div class="home-bw__meta">
-      <span>${latest ? escapeHtml(formatDayMonth(latest.date)) : ''} ${delta}</span>
-      <span>${escapeHtml(target)}</span>
-    </div>
-    <div class="home-bw__trend">${escapeHtml(trend)}</div>
   </article>`;
 }
