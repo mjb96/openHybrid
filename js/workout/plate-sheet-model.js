@@ -15,12 +15,23 @@
 // =============================================================================
 
 import {
-  KG_BAR, KG_PLATES, LB_BAR, LB_PLATES,
-  computePlateBreakdown, nearestBuildableTotal, platePairs, plateShortfallTotal,
+  computePlateBreakdown, nearestBuildableTotal, platePairCap, platePairs,
+  plateShortfallTotal, resolvePlateSetup,
 } from './plates.js';
 
 /** The sheet refuses absurd totals rather than drawing a thousand plates. */
 export const PLATE_SHEET_MAX_TOTAL = 1500;
+/** The same ceiling expressed in pounds (1500 kg ≈ 3307 lb). */
+export const PLATE_SHEET_MAX_TOTAL_LB = 3307;
+
+/**
+ * The target ceiling for a unit. The limit is a real-weight guard, so an lb
+ * entry must not inherit the kg number verbatim (1501 lb is ~681 kg).
+ * @param {string} [unit]
+ */
+export function plateSheetMaxTotal(unit = 'kg') {
+  return unitLabel(unit) === 'lbs' ? PLATE_SHEET_MAX_TOTAL_LB : PLATE_SHEET_MAX_TOTAL;
+}
 
 /** @param {number} n */
 function num(n) {
@@ -41,13 +52,14 @@ function unitLabel(unit) {
  * @property {number} bar
  * @property {number[]} plates          the active profile's denominations
  * @property {Record<string, number>|null} counts
+ * @property {{plate:number,pairs:number|null}[]} kit  owned pairs per size (null = unlimited)
  * @property {string} profileName
  * @property {{plate:number,count:number}[]} perSide
  * @property {string} perSideText       "20 + 1.25" ('' when nothing fits)
  * @property {{plate:number,count:number}[]} pairs
  * @property {string} headline          the one line the sheet leads with
  * @property {number} shortfallTotal    both sides; 0 when exact/below bar
- * @property {number|null} nearest      nearest buildable total, or null
+ * @property {number|null} nearest      closest buildable total in either direction, or null
  * @property {boolean} belowBar
  * @property {number} belowBy           bar - target; 0 when not below
  * @property {boolean} barOnly
@@ -67,15 +79,13 @@ function unitLabel(unit) {
  */
 export function buildPlateSheetModel({ target = null, unit = 'kg', setup = null, profileName = '' } = {}) {
   const label = unitLabel(unit);
-  const isLb = label === 'lbs';
-  const setupBar = Number(setup?.bar);
-  const bar = Number.isFinite(setupBar) && setupBar > 0 ? setupBar : (isLb ? LB_BAR : KG_BAR);
-  const setupPlates = Array.isArray(setup?.plates)
-    ? setup.plates.map(Number).filter((n) => Number.isFinite(n) && n > 0)
-    : [];
-  const plates = setupPlates.length ? setupPlates : [...(isLb ? LB_PLATES : KG_PLATES)];
-  const counts = setup && typeof setup.counts === 'object' && setup.counts ? setup.counts : null;
+  const { bar, plates, counts } = resolvePlateSetup(setup, label);
   const profile = String(profileName || '');
+  const maxTotal = plateSheetMaxTotal(label);
+  const kit = plates.map((plate) => {
+    const cap = platePairCap(counts, plate);
+    return { plate, pairs: Number.isFinite(cap) ? cap : null };
+  });
 
   /** @type {PlateSheetModel} */
   const base = {
@@ -86,6 +96,7 @@ export function buildPlateSheetModel({ target = null, unit = 'kg', setup = null,
     bar,
     plates,
     counts,
+    kit,
     profileName: profile,
     perSide: [],
     perSideText: '',
@@ -107,14 +118,14 @@ export function buildPlateSheetModel({ target = null, unit = 'kg', setup = null,
   const value = Number(raw);
   if (!Number.isFinite(value)) return { ...base, reason: 'Enter a total weight.' };
   if (value <= 0) return { ...base, reason: 'Enter a weight above zero.' };
-  if (value > PLATE_SHEET_MAX_TOTAL) {
-    return { ...base, target: value, reason: `Keep the total at or below ${PLATE_SHEET_MAX_TOTAL}.` };
+  if (value > maxTotal) {
+    return { ...base, target: value, reason: `Keep the total at or below ${maxTotal}.` };
   }
 
   const bd = computePlateBreakdown(value, bar, plates, counts);
   const perSideText = bd.perSide.map(({ plate, count }) => `${num(plate)}${count > 1 ? ` ×${count}` : ''}`).join(' + ');
   const shortfallTotal = plateShortfallTotal(bd);
-  const nearest = nearestBuildableTotal(value, bd);
+  const nearest = nearestBuildableTotal(value, { bar, plates, counts });
   const belowBy = bd.belowBar ? Math.round((bar - value) * 100) / 100 : 0;
 
   let headline;
@@ -149,7 +160,7 @@ export function buildPlateSheetModel({ target = null, unit = 'kg', setup = null,
  */
 export function plateShortfallText(model) {
   if (!model?.valid || model.exact || model.belowBar || model.shortfallTotal <= 0) return '';
-  const nearest = model.nearest == null ? '' : ` Nearest buildable: ${num(model.nearest)} ${model.unit}.`;
+  const nearest = model.nearest == null ? '' : ` Closest you can build: ${num(model.nearest)} ${model.unit}.`;
   return `${num(model.shortfallTotal)} ${model.unit} short in total.${nearest}`;
 }
 

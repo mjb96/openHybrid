@@ -99,6 +99,12 @@ const storedFirstSet = (page, lift) => page.evaluate((name) => {
   return Array.isArray(sets) ? sets[0] : null;
 }, lift);
 
+/** One stored set by index, for the plate calculator's write/no-write checks. */
+const storedSetAt = (page, lift, index) => page.evaluate(([name, idx]) => {
+  const state = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+  return state.weeks?.['1']?.lifts?.thu?.[name]?.[idx] || null;
+}, [lift, index]);
+
 /** The plate calculator sheet as rendered — text and chips, not state. */
 const readPlateSheet = (page) => page.evaluate(() => {
   const q = (id) => document.getElementById(id);
@@ -217,13 +223,21 @@ try {
 
     // ---- plate calculator sheet: real profile, real shortfall --------------
     // Row 2 is deliberately used here: row 1 is the blank row the exercise
-    // config block below reads, so this flow must not fill it.
-    if ((width === 412 && theme === 'dark') || (width === 320 && theme === 'dark')) {
+    // config block below reads, so this flow must not fill it. Runs in light
+    // theme too: the shortfall/warning ink is measured there, not assumed.
+    if ((width === 412 && theme === 'dark') || (width === 320 && theme === 'dark')
+      || (width === 390 && theme === 'light')) {
       const plateRow = '.cockpit-exercise:not(.collapsed) .cockpit-set-row[data-set-index="2"]';
       await page.fill(`${plateRow} .input-weight-node`, '62.5');
       await page.waitForTimeout(200);
       await page.click(`${plateRow} .set-num-lbl`);
       await page.waitForSelector('#setSheet.active');
+      // The click above blurred the row, so this is the committed value the
+      // calculator must leave alone if the target is unbuildable.
+      const storedBeforePlate = await storedSetAt(page, 'Incline Barbell Press', 2);
+      if (String(storedBeforePlate?.w ?? '') !== '62.5') {
+        fail(`${tag}: the row weight did not commit before opening the plate sheet (${JSON.stringify(storedBeforePlate)})`);
+      }
       await page.click('#setSheet [data-action="set-sheet-plates"]');
       await page.waitForSelector('#plateSheet.active');
 
@@ -254,7 +268,13 @@ try {
       if (outside.length) {
         fail(`${tag}: the plate sheet showed plates outside the active profile: ${outside.join(', ')}`);
       }
-      const kitPlates = (plateView.plates.match(/\d+(?:\.\d+)?/g) || []).map(Number);
+      // Split the kit line rather than grabbing every number: an owned-pairs
+      // suffix ("20 ×0") would otherwise be read as a plate denomination.
+      const kitPlates = plateView.plates
+        .replace(/^Plates:\s*/, '')
+        .split(' · ')
+        .map((part) => Number.parseFloat(part))
+        .filter((n) => Number.isFinite(n));
       if (!activeSetup.plates.every((p) => kitPlates.includes(p)) || kitPlates.some((p) => !activeSetup.plates.includes(p))) {
         fail(`${tag}: read-only plate list does not match the active profile (${plateView.plates})`);
       }
@@ -272,17 +292,67 @@ try {
         fail(`${tag}: a blank weighted barbell row should allow Use this weight (${plateView.reason})`);
       }
 
+      // A total the sheet itself declares unbuildable must not be writable.
       await page.fill('#plateTarget', '101');
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(400);
       plateView = await readPlateSheet(page);
       if (!/1 kg short/.test(plateView.shortfall)) {
         fail(`${tag}: 101 kg should state a 1 kg total shortfall (got "${plateView.shortfall}")`);
       }
-      if (!/Nearest buildable: 100 kg/.test(plateView.shortfall)) {
-        fail(`${tag}: 101 kg should name 100 kg as the nearest buildable total (got "${plateView.shortfall}")`);
+      if (!/Closest you can build: 100 kg/.test(plateView.shortfall)) {
+        fail(`${tag}: 101 kg should name 100 kg as the closest buildable total (got "${plateView.shortfall}")`);
       }
       if (!/1 kg short/.test(plateView.headline)) {
         fail(`${tag}: the 101 kg headline hid the shortfall (got "${plateView.headline}")`);
+      }
+      if (!plateView.useDisabled || !/1 kg short — closest 100 kg/.test(plateView.reason)) {
+        fail(`${tag}: 101 kg left Use this weight enabled or unexplained (${JSON.stringify({ disabled: plateView.useDisabled, reason: plateView.reason })})`);
+      }
+      const storedAt101 = await storedSetAt(page, 'Incline Barbell Press', 2);
+      if (String(storedAt101?.w ?? '') !== String(storedBeforePlate?.w ?? '')
+        || String(storedAt101?.w ?? '') === '101') {
+        fail(`${tag}: an unbuildable 101 kg target changed the stored weight (${JSON.stringify({ before: storedBeforePlate, after: storedAt101 })})`);
+      }
+
+      if (width === 390 && theme === 'light') {
+        const warning = await page.evaluate(() => {
+          const node = document.getElementById('plateSheetShortfall');
+          if (!node || node.hidden) return null;
+          const parse = (value) => {
+            const match = String(value || '').match(/rgba?\(([^)]+)\)/);
+            if (!match) return null;
+            const parts = match[1].split(/[ ,/]+/).filter(Boolean).map(Number);
+            if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return null;
+            return { r: parts[0], g: parts[1], b: parts[2], a: parts[3] == null ? 1 : parts[3] };
+          };
+          const channel = (v) => {
+            const n = v / 255;
+            return n <= 0.03928 ? n / 12.92 : Math.pow((n + 0.055) / 1.055, 2.4);
+          };
+          const luminance = (color) => 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b);
+          const foreground = parse(getComputedStyle(node).color) || { r: 0, g: 0, b: 0, a: 1 };
+          let background = { r: 255, g: 255, b: 255, a: 1 };
+          let cursor = node.parentElement;
+          while (cursor) {
+            const candidate = parse(getComputedStyle(cursor).backgroundColor);
+            if (candidate && candidate.a >= 0.95) { background = candidate; break; }
+            cursor = cursor.parentElement;
+          }
+          const fg = luminance(foreground);
+          const bg = luminance(background);
+          const ratio = (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+          return {
+            ratio: Number(ratio.toFixed(2)),
+            color: getComputedStyle(node).color,
+            background: `rgb(${background.r}, ${background.g}, ${background.b})`,
+            isWarn: node.classList.contains('is-warn'),
+          };
+        });
+        console.log(`${tag} plate-warning-contrast:`, JSON.stringify(warning));
+        if (!warning?.isWarn) fail(`${tag}: the shortfall note is not marked as a warning to measure`);
+        if (!warning || warning.ratio < 4.5) {
+          fail(`${tag}: light-theme shortfall contrast is ${warning?.ratio}:1 (${warning?.color} on ${warning?.background})`);
+        }
       }
 
       await page.fill('#plateTarget', '15');

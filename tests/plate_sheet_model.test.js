@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  PLATE_SHEET_MAX_TOTAL, buildPlateSheetModel, plateBelowBarText, plateShortfallText,
+  PLATE_SHEET_MAX_TOTAL, PLATE_SHEET_MAX_TOTAL_LB, buildPlateSheetModel,
+  plateBelowBarText, plateSheetMaxTotal, plateShortfallText,
 } from '../js/workout/plate-sheet-model.js';
 import { LB_PLATES } from '../js/workout/plates.js';
 
@@ -37,7 +38,7 @@ test('a 2.5 kg step is stated exactly (62.5 → 20 + 1.25)', () => {
   assert.deepEqual(model.pairs, [{ plate: 20, count: 2 }, { plate: 1.25, count: 2 }]);
 });
 
-test('an unreachable target states the total shortfall and the nearest total', () => {
+test('an unreachable target states the total shortfall and the closest total', () => {
   const model = buildPlateSheetModel({ target: 101, unit: 'kg', setup: KG });
   assert.equal(model.valid, true);
   assert.equal(model.exact, false);
@@ -45,7 +46,14 @@ test('an unreachable target states the total shortfall and the nearest total', (
   assert.equal(model.nearest, 100);
   assert.match(model.headline, /1 kg short/);
   assert.match(plateShortfallText(model), /1 kg short in total/);
-  assert.match(plateShortfallText(model), /Nearest buildable: 100 kg/);
+  assert.match(plateShortfallText(model), /Closest you can build: 100 kg/);
+});
+
+test('the closest total may be ABOVE the target', () => {
+  const model = buildPlateSheetModel({ target: 21.5, unit: 'kg', setup: KG });
+  assert.equal(model.exact, false);
+  assert.equal(model.nearest, 22.5);
+  assert.match(plateShortfallText(model), /Closest you can build: 22\.5 kg/);
 });
 
 test('a target below the bar reports the delta instead of plates', () => {
@@ -83,6 +91,18 @@ test('a counts-limited profile never invents the missing plates', () => {
   assert.equal(model.shortfallTotal, 40);
   assert.equal(model.nearest, 70);
   assert.match(model.headline, /40 kg short/);
+  // The kit names the empty size, so the shortfall is explainable in place.
+  assert.deepEqual(model.kit, [{ plate: 25, pairs: 1 }, { plate: 20, pairs: 0 }]);
+});
+
+test('the kit reports owned pairs and leaves unlimited sizes unlabelled', () => {
+  const model = buildPlateSheetModel({
+    target: 100, unit: 'kg',
+    setup: { bar: 20, plates: [25, 20], counts: { 25: 2 } },
+  });
+  assert.deepEqual(model.kit, [{ plate: 25, pairs: 2 }, { plate: 20, pairs: null }]);
+  assert.equal(model.exact, true);
+  assert.deepEqual(model.perSide, [{ plate: 20, count: 2 }]);
 });
 
 test('an lb profile stays in lb and uses the lb bar', () => {
@@ -118,6 +138,21 @@ test('junk, blank, zero, negative and absurd targets are rejected with a reason'
     assert.deepEqual(model.perSide, []);
     assert.deepEqual(model.pairs, []);
   }
+});
+
+test('the ceiling is a real-weight guard and follows the unit', () => {
+  assert.equal(plateSheetMaxTotal('kg'), PLATE_SHEET_MAX_TOTAL);
+  assert.equal(plateSheetMaxTotal('lbs'), PLATE_SHEET_MAX_TOTAL_LB);
+  assert.equal(PLATE_SHEET_MAX_TOTAL_LB, 3307);
+
+  // 1501 lb is ~681 kg — well inside the kg ceiling, so it must stay valid.
+  const allowed = buildPlateSheetModel({ target: 1501, unit: 'lbs', setup: LB });
+  assert.equal(allowed.valid, true);
+  assert.equal(allowed.unit, 'lbs');
+
+  const over = buildPlateSheetModel({ target: PLATE_SHEET_MAX_TOTAL_LB + 1, unit: 'lbs', setup: LB });
+  assert.equal(over.valid, false);
+  assert.match(over.reason, /3307/);
 });
 
 test('an omitted setup falls back to the standard bar for the unit', () => {

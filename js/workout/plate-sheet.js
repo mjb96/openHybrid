@@ -120,6 +120,16 @@ function eligibility(model, liftName, setIndex) {
   // A barbell cannot be loaded below its own bar; writing the number anyway
   // would store a total the athlete could not lift.
   if (model.belowBar) return { ok: false, reason: `The total is under the ${model.bar} ${model.unit} bar.` };
+  // The sheet must not offer to write a total it has just declared
+  // unbuildable: that is the one number the athlete cannot actually load.
+  if (!model.exact) {
+    const short = formatPlateNumber(model.shortfallTotal);
+    const closest = model.nearest == null ? '' : ` — closest ${formatPlateNumber(model.nearest)} ${model.unit}`;
+    return {
+      ok: false,
+      reason: `${short} ${model.unit} short${closest}`,
+    };
+  }
   const set = storedSet(liftName, setIndex) || {};
   const row = rowFor(liftName, setIndex);
   const complete = /** @type {HTMLInputElement|null} */ (row?.querySelector('.gym-check'));
@@ -177,7 +187,9 @@ function render() {
   plainText('plateSheetSub', `${context.liftName} · Set ${context.setIndex + 1} · ${profileName}`);
 
   text('plateSheetBar', `${formatPlateNumber(setup.bar)} ${model.unit} bar`);
-  text('plateSheetPlates', `Plates: ${setup.plates.map(formatPlateNumber).join(' · ')} ${model.unit}`);
+  text('plateSheetPlates', `Plates: ${model.kit
+    .map(({ plate, pairs }) => `${formatPlateNumber(plate)}${pairs == null ? '' : ` ×${pairs}`}`)
+    .join(' · ')} ${model.unit}`);
   text('plateSheetHeadline', model.headline);
   text('plateSheetShortfall', plateShortfallText(model));
   text('plateSheetBelowBar', plateBelowBarText(model));
@@ -200,6 +212,15 @@ function render() {
 /**
  * Open the calculator for one set, prefilled from that row's weight or ghost.
  * Safe to call twice — it re-renders instead of stacking.
+ *
+ * NESTED-MODAL RESIDUAL RISK: the set sheet stays in the managed modal stack
+ * while this sheet is on top. `applyBackground` keeps every root on the active
+ * path non-inert, so the parent sheet remains exposed to assistive technology
+ * and the top dialog's `aria-modal` is what hides it. AT that ignores
+ * `aria-modal` on a nested dialog can therefore still reach the set sheet. We
+ * deliberately do not set `aria-hidden` on the parent here: the stack would
+ * overwrite it on the next mutation, and a stale hidden state after closing
+ * this sheet would make the still-open set sheet invisible to a screen reader.
  * @param {string} liftName
  * @param {number} setIndex
  * @param {{ onApplied?: () => void }} [options]

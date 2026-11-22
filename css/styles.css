@@ -10602,6 +10602,10 @@ html[data-theme="light"] .plate-sheet-result,
 html[data-theme="light"] .plate-sheet-chip {
   background: rgba(15, 23, 42, 0.03);
 }
+/* Amber (#f59e0b) is only ~2.2:1 on white. #b45309 measures 5.02:1 on white
+   and 4.54:1 on this light card, so a shortfall or limited-rack caveat stays
+   legible in light theme. */
+html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
 
 /* ============================================================================
    THEME PALETTES

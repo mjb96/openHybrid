@@ -2372,7 +2372,10 @@
   <!-- Plate calculator — opened from the per-set sheet. It reads the ACTIVE
        equipment profile, so it can never show a plate the athlete does not
        own. Stacked above the set sheet: Escape closes it back to the set
-       sheet, and "Use this weight" is the only path that writes anything. -->
+       sheet, and "Use this weight" is the only path that writes anything.
+       The set sheet deliberately stays exposed to assistive technology behind
+       this dialog (the stack keeps it non-inert); see the nested-modal note in
+       js/workout/plate-sheet.js for the residual aria-modal caveat. -->
   <div id="plateSheetBackdrop" class="sheet-backdrop sheet-backdrop--plate" data-action="close-plate-sheet"></div>
   <div id="plateSheet" class="bottom-sheet plate-sheet" role="dialog" aria-labelledby="plateSheetTitle" data-modal-root data-modal-close-action="close-plate-sheet" data-modal-companion="#plateSheetBackdrop" inert aria-hidden="true">
     <div class="bottom-sheet-handle"></div>
@@ -2386,7 +2389,7 @@
       <span class="set-sheet-lbl plate-sheet-lbl">Target total</span>
       <input id="plateTarget" class="plate-sheet-input" type="number" inputmode="decimal"
              step="any" min="0" autocomplete="off"
-             aria-describedby="plateSheetResult plateUseReason" aria-invalid="false">
+             aria-describedby="plateSheetHeadline plateUseReason" aria-invalid="false">
     </label>
 
     <div class="plate-sheet-kit">
@@ -2396,7 +2399,7 @@
 
     <div id="plateSheetResult" class="plate-sheet-result" role="status" aria-live="polite">
       <div id="plateSheetHeadline" class="plate-sheet-headline"></div>
-      <p id="plateSheetShortfall" class="plate-sheet-note" hidden></p>
+      <p id="plateSheetShortfall" class="plate-sheet-note is-warn" hidden></p>
       <p id="plateSheetBelowBar" class="plate-sheet-note is-warn" hidden></p>
       <p id="plateSheetLimited" class="plate-sheet-note is-warn" hidden></p>
       <div class="plate-sheet-group" id="plateSheetPerSideGroup" hidden>

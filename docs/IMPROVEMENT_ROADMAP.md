@@ -659,9 +659,31 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,175 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,180 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Plate calculator review fixes.**
+  - **Use this weight refuses what the sheet calls unbuildable.** 101 kg now
+    disables it with `1 kg short — closest 100 kg`, so the one total it cannot
+    load is never written; 100 kg stays enabled and persists.
+  - The solver is an exact bounded search over the active pairs, not greedy:
+    `[25, 20]` with two pairs of each builds 100 as 2×20 a side and 150 as
+    25 + 20 + 20. Greedy is only the display fallback. The inline `plateHint`
+    shares the solver and the bar/plates/counts fallback.
+  - `nearestBuildableTotal` now searches BOTH directions from real reachable
+    sums (`bar + 2 × per-side load`), never from a rounded leftover and never
+    below the bar: 21.5 → 22.5, 48 lb → 50, ties go down.
+  - `limited` is set only when exhausted/zero pair counts are what force the
+    gap; the read-only kit names owned pairs including `×0`. The target ceiling
+    is unit-aware (1500 kg / 3307 lb), and the shortfall/warning ink darkens to
+    `#b45309` in light theme (measured 4.54:1 on the light card).
+  - The target input describes only the headline result; the nested-modal
+    parent `aria-hidden` residual risk is documented in the sheet module.
+  - Validation: 2,180 node tests, typecheck, smoke, precache, set-row at
+    320/dark + 390/light + 412/dark (including the 101 write gate and measured
+    light-theme contrast), touch-target, modal accessibility, equipment
+    profiles and all 45 browser checks (197.4 s, clean run).
 
 - **2026-11-22 — Plate calculator sheet.**
   - The per-set sheet gains one full-width **Plate calculator**. It opens with
