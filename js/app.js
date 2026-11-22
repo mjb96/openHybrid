@@ -116,8 +116,8 @@ import {
   clearActiveOneOffSession, createOneOffStrengthSession,
 } from './workout/one-off-session.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
-import { buildRoutineFromSession } from './routines/model.js';
-import { ensureRoutines, removeRoutine } from './routines/store.js';
+import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
+import { ensureRoutines, findRoutine, removeRoutine } from './routines/store.js';
 import { showUndo } from './ui/undo-bar.js';
 
 document.addEventListener('app:modules-changed', () => {
@@ -433,6 +433,97 @@ export async function saveActivityAsRoutine(activityId) {
       return;
     }
     showToast('Routine removed');
+  }, () => {});
+}
+
+// ── Routine library actions ──────────────────────────────────────────────────
+//
+// A routine is a SESSION template. Starting one copies its source week into an
+// ordinary one-off session and opens the cockpit; it never activates a program,
+// never reseeds a week and never touches activeProgramId/currentWeek.
+
+export function startRoutine(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const { sourceWeek, sourceDay } = routineSourceWeek(routine);
+  const lifts = sourceDay ? sourceWeek.lifts?.[sourceDay] || {} : {};
+  if (!sourceDay || !Object.keys(lifts).length) {
+    showToast('This routine has no exercises to start', true);
+    return;
+  }
+  const session = createOneOffStrengthSession(appState, {
+    kind: 'copy', title: routine.name, sourceWeek, sourceDay,
+  });
+  setSelectedDay(session.day);
+  saveStateToLocalStorage(true);
+  launchActiveWorkoutCockpit();
+}
+
+export async function renameRoutine(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const previousName = String(routine.name || '');
+  const name = await textPromptModal({
+    title: 'Rename routine',
+    message: 'The saved exercises, sets and loads stay exactly as they are.',
+    label: 'Routine name',
+    value: previousName,
+    maxLength: 60,
+    confirmLabel: 'Save name',
+  });
+  if (name == null) return;
+  if (!name) { showToast('A routine needs a name', true); return; }
+  if (name === previousName) return;
+
+  const dayKeys = routine.days && typeof routine.days === 'object' ? Object.keys(routine.days) : [];
+  const previousTitles = dayKeys.map((day) => routine.days[day]?.title);
+  const previousUpdatedAt = routine.updatedAt;
+  routine.name = name;
+  routine.updatedAt = new Date().toISOString();
+  // The day title was seeded from the routine name; keep the two in step only
+  // where it still matched, so a deliberately different day title survives.
+  dayKeys.forEach((day) => {
+    if (routine.days[day]?.title === previousName) routine.days[day].title = name;
+  });
+
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    routine.name = previousName;
+    routine.updatedAt = previousUpdatedAt;
+    dayKeys.forEach((day, index) => { routine.days[day].title = previousTitles[index]; });
+    showToast('The routine could not be renamed', true);
+    return;
+  }
+  renderLibrary();
+  showToast('Routine renamed');
+}
+
+export async function deleteRoutine(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const confirmed = await confirmModal({
+    title: `Delete “${routine.name}”?`,
+    message: 'The routine leaves your library. Logged training, your program and this week stay untouched.',
+    confirmLabel: 'Delete routine',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  const index = appState.routines.findIndex((entry) => entry?.id === routineId);
+  const removed = removeRoutine(appState, routineId);
+  if (!removed) { renderLibrary(); return; }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    appState.routines.splice(Math.max(0, index), 0, removed);
+    showToast('The routine could not be deleted', true);
+    return;
+  }
+  renderLibrary();
+  showUndo('Routine deleted', async () => {
+    appState.routines.splice(Math.min(Math.max(0, index), appState.routines.length), 0, removed);
+    const restored = await saveStateToLocalStorage(true);
+    renderLibrary();
+    showToast(restored ? 'Routine restored' : 'The routine could not be restored', !restored);
   }, () => {});
 }
 
@@ -1234,6 +1325,32 @@ document.addEventListener('click', (e) => {
   else if (action === 'duplicate-program') executeDuplicateProgram(progId);
   else if (action === 'customize-program') customizeProgram(progId);
   else if (action === 'edit-active-program') editActiveProgram();
+  // Routine library actions. They are routed HERE rather than through
+  // handleLibraryAction, which is only called for the library-local whitelist
+  // below and cannot launch a session or own a destructive Undo.
+  else if (action === 'start-routine') startRoutine(target.getAttribute('data-routine-id'));
+  else if (action === 'open-routine-menu') {
+    const routineId = target.getAttribute('data-routine-id');
+    if (isActionMenuOpen()) closeActionMenu();
+    else if (routineId) {
+      openActionMenu(target, [
+        { label: 'Rename', action: 'rename-routine', routineId },
+        { label: 'Delete', action: 'delete-routine', routineId, danger: true },
+      ], { label: 'Routine actions' });
+    }
+  }
+  else if (action === 'rename-routine') {
+    renameRoutine(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine rename failed:', error);
+      showToast('The routine could not be renamed', true);
+    });
+  }
+  else if (action === 'delete-routine') {
+    deleteRoutine(target.getAttribute('data-routine-id')).catch((error) => {
+      console.warn('Routine delete failed:', error);
+      showToast('The routine could not be deleted', true);
+    });
+  }
   else if (action === 'open-program-menu') {
     // Toggle a compact overflow menu of secondary program actions.
     if (isActionMenuOpen()) closeActionMenu();

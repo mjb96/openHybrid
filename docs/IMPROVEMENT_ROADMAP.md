@@ -363,9 +363,11 @@ session becomes reusable in one action.
 Features: P11, S5, S6.
 
 1. **Save as routine** from a History detail, building a routine from the
-   session's actual exercises, sets and rest. *Data + action landed (slice 1):
-   root `state.routines`/`state.libraryFolders`, schema v14, and one History
-   action with Undo. Starting a routine and the library surfaces are next.*
+   session's actual exercises, sets and rest. *Landed: History "Save as routine"
+   (root `state.routines`/`state.libraryFolders`, schema v14, Undo) and the
+   Plans → My Plans routine list — Start, Rename, Delete with Undo, a badge that
+   counts routines, and an honest summary line. Folders and categories are
+   next.*
 2. **Copy, edit and delete** with Undo — verify the existing actions and close
    the gaps rather than adding a second action row.
 3. **Routine folders** — create, rename, delete, reorder, assign, undo.
@@ -640,6 +642,26 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Routines slice 2: list and start them from Plans.**
+  - My Plans now leads with a **Routines** section (Your plans follows). Each
+    `routine-card` shows the name and `N exercises · M working sets`, plus
+    `~N min` only when every prescription's rest is known — never an invented
+    estimate. Start is a 44px target; the quiet `•••` menu renames or deletes,
+    and the My Plans badge counts routines alongside plans.
+  - Start copies `routineSourceWeek` into an ordinary one-off `session:` week and
+    opens the cockpit with the routine's exercises, loads and rep targets. It
+    never activates or reseeds a program: `activeProgramId`, `currentWeek` and
+    the logged program week stay byte-identical.
+  - Delete asks once, then offers Undo that restores the record at its position;
+    rename updates the routine name, its day title and `updatedAt` without
+    rewriting the saved prescriptions. A routine never renders as `.prog-card`
+    and never enters `customPrograms`.
+  - Empty My Plans keeps "Nothing here yet" and now names saving a routine from
+    History; the Routines section itself is hidden when there are none.
+  - Validation: 2,099 node tests (routine summary), typecheck, smoke, the routines
+    browser check (save → list → start → rename → delete/Undo at 390×844) and the
+    plans-json / plans-active-banner / touch-target / core-ergonomics checks.
 
 - **2026-11-22 — Routines slice 1: save a workout as a routine.**
   - A finished strength session can now be saved as a reusable routine from

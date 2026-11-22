@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek } from '../js/routines/model.js';
+import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek, routineSummary } from '../js/routines/model.js';
 import { ensureRoutines, MAX_ROUTINE_SETS, newFolderId, removeRoutine } from '../js/routines/store.js';
 import { createOneOffStrengthSession } from '../js/workout/one-off-session.js';
 import { buildSetRow } from '../js/templates.js';
@@ -285,6 +285,28 @@ test('routineSourceWeek drives a one-off copy session without touching the progr
   assert.equal(lifts['Bench Press'][0].restSec, 180);
   assert.equal(lifts.Plank[0].mode, 'time');
   assert.equal(lifts.Plank[0].sec, 60);
+});
+
+test('routineSummary counts exercises and working sets, and estimates time only when honest', () => {
+  assert.deepEqual(routineSummary(build()), { exercises: 6, workingSets: 8, minutes: null });
+
+  const timed = routineSummary({
+    days: { mon: { lifts: ['Bench Press', 'Curl'] } },
+    prescriptions: {
+      mon: {
+        'Bench Press': { sets: 3, reps: 5, restSec: 120 },
+        Curl: { sets: 3, reps: 10, restSec: 60 },
+      },
+    },
+  });
+  assert.deepEqual(timed, { exercises: 2, workingSets: 6, minutes: 15 });
+
+  assert.deepEqual(routineSummary({ days: {}, prescriptions: {} }), { exercises: 0, workingSets: 0, minutes: null });
+  const capped = routineSummary({
+    days: { mon: { lifts: ['Bench Press'] } },
+    prescriptions: { mon: { 'Bench Press': { sets: 1e9, restSec: 0 } } },
+  });
+  assert.equal(capped.workingSets, MAX_ROUTINE_SETS, 'the summary reads the same bound the copy path applies');
 });
 
 test('the store seeds and repairs both root arrays, and Undo can remove a routine', () => {

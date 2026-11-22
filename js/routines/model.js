@@ -270,6 +270,42 @@ function routineSet(prescription) {
 }
 
 /**
+ * Counts (and an honest time estimate) for a routine card.
+ *
+ * The estimate exists only when every prescription carries a rest value — an
+ * unknown rest would otherwise be replaced by a made-up number. A working set
+ * also costs time under load, so a fixed allowance is added per set; the total
+ * is rounded to five minutes and labelled with "~" by the caller.
+ *
+ * @param {any} routine
+ * @returns {{ exercises:number, workingSets:number, minutes:number|null }}
+ */
+export function routineSummary(routine) {
+  const WORK_SECONDS_PER_SET = 40;
+  const days = routine?.days && typeof routine.days === 'object' ? Object.keys(routine.days) : [];
+  let exercises = 0;
+  let workingSets = 0;
+  let restSeconds = 0;
+  let restKnown = true;
+  for (const day of days) {
+    const names = Array.isArray(routine.days[day]?.lifts) ? routine.days[day].lifts : [];
+    for (const name of names) {
+      const prescription = routine.prescriptions?.[day]?.[name];
+      if (!prescription || typeof prescription !== 'object') continue;
+      const sets = Math.min(MAX_ROUTINE_SETS, Math.max(1, Math.round(Number(prescription.sets) || 1)));
+      exercises++;
+      workingSets += sets;
+      if (prescription.restSec == null || !Number.isFinite(Number(prescription.restSec))) restKnown = false;
+      else restSeconds += sets * Math.max(0, Number(prescription.restSec));
+    }
+  }
+  const minutes = restKnown && workingSets > 0
+    ? Math.max(5, Math.round((restSeconds + workingSets * WORK_SECONDS_PER_SET) / 300) * 5)
+    : null;
+  return { exercises, workingSets, minutes };
+}
+
+/**
  * A week-shaped source for `createOneOffStrengthSession`, paired with the day it
  * describes. Returning the day WITH the week means a future Start cannot pass
  * today's weekday and get an empty session.

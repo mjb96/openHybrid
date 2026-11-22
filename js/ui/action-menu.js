@@ -22,6 +22,7 @@ function buildItem(item) {
     'type="button"', 'role="menuitem"', 'class="action-menu__item"',
     item.action ? `data-action="${escapeHtml(item.action)}"` : '',
     item.programId != null ? `data-program-id="${escapeHtml(String(item.programId))}"` : '',
+    item.routineId != null ? `data-routine-id="${escapeHtml(String(item.routineId))}"` : '',
     item.danger ? 'data-danger="1"' : '',
   ].filter(Boolean).join(' ');
   const icon = item.icon ? `<span class="action-menu__icon" aria-hidden="true">${item.icon}</span>` : '';
@@ -33,7 +34,7 @@ export function isActionMenuOpen() { return !!_state; }
 /**
  * Open an anchored action menu next to `trigger`.
  * @param {HTMLElement} trigger the button the menu is anchored to
- * @param {Array<{label:string, action?:string, programId?:string, icon?:string, danger?:boolean}>} items
+ * @param {Array<{label:string, action?:string, programId?:string, routineId?:string, icon?:string, danger?:boolean}>} items
  * @param {{ label?: string }} [opts]
  */
 export function openActionMenu(trigger, items, opts = {}) {
