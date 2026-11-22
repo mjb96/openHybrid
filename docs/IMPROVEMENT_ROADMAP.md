@@ -637,6 +637,25 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-22 — Plans follow-up: quiet utility row and tab bar.**
+  - The plan utilities are inline text now — no border, fill or shadow, 44px
+    targets, 2px side padding, muted `.74rem`/700. Only `Manage plan` carries
+    accent text; New plan is no longer a competing filled primary.
+  - The library tabs are a text bar: transparent, no segmented card, 22px gap,
+    a 2px cyan underline on the active tab, `--text-primary` against muted, and
+    a quiet grey count pill.
+  - Vertical stack: utility margin 4px; tabs 44px plus a 1px subtle rule with
+    4px below; search margin 8px; the recommendation row's outer gaps collapse
+    (header 0, basis 0, 2px before All programs, no extra rail padding) because
+    its heading, 44px basis summary and cards already carry their own internal
+    padding. All programs moved from 711px to 639px at 390×844 with the same
+    seed/clock, inside the 640px target. Cards, art and the 44px controls are
+    untouched; only the section's outer spacing moved.
+  - Validation: screenshot `shots/plans-after-quiet.png` (390×844, same
+    seed/clock as the earlier before/after), node tests, typecheck, smoke,
+    precache, Plans banner/JSON/recommendation, detail viewport, core ergonomics
+    and touch-target checks.
+
 - **2026-11-22 — Plans hierarchy: active plan first, one primary, one search.**
   - Plans now reads top to bottom as active plan → plan utilities →
     Discover | My Plans → search → content. The running plan's Start/Resume is
