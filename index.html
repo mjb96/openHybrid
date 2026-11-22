@@ -548,20 +548,20 @@
            The full header/day selector/outline step aside so the first set is
            visible (js/workout.js toggles cockpit-session-active). -->
       <div class="cockpit-active-sticky">
-        <button class="subview-back-btn" data-action="back-to-train-landing">← Back to Train</button>
+        <div class="cockpit-active-top">
+        <button class="subview-back-btn" data-action="back-to-train-landing" aria-label="Back to Train"><span class="subview-back-arrow" aria-hidden="true">←</span><span class="subview-back-label">Back to Train</span></button>
         <div class="cockpit-active-head" id="cockpitActiveHead" hidden>
           <div class="cockpit-active-head__stats">
             <span><b id="cockpitActiveVolume">0 kg</b><small>Volume</small></span>
             <span><b id="cockpitActiveSets">0/0</b><small>Sets</small></span>
+            <span class="cockpit-active-head__clock" id="workoutDurationBar" role="timer" aria-label="Session time">
+              <b id="workoutDurationClock">00:00</b><small>Time</small>
+            </span>
           </div>
           <button type="button" class="cockpit-active-head__finish" data-action="open-finish-modal">Finish</button>
         </div>
-        <div class="cockpit-exercise-rail" id="cockpitExerciseRail" role="group" aria-label="Exercise rail" hidden></div>
-
-        <div class="session-timer-bar" id="workoutDurationBar" role="timer">
-          <span class="timer-txt">⏱️ SESSION ACTIVE</span>
-          <span class="timer-clock" id="workoutDurationClock">00:00</span>
         </div>
+        <div class="cockpit-exercise-rail" id="cockpitExerciseRail" role="group" aria-label="Exercise rail" hidden></div>
       </div>
 
       <div class="workout-cockpit-header">
@@ -598,19 +598,18 @@
 
       <button id="startWorkoutBtn" class="btn-action-block btn-green mb-3" data-action="start-timer">Start Workout</button>
 
-      <div class="global-timer-bar" id="cockpitTimerBar">
-        <div class="rest-timer-body">
-          <!-- The label IS the pause control: it used to render a decorative ⏸
-               with no pause behind it, which reads as a broken button. -->
-          <button type="button" class="timer-label" id="restPauseBtn"
-                  data-action="rest-pause" aria-pressed="false"
-                  aria-label="Pause rest timer">⏸ REST</button>
-          <span class="timer-clock" id="cockpitTimerClock">1:30</span>
-          <div class="rest-timer-actions">
-            <button class="rest-adj-btn" data-action="rest-adjust" data-delta="-30">−30s</button>
-            <button class="rest-adj-btn" data-action="rest-adjust" data-delta="30">+30s</button>
-            <button class="rest-skip-btn" data-action="dismiss-rest">Done</button>
-          </div>
+      <!-- Rest floats above the bottom nav. It must stay reachable while the
+           session scrolls, and reparenting it into the active card moved it away
+           the moment that card collapsed. -->
+      <div class="global-timer-bar rest-pill" id="cockpitTimerBar" aria-label="Rest timer">
+        <button type="button" class="rest-pill__pause" id="restPauseBtn"
+                data-action="rest-pause" aria-pressed="false"
+                aria-label="Pause rest timer" title="Pause rest timer">⏸</button>
+        <span class="rest-pill__clock" id="cockpitTimerClock" role="timer">1:30</span>
+        <div class="rest-pill__actions">
+          <button class="rest-adj-btn" data-action="rest-adjust" data-delta="-15" aria-label="Subtract 15 seconds">−15</button>
+          <button class="rest-adj-btn" data-action="rest-adjust" data-delta="15" aria-label="Add 15 seconds">+15</button>
+          <button class="rest-skip-btn" data-action="dismiss-rest">Skip</button>
         </div>
         <div class="rest-progress-track">
           <div class="rest-progress-fill" id="restProgressFill" style="width:100%"></div>

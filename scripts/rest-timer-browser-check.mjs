@@ -86,9 +86,12 @@ const readTimer = (page) => page.evaluate(() => {
     paused: !!bar?.classList.contains('rest-paused'),
     clock: document.getElementById('cockpitTimerClock')?.textContent?.trim() || '',
     label: btn?.textContent?.trim() || '',
+    ariaLabel: btn?.getAttribute('aria-label') || '',
     pressed: btn?.getAttribute('aria-pressed') || '',
-    // Attached to the exercise being worked, not floating over the page.
+    // The pill is GLOBAL: it floats above the bottom nav so it survives the
+    // active card collapsing (which is exactly when the athlete waits for it).
     insideCard: !!bar?.closest('.cockpit-exercise'),
+    inWorkoutView: !!bar?.closest('#view-workout'),
     btnHeight: btn ? Math.round(btn.getBoundingClientRect().height) : 0,
   };
 });
@@ -174,8 +177,13 @@ try {
       await context.close();
       continue;
     }
-    if (!t.insideCard) fail(`${tag}: the rest bar is not attached to the active exercise card`);
-    if (t.label !== '⏸ REST') fail(`${tag}: unexpected rest label "${t.label}"`);
+    // The pill must NOT be nested in the exercise card: reparenting it there
+    // made it vanish the moment that card collapsed, which is precisely when
+    // the athlete is waiting for the next set.
+    if (t.insideCard) fail(`${tag}: the rest pill is still nested inside an exercise card`);
+    if (!t.inWorkoutView) fail(`${tag}: the rest pill left the workout view`);
+    if (t.label !== '⏸') fail(`${tag}: unexpected rest glyph "${t.label}"`);
+    if (!/pause/i.test(t.ariaLabel)) fail(`${tag}: the rest control does not name its action ("${t.ariaLabel}")`);
     if (t.btnHeight < 44) fail(`${tag}: the pause control is ${t.btnHeight}px, below the 44px target`);
 
     if (await warmupVisible()) fail(`${tag}: + Warmup still offered at equal prominence after a working set was logged`);
@@ -216,7 +224,7 @@ try {
     t = await readTimer(page);
     if (!t.paused) fail(`${tag}: pressing pause did not put the bar in a paused state`);
     if (t.pressed !== 'true') fail(`${tag}: paused but aria-pressed is "${t.pressed}"`);
-    if (!/paused/i.test(t.label)) fail(`${tag}: paused but the label still reads "${t.label}"`);
+    if (!/resume/i.test(t.ariaLabel)) fail(`${tag}: paused but the control still says "${t.ariaLabel}"`);
 
     const held = t.clock;
     await page.waitForTimeout(1800);

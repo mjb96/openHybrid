@@ -103,24 +103,13 @@ export function recommendedRestFor(liftName) {
 // ==========================================
 export function moveRestTimerToActiveExercise() {
   const timerBar = document.getElementById('cockpitTimerBar');
-  if (!timerBar || !timerBar.classList.contains('active')) return;
-
-  const openCard = document.querySelector('.cockpit-exercise:not(.collapsed) .local-timer-placeholder');
-  if (openCard) {
-    openCard.appendChild(timerBar);
-    timerBar.style.position = "relative";
-    timerBar.style.margin = "0 0 12px 0";
-    timerBar.style.width = "100%";
-    timerBar.style.bottom = "auto";
-    timerBar.style.left = "auto";
-  } else {
-    document.getElementById('view-workout')?.appendChild(timerBar);
-    timerBar.style.position = "fixed";
-    timerBar.style.bottom = "85px";
-    timerBar.style.width = "calc(100% - 32px)";
-    timerBar.style.margin = "0";
-    timerBar.style.left = "16px";
-  }
+  if (!timerBar) return;
+  // The pill is deliberately GLOBAL: it sits above the bottom nav so it stays
+  // reachable while the session scrolls. Moving it into the active card made it
+  // vanish as soon as that card collapsed, which is exactly when the athlete is
+  // waiting for the next set.
+  const view = document.getElementById('view-workout');
+  if (view && timerBar.parentNode !== view) view.appendChild(timerBar);
 }
 
 function playRestDoneBeep() {
@@ -323,7 +312,10 @@ function _syncRestPauseUi() {
   if (!button) return;
   button.setAttribute('aria-pressed', String(_restPaused));
   button.setAttribute('aria-label', _restPaused ? 'Resume rest timer' : 'Pause rest timer');
-  button.textContent = _restPaused ? '▶ PAUSED' : '⏸ REST';
+  button.title = _restPaused ? 'Resume rest timer' : 'Pause rest timer';
+  // The pill has room for one glyph, not a word: the aria-label carries the
+  // meaning and the amber clock carries the state.
+  button.textContent = _restPaused ? '▶' : '⏸';
 }
 
 /**
@@ -390,12 +382,8 @@ export function dismissRestTimer() {
 
   if (timerBar) {
     timerBar.classList.remove('active', 'rest-warning', 'rest-done');
-    document.getElementById('view-workout')?.appendChild(timerBar);
-    timerBar.style.position = "fixed";
-    timerBar.style.bottom = "85px";
-    timerBar.style.width = "calc(100% - 32px)";
-    timerBar.style.margin = "0";
-    timerBar.style.left = "16px";
+    const view = document.getElementById('view-workout');
+    if (view && timerBar.parentNode !== view) view.appendChild(timerBar);
   }
   if (clockDisplay) {
     const m = Math.floor(_restDuration / 60);

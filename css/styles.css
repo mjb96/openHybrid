@@ -1532,21 +1532,6 @@ input[type="checkbox"].gym-check:checked ~ .gym-check-icon { opacity: 1; }
 }
 .global-timer-bar.active  { display: flex; }
 
-.session-timer-bar {
-  background: var(--bg-card);
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  padding: 14px var(--space-4);
-  border-radius: var(--radius-lg);
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-  display: none;
-}
-.session-timer-bar.active { display: flex; }
-
-.timer-txt   { font-size: var(--text-lg); font-weight: 700; color: #a3e635; letter-spacing: 0.02em; }
-.timer-clock { font-size: var(--text-2xl); font-weight: 800; font-family: monospace; color: var(--text-white); }
-
 
 /* --- 6g. Analytics & Drill-Down Views --- */
 
@@ -5343,12 +5328,6 @@ html[data-theme="light"] .home-week-progress__track { background: rgba(0,0,0,0.1
   border-bottom-color: var(--border-default) !important;
 }
 
-/* --- Session timer bar upgrade --- */
-.session-timer-bar {
-  background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06)) !important;
-  border: 1px solid rgba(16,185,129,0.25) !important;
-  border-radius: var(--radius-xl) !important;
-}
 .global-timer-bar {
   background: linear-gradient(135deg, rgba(34,211,238,0.10), rgba(34,211,238,0.04)) !important;
   border: 1px solid rgba(34,211,238,0.22) !important;
@@ -5558,12 +5537,6 @@ html[data-theme="light"] .cockpit-exercise.completed {
   border-color: rgba(16,185,129,0.18) !important;
 }
 
-/* --- Session timer bar --- */
-html[data-theme="light"] .session-timer-bar {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.04)) !important;
-  border: 1px solid rgba(16,185,129,0.22) !important;
-}
-
 /* Global rest timer stays dark per existing rule — no change needed */
 
 /* --- Run cockpit card --- */
@@ -5699,14 +5672,6 @@ html[data-theme="light"] .rest-decompression-banner {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.10);
   color: rgba(0, 0, 0, 0.55);
-}
-
-/* Session timer bar text (lime green "SESSION ACTIVE" on light bg) */
-html[data-theme="light"] .timer-txt {
-  color: #059669;
-}
-html[data-theme="light"] .timer-clock {
-  color: #0f172a;
 }
 
 /* Rest timer — adj/skip buttons */
@@ -8591,14 +8556,6 @@ html[data-theme="light"] .run-notes-input:focus {
    24. LIGHT MODE — session/global timer bars
    -------------------------------------------------------------------------- */
 
-html[data-theme="light"] .session-timer-bar {
-  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.03)) !important;
-  border-color: rgba(16,185,129,0.22) !important;
-}
-
-html[data-theme="light"] .timer-txt   { color: #059669 !important; }
-html[data-theme="light"] .timer-clock { color: #0f172a !important; }
-
 html[data-theme="light"] .global-timer-bar {
   background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(34,211,238,0.03)) !important;
   border-color: rgba(34,211,238,0.22) !important;
@@ -9672,7 +9629,7 @@ input[type="checkbox"].gym-check {
   background: var(--surface-2, rgba(255,255,255,.04));
 }
 .cockpit-active-head[hidden] { display: none; }
-.cockpit-active-head__stats { display: flex; align-items: center; gap: 18px; min-width: 0; }
+.cockpit-active-head__stats { display: flex; align-items: center; gap: 14px; min-width: 0; }
 .cockpit-active-head__stats span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cockpit-active-head__stats b {
   color: var(--text-primary, #f8fafc);
@@ -9688,6 +9645,10 @@ input[type="checkbox"].gym-check {
   letter-spacing: .1em;
   text-transform: uppercase;
 }
+/* The session clock lives with the other stats. It used to be a separate
+   full-width "SESSION ACTIVE" bar, which pushed the first working set below the
+   fold on a 390px phone for no information gain. */
+.cockpit-active-head__clock b { font-variant-numeric: tabular-nums; }
 .cockpit-active-head__finish {
   flex: 0 0 auto;
   min-height: 44px;
@@ -9750,8 +9711,21 @@ input[type="checkbox"].gym-check {
 .cockpit-session-active #cockpitSessionOutline,
 .cockpit-session-active #cockpitScheduleContext,
 .cockpit-session-active #cockpitScoreHook { display: none !important; }
-.cockpit-active-sticky .subview-back-btn { margin: 0 0 6px; }
-.cockpit-session-active .cockpit-exercise { scroll-margin-top: 245px; }
+/* Back, stats and Finish share ONE band while a session runs. Pre-session the
+   head is hidden and the back control keeps its full label. */
+.cockpit-active-top { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+.cockpit-active-sticky .subview-back-btn { margin: 0; flex: 0 0 auto; }
+.cockpit-session-active .cockpit-active-top .cockpit-active-head { flex: 1 1 auto; margin: 0; }
+.cockpit-session-active .cockpit-active-sticky .subview-back-label { display: none; }
+.cockpit-session-active .cockpit-active-sticky .subview-back-btn {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+.cockpit-session-active .cockpit-exercise { scroll-margin-top: 132px; }
 
 html[data-theme="light"] .cockpit-session-active .cockpit-active-sticky { background: var(--bg-body, #f2f2f7); box-shadow: 0 10px 18px rgba(15,23,42,.08); }
 html[data-theme="light"] .cockpit-active-head { background: rgba(0,0,0,.02); border-color: rgba(0,0,0,.08); }
