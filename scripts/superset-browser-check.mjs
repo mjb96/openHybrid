@@ -102,6 +102,13 @@ const groupNames = (page) => page.evaluate(() => [...document.querySelectorAll('
 const timerActive = (page) => page.evaluate(() => !!document.getElementById('cockpitTimerBar')?.classList.contains('active'));
 const timerOwner = (page) => page.evaluate(() => document.getElementById('cockpitTimerBar')
   ?.closest('.cockpit-exercise')?.getAttribute('data-liftname') || '');
+// The persisted rest snapshot carries the exact resolved duration, so the
+// assertion is not a race with a ticking clock.
+const restDuration = (page) => page.evaluate(() => {
+  const raw = localStorage.getItem('hybrid_restTimer_v1');
+  if (!raw) return 0;
+  try { return Number(JSON.parse(raw).duration) || 0; } catch { return 0; }
+});
 
 async function openPanel(page, liftName) {
   await page.evaluate((name) => {
@@ -184,6 +191,7 @@ try {
   ok(JSON.stringify(names) === JSON.stringify(initialOrder.slice(0, 3)), 'members render in liftOrder, not object-key order');
   const header = await page.evaluate(() => document.querySelector('.superset-group-header')?.innerText || '');
   ok(/3 exercises · rest after the last/i.test(header), `the header explains the group (${header.replace(/\s+/g, ' ').trim()})`);
+  ok(/· 0 of 3 done/.test(header), `the header progress is separated (${header.replace(/\s+/g, ' ').trim()})`);
   const ssLabels = await page.evaluate(() => [...document.querySelectorAll('.superset-group .btn-ss-link')].map((button) => button.textContent.trim()));
   ok(ssLabels.every((label) => label === 'SS A · 3'), `each member's SS button carries the count (${ssLabels.join(', ')})`);
   const connectors = await page.evaluate(() => [...document.querySelectorAll('.superset-group .superset-connector')].map((el) => el.textContent.trim()));
@@ -259,6 +267,49 @@ try {
   ok(errors.length === 0, errors.length ? `browser errors: ${errors.join(' | ')}` : 'no browser errors');
 
   await context.close();
+
+  // ---- one governing duration, whichever member is ticked last -------------
+  // Bench (180 s compound) + Bicep Curl (90 s isolation) must both produce the
+  // same group rest. The old timer asked only the ticked member, so the pair
+  // rested 180 s or 90 s depending on tick order.
+  const durations = {};
+  for (const [firstLift, secondLift] of [['Bench Press', 'Bicep Curl'], ['Bicep Curl', 'Bench Press']]) {
+    const orderLabel = `${firstLift} → ${secondLift}`;
+    const orderContext = await createBrowserContext(browser, {
+      viewport: { width: 390, height: 844 }, timezoneId: TZ, colorScheme: 'dark',
+    });
+    await orderContext.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(fixture)]);
+    const orderPage = await orderContext.newPage();
+    const orderErrors = [];
+    orderPage.on('pageerror', (error) => orderErrors.push(error.message));
+    await orderPage.goto(BASE, { waitUntil: 'networkidle' });
+    await enterCockpit(orderPage, { day: DAY });
+
+    await openPanel(orderPage, firstLift);
+    ok(await clickPanel(orderPage, 'link-superset', secondLift), `${orderLabel}: the pair forms`);
+    await orderPage.waitForSelector('.superset-group');
+    // Expand the last member so the moved rest bar has a real home to attach to.
+    await orderPage.evaluate((name) => {
+      const card = [...document.querySelectorAll('.cockpit-exercise')]
+        .find((candidate) => candidate.getAttribute('data-liftname') === name);
+      if (card?.classList.contains('collapsed')) card.querySelector('.cockpit-header-clickzone')?.click();
+    }, secondLift);
+    await orderPage.waitForTimeout(150);
+    await tickFirstSet(orderPage, firstLift);
+    ok(!await timerActive(orderPage), `${orderLabel}: the first member does not rest while the second is behind`);
+    await tickFirstSet(orderPage, secondLift);
+    await orderPage.waitForTimeout(300);
+    ok(await timerActive(orderPage), `${orderLabel}: the last member starts the group rest`);
+    const duration = await restDuration(orderPage);
+    durations[orderLabel] = duration;
+    ok(duration === 180, `${orderLabel}: the group rest is the compound 180 s, found ${duration}`);
+    const owner = await timerOwner(orderPage);
+    ok(owner === secondLift, `${orderLabel}: the rest bar follows the last member (owner ${owner || 'none'})`);
+    ok(orderErrors.length === 0, orderErrors.length ? `${orderLabel}: browser errors: ${orderErrors.join(' | ')}` : `${orderLabel}: no browser errors`);
+    await orderContext.close();
+  }
+  ok(durations['Bench Press → Bicep Curl'] === durations['Bicep Curl → Bench Press'],
+    `both tick orders use the same governing duration (${durations['Bench Press → Bicep Curl']} s vs ${durations['Bicep Curl → Bench Press']} s)`);
 } finally {
   await browser.close();
   await new Promise((resolve) => server.close(resolve));

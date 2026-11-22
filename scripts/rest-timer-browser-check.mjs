@@ -262,6 +262,67 @@ try {
     if (!(drop.weight < 60)) fail(`${tag}: the seeded drop row (${drop.weight}) is not lighter than the source set`);
     if (drop.pill !== 'D' || drop.label !== 'D') fail(`${tag}: the seeded row is not marked as a drop set (${JSON.stringify(drop)})`);
 
+    // ---- a drop row never starts a rest / advances a round -----------------
+    // Global rule (not just circuits): a drop is part of the set just done.
+    const dropRow = loggedCard.locator('.cockpit-set-row.type-dropset');
+    await dropRow.locator('.gym-check').click();
+    await page.waitForTimeout(350);
+    let dropState = await readTimer(page);
+    if (dropState.active) fail(`${tag}: ticking a drop row started a rest`);
+
+    // Untick so the circuit round test can use the same row from a clean state.
+    await dropRow.locator('.gym-check').click();
+    await page.waitForTimeout(200);
+
+    const pair = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('.cockpit-exercise')];
+      const first = cards.find((card) => card.classList.contains('has-logged-work'));
+      const second = cards.find((card) => card !== first && card.getAttribute('data-liftname'));
+      return {
+        first: first?.getAttribute('data-liftname') || '',
+        second: second?.getAttribute('data-liftname') || '',
+      };
+    });
+    if (!pair.first || !pair.second) {
+      fail(`${tag}: could not find two exercises to form a circuit`);
+    } else {
+      await page.evaluate((name) => {
+        const card = [...document.querySelectorAll('.cockpit-exercise')]
+          .find((candidate) => candidate.getAttribute('data-liftname') === name);
+        card?.querySelector('[data-action="show-ss-panel"]')?.click();
+      }, pair.first);
+      await page.waitForSelector('.ss-link-panel');
+      const joined = await page.evaluate((partner) => {
+        const button = [...document.querySelectorAll('.ss-link-panel [data-action="link-superset"]')]
+          .find((candidate) => candidate.getAttribute('data-partner') === partner);
+        if (!button) return false;
+        button.click();
+        return true;
+      }, pair.second);
+      if (!joined) fail(`${tag}: the circuit panel did not offer the partner`);
+      await page.waitForSelector('.superset-group');
+      await page.waitForTimeout(250);
+
+      const progressBefore = await page.evaluate(() => document.querySelector('.superset-group-progress')?.textContent?.trim() || '');
+      await page.evaluate((name) => {
+        const card = [...document.querySelectorAll('.cockpit-exercise')]
+          .find((candidate) => candidate.getAttribute('data-liftname') === name);
+        card?.querySelector('.cockpit-set-row.type-dropset .gym-check')?.click();
+      }, pair.first);
+      await page.waitForTimeout(400);
+      const circuitDrop = await page.evaluate(() => ({
+        active: !!document.getElementById('cockpitTimerBar')?.classList.contains('active'),
+        complete: !!document.querySelector('.superset-group')?.classList.contains('is-complete'),
+        progress: document.querySelector('.superset-group-progress')?.textContent?.trim() || '',
+      }));
+      console.log(`${tag} drop-in-circuit:`, JSON.stringify({ progressBefore, ...circuitDrop }));
+      if (circuitDrop.active) fail(`${tag}: ticking a drop row in a circuit started a rest`);
+      if (circuitDrop.complete) fail(`${tag}: a drop row marked the circuit complete`);
+      if (circuitDrop.progress !== progressBefore) {
+        fail(`${tag}: a drop row advanced the circuit round (${progressBefore} -> ${circuitDrop.progress})`);
+      }
+    }
+
     if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
       fail(`${tag}: page-level horizontal overflow`);
     }

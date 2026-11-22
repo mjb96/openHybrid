@@ -514,6 +514,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   both surfaces. `shareImageCanvas` (pr-share.js) is the single
   navigator.share → download path for every card; run distance/pace formatting
   lives in `js/workout/run-units.js` so the recap and card cannot drift.
+- Circuits / supersets: `js/workout/superset.js` is the pure group model —
+  same-day lifts sharing a non-empty `liftMeta[day][lift].groupId`, rendered in
+  `liftOrder`, with A…Z then AA…ZZ ids and one **group rest** resolved through
+  `js/workout/rest-duration.js` (longest member wins; per-set rest still wins
+  outright). Warm-up ticks keep the warm-up tier; drop rows never start a rest
+  or advance a round. `prescriptions[day][lift].groupId` carries a circuit
+  through routines and copies. A lone tag is pruned on read and on last-set
+  removal (Undo snapshots liftMeta).
 - Bands do TWO opposite jobs (`js/workout/load-mode.js`): on a bodyweight movement a
   band ASSISTS (`w = bodyweight − band`, `loadMode: 'assisted'`); on anything else the
   band IS the load (`w = band`, `loadMode: 'banded'`). `bandRole()` decides from the

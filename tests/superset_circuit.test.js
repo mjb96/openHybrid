@@ -12,9 +12,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  colorForGroupId, detachMember, isGroupId, membersFor, membersInOrder, nextGroupId,
-  pruneSingleMemberGroups, resolveJoin, roundState, shouldRestAfterSet,
+  colorForGroupId, detachMember, groupRestDuration, isGroupId, membersFor, membersInOrder,
+  nextGroupId, pruneSingleMemberGroups, resolveJoin, roundState, shouldRestAfterSet,
 } from '../js/workout/superset.js';
+import { applySetRemoval, restoreSetRemoval } from '../js/workout/set-plan.js';
 import { buildRoutineFromSession, routineSourceWeek } from '../js/routines/model.js';
 import { createOneOffStrengthSession } from '../js/workout/one-off-session.js';
 import { isValidRoutine, sanitizeImportedState } from '../js/state/import-validate.js';
@@ -69,6 +70,20 @@ test('a stale tag on a lift with no rows is not a member and cannot block rest',
   assert.equal(shouldRestAfterSet(week, 'mon', 'Bench', { setIndex: 0 }), true);
 });
 
+test('a zero-working-row member is excluded from the circuit and its denominator', () => {
+  const week = circuitWeek();
+  week.lifts.mon.Bench = [{ w: '20', r: '10', c: true, type: 'W' }];
+  assert.deepEqual(membersFor(week, 'mon', 'Row'), ['Row', 'Curl']);
+  const state = roundState(week, 'mon', 'Row', { orderedNames: week.liftOrder.mon });
+  assert.equal(state.members.length, 2, 'the warm-up-only lift is not counted as an exercise');
+  assert.equal(state.complete, false);
+  tick(week, 'Row', 0); tick(week, 'Row', 1); tick(week, 'Row', 2);
+  tick(week, 'Curl', 0); tick(week, 'Curl', 1); tick(week, 'Curl', 2);
+  const done = roundState(week, 'mon', 'Row', { orderedNames: week.liftOrder.mon });
+  assert.equal(done.doneMembers, 2);
+  assert.equal(done.complete, true, 'zero-total members cannot hold the group open');
+});
+
 // ── Joining / removing ────────────────────────────────────────────────────────
 
 test('joining an existing circuit keeps its letter instead of re-lettering a partner', () => {
@@ -116,6 +131,30 @@ test('pruning drops a tag with no partner and leaves other liftMeta fields alone
   pruneSingleMemberGroups(meta);
   assert.equal(meta.Bench.groupId, undefined);
   assert.equal(meta.Bench.autoRamp, true);
+});
+
+test('deleting a partner\'s last set prunes the surviving tag, and Undo restores both', () => {
+  const week = circuitWeek();
+  week.liftMeta.mon.Bench.autoRamp = true;
+  week.liftMeta.mon.Curl.origin = 'swap';
+  // Remove every Bench row; the lift itself goes, leaving Row/Curl in A.
+  while (week.lifts.mon.Bench?.length) applySetRemoval(week, 'mon', 'Bench', 0);
+  assert.equal(week.liftMeta.mon.Bench.groupId, undefined, 'the deleted lift loses its own tag');
+  assert.equal(week.liftMeta.mon.Row.groupId, 'A');
+  assert.equal(week.liftMeta.mon.Curl.groupId, 'A');
+
+  // Now remove Row; only Curl would remain, so its stale tag must go.
+  let last = null;
+  while (week.lifts.mon.Row?.length) last = applySetRemoval(week, 'mon', 'Row', 0);
+  assert.equal(week.liftMeta.mon.Row.groupId, undefined);
+  assert.equal(week.liftMeta.mon.Curl.groupId, undefined, 'a lone survivor is not a circuit');
+
+  // Undo the final deletion: the lift AND the partner tag pruning removed.
+  restoreSetRemoval(week, 'mon', 'Row', last);
+  assert.equal(week.lifts.mon.Row.length, 1);
+  assert.equal(week.liftMeta.mon.Row.groupId, 'A');
+  assert.equal(week.liftMeta.mon.Curl.groupId, 'A', 'Undo restores the partner tag pruning removed');
+  assert.equal(week.liftMeta.mon.Curl.origin, 'swap', 'other meta is preserved');
 });
 
 // ── Ids and colours ───────────────────────────────────────────────────────────
@@ -213,6 +252,63 @@ test('no group and a lone member keep the pre-circuit behaviour', () => {
   assert.equal(shouldRestAfterSet(week, 'mon', 'Bench', { setIndex: 0 }), true);
 });
 
+test('one group rest duration: the longest member wins in either tick order', () => {
+  const week = circuitWeek();
+  // Bench is a 180 s compound; Curl is a 90 s isolation. The group is 180
+  // whichever one was ticked last — that was the reported defect.
+  const benchFirst = groupRestDuration(week, 'mon', 'Bench', { setIndex: 0, set: week.lifts.mon.Bench[0] });
+  tick(week, 'Bench', 0);
+  const curlSecond = groupRestDuration(week, 'mon', 'Curl', { setIndex: 0, set: week.lifts.mon.Curl[0] });
+  assert.equal(benchFirst, 180);
+  assert.equal(curlSecond, 180);
+
+  const reverseWeek = circuitWeek();
+  const curlFirst = groupRestDuration(reverseWeek, 'mon', 'Curl', { setIndex: 0, set: reverseWeek.lifts.mon.Curl[0] });
+  tick(reverseWeek, 'Curl', 0);
+  const benchSecond = groupRestDuration(reverseWeek, 'mon', 'Bench', { setIndex: 0, set: reverseWeek.lifts.mon.Bench[0] });
+  assert.equal(curlFirst, 180);
+  assert.equal(benchSecond, 180);
+});
+
+test('group duration keeps the full precedence: per-set > plan > override > tier + RPE', () => {
+  const week = circuitWeek();
+  // Plan rest on a member outranks the other member's tier.
+  const plan = groupRestDuration(week, 'mon', 'Curl', {
+    setIndex: 0, set: week.lifts.mon.Curl[0], planRestFor: (name) => (name === 'Row' ? 240 : null),
+  });
+  assert.equal(plan, 240);
+  // An exercise override can dominate the group too.
+  const override = groupRestDuration(week, 'mon', 'Bench', {
+    setIndex: 0, set: week.lifts.mon.Bench[0], restOverrides: { Curl: 300 },
+  });
+  assert.equal(override, 300);
+  // The ticked set's explicit per-set rest is the athlete's choice for this set
+  // and is not inflated by a partner's longer default.
+  const explicit = groupRestDuration(week, 'mon', 'Curl', {
+    setIndex: 0, set: { ...week.lifts.mon.Curl[0], restSec: 60 },
+  });
+  assert.equal(explicit, 60);
+  const off = groupRestDuration(week, 'mon', 'Curl', {
+    setIndex: 0, set: { ...week.lifts.mon.Curl[0], restSec: 0 },
+  });
+  assert.equal(off, 0);
+  // Warm-up ticks are not a round and keep the warm-up tier.
+  const warm = groupRestDuration(week, 'mon', 'Bench', {
+    setIndex: 0, set: { ...week.lifts.mon.Bench[0], type: 'W' },
+  });
+  assert.equal(warm, 45);
+});
+
+test('group duration includes the RPE bonus from the ticked set', () => {
+  const week = circuitWeek();
+  assert.equal(groupRestDuration(week, 'mon', 'Bench', {
+    setIndex: 0, set: week.lifts.mon.Bench[0], setRpe: 9,
+  }), 210, '180 s compound + 30 s at RPE 9');
+  assert.equal(groupRestDuration(week, 'mon', 'Curl', {
+    setIndex: 0, set: week.lifts.mon.Curl[0], setRpe: 8,
+  }), 180, 'the compound partner still governs the group');
+});
+
 test('roundState derives per-member progress and group completion', () => {
   const week = circuitWeek();
   let state = roundState(week, 'mon', 'Row', { orderedNames: week.liftOrder.mon });
@@ -280,19 +376,23 @@ test('a routine keeps circuit membership and a one-off restores it', () => {
   assert.equal(week.liftMeta[created.day].Later, undefined);
 });
 
-test('Copy/Repeat carries pairs, and a narrowed copy drops a one-member tag', () => {
+test('Copy/Repeat carries only circuits, never the source session’s private meta', () => {
   const saved = { weeks: {}, settings: {} };
   const source = sessionWeek();
   delete source.lifts.mon.Curl; // the partner is no longer in this session
+  source.liftMeta.mon.Bench.autoRamp = true;
+  source.liftMeta.mon.Bench.plannedSets = 2;
+  source.liftMeta.mon.Bench.origin = 'swap';
   const created = createOneOffStrengthSession(saved, {
     kind: 'copy', title: 'Copy', sourceWeek: source, sourceDay: 'mon',
     now: new Date('2026-11-18T12:00:00Z'), tz: 'UTC',
   });
   const week = saved.weeks[created.key];
-  assert.equal(week.liftMeta[created.day].Bench.groupId, 'A');
+  assert.deepEqual(week.liftMeta[created.day].Bench, { groupId: 'A' },
+    'only circuit membership travels; plannedSets/autoRamp/origin belong to the source');
   assert.equal(week.liftMeta[created.day].Row.groupId, 'A');
   assert.equal(week.liftMeta[created.day].Curl, undefined, 'a deleted lift has no meta');
-  assert.deepEqual(week.liftMeta[created.day].Later, {}, 'a live lift keeps its (empty) session meta');
+  assert.equal(week.liftMeta[created.day].Later, undefined, 'a lift with no circuit has no meta');
 
   const narrowed = sessionWeek();
   delete narrowed.lifts.mon.Row;
@@ -302,19 +402,21 @@ test('Copy/Repeat carries pairs, and a narrowed copy drops a one-member tag', ()
     'a routine cannot persist a lone circuit member');
 });
 
-test('routine import rejects a malformed group id', () => {
+test('routine import drops a malformed optional group id but keeps the routine', () => {
   const routine = buildRoutineFromSession({ settings: {} }, sessionWeek(), 'mon', { name: 'Circuits' });
   assert.equal(isValidRoutine(routine), true);
 
   const bad = JSON.parse(JSON.stringify(routine));
   bad.prescriptions.mon.Bench.groupId = '[';
-  assert.equal(isValidRoutine(bad), false);
-  const badNumber = JSON.parse(JSON.stringify(routine));
-  badNumber.prescriptions.mon.Row.groupId = 1;
-  assert.equal(isValidRoutine(badNumber), false);
-  const long = JSON.parse(JSON.stringify(routine));
-  long.prescriptions.mon.Bench.groupId = 'AAA';
-  assert.equal(isValidRoutine(long), false);
+  bad.prescriptions.mon.Row.groupId = 1;
+  bad.prescriptions.mon.Curl.groupId = 'AAA';
+  assert.equal(isValidRoutine(bad), true, 'a bad tag is data to repair, not a reason to drop the routine');
 
-  assert.deepEqual(sanitizeImportedState({ routines: [routine, bad] }).routines.map((r) => r.id), [routine.id]);
+  const sanitized = sanitizeImportedState({ routines: [routine, bad] });
+  assert.deepEqual(sanitized.routines.map((r) => r.id), [routine.id, bad.id]);
+  assert.equal(sanitized.routines[1].prescriptions.mon.Bench.groupId, undefined);
+  assert.equal(sanitized.routines[1].prescriptions.mon.Row.groupId, undefined);
+  assert.equal(sanitized.routines[1].prescriptions.mon.Curl.groupId, undefined);
+  assert.equal(sanitized.routines[1].prescriptions.mon.Bench.sets, 2, 'the rest of the routine survives');
+  assert.equal(bad.prescriptions.mon.Bench.groupId, '[', 'the imported object is not mutated');
 });

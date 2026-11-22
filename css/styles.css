@@ -2722,8 +2722,9 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
 }
 .superset-group.is-dragging { opacity: 0.45; }
 /* Derived from the sets themselves, never a stored flag: a finished circuit
-   keeps its last member's RPE pad reachable but reads as done. */
-.superset-group.is-complete { opacity: 0.78; }
+   keeps its last member's RPE pad reachable but reads as done. Never dim the
+   text — 0.78 opacity pushed muted labels below AA contrast. */
+.superset-group.is-complete { border-left-width: 4px; }
 .superset-group.is-complete .superset-badge::before { content: '✓ '; }
 .superset-group-header {
   display: flex;

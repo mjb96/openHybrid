@@ -22,7 +22,7 @@ import {
 } from './set-utils.js';
 import { effectiveSetMode } from './workout/set-shape.js';
 import { handleSetSheetAction, openSetSheet } from './workout/set-sheet.js';
-import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession } from './timers.js';
+import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession, getRestTiers } from './timers.js';
 import { mountExerciseDragAndDropSystems } from './dragdrop.js';
 import { showToast, saveNewCustomExerciseToLibrary } from './state.js';
 import { escapeHtml } from './util.js';
@@ -32,8 +32,8 @@ import { plannedSetsForLift } from './workout/set-plan.js';
 import { addWarmupRamp, rampSetsFor } from './workout/warmup-ramp.js';
 import { buildSessionReview } from './workout/session-review.js';
 import {
-  colorForGroupId, detachMember, membersInOrder, resolveJoin,
-  roundState, shouldRestAfterSet,
+  colorForGroupId, detachMember, groupRestDuration, membersInOrder,
+  normaliseGroupId, resolveJoin, roundState, shouldRestAfterSet,
 } from './workout/superset.js';
 import { activeSessionLiftNames, applyExerciseSwap, neighborDay, pickInheritedSet } from './workout-order.js';
 import { getSubstitutions } from './workout/substitutions.js';
@@ -833,10 +833,12 @@ export function renderWorkout() {
   /** @type {Record<string, string[]>} */
   const groupMap = {};
   for (const ln of orderedNames) {
-    const gId = liftMeta[ln]?.groupId;
+    // A malformed legacy id (the old allocator could reach `[`) is not a
+    // circuit: it renders as an ungrouped card and the panel starts a fresh A.
+    const gId = normaliseGroupId(liftMeta[ln]?.groupId);
     if (!gId) continue;
-    if (!groupMap[gId]) groupMap[gId] = [];
-    if (!groupMap[gId].includes(ln)) groupMap[gId].push(ln);
+    const members = membersInOrder(weekData, selectedDay, ln, orderedNames);
+    if (members.length > 0) groupMap[gId] = members;
   }
 
   const renderedLifts = new Set();
@@ -847,7 +849,7 @@ export function renderWorkout() {
     const setsArr = loggedLiftsData[liftName];
     if (!Array.isArray(setsArr)) continue;
 
-    const groupId     = liftMeta[liftName]?.groupId;
+    const groupId     = normaliseGroupId(liftMeta[liftName]?.groupId);
     const groupMembers = groupId && groupMap[groupId]?.length > 1 ? groupMap[groupId] : null;
 
     if (groupMembers) {
@@ -860,7 +862,7 @@ export function renderWorkout() {
 
       const hdr = document.createElement('div');
       hdr.className = 'superset-group-header';
-      hdr.innerHTML = `<span class="superset-badge">SS ${escapeHtml(String(groupId))}</span><span class="superset-group-meta">· ${groupMembers.length} exercises · rest after the last</span><span class="superset-group-progress">${circuit ? `${circuit.doneMembers} of ${circuit.members.length} done` : ''}</span>`;
+      hdr.innerHTML = `<span class="superset-badge">SS ${escapeHtml(String(groupId))}</span><span class="superset-group-meta">· ${groupMembers.length} exercises · rest after the last</span><span class="superset-group-progress">${circuit ? `· ${circuit.doneMembers} of ${circuit.members.length} done` : ''}</span>`;
       wrapper.appendChild(hdr);
 
       groupMembers.forEach((memberLift, mIdx) => {
@@ -869,8 +871,16 @@ export function renderWorkout() {
         const mCompleted = memberSets.length > 0 && memberSets.every(isCompletedSet);
 
         let mCollapsed = true;
-        if (previouslyExpandedLift === memberLift) mCollapsed = false;
-        else if (isFirstAccordionField && !mCompleted) { mCollapsed = false; isFirstAccordionField = false; }
+        if (previouslyExpandedLift === memberLift) {
+          mCollapsed = false;
+          // The explicitly open member owns the accordion. Without clearing the
+          // flag, a later group member matches `previouslyExpandedLift` while
+          // the FIRST member also auto-opens — two cards open at once.
+          isFirstAccordionField = false;
+        } else if (isFirstAccordionField && !mCompleted) {
+          mCollapsed = false;
+          isFirstAccordionField = false;
+        }
 
         const card = _buildExerciseCardEl(
           memberLift, loggedLiftsData, weekData, wk, selectedDay, appState, homeBlueprint,
@@ -1050,7 +1060,51 @@ function detectSetPR(parentRow, liftName, setIndex, w, r, appState, weekKey, day
   }
 }
 
-export function executeOneTapQuickLog(labelNode, liftName, sIdx) {
+/**
+ * Start (or explicitly suppress) the rest that follows one ticked set.
+ *
+ * A circuit gets ONE governing duration resolved across every member, so a
+ * Bench/Curl round rests the same 180 s whichever member was ticked last.
+ * Ungrouped lifts keep the exact single-set precedence path.
+ *
+ * @param {any} appState
+ * @param {string} weekKey
+ * @param {string} day
+ * @param {string} liftName
+ * @param {number} setIndex
+ * @param {any} set
+ * @param {string} setType
+ * @param {number|string|null|undefined} planRest
+ * @param {number|string|null|undefined} setRpe
+ */
+function _startRestAfterTickedSet(appState, weekKey, day, liftName, setIndex, set, setType, planRest, setRpe) {
+  if (!liftName || !Number.isInteger(setIndex) || setIndex < 0) return;
+  const weekData = appState?.weeks?.[weekKey];
+  if (!weekData) return;
+  if (!shouldRestAfterSet(weekData, day, liftName, { setIndex, set })) return;
+
+  const groupDuration = groupRestDuration(weekData, day, liftName, {
+    setIndex,
+    set,
+    setRpe,
+    restTiers: getRestTiers(),
+    restOverrides: appState.settings?.restOverrides || {},
+    planRestFor: (name) => getProgramById(appState.activeProgramId)
+      ?.prescriptions?.[day]?.[name]?.restSec,
+  });
+
+  if (groupDuration == null) {
+    triggerRestTimerEngine(liftName, setRpe, setType, planRest, set?.restSec);
+    return;
+  }
+  if (groupDuration > 0) {
+    triggerRestTimerEngine(liftName, setRpe, setType, planRest, null, groupDuration);
+  } else {
+    dismissRestTimer();
+  }
+}
+
+export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
   if (!labelNode) return;
   const appState = _getState();
   const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
@@ -1162,12 +1216,10 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx) {
     const stored = appState.weeks[wk].lifts?.[selectedDay]?.[liftName]?.[sIdx] || {};
     const setType = stored.type || '';
     const planRest = getProgramById(appState.activeProgramId)?.prescriptions?.[selectedDay]?.[liftName]?.restSec;
-    // A circuit rests after its LAST member, not after every member. The ticked
-    // index is passed explicitly because the manual-tick path commits the DOM
-    // after this point; the quick-log path has already written the set.
-    const restWeek = appState.weeks[wk];
-    if (shouldRestAfterSet(restWeek, selectedDay, liftName, { setIndex: sIdx, set: stored })) {
-      triggerRestTimerEngine(liftName, setRpe, setType, planRest, stored.restSec);
+    // A circuit rests once after its LAST member, with one governing duration.
+    // `suppressRest` is used by Log all → so a batch starts exactly one rest.
+    if (options?.suppressRest !== true) {
+      _startRestAfterTickedSet(appState, wk, selectedDay, liftName, sIdx, stored, setType, planRest, setRpe);
     }
   } catch(e) { console.warn(e); }
 
@@ -1219,12 +1271,37 @@ export function logAllAtTarget(liftName) {
   const card = document.querySelector(`.cockpit-exercise[data-liftname="${(window.CSS && CSS.escape) ? CSS.escape(liftName) : liftName}"]`);
   if (!card) return;
   let logged = 0;
+  // A batch must not start and restart a group's rest on every row. Log quietly,
+  // then start at most ONE rest from the last rest-worthy row (skip drop rows:
+  // they never start a rest and must not hide the group rest for the working
+  // row before them).
+  let lastRestIndex = null;
   Array.from(card.querySelectorAll('.cockpit-set-row')).forEach(row => {
     if (row.classList.contains('is-complete') || row.classList.contains('type-warmup')) return;
     const sIdx = parseInt(row.getAttribute('data-set-index'), 10);
-    if (!isNaN(sIdx)) { executeOneTapQuickLog(row, liftName, sIdx); logged++; }
+    if (!isNaN(sIdx)) {
+      executeOneTapQuickLog(row, liftName, sIdx, { suppressRest: true });
+      logged++;
+      if (!row.classList.contains('type-dropset')) lastRestIndex = sIdx;
+    }
   });
-  if (logged > 0) { hapticSuccess(); showToast(`Logged ${logged} set${logged > 1 ? 's' : ''} at target ✓`); }
+  if (logged > 0) {
+    const appState = _getState();
+    const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
+    const wk = activeWorkoutWeekKey(appState);
+    if (lastRestIndex != null) {
+      const stored = appState.weeks?.[wk]?.lifts?.[selectedDay]?.[liftName]?.[lastRestIndex] || {};
+      const gymRpeEl = document.getElementById('sessionGymRpeCockpit');
+      const setRpe = gymRpeEl && gymRpeEl.value ? parseFloat(gymRpeEl.value) : null;
+      const planRest = getProgramById(appState.activeProgramId)?.prescriptions?.[selectedDay]?.[liftName]?.restSec;
+      _startRestAfterTickedSet(
+        appState, wk, selectedDay, liftName, lastRestIndex, stored,
+        stored.type || '', planRest, setRpe,
+      );
+    }
+    hapticSuccess();
+    showToast(`Logged ${logged} set${logged > 1 ? 's' : ''} at target ✓`);
+  }
 }
 
 // Bring the latest exact exercise performance into the current draft without
@@ -1565,11 +1642,8 @@ export function toggleGymCheckLoggingState(checkboxNode) {
       const storedForRest = _appState.weeks[_wk].lifts?.[_selDay]?.[liftName]?.[_sIdx] || {};
       const setType = storedForRest.type || '';
       const planRest = getProgramById(_appState.activeProgramId)?.prescriptions?.[_selDay]?.[liftName]?.restSec;
-      const restWeek = _appState.weeks[_wk];
       const restSet = { ...storedForRest, type: setType };
-      if (shouldRestAfterSet(restWeek, _selDay, liftName, { setIndex: _sIdx, set: restSet })) {
-        triggerRestTimerEngine(liftName, setRpe, setType, planRest, storedForRest.restSec);
-      }
+      _startRestAfterTickedSet(_appState, _wk, _selDay, liftName, _sIdx, restSet, setType, planRest, setRpe);
       // Stamp workout date on first set completion for this day
       if (!_appState.weeks[_wk].dates) _appState.weeks[_wk].dates = {};
       if (!_appState.weeks[_wk].dates[_selDay]) {
@@ -1729,7 +1803,7 @@ function refreshSupersetGroupProgress() {
     const circuit = roundState(weekData, selectedDay, names[0], { orderedNames: names });
     wrapper.classList.toggle('is-complete', !!circuit?.complete);
     const progress = wrapper.querySelector('.superset-group-progress');
-    if (progress && circuit) progress.textContent = `${circuit.doneMembers} of ${circuit.members.length} done`;
+    if (progress && circuit) progress.textContent = `· ${circuit.doneMembers} of ${circuit.members.length} done`;
   });
 }
 
@@ -1785,7 +1859,7 @@ function _dayLiftOrder(weekData, day) {
 }
 
 function _circuitPanelCandidate(candidateName, liftName, myGroupId, dayMeta) {
-  const theirGroup = dayMeta[candidateName]?.groupId || null;
+  const theirGroup = normaliseGroupId(dayMeta[candidateName]?.groupId);
   const crossGroup = !!myGroupId && !!theirGroup && theirGroup !== myGroupId;
   const label = theirGroup ? `Join circuit ${theirGroup}` : `Add ${candidateName}`;
   return `<div class="ss-candidate-row${crossGroup ? ' is-blocked' : ''}">
@@ -1807,7 +1881,7 @@ export function showSupersetLinkPanel(exCard) {
   if (!appState.weeks[wk].liftMeta[selectedDay]) appState.weeks[wk].liftMeta[selectedDay] = {};
   const weekData = appState.weeks[wk];
   const dayMeta = weekData.liftMeta[selectedDay];
-  const myGroupId = dayMeta[liftName]?.groupId || null;
+  const myGroupId = normaliseGroupId(dayMeta[liftName]?.groupId);
   const dayLifts = _dayLiftOrder(weekData, selectedDay);
   const members = myGroupId ? membersInOrder(weekData, selectedDay, liftName, dayLifts) : [];
   const memberSet = new Set(members);
@@ -1915,7 +1989,7 @@ export function unpairSuperset(liftName) {
 
   const dayMeta = appState.weeks?.[wk]?.liftMeta?.[selectedDay];
   if (!dayMeta) return;
-  const groupId = dayMeta[liftName]?.groupId;
+  const groupId = normaliseGroupId(dayMeta[liftName]?.groupId);
   if (!groupId) return;
 
   Object.keys(dayMeta).forEach(n => { if (dayMeta[n]?.groupId === groupId) delete dayMeta[n].groupId; });

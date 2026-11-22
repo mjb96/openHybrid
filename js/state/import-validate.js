@@ -21,6 +21,7 @@
 import {
   MAX_ROUTINE_FOLDERS, MAX_ROUTINE_LIFTS, MAX_ROUTINES, MAX_ROUTINE_SETS,
 } from '../routines/store.js';
+import { isGroupId } from '../workout/superset.js';
 
 const MAX_IMPORT_BYTES = 25 * 1024 * 1024; // whole-file guard (snapshots are well under this)
 const MAX_AVATAR_BYTES = 3 * 1024 * 1024;  // a resized avatar is tens of KB; 3 MB is generous
@@ -62,7 +63,10 @@ export function sanitizeImportedState(state) {
   // a non-array lift list; a non-array collection is emptied, never trusted.
   if (out.routines != null) {
     out.routines = Array.isArray(out.routines)
-      ? out.routines.filter(isValidRoutine).slice(0, MAX_ROUTINES)
+      ? out.routines
+        .filter(isValidRoutine)
+        .slice(0, MAX_ROUTINES)
+        .map(sanitizeRoutineGroupIds)
       : [];
   }
   if (out.libraryFolders != null) {
@@ -191,11 +195,30 @@ function isValidRoutinePrescription(prescription) {
   if (prescription.loadMode != null && !LOAD_MODES.includes(prescription.loadMode)) return false;
   if (prescription.band != null && !BAND_SIZES.includes(prescription.band)) return false;
   if (prescription.bw != null && prescription.bw !== true) return false;
-  // Circuit membership is optional, but a tag that is not A…Z / AA…ZZ would
-  // render as punctuation or a dead group in the cockpit.
-  if (prescription.groupId != null
-    && (typeof prescription.groupId !== 'string' || !/^[A-Z]{1,2}$/.test(prescription.groupId))) return false;
+  // `groupId` is optional and sanitized separately: one malformed circuit tag
+  // must not throw away an otherwise valid routine.
   return true;
+}
+
+/**
+ * Drop malformed circuit tags from a routine WITHOUT mutating the imported
+ * object or rejecting the routine. `isValidRoutine` deliberately ignores the
+ * field, so this is the one place the A…Z / AA…ZZ contract is enforced.
+ * @param {any} routine
+ * @returns {any}
+ */
+function sanitizeRoutineGroupIds(routine) {
+  if (!isRecord(routine?.prescriptions)) return routine;
+  const next = JSON.parse(JSON.stringify(routine));
+  for (const byLift of Object.values(next.prescriptions)) {
+    if (!isRecord(byLift)) continue;
+    for (const prescription of Object.values(byLift)) {
+      if (isRecord(prescription) && prescription.groupId != null && !isGroupId(prescription.groupId)) {
+        delete prescription.groupId;
+      }
+    }
+  }
+  return next;
 }
 
 /**

@@ -17,6 +17,7 @@
 // recreating the module cycle the workout split guard prevents.
 // =============================================================================
 import { isCompletedSet, isWarmupSet } from '../set-utils.js';
+import { DEFAULT_REST_TIERS, resolveRestDuration } from './rest-duration.js';
 
 /** Group ids are A…Z then AA…ZZ. Never punctuation, never a bare number. */
 export const GROUP_ID_RE = /^[A-Z]{1,2}$/;
@@ -139,6 +140,9 @@ function doneRows(sets, tickIndex) {
  * Every live lift on the same day that shares this lift's non-empty groupId.
  * A stale tag on a lift whose rows were deleted is not a member: it cannot
  * render, cannot be trained and must not block rest for the rest of the group.
+ * A lift with zero working rows (warm-ups/drops only) is not a member either —
+ * it would otherwise inflate the header count and sit in the progress
+ * denominator forever, since it has nothing left to finish.
  * @param {any} weekData
  * @param {string} day
  * @param {string} liftName
@@ -151,8 +155,11 @@ export function membersFor(weekData, day, liftName) {
   const dayLifts = weekData?.lifts?.[day];
   return Object.keys(meta || {}).filter((name) => {
     if (normaliseGroupId(meta[name]?.groupId) !== groupId) return false;
-    // When the day's lifts are available, a tag without rows is not a member.
-    return !dayLifts || Array.isArray(dayLifts[name]);
+    // When the day's lifts are available, a tag without trainable rows is not a
+    // member.
+    if (!dayLifts) return true;
+    const sets = dayLifts[name];
+    return Array.isArray(sets) && circuitRows(sets).length > 0;
   });
 }
 
@@ -266,6 +273,98 @@ export function shouldRestAfterSet(weekData, day, liftName, options = {}) {
     if (otherDone < Math.min(doneTicked, otherTotal)) return false;
   }
   return true;
+}
+
+/**
+ * The one rest duration a circuit should use after a tick.
+ *
+ * A circuit's members can have different plans, overrides and movement tiers
+ * (Bench 180 s, Curl 90 s). Asking the timer for the ticked member alone made
+ * the rest depend on which member happened to be last. This resolves every
+ * member through the SAME precedence and takes the longest — enough rest for
+ * the most demanding lift in the round, and stable whichever order the athlete
+ * ticks them in.
+ *
+ * A per-set rest on the ticked row is the athlete's explicit choice for THIS
+ * set and wins outright (including `0` = no timer). A warm-up tick is not a
+ * circuit round, so it falls through to the warm-up tier only.
+ *
+ * @param {any} weekData
+ * @param {string} day
+ * @param {string} liftName
+ * @param {{
+ *   setIndex?: number|null,
+ *   set?: any,
+ *   setRpe?: number|string|null,
+ *   restTiers?: {warmup:number, compound:number, accessory:number, isolation:number},
+ *   restOverrides?: Record<string, number|string>,
+ *   planRestFor?: (name:string) => number|string|null|undefined,
+ *   orderedNames?: string[],
+ * }} [options]
+ * @returns {number|null} governing seconds (0 = no timer), or null when the
+ *   lift is not in a multi-member circuit.
+ */
+export function groupRestDuration(weekData, day, liftName, options = {}) {
+  const sets = weekData?.lifts?.[day]?.[liftName];
+  const index = Number.isInteger(options.setIndex) ? /** @type {number} */ (options.setIndex) : -1;
+  const ticked = options.set && typeof options.set === 'object'
+    ? options.set
+    : (index >= 0 && Array.isArray(sets) ? sets[index] : null);
+  if (!ticked) return null;
+
+  const groupId = normaliseGroupId(weekData?.liftMeta?.[day]?.[liftName]?.groupId);
+  if (!groupId) return null;
+  const members = membersInOrder(weekData, day, liftName, options.orderedNames);
+  if (members.length < 2) return null;
+
+  const restTiers = options.restTiers || DEFAULT_REST_TIERS;
+  const restOverrides = options.restOverrides || {};
+  const planRestFor = typeof options.planRestFor === 'function' ? options.planRestFor : () => null;
+
+  // A drop belongs to the set just done and never starts a rest.
+  if (ticked.type === 'D') return 0;
+
+  // Per-set rest outranks everything. Return it without letting another
+  // member's plan override the athlete's explicit choice for this set.
+  if (ticked.restSec != null && ticked.restSec !== '' && Number.isFinite(Number(ticked.restSec))) {
+    return resolveRestDuration({
+      liftName,
+      setRpe: options.setRpe,
+      planRestSec: planRestFor(liftName),
+      setRestSec: ticked.restSec,
+      restTiers,
+      restOverrides,
+    });
+  }
+
+  // A warm-up tick is not a round: only its own warm-up tier applies.
+  if (isWarmupSet(ticked)) {
+    return resolveRestDuration({
+      liftName,
+      setRpe: options.setRpe,
+      setType: 'W',
+      planRestSec: planRestFor(liftName),
+      restTiers,
+      restOverrides,
+    });
+  }
+
+  let duration = 0;
+  for (const name of members) {
+    const isTicked = name === liftName;
+    duration = Math.max(duration, resolveRestDuration({
+      liftName: name,
+      setRpe: isTicked ? options.setRpe : null,
+      setType: isTicked ? (ticked.type || '') : '',
+      planRestSec: planRestFor(name),
+      // Only the ticked row carries a per-set rest; every other member's
+      // resting need comes from its own plan/override/tier.
+      setRestSec: null,
+      restTiers,
+      restOverrides,
+    }));
+  }
+  return duration;
 }
 
 /**

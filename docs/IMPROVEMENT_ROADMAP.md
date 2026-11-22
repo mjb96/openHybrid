@@ -257,12 +257,16 @@ Features: L3, L9, L10, L12, L13 (see §7).
 4. **Warm-up editor.** Editable percentage/reps rows with insert and delete,
    plate and dumbbell rounding through the existing ramp, and per-lift opt-in.
    `liftMeta[...].autoRamp` still prevents resurrection after a dismissal.
-5. **Rest timer polish.** Per-exercise default, ±15 s adjustments, drop-set
-   suppression, inline timer, alert sound/volume, and the existing reload
-   persistence.
+5. **Rest timer polish (landed).** Per-exercise default, ±15 s adjustments,
+   drop-set suppression, inline timer, alert sound/volume, and the existing
+   reload persistence. Drop suppression is GLOBAL: a `type:'D'` row never
+   starts a rest and never advances a circuit round; a warm-up tick keeps its
+   own tier. Circuit rest uses ONE duration resolved across the group’s
+   members (longest wins) instead of the ticked member’s alone.
 6. **Circuit polish (landed).** Same-day lifts share a `groupId`; the group can
    be a pair or a circuit of three or more. Rest starts after the last member
-   catches up, never after each member. A–F keep their colours and later ids
+   catches up, never after each member, using one governing duration resolved
+   across the group (the longest member wins). A–F keep their colours and later ids
    continue through a wider palette; ids run A…Z then AA/AB. The panel adds,
    removes and unlinks members explicitly, and routines/copied sessions keep
    the membership.
@@ -654,9 +658,32 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,123 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,128 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Superset review fixes: one group rest and edge cases.**
+  - `js/workout/rest-duration.js` now owns the pure precedence
+    (per-set > warm-up tier > AMRAP > plan > override > tier + RPE) extracted
+    from the timer. A circuit resolves ONE governing duration across every
+    member (longest wins) and passes it to the timer once, so a Bench/Curl pair
+    rests 180 s in both tick orders. Ungrouped lifts take the unchanged path.
+  - Drop suppression is documented as GLOBAL and tested in the rest-timer
+    browser check: a `+ Drop` tick starts no rest, marks no circuit complete and
+    leaves the round denominator unchanged.
+  - Zero-working-row lifts are excluded from membership, so a warm-up-only tag
+    can no longer inflate “N exercises” or sit in the progress denominator.
+    Deleting a partner’s last set prunes the survivor’s tag, and the Undo
+    snapshot now carries `liftMeta` so both tags return. Imported routines drop
+    a malformed optional `groupId` instead of the whole routine; copied
+    one-offs carry only `{groupId}`.
+  - Removed the `is-complete` opacity (it dropped muted text below AA) in favour
+    of a wider border plus the badge tick. The header progress keeps its `·`
+    separator after an in-place refresh, and invalid legacy tags render as
+    `SS+` instead of `SS [`.
+  - Validation: 2,128 node tests, typecheck, smoke, precache, rest-timer and
+    superset browser checks, touch-target (SS panel measured), and 45/45 full
+    browser checks. Both circuit tick orders assert the same 180 s duration.
 
 - **2026-11-22 — Supersets become circuits (commit 1).**
   - A circuit is memory, not a stored mode: same-day lifts sharing a non-empty
@@ -678,7 +705,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     copies/repeats; `createOneOffStrengthSession` seeds `liftMeta` from the
     source week (filtered to live lifts, single-member tags pruned). Routine
     import validates `^[A-Z]{1,2}$`.
-  - Validation: 16 new circuit/routine tests (join-not-split, remove-one,
+  - Validation: 17 new circuit/routine tests (join-not-split, remove-one,
     colours, AA ids, uneven/warm-up/drop rounds, routine restore and
     Copy/Repeat), the two existing superset logging contracts, and the new
     `scripts/superset-browser-check.mjs` at 390px: pair → add third → liftOrder
