@@ -663,3 +663,17 @@ html[data-theme="light"] .pg-daycell { background: rgba(15, 23, 42, 0.08); }
 html[data-theme="light"] .pg-daycell.is-run { background: #1d4ed8; }
 html[data-theme="light"] .pg-statrow b { color: #0f172a; }
 html[data-theme="light"] .pg-statrow span { color: #475569; }
+
+/* --------------------------------------------------------- 15. BODY BAND */
+.pg-body__chart { margin-top: 12px; }
+.pg-sites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+.pg-site { display: flex; align-items: baseline; gap: 4px; }
+.pg-site__label { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.pg-site__value { font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pg-site small { font-size: 0.52rem; color: var(--text-secondary); }
+.pg-site__delta { margin-left: auto; font-size: 0.56rem; font-weight: 700; color: var(--text-secondary); }
+.pg-body__fat { margin: 12px 0 0; font-size: 0.68rem; color: var(--text-secondary); }
+.pg-body__fat b { color: var(--text-primary); }
+.pg-body__fat small { font-size: 0.54rem; }
+
+html[data-theme="light"] .pg-site__value { color: #0f172a; }
