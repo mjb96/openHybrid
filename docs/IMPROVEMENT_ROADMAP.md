@@ -357,10 +357,18 @@ what it does not carry.
 
 ### Phase 4 — Organisation
 
-**Status: ACTIVE.** **Goal:** routines become a first-class library, and a good
-session becomes reusable in one action.
+**Status: ACTIVE — routines landed, the routine library remains.** **Goal:**
+routines become a first-class library, and a good session becomes reusable in
+one action.
 
 Features: P11, S5, S6.
+
+Implemented in the routines slice: save a finished History session as a routine
+(`state.routines`, schema v14), list it in Plans → My Plans and Start it as a
+one-off session, and organise routines into ordered folders
+(`state.libraryFolders`) with Undo. What remains is item 4's **routine library**:
+single-routine categories and filters (programme browsing already exists through
+Plans).
 
 1. **Save as routine** from a History detail, building a routine from the
    session's actual exercises, sets and rest. *Landed: History "Save as routine"
@@ -375,7 +383,8 @@ Features: P11, S5, S6.
    files its routines under Unfiled and Undo restores the folder and membership.*
 4. **Routine library** — categories (at home, travel, dumbbells, band,
    cardio/HIIT, gym, bodyweight, suspension), filters, and saving either a whole
-   programme or a single routine.
+   programme or a single routine. *Landed: saving a single routine from History.
+   Remaining: categories and filters for routines.*
 
 **Data rules:** a plan-changing edit snapshots the PLAN only (`days` +
 `weeklyVolModifiers`), never `state.weeks`, so an Undo can never rewrite logged
@@ -636,14 +645,52 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Navigation | Four intent-led destinations — Home, Train, Progress, Plans — with stable legacy route IDs and origin-aware drilldown Back behaviour |
 | Home | One week surface: optional rail, pinned Today decision, inline day recaps with heat map, bodyweight, one insight, quick actions |
 | Training | Planned/one-off strength, running, set logging, timers, swaps, supersets, bodyweight modes, session completion, focused live-run surface |
-| History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share |
-| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
+| History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share, save as routine |
+| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder, routine list with Start and folders |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
+| Quality | 2,104 node tests, typecheck, smoke, precache/workflow gates, 44 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Routines: save, start and organise reusable workouts (six
+  commits).**
+  - `8652ec7` **save** — History's action menu saves a finished strength session
+    as a routine: exercises in order, completed working sets, heaviest working
+    load, rep target, set shape and rest. Completion flags, PR badges, warm-ups,
+    role stamps, effort, notes and gym stats are deliberately dropped. Routines
+    live in root `state.routines` / `state.libraryFolders` (schema v14) and are
+    never programmes: they do not enter `customPrograms`, resolve through
+    `getProgramById`, render as `.prog-card` or write a week/activation field.
+  - `a9ae2e9` **load identity + import validation** — a bodyweight or assisted
+    set keeps no derived weight (`bw`/`band`/`loadMode` survive), a banded set
+    keeps the band as its load, and a legacy dumbbell set records its pair basis
+    so the pair is not re-read as one bell. Export/import validates, bounds and
+    repairs routines and folders; the import preview counts them.
+  - `f1e9505` **list and start** — Plans → My Plans leads with routines; Start
+    copies `routineSourceWeek` into a one-off `session:` week without touching
+    `activeProgramId`, `currentWeek` or the logged program week. Rename and
+    Delete (+ Undo) live in the `•••` menu.
+  - `ee0b5be` **one-tap start** — the one-off is stamped `in_progress`, the
+    session clock is bound and running, and the cockpit opens in active mode
+    through `beginActiveWorkoutSession`; there is no second start path.
+  - `b99875e` **folders** — ordered folder sections plus an Unfiled bucket with
+    one-way membership on `routine.folderId`; create, rename, delete, Move
+    up/down and Move to folder, with Undo that restores the folder and every
+    member's membership.
+  - `2f1f0bc` **review fixes** — display-order normalisation, a 60-lift /
+    500-routine bound that import can keep, required prescriptions per listed
+    lift, rep-target/anchor pairing, and a Start guard that refuses while another
+    workout is open and offers Resume instead.
+  - Activation isolation holds throughout: no routine action calls
+    `startProgramActivation` or `reseedActiveProgramIntoWeek`, and logged program
+    weeks stay byte-identical after saving, listing, starting and filing.
+  - Validation: 2,104 node tests, typecheck, smoke, precache and workflow gates,
+    and 44/44 real-Chromium checks. Screenshots come from
+    `scripts/routines-browser-check.mjs --screenshots=<dir>`: `routine-card.png`,
+    `routine-start-active.png`, `routine-folders.png`.
+  - Next: routine-library categories and filters (Phase 4, item 4).
 
 - **2026-11-22 — Folder order, bounds and the active-session guard.**
   - Folder order is now display order everywhere: `normaliseFolderOrder` sorts by
