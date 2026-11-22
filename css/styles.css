@@ -10399,8 +10399,10 @@ html[data-theme="dark"][data-palette="ember"] {
   display: block; width: 100%; min-height: 64px; margin: 6px 0 2px; padding: 0;
   border: 0; background: none; color: inherit; text-align: left;
 }
-.home-bw__spark { display: block; width: 100%; height: 62px; }
-.home-bw__empty { display: flex; align-items: center; min-height: 62px; color: var(--text-muted); font-size: .74rem; }
+/* The card draws the SAME chart as Progress, so the aspect ratio comes from the
+   viewBox; a fixed height would squash the axis labels. */
+.home-bw__spark { display: block; width: 100%; height: auto; max-height: 168px; }
+.home-bw__empty { display: flex; align-items: center; min-height: 96px; color: var(--text-muted); font-size: .74rem; }
 .home-bw__meta { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: .68rem; }
 .home-bw__trend { margin-top: 4px; color: var(--text-secondary); font-size: .7rem; }
 

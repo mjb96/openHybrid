@@ -67,6 +67,12 @@ try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('#homeWeekStrip');
   await page.waitForSelector('#homeBodyweightCard .home-bw__spark');
+  const homeChart = await page.locator('#homeBodyweightCard .home-bw__spark').innerHTML();
+  ok((homeChart.match(/<circle /g) || []).length >= 8, 'the Home chart plots every weigh-in, not just a trend line');
+  ok(/stroke-dasharray/.test(homeChart), 'the Home chart draws the goal line');
+  ok(/#a3e635/.test(homeChart), 'the Home chart draws the 7-day average');
+  const homePlotBox = await page.locator('#homeBodyweightCard .home-bw__spark').boundingBox();
+  ok(!!homePlotBox && homePlotBox.height >= 100, `the Home chart is a real chart (${Math.round(homePlotBox?.height || 0)}px tall)`);
   ok(/85\.9 kg/.test(await page.locator('#homeBodyweightCard').innerText()), 'Home shows the latest weigh-in');
   await page.click('#homeBodyweightCard [data-action="open-bw-sheet"]');
   await page.waitForSelector('#bwSheet.active');
