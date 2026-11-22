@@ -3,13 +3,15 @@
 // EXERCISE OPTIONS — the per-exercise sheet opened from the cockpit card.
 //
 // Rest is the existing name-keyed override the timer engine already reads.
-// Warm-up mode and a durable note are additive `settings.exercisePrefs`.
+// Warm-up mode, a durable note and a private reference link are additive
+// `settings.exercisePrefs`.
 // =============================================================================
 import { openManagedModal, closeManagedModal } from '../ui/modal-stack.js';
 import { setRestOverrides } from '../timers.js';
+import { safeExternalHttpUrl } from '../util.js';
 import {
-  WARMUP_MODE, getExercisePrefs, getExerciseRestOverride, getExerciseWarmupMode,
-  setExercisePref, setExerciseRestOverride,
+  WARMUP_MODE, getExerciseLink, getExercisePrefs, getExerciseRestOverride, getExerciseWarmupMode,
+  setExerciseLink, setExercisePref, setExerciseRestOverride,
 } from './exercise-config.js';
 import { defaultSetModeForExercise } from './set-shape.js';
 import { isBodyweightExercise, resolvedLoadMode } from './load-mode.js';
@@ -40,6 +42,7 @@ export function openExerciseOptions(name) {
   const rest = getExerciseRestOverride(state, name);
   const warmup = getExerciseWarmupMode(state, name);
   const note = String(getExercisePrefs(state, name).note || '');
+  const link = getExerciseLink(state, name);
   const defaultMode = defaultSetModeForExercise(name);
   const storedMode = getExercisePrefs(state, name).mode;
   const initialMode = storedMode === SET_MODE.REPS || storedMode === SET_MODE.TIME || storedMode === SET_MODE.DISTANCE
@@ -112,6 +115,12 @@ export function openExerciseOptions(name) {
         <h3>Exercise note</h3>
         <textarea class="cmodal__input exercise-config__note" id="exerciseConfigNote" maxlength="140" rows="3" placeholder="Loading cue, setup, reminder…">${esc(note)}</textarea>
       </section>
+      <section class="exercise-config__section">
+        <h3><label for="exerciseConfigLink">Reference link</label></h3>
+        <input class="cmodal__input exercise-config__link" type="url" inputmode="url" maxlength="2048" id="exerciseConfigLink" value="${esc(link)}" placeholder="https://…" autocomplete="off" spellcheck="false" aria-describedby="exerciseConfigLinkHint exerciseConfigLinkError" aria-invalid="false">
+        <p class="exercise-config__hint" id="exerciseConfigLinkHint">A private shortcut to a video or article. It opens from the exercise card and stays out of recaps and share cards.</p>
+        <p class="exercise-config__error" id="exerciseConfigLinkError" role="status" aria-live="polite" hidden></p>
+      </section>
       <div class="cmodal__row">
         <button type="button" class="cmodal__btn cmodal__btn--cancel" data-cm="cancel">Cancel</button>
         <button type="button" class="cmodal__btn cmodal__btn--ok" data-cm="ok">Save</button>
@@ -145,6 +154,21 @@ export function openExerciseOptions(name) {
   };
   syncChoices();
 
+  const linkInput = /** @type {HTMLInputElement|null} */ (overlay.querySelector('#exerciseConfigLink'));
+  const linkError = /** @type {HTMLElement|null} */ (overlay.querySelector('#exerciseConfigLinkError'));
+  const validateLink = () => {
+    const raw = String(linkInput?.value || '').trim();
+    const ok = !raw || !!safeExternalHttpUrl(raw);
+    if (linkError) {
+      linkError.hidden = ok;
+      linkError.textContent = ok ? '' : 'Enter a valid http:// or https:// link.';
+    }
+    linkInput?.classList.toggle('is-invalid', !ok);
+    linkInput?.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    return ok;
+  };
+  linkInput?.addEventListener('input', validateLink);
+
   const close = () => {
     closeManagedModal(overlay);
     overlay.classList.remove('cmodal--in');
@@ -152,6 +176,9 @@ export function openExerciseOptions(name) {
   };
   const save = () => {
     const input = /** @type {HTMLInputElement|null} */ (overlay.querySelector('#exerciseConfigRest'));
+    // A blank link is a deliberate clear — it never blocks Save. An unsafe
+    // value keeps the sheet open so the inline aria-live message is visible.
+    if (!validateLink()) { linkInput?.focus(); return; }
     if (restChoice === 'default') setExerciseRestOverride(state, name, null);
     else if (restChoice === 'off') setExerciseRestOverride(state, name, 0);
     else {
@@ -165,6 +192,7 @@ export function openExerciseOptions(name) {
       warmup: warmupChoice === WARMUP_MODE.INHERIT ? null : warmupChoice,
       note: String(/** @type {HTMLTextAreaElement|null} */ (overlay.querySelector('#exerciseConfigNote'))?.value || '').trim(),
     });
+    setExerciseLink(state, name, String(linkInput?.value || '').trim());
     setRestOverrides(state.settings?.restOverrides || {});
     Promise.resolve(saveState?.(true)).catch(() => {});
     rerenderWorkout?.();

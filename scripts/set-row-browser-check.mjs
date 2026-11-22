@@ -106,7 +106,14 @@ try {
   for (const [width, theme] of [[320, 'dark'], [390, 'light'], [412, 'dark']]) {
     const tag = `${width}px/${theme}`;
     const context = await createBrowserContext(browser, { viewport: { width, height: 900 }, timezoneId: TZ, colorScheme: theme });
-    await context.addInitScript(([k, v]) => localStorage.setItem(k, v), ['hybrid_engine_v2_state', JSON.stringify(fixture(theme))]);
+    await context.addInitScript(([k, v]) => {
+      // Seed once per context. On a reload the app's own saved state must win;
+      // re-seeding the fixture here would erase what the check is proving.
+      if (!localStorage.getItem('__set_row_seeded')) {
+        localStorage.setItem(k, v);
+        localStorage.setItem('__set_row_seeded', '1');
+      }
+    }, ['hybrid_engine_v2_state', JSON.stringify(fixture(theme))]);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -293,6 +300,103 @@ try {
       console.log(`${tag} set-shapes:`, JSON.stringify({ hold: hold && { mode: hold.mode, sec: hold.sec }, carry: carry && { mode: carry.mode, dist: carry.dist } }));
       if (carry?.mode !== 'distance' || Number(carry?.dist) !== 20) {
         fail(`${tag}: carry did not persist as dist=20 (${JSON.stringify(carry)})`);
+      }
+    }
+
+    // ---- private reference link: real anchor, safe URL only, persists ------
+    // The link is free text the athlete stores per exercise. It must render as
+    // a real anchor (never markup), keep a 44px target and refuse every
+    // non-http(s) scheme without overwriting the good link already stored.
+    if (width === 412 && theme === 'dark') {
+      const openConfig = async () => {
+        await page.click('.cockpit-exercise:not(.collapsed) .btn-ex-config');
+        await page.waitForSelector('.exercise-config');
+      };
+      await openConfig();
+      await page.fill('#exerciseConfigLink', 'https://www.youtube.com/watch?v=abc123');
+      if (await page.locator('#exerciseConfigLinkError').isVisible()) {
+        fail(`${tag}: a valid reference link showed an inline error`);
+      }
+      await page.click('.exercise-config [data-cm="ok"]');
+      await page.waitForTimeout(350);
+      const anchor = await page.evaluate(() => {
+        const a = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-ex-link');
+        if (!a) return null;
+        const rect = a.getBoundingClientRect();
+        return {
+          isAnchor: a.tagName === 'A',
+          href: a.getAttribute('href'),
+          target: a.getAttribute('target'),
+          rel: a.getAttribute('rel'),
+          label: a.textContent.trim(),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        };
+      });
+      console.log(`${tag} reference-link:`, JSON.stringify(anchor));
+      if (!anchor?.isAnchor) fail(`${tag}: a saved reference link did not render as an anchor on the card`);
+      if (anchor?.href !== 'https://www.youtube.com/watch?v=abc123') {
+        fail(`${tag}: reference link href is not the saved URL (${anchor?.href})`);
+      }
+      if (anchor?.target !== '_blank' || !/noopener/.test(anchor?.rel || '') || !/noreferrer/.test(anchor?.rel || '')) {
+        fail(`${tag}: reference link is missing target/rel protection (${anchor?.target} / ${anchor?.rel})`);
+      }
+      if (!/Watch on YouTube/.test(anchor?.label || '')) {
+        fail(`${tag}: reference link label did not name YouTube (${anchor?.label})`);
+      }
+      if ((anchor?.height || 0) < 44) {
+        fail(`${tag}: reference link is ${anchor?.width}×${anchor?.height}, below the 44px touch target`);
+      }
+
+      await openConfig();
+      await page.fill('#exerciseConfigLink', 'javascript:alert(1)');
+      if (!(await page.locator('#exerciseConfigLinkError').isVisible())) {
+        fail(`${tag}: javascript: produced no inline error`);
+      }
+      await page.click('.exercise-config [data-cm="ok"]');
+      await page.waitForTimeout(300);
+      if (!(await page.locator('.exercise-config').count())) {
+        fail(`${tag}: an unsafe reference link closed the sheet as if it had saved`);
+      }
+      const afterReject = await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+        return Object.values(s.settings?.exercisePrefs || {}).map((p) => p.link).find(Boolean) || '';
+      });
+      if (afterReject !== 'https://www.youtube.com/watch?v=abc123') {
+        fail(`${tag}: an unsafe link overwrote the stored link (${afterReject})`);
+      }
+      await page.click('.exercise-config [data-cm="cancel"]');
+      await page.waitForTimeout(250);
+
+      await page.reload({ waitUntil: 'networkidle' });
+      await enterCockpit(page);
+      const persisted = await page.evaluate(() => {
+        const a = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-ex-link');
+        const s = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+        return {
+          link: a ? { href: a.getAttribute('href'), rel: a.getAttribute('rel') } : null,
+          prefs: s.settings?.exercisePrefs || null,
+        };
+      });
+      if (persisted?.link?.href !== 'https://www.youtube.com/watch?v=abc123' || !/noopener/.test(persisted?.link?.rel || '')) {
+        fail(`${tag}: reference link did not survive reload (${JSON.stringify(persisted)})`);
+      }
+
+      // Blank is a deliberate clear and must save without blocking.
+      await openConfig();
+      await page.fill('#exerciseConfigLink', '');
+      await page.click('.exercise-config [data-cm="ok"]');
+      await page.waitForTimeout(350);
+      const cleared = await page.evaluate(() => {
+        const s = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+        return {
+          anchor: !!document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-ex-link'),
+          links: Object.values(s.settings?.exercisePrefs || {}).map((p) => p.link).filter(Boolean),
+          sheetOpen: !!document.querySelector('.exercise-config'),
+        };
+      });
+      if (cleared.sheetOpen || cleared.anchor || cleared.links.length) {
+        fail(`${tag}: a blank reference link did not clear cleanly (${JSON.stringify(cleared)})`);
       }
     }
 

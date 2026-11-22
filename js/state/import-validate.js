@@ -22,6 +22,7 @@ import {
   MAX_ROUTINE_FOLDERS, MAX_ROUTINE_LIFTS, MAX_ROUTINES, MAX_ROUTINE_SETS,
 } from '../routines/store.js';
 import { isGroupId } from '../workout/superset.js';
+import { safeExternalHttpUrl } from '../util.js';
 
 const MAX_IMPORT_BYTES = 25 * 1024 * 1024; // whole-file guard (snapshots are well under this)
 const MAX_AVATAR_BYTES = 3 * 1024 * 1024;  // a resized avatar is tens of KB; 3 MB is generous
@@ -55,6 +56,22 @@ export function sanitizeImportedState(state) {
     const s = { ...out.settings };
     if (s.avatarDataUrl != null && !isSafeImageDataUrl(s.avatarDataUrl)) {
       delete s.avatarDataUrl; // drop hostile/oversized avatar rather than import it
+    }
+    // exercisePrefs carries a private reference link that reaches an href. A
+    // stale/hostile value must not ride in; drop ONLY the link and keep the
+    // note and every other preference. The input object is never mutated.
+    if (s.exercisePrefs && typeof s.exercisePrefs === 'object' && !Array.isArray(s.exercisePrefs)) {
+      const prefs = {};
+      for (const [key, value] of Object.entries(s.exercisePrefs)) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) {
+          prefs[key] = value;
+          continue;
+        }
+        const entry = { ...value };
+        if (entry.link != null && !safeExternalHttpUrl(entry.link)) delete entry.link;
+        prefs[key] = entry;
+      }
+      s.exercisePrefs = prefs;
     }
     out.settings = s;
   }

@@ -2854,6 +2854,25 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
   font-style: italic;
   line-height: 1.45;
 }
+/* Private reference link on the exercise card. A real anchor with a full 44px
+   hit area; it is a shortcut, so it reads as a quiet accessory row. */
+.cockpit-ex-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0 0 8px;
+  padding: 0 12px;
+  border: 1px solid rgba(34, 211, 238, 0.3);
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--color-cyan, #22d3ee);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+.cockpit-ex-link::before { content: '↗'; font-size: 0.9rem; line-height: 1; }
+.cockpit-ex-link:active { background: rgba(34, 211, 238, 0.16); }
 .exercise-config-overlay {
   position: fixed;
   inset: 0;
@@ -2919,6 +2938,15 @@ html[data-theme="light"] .bm-h4 { stroke: #fff; }
 .exercise-config__custom { display: flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--text-muted); font-size: 0.72rem; }
 .exercise-config__custom input { width: 100px; min-height: 44px; }
 .exercise-config__note { width: 100%; min-height: 80px; resize: vertical; }
+.exercise-config__link { margin-top: 2px; }
+.exercise-config__link.is-invalid { border-color: rgba(239, 68, 68, 0.65); }
+.exercise-config__error {
+  margin: 7px 0 0;
+  color: #f87171;
+  font-size: 0.7rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
 .ss-link-panel {
   padding: var(--space-3) var(--space-4);
   background: rgba(0,0,0,0.35);
