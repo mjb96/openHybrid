@@ -446,6 +446,18 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `docs/progress-tab-plan.md` (product, display, invariants),
   `docs/progress-tab-execution.md` (contracts, tasks, phases), mockups in
   `docs/mockups/`.
+- Progress balances (P2 landed): `js/analytics/balance.js` answers "is the mix
+  right?" over the SELECTED range in the app's two-currency language — sRPE when
+  the athlete rates effort, training minutes otherwise, with `basis` saying
+  which. **Walks are excluded from the split**: on the minutes fallback an
+  unrated walk would count like a hard session, so
+  `dailyLoadBreakdownTimeline` reports `walkLoad`/`walkMin` and both Balance and
+  Home's hybrid card subtract them; the excluded time is still displayed. A
+  one-modality window renders an explanation, never a 100 % bar. The composer's
+  `alwaysShow` flag means only Pulse and Reports render without data. The range
+  bar (30D/3M/1Y/All) and the All/Strength/Endurance filter are ephemeral module
+  state driven by one delegated listener (`data-pg-range` / `data-pg-focus`) —
+  never persisted, because a remembered mode silently hides half the dashboard.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

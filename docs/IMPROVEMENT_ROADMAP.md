@@ -713,6 +713,23 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P2: Balance, plus the range and focus controls.**
+  - `Balance` answers "is the mix right?" over the selected window, in sRPE when
+    the athlete rates effort and training minutes when they do not, saying which.
+  - **Walks are excluded from the split** (D1): on the minutes fallback an
+    unrated walk would count like a hard session and outvote real training.
+    `dailyLoadBreakdownTimeline` reports `walkLoad`/`walkMin` additively and Home's
+    hybrid card subtracts them too, so the mix has one definition everywhere. The
+    excluded time is still shown — hidden from the share, not from the user.
+  - A one-modality window is an explanation, never a 100 % bar. The composer
+    gained `alwaysShow`, so only Pulse and Reports render without data.
+  - The **range bar** (30D/3M/1Y/All) and the **All/Strength/Endurance filter**
+    land with it: 44 px `aria-pressed` chips, one delegated listener, ephemeral
+    state so a remembered mode cannot silently hide half the dashboard.
+  - `npm run verify` green (2,440 tests) and the hub browser contract passes at
+    320/390/412 in both themes.
+  - Next: P3 Muscles (sets per muscle, distribution, body split).
+
 - **2026-11-23 — Progress P1: Pulse band, one range vocabulary, eight-band catalogue.**
   - The Progress hub now opens on **Pulse** — the selected calendar week, its
     streak and its run/walk split — instead of the old week hero. It follows the
