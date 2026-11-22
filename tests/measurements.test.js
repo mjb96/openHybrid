@@ -111,6 +111,15 @@ test('body fat is an entered percentage, rounded to one decimal and bounded', ()
   ]);
 });
 
+test('a legacy string body-fat value normalizes to a number', () => {
+  assert.deepEqual(normalizeMeasurements([{ date: '2026-11-20', bodyFat: '18.4' }]), [
+    { date: '2026-11-20', bodyFat: 18.4 },
+  ]);
+  assert.deepEqual(normalizeMeasurements([{ date: '2026-11-20', bodyFat: ' 19.0 ' }]), [
+    { date: '2026-11-20', bodyFat: 19 },
+  ]);
+});
+
 test('the body-fat trend reports percentage-point changes', () => {
   const trend = bodyFatTrend([
     { date: '2026-10-01', bodyFat: 21 },
@@ -202,4 +211,10 @@ test('the measurements CSV keeps canonical centimetres, body fat and blank sites
   assert.equal(lines[0], '"Date","Waist (cm)","Chest (cm)","Hips (cm)","Arm (cm)","Thigh (cm)","Neck (cm)","Body fat (%)"');
   assert.equal(lines[1], '"2026-11-01","86.5","104","","","","","18.4"');
   assert.equal(lines[2], '"2026-11-15","85.9","","","","","",""');
+});
+
+test('the measurements CSV exports a body-fat-only record as a real row', () => {
+  const csv = buildMeasurementsCsv({ bodyMeasurements: [{ date: '2026-11-20', bodyFat: 18.4 }] });
+  const lines = csv.trim().split(/\r\n/);
+  assert.equal(lines[1], '"2026-11-20","","","","","","","18.4"');
 });

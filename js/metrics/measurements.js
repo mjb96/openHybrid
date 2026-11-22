@@ -6,7 +6,9 @@
 // slow signals the scale hides — waist, chest, hips, arm, thigh, neck — stored
 // canonically in CENTIMETRES with one record per date, exactly like weigh-ins.
 // Display converts to inches when the athlete asks for them; nothing stored is
-// ever rewritten by a unit change.
+// ever rewritten by a unit change. The same record may also carry an ENTERED
+// body-fat percentage (2–70, one decimal): it is not a centimetre site, it is
+// never converted by the cm/in choice, and it is never estimated from the tape.
 //
 // No DOM and no state mutation: the Progress card, the sheet and the tests all
 // share this vocabulary.

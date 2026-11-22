@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport,
+  looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport, hasBodyFatColumn,
 } from '../js/portability/import-measurements-csv.js';
 import { buildMeasurementsCsv } from '../js/portability/csv-export.js';
 
@@ -67,6 +67,22 @@ test('body-fat columns are accepted under every documented header and stay a per
   // Never cm/in: a 34 in the body-fat column is not converted to 86.4.
   const parsed = parseMeasurementsCsv('date,body_fat\n2026-11-01,34', { unit: 'lbs' });
   assert.equal(parsed.entries[0].bodyFat, 34);
+});
+
+test('semicolon files with a decimal comma parse body fat', () => {
+  const parsed = parseMeasurementsCsv([
+    'date;waist_cm;body_fat',
+    '2026-11-01;84;18,4',
+  ].join('\n'));
+  assert.deepEqual(parsed.entries, [{ date: '2026-11-01', waist: 84, bodyFat: 18.4 }]);
+});
+
+test('hasBodyFatColumn lets the weigh-in reader disclose a combined file', () => {
+  assert.equal(hasBodyFatColumn('date,weight_kg,body_fat\n2026-11-01,85,18.4'), true);
+  assert.equal(hasBodyFatColumn('date,weight_kg,bodyfat\n2026-11-01,85,18.4'), true);
+  assert.equal(hasBodyFatColumn('Date,Body fat (%)\n2026-11-01,18.4'), true);
+  assert.equal(hasBodyFatColumn('date,weight_kg\n2026-11-01,85'), false);
+  assert.equal(hasBodyFatColumn('date,waist_cm\n2026-11-01,84'), false);
 });
 
 test('a body-fat-only file imports and merges same-date rows', () => {

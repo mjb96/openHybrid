@@ -663,7 +663,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,276 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,280 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
@@ -684,13 +684,23 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - CSV: the measurements export gains a `Body fat (%)` column. Imports accept
     `body_fat`, `bodyfat`, `body_fat_pct` and `body_fat_percent` as percentages,
     merge same-date rows and still never overwrite an existing date; a
-    body-fat-only file is detected. Known limitation: a combined
-    weigh-in + body-fat CSV belongs to the bodyweight reader, so its body fat is
-    not imported (documented in the module header).
-  - Validation: 9 new node tests (2,256 total), typecheck, smoke, precache/workflow
-    gates, the extended bodyweight browser check (stored 18.4, card `18.4 %`,
-    exact prefill, blank+placeholder on a new date, unit-toggle isolation,
-    delete, plus a 320px fit check) and the full 45-check browser suite.
+    body-fat-only file is detected and semicolon files accept a decimal comma.
+    Known limitation: a combined weigh-in + body-fat CSV belongs to the
+    bodyweight reader, so its body fat is not imported (documented in the module
+    header); the weigh-in confirm now says so explicitly.
+  - Review fixes: light mode replaces the cyan body-fat accent and delta with
+    `#155e75` — measured 5.76:1 on the card and 6.58:1 on the sheet in a real
+    390px light context. (The suggested `#0e7490` measured only 4.25:1 on the
+    card's composited surface, so it was darkened.) The "nothing added" import
+    toast now says existing dates are never overwritten instead of claiming the
+    measurements are already logged. Body-fat placeholders use the latest
+    reading ON OR BEFORE the chosen date, never a future one.
+  - Validation: 13 new node tests across the slice (2,280 combined), typecheck,
+    smoke, precache/workflow gates, the extended bodyweight browser check
+    (stored 18.4 and 19.0, `-0.6 pp` with its percentage-point title, exact
+    prefill, blank+on-or-before placeholder, tape edit preserving body fat,
+    unit-toggle isolation, delete, 320px fit, 390px light contrast) and the
+    full 45-check browser suite.
   - Next: the remaining P7 scope — the 14-site catalogue and per-site graph.
 
 - **2026-11-23 — Shape-aware PRs: one rule, one count.**

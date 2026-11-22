@@ -64,6 +64,15 @@ function bodyFatIndex(headers) {
 }
 
 /**
+ * True when a CSV has a body-fat percentage column. The weigh-in reader uses
+ * this to disclose that a combined file's body fat was not imported.
+ * @param {string} text
+ */
+export function hasBodyFatColumn(text) {
+  return bodyFatIndex(headersOf(text)) >= 0;
+}
+
+/**
  * Which column feeds which site, and whether that column is centimetres or
  * inches. `waist` with no suffix is resolved by the caller's unit.
  * @param {string[]} headers
@@ -134,7 +143,8 @@ export function parseMeasurementsCsv(text, opts = {}) {
     }
     if (bodyFatColumn >= 0) {
       // Always a percentage: never cm/in, and 2–70 rejects a typo or a weight.
-      const percent = bodyFatPercent(cell(row, bodyFatColumn));
+      // `number()` handles a decimal comma in semicolon files ("18,4").
+      const percent = bodyFatPercent(number(cell(row, bodyFatColumn)));
       if (percent != null) { record.bodyFat = percent; touched = true; }
     }
     if (touched) byDate.set(date, record);

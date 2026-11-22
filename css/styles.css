@@ -10487,6 +10487,13 @@ html[data-module-recovery="off"] [data-module="recovery"] {
 .bw-ms-site--bodyfat strong small { color: var(--color-cyan); }
 .bw-ms-delta { color: var(--color-cyan); font-size: .68rem; font-style: normal; font-weight: 700; }
 .bw-ms-delta--none { color: var(--text-muted); font-weight: 600; }
+/* Cyan is a dark-surface accent: on the light sheet/card it falls under 2:1.
+   #155e75 measures >5.7:1 on the card's composited surface and >6.9:1 on white,
+   keeping every delta and the body-fat accent legible. */
+html[data-theme="light"] .bw-ms-delta:not(.bw-ms-delta--none),
+html[data-theme="light"] .bw-ms-site--bodyfat strong small,
+html[data-theme="light"] .ms-sheet-field--bodyfat > span { color: #155e75; }
+html[data-theme="light"] .bw-ms-site--bodyfat { border-left-color: #155e75; }
 .ms-sheet-unit { color: var(--text-muted); font-size: .72rem; font-weight: 800; margin-left: auto; margin-right: 8px; }
 .ms-sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 4px 0 10px; }
 .ms-sheet-field { display: flex; flex-direction: column; gap: 4px; }

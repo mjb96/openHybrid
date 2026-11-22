@@ -77,13 +77,14 @@ function fillSheet(chosen) {
   }
 
   // Body fat is a percentage, so it is neither converted by the cm/in toggle
-  // nor prefilled onto a new date — only the last body-fat reading is a
-  // placeholder. It may be older than the newest tape entry when body fat is
-  // measured less often, so search the history rather than only `latest`.
+  // nor prefilled onto a new date — only the latest reading ON OR BEFORE the
+  // chosen date is a placeholder. A future reading would suggest a measurement
+  // that did not exist yet, and body fat may be measured less often than the
+  // tape, so search the history rather than only `latest`.
   const bodyFatInput = inputFor('bodyFat');
   if (bodyFatInput) {
     const own = existing?.bodyFat;
-    const lastBodyFat = newest.find((entry) => typeof entry.bodyFat === 'number')?.bodyFat;
+    const lastBodyFat = newest.find((entry) => entry.date <= chosen && typeof entry.bodyFat === 'number')?.bodyFat;
     bodyFatInput.value = typeof own === 'number' ? String(roundDisplay(own)) : '';
     bodyFatInput.placeholder = typeof lastBodyFat === 'number' ? String(roundDisplay(lastBodyFat)) : '%';
     bodyFatInput.setAttribute('aria-label', 'Body fat (%)');
