@@ -216,3 +216,31 @@ export function collapsedBandRow({ id, eyebrow, value, delta, action }) {
     </button>
   </section>`;
 }
+
+
+/**
+ * The one range control. `aria-pressed` buttons, never a fake tablist, and
+ * never a disabled option — every range is available to every user.
+ *
+ * @param {ReadonlyArray<{ id: string, label: string }>} presets
+ * @param {string} activeId
+ */
+export function rangeBar(presets, activeId) {
+  return `<div class="pg-range" role="group" aria-label="Time range">${presets.map((preset) => `
+    <button type="button" class="pg-range__chip${preset.id === activeId ? ' is-selected' : ''}"
+      data-pg-range="${esc(preset.id)}" aria-pressed="${preset.id === activeId ? 'true' : 'false'}">${esc(preset.label)}</button>`).join('')}</div>`;
+}
+
+/**
+ * The modality filter. Rendered only when both modalities have data and at
+ * least one visible band belongs to each — a one-choice control is noise.
+ *
+ * @param {Array<{ id: 'all'|'strength'|'endurance', label: string }>} options
+ * @param {string} activeId
+ */
+export function focusBar(options, activeId) {
+  if (!Array.isArray(options) || options.length < 2) return '';
+  return `<div class="pg-focus" role="group" aria-label="Training focus">${options.map((option) => `
+    <button type="button" class="pg-focus__chip${option.id === activeId ? ' is-selected' : ''}"
+      data-pg-focus="${esc(option.id)}" aria-pressed="${option.id === activeId ? 'true' : 'false'}">${esc(option.label)}</button>`).join('')}</div>`;
+}

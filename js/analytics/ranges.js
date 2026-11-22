@@ -115,7 +115,9 @@ export function previousRange(range) {
  * range (null `startISO`) accepts everything up to `endISO`.
  *
  * @param {string} dateISO
- * @param {Range|null|undefined} range
+ * @param {{ startISO: string|null, endISO: string }|null|undefined} range
+ *   Only the two bounds are required, so a comparison window can be tested
+ *   without inventing a full Range.
  */
 export function inRange(dateISO, range) {
   const key = localDayKey(dateISO);

@@ -44,7 +44,10 @@ test('bands that are declared but not built never reach the surface', () => {
   assert.deepEqual(ids, ['pulse']);
   assert.equal(model.availability.muscles.pending, true);
   assert.equal(model.availability.body.pending, true);
-  assert.equal(model.availability.balance.pending, true);
+  // Balance IS built, but a strength-only fixture gives it nothing to say, so
+  // it reports no data rather than pending and never reaches the surface.
+  assert.equal(model.availability.balance.pending, undefined);
+  assert.equal(model.availability.balance.hasData, false);
 });
 
 test('a hidden band is absent from the surface but still reported', () => {

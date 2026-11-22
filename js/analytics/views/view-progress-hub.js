@@ -12,6 +12,52 @@
 
 import { esc, spark } from './screen-kit.js';
 import { renderPulse } from './view-pulse.js';
+import { renderBalance } from './view-balance.js';
+import { focusBar, rangeBar } from './band-kit.js';
+import { RANGE_PRESETS } from '../ranges.js';
+
+const BAND_VIEWS = Object.freeze({ pulse: renderPulse, balance: renderBalance });
+
+/**
+ * Render the bands the composer produced, in its order. A band with an error
+ * renders that error through its own view, so one broken model cannot blank
+ * the tab.
+ */
+function bandsHTML(extras) {
+  const list = Array.isArray(extras.bands) ? extras.bands : null;
+  if (list) {
+    return list.map((entry) => {
+      const view = BAND_VIEWS[entry.id];
+      if (!view) return '';
+      return view(entry.error ? null : entry.model, {
+        weightUnit: extras.weightUnit,
+        distanceUnit: extras.distanceUnit,
+        error: entry.error || null,
+      });
+    }).join('');
+  }
+  // Transitional: a caller that only supplies a Pulse model (or none) keeps the
+  // legacy hero rather than losing the top of the page.
+  if (extras.pulse) {
+    return renderPulse(extras.pulse, {
+      weightUnit: extras.weightUnit,
+      distanceUnit: extras.distanceUnit,
+      error: extras.pulseError || null,
+    });
+  }
+  return '';
+}
+
+/** The modality filter, derived from what is actually visible and measured. */
+function focusHTML(extras) {
+  const available = extras.focusAvailable;
+  if (!available?.strength || !available?.endurance) return '';
+  return focusBar([
+    { id: 'all', label: 'All' },
+    { id: 'strength', label: 'Strength' },
+    { id: 'endurance', label: 'Endurance' },
+  ], extras.focus || 'all');
+}
 import { icon } from '../../ui/icons.js';
 import { formatDist } from '../utils.js';
 import { addDaysISO } from '../weekly-aggregate.js';
@@ -165,7 +211,16 @@ function recentWeeksStrip(model) {
  * @param {HTMLElement|null} container
  * @param {ReturnType<import('../progress-landing.js').buildProgressLanding>} model
  * @param {string[]} [hidden]
- * @param {{ pulse?: any, pulseError?: string|null, weightUnit?: string, distanceUnit?: string }} [extras]
+ * @param {{
+ *   bands?: Array<{ id: string, model?: any, error?: string }>,
+ *   pulse?: any,
+ *   pulseError?: string|null,
+ *   rangeId?: string,
+ *   focus?: string,
+ *   focusAvailable?: { strength: boolean, endurance: boolean },
+ *   weightUnit?: string,
+ *   distanceUnit?: string,
+ * }} [extras]
  */
 export function renderProgressHub(container, model, hidden = [], extras = {}) {
   if (!container || !model) return;
@@ -188,14 +243,12 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
       </div>
       <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
     </div>
+    <div class="pg-controls">
+      ${rangeBar(RANGE_PRESETS, extras.rangeId || '30d')}
+      ${focusHTML(extras)}
+    </div>
     ${intro}
-    ${model.allEmpty ? '' : (extras.pulse
-      ? renderPulse(extras.pulse, {
-        weightUnit: extras.weightUnit,
-        distanceUnit: extras.distanceUnit,
-        error: extras.pulseError || null,
-      })
-      : weekHero(model))}
+    ${model.allEmpty ? '' : (bandsHTML(extras) || (extras.pulse ? '' : weekHero(model)))}
     ${recentWeeksStrip(model)}
     ${!domains.length && !secondary.length ? '<p class="ph-empty">All Progress cards are hidden. Use Customize to bring them back.</p>' : ''}
     <div class="ph-grid">${domains.map(domainCard).join('')}</div>

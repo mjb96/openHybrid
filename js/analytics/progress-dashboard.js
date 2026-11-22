@@ -21,6 +21,7 @@ import { moduleEnabled } from '../modules.js';
 import { normalizeUi } from '../ui/customize.js';
 import { previousRange, resolveRange } from './ranges.js';
 import { buildPulseModel } from './pulse.js';
+import { buildBalanceModel } from './balance.js';
 
 /**
  * @typedef {'pulse'|'balance'|'muscles'|'exercises'|'endurance'|'body'|'fasting'|'reports'} BandId
@@ -28,15 +29,18 @@ import { buildPulseModel } from './pulse.js';
  */
 
 /** Catalogue order is the default render order; the athlete may reorder it. */
+// `alwaysShow` bands render even with no data, because their empty state is
+// itself the answer ("nothing logged this week"). Every other band appears only
+// when it has something true to say, which is what keeps eight bands short.
 const BAND_DEFINITIONS = Object.freeze([
-  { id: 'pulse', module: null },
+  { id: 'pulse', module: null, alwaysShow: true },
   { id: 'balance', module: null },
   { id: 'muscles', module: null },
   { id: 'exercises', module: null },
   { id: 'endurance', module: 'running' },
   { id: 'body', module: null },
   { id: 'fasting', module: 'fasting' },
-  { id: 'reports', module: null },
+  { id: 'reports', module: null, alwaysShow: true },
 ]);
 
 /**
@@ -47,8 +51,13 @@ const BAND_DEFINITIONS = Object.freeze([
 export const BAND_BUILDERS = Object.freeze({
   pulse: (state, ctx) => buildPulseModel(state, {
     todayISO: ctx.todayISO,
+    weekStartISO: ctx.weekStartISO || null,
     program: ctx.program,
     days: ctx.days,
+  }),
+  balance: (state, ctx) => buildBalanceModel(state, {
+    range: ctx.range,
+    previous: ctx.previous,
   }),
 });
 
@@ -74,6 +83,7 @@ const STRENGTH_BANDS = ['muscles', 'exercises'];
  *   earliestISO?: string|null,
  *   program?: any,
  *   days?: string[],
+ *   weekStartISO?: string|null,
  *   focus?: Focus|string,
  *   unit?: string,
  *   distanceUnit?: string,
@@ -127,11 +137,17 @@ export function buildProgressDashboard(state, options = {}) {
         todayISO,
         program: options.program,
         days: options.days,
+        weekStartISO: options.weekStartISO || null,
         unit: options.unit || 'kg',
         distanceUnit: options.distanceUnit || 'km',
       });
-      availability[id] = { hasData: !!model?.hasData, moduleOff: false, hidden: isHidden };
-      if (!isHidden) bands.push({ id, collapsed: isCollapsed(id, focus), model });
+      const hasData = !!model?.hasData;
+      availability[id] = { hasData, moduleOff: false, hidden: isHidden };
+      // A band with nothing to say does not render — unless its empty state is
+      // the answer (Pulse) or it is a static link row (Reports).
+      if (!isHidden && (hasData || def.alwaysShow)) {
+        bands.push({ id, collapsed: isCollapsed(id, focus), model });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       availability[id] = { hasData: false, moduleOff: false, hidden: isHidden, error: message };

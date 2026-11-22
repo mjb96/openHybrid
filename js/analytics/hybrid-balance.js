@@ -171,9 +171,12 @@ export function buildHybridBalance(state, options = {}) {
       minE: new Array(DAYS_PER_WEEK).fill(0),
     };
     bucket.loadS[offset] += row.strength;
-    bucket.loadE[offset] += row.endurance;
+    // Walks are excluded from the split (§7.2): on the minutes fallback an
+    // unrated walk would count like a hard session and outvote real training.
+    // The time itself is still reported by the Endurance band.
+    bucket.loadE[offset] += Math.max(0, row.endurance - (row.walkLoad || 0));
     bucket.minS[offset] += row.strengthMin || 0;
-    bucket.minE[offset] += row.enduranceMin || 0;
+    bucket.minE[offset] += Math.max(0, (row.enduranceMin || 0) - (row.walkMin || 0));
     buckets.set(start, bucket);
   }
 

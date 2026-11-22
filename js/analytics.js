@@ -35,7 +35,8 @@ import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progres
 import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
 import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
-import { buildPulseModel } from './analytics/pulse.js';
+import { buildProgressDashboard } from './analytics/progress-dashboard.js';
+import { isRangeId } from './analytics/ranges.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
 let _getState;
@@ -47,6 +48,10 @@ let _analyticsParentContext = null;
 let _analyticsParentOrigin = 'insights';
 let _analyticsGrandparentContext = null;
 let _lastScoreResult = null;   // most recent Score-detail result, for the Share card
+// Progress controls. Ephemeral on purpose: remembering "you were in Endurance
+// mode last week" silently hides half the dashboard, which reads as a bug.
+let _progressRangeId = '30d';
+let _progressFocus = 'all';
 
 // V2-5 — share the Hybrid Score card. Uses the result last rendered into the
 // Score detail (falls back to a fresh compute so the button always works).
@@ -79,10 +84,44 @@ export function setAnalyticsContext(ctx, options = {}) {
   if (!options.preserveWeek) resetWeekNav();
 }
 
+/**
+ * Progress's two controls. One delegated listener rather than per-render
+ * handlers, so re-rendering the hub cannot leak listeners.
+ */
+function onProgressControlClick(event) {
+  const target = event.target instanceof Element
+    ? event.target.closest('[data-pg-range], [data-pg-focus]')
+    : null;
+  if (!target) return;
+  const range = target.getAttribute('data-pg-range');
+  const focus = target.getAttribute('data-pg-focus');
+  if (range) {
+    if (!isRangeId(range) || range === _progressRangeId) return;
+    _progressRangeId = range;
+  } else if (focus) {
+    if (focus === _progressFocus) return;
+    _progressFocus = focus === 'strength' || focus === 'endurance' ? focus : 'all';
+  } else return;
+  renderAnalytics();
+}
+
 export function initAnalytics(getStateFn, getDaysFn) {
   _getState = getStateFn;
   _getDays  = getDaysFn;
   initWeekNav(_getState, renderAnalytics);
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', onProgressControlClick);
+  }
+}
+
+/** Tests and deep links can set the Progress range without a click. */
+export function setProgressRange(rangeId) {
+  if (!isRangeId(rangeId)) return;
+  _progressRangeId = rangeId;
+}
+
+export function setProgressFocus(focus) {
+  _progressFocus = focus === 'strength' || focus === 'endurance' ? focus : 'all';
 }
 
 // ==========================================
@@ -416,20 +455,16 @@ export function renderAnalytics() {
       const isCurrentWeek = weekStart === weekStartOf(today);
       const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
       const dashboard = computeDashboardModel(st, days, program, days[0] || 'mon');
-      // Pulse is built here (not inside the view) so a model failure becomes an
-      // error band rather than an exception that blanks the whole tab.
-      let pulseModel = null;
-      let pulseError = null;
-      try {
-        pulseModel = buildPulseModel(st, {
-          todayISO: today,
-          weekStartISO: weekStart,
-          program,
-          days,
-        });
-      } catch (error) {
-        pulseError = error instanceof Error ? error.message : String(error);
-      }
+      // The composer keeps hidden / module-off / no-data distinct and turns a
+      // throwing band into an error band instead of blanking the tab.
+      const progressDashboard = buildProgressDashboard(st, {
+        todayISO: today,
+        weekStartISO: weekStart,
+        rangeId: _progressRangeId,
+        focus: _progressFocus,
+        program,
+        days,
+      });
       renderProgressHub(hubEl, buildProgressLanding(st, {
         days,
         program,
@@ -447,8 +482,10 @@ export function renderAnalytics() {
           today: isCurrentWeek ? today : weekEnd,
         }),
       }), st.settings?.ui?.progress?.hidden || [], {
-        pulse: pulseModel,
-        pulseError,
+        bands: progressDashboard.bands,
+        rangeId: progressDashboard.range?.id || _progressRangeId,
+        focus: progressDashboard.focus,
+        focusAvailable: progressDashboard.focusAvailable,
         weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
         distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
       });
