@@ -17,10 +17,14 @@
 // be silently omitted from the cache.
 // ==========================================
 <<<<<<< HEAD
-const CACHE_NAME = 'openhybrid-v122-h7e466d4a9231';
+<<<<<<< HEAD
+const CACHE_NAME = 'openhybrid-v122-ha2f0f5d678f8';
 =======
 const CACHE_NAME = 'openhybrid-v122-hfe56197dcd6e';
 >>>>>>> d918617 (feat(body): track 14 measurement sites)
+=======
+const CACHE_NAME = 'openhybrid-v122-hdec188b10c95';
+>>>>>>> 867fac8 (feat(body): show a per-site trend)
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [

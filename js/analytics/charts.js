@@ -472,6 +472,69 @@ export function renderBodyWeightWithMA(container, bwLog, options = {}) {
     + `</svg>`;
 }
 
+/**
+ * One measurement site as a bare SVG line: oldest reading on the left, newest
+ * on the right, with min/mid/max and date labels. No averaging and no goal —
+ * this is the tape (or an entered body-fat percentage), not the scale. Under
+ * two readings there is no trend to draw, so say what is missing rather than
+ * stretch one dot across the card.
+ *
+ * @param {HTMLElement|null} container
+ * @param {Array<{ date: string, value: number }>} points
+ * @param {{ unit?: string, label?: string, percent?: boolean }} [options]
+ */
+export function renderSiteTrend(container, points, options = {}) {
+  if (!container) return;
+  const label = options.label || 'Measurement';
+  const percent = Boolean(options.percent);
+  const unit = percent ? '%' : (options.unit || 'cm');
+  const formatValue = (value) => (percent ? `${value.toFixed(1)}%` : `${value.toFixed(1)} ${unit}`);
+  const formatAxis = (value) => (percent ? `${value.toFixed(1)}%` : value.toFixed(1));
+  const readings = (Array.isArray(points) ? points : [])
+    .filter((point) => point && typeof point.date === 'string' && Number.isFinite(Number(point.value)))
+    .map((point) => ({ date: point.date, value: Number(point.value) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  if (readings.length < 2) {
+    container.innerHTML = `<p class="bw-ms-trend-note">${readings.length === 1
+      ? `One ${label} reading logged (${formatValue(readings[0].value)}). Log another to see the trend.`
+      : `Log ${label} twice to see the trend.`}</p>`;
+    return;
+  }
+
+  const W = 400, H = 170;
+  const PAD_L = 48, PAD_R = 14, PAD_T = 22, PAD_B = 30;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const values = readings.map((reading) => reading.value);
+  let ymin = Math.min(...values);
+  let ymax = Math.max(...values);
+  if (ymin === ymax) { ymin -= 1; ymax += 1; }
+  const pad = Math.max((ymax - ymin) * 0.16, 0.3);
+  ymin -= pad; ymax += pad;
+  const toY = (value) => PAD_T + chartH - ((value - ymin) / (ymax - ymin)) * chartH;
+  const xs = readings.map((_, index) => PAD_L + (index / (readings.length - 1)) * chartW);
+
+  let grid = '';
+  for (let index = 0; index <= 2; index++) {
+    const value = ymin + ((ymax - ymin) * index) / 2;
+    const y = toY(value);
+    grid += `<line class="bw-site-grid" x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}"/>`
+      + `<text x="${PAD_L - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5">${formatAxis(value)}</text>`;
+  }
+
+  const labelIndexes = [...new Set([0, Math.floor((readings.length - 1) / 2), readings.length - 1])];
+  const dateLabels = labelIndexes.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 7}" text-anchor="${index === 0 ? 'start' : index === readings.length - 1 ? 'end' : 'middle'}" font-size="9.5">${formatDayMonth(readings[index].date)}</text>`).join('');
+  const line = readings.map((reading, index) => `${index === 0 ? 'M' : 'L'}${xs[index].toFixed(1)},${toY(reading.value).toFixed(1)}`).join(' ');
+  const dots = readings.map((reading, index) => `<circle class="bw-site-dot" cx="${xs[index].toFixed(1)}" cy="${toY(reading.value).toFixed(1)}" r="2.8"><title>${reading.date} · ${formatValue(reading.value)}</title></circle>`).join('');
+
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="${label} trend in ${unit}">`
+    + grid
+    + `<path class="bw-site-line" d="${line}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
+    + dots + dateLabels
+    + `</svg>`;
+}
+
 export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
   if (!container) return;
   if (!trainingDays || trainingDays.length === 0) {

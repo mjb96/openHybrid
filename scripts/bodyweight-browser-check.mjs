@@ -18,6 +18,8 @@ const { chromium, executablePath } = runtime;
 const STORAGE_KEY = 'hybrid_engine_v2_state';
 const shotArg = process.argv.find((arg) => arg.startsWith('--screenshot='));
 const shotPath = shotArg ? shotArg.slice('--screenshot='.length) : '';
+const trendShotArg = process.argv.find((arg) => arg.startsWith('--trend-screenshot='));
+const trendShotPath = trendShotArg ? trendShotArg.slice('--trend-screenshot='.length) : '';
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = createServer(async (req, res) => {
   try {
@@ -291,6 +293,7 @@ try {
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Log measurements', 'another date opens in log mode');
   await page.fill('#msSheet_waist', '85.5');
   await page.fill('#msSheet_bodyFat', '19.0');
+  await page.fill('#msSheet_arm_l', '33');
   await page.click('[data-action="save-measurements-sheet"]');
   await page.waitForFunction((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
@@ -306,6 +309,80 @@ try {
   const bfDelta = page.locator('#bwMeasurements .bw-ms-site--bodyfat .bw-ms-delta');
   ok((await bfDelta.innerText()) === '-0.6 pp', 'the card reports the body-fat change in percentage points');
   ok((await bfDelta.getAttribute('title')) === 'Change in percentage points', 'the body-fat delta is titled as percentage points');
+
+  // ---- per-site trend -----------------------------------------------------
+  // Every measured cell is a toggle: one tap draws that site's history below
+  // the grid, a second tap collapses it, and nothing else re-renders.
+  const siteTargets = await page.evaluate(() => {
+    const cells = [...document.querySelectorAll('#bwMeasurements .bw-ms-site')];
+    return {
+      count: cells.length,
+      minHeight: cells.length ? Math.min(...cells.map((cell) => cell.getBoundingClientRect().height)) : 0,
+      tags: [...new Set(cells.map((cell) => cell.tagName))],
+      action: cells[0]?.getAttribute('data-action') || '',
+      pressed: cells[0]?.getAttribute('aria-pressed') || '',
+    };
+  });
+  ok(siteTargets.count === 13, `every measured site and body fat is a control (${siteTargets.count})`);
+  ok(siteTargets.minHeight >= 44, `the smallest site control is ${Math.round(siteTargets.minHeight)}px, at least 44px`);
+  ok(siteTargets.tags.length === 1 && siteTargets.tags[0] === 'BUTTON', 'site cells are buttons');
+  ok(siteTargets.action === 'measurement-site' && siteTargets.pressed === 'false', 'a site control starts unpressed');
+
+  const armLeft = '#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]';
+  await page.click(armLeft);
+  await page.waitForSelector('#bwMsTrend svg');
+  const trendOpen = await page.evaluate(() => {
+    const button = document.querySelector('#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]');
+    const container = document.getElementById('bwMsTrend');
+    const rect = container?.getBoundingClientRect();
+    return {
+      pressed: button?.getAttribute('aria-pressed') || '',
+      active: button?.classList.contains('active') || false,
+      hidden: container?.hidden ?? null,
+      svg: Boolean(container?.querySelector('svg')),
+      path: Boolean(container?.querySelector('svg path.bw-site-line')),
+      dots: container?.querySelectorAll('svg circle.bw-site-dot').length || 0,
+      labels: container?.textContent || '',
+      others: [...document.querySelectorAll('#bwMeasurements [data-action="measurement-site"]')]
+        .filter((cell) => cell !== button && cell.getAttribute('aria-pressed') === 'true').length,
+      left: rect?.left ?? -1,
+      right: rect?.right ?? -1,
+      viewport: window.innerWidth,
+    };
+  });
+  ok(trendOpen.pressed === 'true' && trendOpen.active, 'tapping Arm L marks it pressed');
+  ok(trendOpen.hidden === false && trendOpen.svg && trendOpen.path, 'tapping Arm L draws an SVG trend line');
+  ok(trendOpen.dots === 2, `the Arm L chart plots both readings (${trendOpen.dots})`);
+  ok(/33[.]0 cm/.test(trendOpen.labels) && /34[.]0 cm/.test(trendOpen.labels), 'the chart labels the two arm readings');
+  ok(trendOpen.others === 0, 'only one site is selected at a time');
+  ok(trendOpen.left >= 0 && trendOpen.right <= trendOpen.viewport, `the trend fits the 390px card (${Math.round(trendOpen.left)}–${Math.round(trendOpen.right)} of ${trendOpen.viewport})`);
+
+  if (trendShotPath) {
+    await page.waitForTimeout(2600);
+    await page.evaluate(() => document.getElementById('bwMeasurements')?.scrollIntoView({ block: 'center' }));
+    await mkdir(path.dirname(trendShotPath), { recursive: true });
+    await page.screenshot({ path: trendShotPath });
+    console.log(`  shot · ${trendShotPath}`);
+  }
+
+  await page.click(armLeft);
+  await page.waitForFunction(() => document.getElementById('bwMsTrend')?.hidden === true);
+  ok(await page.evaluate(() => {
+    const button = document.querySelector('#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]');
+    const container = document.getElementById('bwMsTrend');
+    return button?.getAttribute('aria-pressed') === 'false' && !button?.classList.contains('active')
+      && container?.hidden === true && !container?.querySelector('svg');
+  }), 'tapping the active site again collapses the chart');
+
+  await page.click('#bwMeasurements [data-action="measurement-site"][data-site="bodyFat"]');
+  await page.waitForSelector('#bwMsTrend svg');
+  ok(await page.evaluate(() => {
+    const container = document.getElementById('bwMsTrend');
+    return /Body fat trend in %/.test(container?.innerHTML || '')
+      && /%<\/text>/.test(container?.innerHTML || '');
+  }), 'body fat uses the percentage scale');
+  await page.click('#bwMeasurements [data-action="measurement-site"][data-site="bodyFat"]');
+  await page.waitForFunction(() => document.getElementById('bwMsTrend')?.hidden === true);
 
   await page.click('#bwMeasurements [data-action="measurement-unit"][data-unit="in"]');
   await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.settings?.measurementUnit === 'in', STORAGE_KEY);
@@ -401,10 +478,18 @@ try {
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 
-  // One narrow context: the full-width body-fat field must still fit a 320px
-  // phone and must not push the sheet sideways.
+  // One narrow context: the full-width body-fat field and an open site trend
+  // must still fit a 320px phone without pushing the card sideways.
+  const narrowState = {
+    ...state,
+    bodyMeasurements: [
+      { date: '2026-11-05', arm: 36, thigh: 58 },
+      { date: '2026-11-10', arm_l: 33 },
+      { date: '2026-11-19', arm_l: 34, waist: 84.5 },
+    ],
+  };
   const narrowContext = await createBrowserContext(browser, { viewport: { width: 320, height: 700 }, timezoneId: 'Australia/Sydney' });
-  await narrowContext.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(state)]);
+  await narrowContext.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(narrowState)]);
   await narrowContext.addInitScript(pinClock, Date.parse(`${todayISO}T09:00:00+11:00`));
   const narrowPage = await narrowContext.newPage();
   await narrowPage.goto(base, { waitUntil: 'networkidle' });
@@ -413,6 +498,29 @@ try {
   await narrowPage.waitForSelector('#view-analytics.active');
   await narrowPage.click('#view-analytics [data-action="open-analytics"][data-context="bodyweight"]:visible');
   await narrowPage.waitForSelector('#analytics-bodyweight.active');
+  const narrowArm = '#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]';
+  await narrowPage.click(narrowArm);
+  await narrowPage.waitForSelector('#bwMsTrend svg');
+  const narrowTrend = await narrowPage.evaluate(() => {
+    const button = document.querySelector('#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]')?.getBoundingClientRect();
+    const container = document.getElementById('bwMsTrend')?.getBoundingClientRect();
+    return {
+      buttonHeight: button?.height || 0,
+      left: container?.left ?? -1,
+      right: container?.right ?? -1,
+      viewport: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      svgWidth: document.querySelector('#bwMsTrend svg')?.getBoundingClientRect().width || 0,
+      pressed: document.querySelector('#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]')?.getAttribute('aria-pressed') || '',
+    };
+  });
+  ok(narrowTrend.pressed === 'true', 'the 320px trend selection is pressed');
+  ok(narrowTrend.buttonHeight >= 44, `the Arm L control stays ${Math.round(narrowTrend.buttonHeight)}px on 320px`);
+  ok(narrowTrend.left >= 0 && narrowTrend.right <= narrowTrend.viewport, `the trend fits a 320px card (${Math.round(narrowTrend.left)}–${Math.round(narrowTrend.right)} of ${narrowTrend.viewport})`);
+  ok(narrowTrend.svgWidth > 0 && narrowTrend.svgWidth <= narrowTrend.viewport, `the trend SVG scales to the phone (${Math.round(narrowTrend.svgWidth)}px)`);
+  ok(narrowTrend.scrollWidth <= narrowTrend.viewport + 1, `the 320px bodyweight card does not overflow sideways (${narrowTrend.scrollWidth}px)`);
+  await narrowPage.click(narrowArm);
+  await narrowPage.waitForFunction(() => document.getElementById('bwMsTrend')?.hidden === true);
   await narrowPage.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await narrowPage.waitForSelector('#measurementsSheet.active');
   await ensureBilateralOpen(narrowPage);

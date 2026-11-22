@@ -185,7 +185,12 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   changing the date must reload the fields. The pre-14-site single `arm`/`thigh`
   readings are `LEGACY_MEASUREMENT_SITES` (“Arm (old)”/“Thigh (old)”): readable,
   shown on the card and exported, never an input, and `preserveLegacySites`
-  carries them across an edit so adding a waist cannot drop them.
+  carries them across an edit so adding a waist cannot drop them. Every measured
+  cell is a 44px button: `showMeasurementTrend` opens one site at a time in
+  `#bwMsTrend` from the last rendered model (a second tap collapses it) and
+  `renderSiteTrend` draws a dependency-free SVG line oldest → newest, min/mid/max
+  and date labels, body fat on a percentage scale, and a note rather than a line
+  under two readings. A cm/in toggle repaints the open trend in the new unit.
   `buildMeasurementsCsv` exports the raw centimetres (14 canonical columns, then
   Arm/Thigh, then body fat) from Settings → Data, and
   `js/portability/import-measurements-csv.js` reads that shape back

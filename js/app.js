@@ -52,6 +52,7 @@ import { computeDashboardModel } from './home/dashboard-model.js';
 import { buildTrainLanding } from './train/train-landing.js';
 import { renderTrainLanding } from './train/view-train-landing.js';
 import { initAnalytics, renderAnalytics, saveThresholdPace, saveBodyweightGoal, setBodyweightRangeAction, setAnalyticsContext, shareScoreCard } from './analytics.js';
+import { showMeasurementTrend } from './analytics/views/view-bodyweight.js';
 import { initBodyweightSheet, openBodyweightSheet, closeBodyweightSheet, stepBodyweight, saveBodyweightSheet, deleteBodyweightEntry } from './bodyweight-sheet.js';
 import {
   initMeasurementsSheet, openMeasurementsSheet, closeMeasurementsSheet, saveMeasurementsSheet,
@@ -1862,6 +1863,7 @@ else if (action === 'export-bodyweight-csv') triggerBodyweightCSVExport();
   else if (action === 'edit-ms-row') openMeasurementsSheet(target.getAttribute('data-date') || undefined);
   else if (action === 'delete-ms-row') deleteMeasurementEntry(target.getAttribute('data-date') || '');
   else if (action === 'measurement-unit') setMeasurementUnit(target.getAttribute('data-unit') || 'cm');
+  else if (action === 'measurement-site') showMeasurementTrend(target.getAttribute('data-site') || '');
   else if (action === 'export-measurements-csv') triggerMeasurementsCSVExport();
   else if (action === 'bw-range') setBodyweightRangeAction(target.getAttribute('data-days'));
   else if (action === 'save-bw-goal') saveBodyweightGoal();

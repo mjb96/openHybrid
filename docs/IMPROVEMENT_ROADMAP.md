@@ -492,17 +492,17 @@ not rebuild a ✅.
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on a body diagram with a week switcher | ◐ | 2 |
 | P5 | Sets per muscle per week | `analytics/volume-guide.js` | Weekly/monthly/yearly buckets, muscle selection, long ranges | ◐ | 2 |
 | P6 | Muscle distribution | `analytics/muscle-load.js` | Volume share with sessions/time/sets and period comparison | ◐ | 2 |
-| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ◐ | 3 |
+| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ✅ | 3 |
 | P8 | Progress photos | — | Dated photos, timeline, compare, edit/replace/delete, share | ○ | 3 |
 | P9 | Exercise performance | `analytics/exercise-detail.js` | Graph, PR summary, set records by rep target, history | ◐ | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js` | Calendar, consecutive-week streak, rest days, year zoom | ◐ | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
 | P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — |
 
-P7 stays ◐ on purpose: the measurements record now carries an entered body fat
-and 14 canonical bilateral tape sites (neck to calves, with pre-14-site single
-Arm/Thigh readings preserved and exported), but the per-site graph is still
-open.
+P7 is complete: the measurements record carries an entered body fat, 14
+canonical bilateral tape sites (pre-14-site single Arm/Thigh readings preserved
+and exported), and each measured cell toggles its own per-site trend below the
+card — body fat on a percentage scale.
 
 ### Workout logging (14)
 
@@ -671,7 +671,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,315 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,318 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
 
@@ -733,6 +733,27 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     (`node scripts/progress-hub-browser-check.mjs`); no PNG is committed.
   - Next: the monthly-report share card, then a Year in Review share image built
     from the values this screen shows.
+
+- **2026-11-23 — Per-site measurement trend (P7 complete).**
+  - Every measured cell on the Measurements card is now a 44px button
+    (`data-action="measurement-site"`). One tap opens `#bwMsTrend` below the
+    grid, a second tap on the same site collapses it, `aria-pressed` reports the
+    choice, and no analytics re-render or scroll call runs.
+  - `renderSiteTrend` (`js/analytics/charts.js`) is a dependency-free SVG line:
+    readings sort oldest → newest, y labels show the min/mid/max, x labels show
+    the dates, and under two readings it states what is missing instead of
+    drawing a line. Body fat renders on a percentage scale; tape sites use the
+    athlete's chosen unit.
+  - The chart is painted from the last rendered model (`showMeasurementTrend`),
+    so a cm/in toggle keeps the open site open in the new unit. The app router
+    maps `measurement-site` to that function; the card itself does not change.
+  - Validation: 3 new node tests (2,318 combined), typecheck, smoke, precache
+    and workflow gates. The extended bodyweight browser check taps Arm L (SVG
+    with both dots, 390px fit), taps again (collapsed), checks the body-fat
+    percentage scale, measures 44px controls and the trend at 320px, then ran
+    the full 45-check browser suite. Screenshot: `shots/measurements-trend.png`.
+  - Next: Progress photos (P8), the only remaining body-composition row.
+
 
 - **2026-11-23 — Fourteen measurement sites, legacy readings preserved.**
   - The measurements record now tracks 14 canonical length sites: neck,

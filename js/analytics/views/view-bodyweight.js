@@ -6,12 +6,18 @@
 // optional lose/gain/hold corridor. Weekly means keep the history honest when
 // water and salt move a morning.
 // ==========================================
-import { renderBodyWeightWithMA } from '../charts.js';
+import { renderBodyWeightWithMA, renderSiteTrend } from '../charts.js';
 import { buildBodyweightModel } from '../../metrics/bodyweight.js';
 import { buildMeasurementModel, cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
 import { formatDayMonth, todayKey } from '../../dates.js';
 
 let rangeDays = 90;
+/** The model the last full render built, so a site tap never re-collects state. */
+/** @type {ReturnType<typeof buildMeasurementModel>|null} */
+let lastMeasurementModel = null;
+/** One site at a time; a second tap on the same site collapses the chart. */
+/** @type {string|null} */
+let activeMeasurementSite = null;
 
 /** @param {number|string} days */
 export function setBodyweightRange(days) {
@@ -98,9 +104,80 @@ function weeklyHtml(model) {
 }
 
 /**
+ * The points and scale one site cell controls. Body fat is an entered
+ * percentage, so it gets the percent scale; tape sites read in the athlete's
+ * chosen length unit.
+ * @param {ReturnType<typeof buildMeasurementModel>|null} model
+ * @param {string} key
+ */
+function measurementTrendData(model, key) {
+  if (!model) return null;
+  if (key === 'bodyFat') {
+    if (!model.bodyFat?.latest) return null;
+    return {
+      points: model.bodyFat.points.map((point) => ({ date: point.date, value: point.value })),
+      options: { unit: '%', label: 'Body fat', percent: true },
+    };
+  }
+  const site = model.sites.find((entry) => entry.key === key);
+  if (!site?.latest) return null;
+  return {
+    points: site.points.map((point) => ({ date: point.date, value: point.cm })),
+    options: { unit: model.unit, label: site.label, percent: false },
+  };
+}
+
+/**
+ * Paint the chart for a site into the live container. Returns false when the
+ * site is no longer measured (for example after a delete re-render).
+ * @param {HTMLElement} container
+ * @param {string} key
+ */
+function paintMeasurementTrend(container, key) {
+  const data = measurementTrendData(lastMeasurementModel, key);
+  if (!data) return false;
+  container.hidden = false;
+  renderSiteTrend(container, data.points, data.options);
+  return true;
+}
+
+/**
+ * Toggle one site's history below the grid. No analytics re-render and no
+ * scroll call: the card stays exactly where the athlete's thumb left it.
+ * @param {string} siteKey
+ */
+export function showMeasurementTrend(siteKey) {
+  if (!siteKey) return;
+  const container = document.getElementById('bwMsTrend');
+  if (!container || !lastMeasurementModel) return;
+  const buttons = document.querySelectorAll('#bwMeasurements [data-action="measurement-site"]');
+  const wasActive = activeMeasurementSite === siteKey;
+  const data = wasActive ? null : measurementTrendData(lastMeasurementModel, siteKey);
+  if (!wasActive && !data) return;
+  activeMeasurementSite = wasActive ? null : siteKey;
+
+  buttons.forEach((button) => {
+    const on = !wasActive && button.getAttribute('data-site') === siteKey;
+    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    button.classList.toggle('active', on);
+  });
+
+  if (wasActive) {
+    container.hidden = true;
+    container.textContent = '';
+    return;
+  }
+  if (data) {
+    container.hidden = false;
+    renderSiteTrend(container, data.points, data.options);
+  }
+}
+
+/**
  * Progress → Body weight → Measurements. The tape is the slow signal the scale
  * hides, so it sits beside the trend rather than in its own destination. Only
- * measured sites render: an unmeasured neck is not a zero.
+ * measured sites render: an unmeasured neck is not a zero. Every measured cell
+ * is a button that toggles that site's history below the grid.
  * @param {ReturnType<typeof buildMeasurementModel>} model
  */
 function measurementsHtml(model) {
@@ -133,29 +210,32 @@ function measurementsHtml(model) {
     const delta = site.delta == null
       ? '<em class="bw-ms-delta bw-ms-delta--none">first reading</em>'
       : `<em class="bw-ms-delta">${site.delta > 0 ? '+' : ''}${roundDisplay(site.delta, unit)}</em>`;
-    return `<div class="bw-ms-site">
+    const active = activeMeasurementSite === site.key;
+    return `<button type="button" class="bw-ms-site${active ? ' active' : ''}" data-action="measurement-site" data-site="${site.key}" aria-pressed="${active}" aria-controls="bwMsTrend" title="Show the ${site.label} trend">
       <span>${site.label}</span>
       <strong>${value.toFixed(1)} <small>${unit}</small></strong>
       ${delta}
-    </div>`;
+    </button>`;
   }).join('');
 
   // Body fat is a percentage the athlete entered, not a tape length. Its delta
   // is in percentage points (`pp`), never percent-of-percent, and it only
   // appears when a reading exists — a body-fat-only log still renders the card.
+  const bodyFatActive = activeMeasurementSite === 'bodyFat';
   const bodyFat = model.bodyFat?.latest
-    ? `<div class="bw-ms-site bw-ms-site--bodyfat" title="Entered reading — not estimated">
+    ? `<button type="button" class="bw-ms-site bw-ms-site--bodyfat${bodyFatActive ? ' active' : ''}" data-action="measurement-site" data-site="bodyFat" aria-pressed="${bodyFatActive}" aria-controls="bwMsTrend" title="Entered reading — not estimated">
         <span>Body fat</span>
         <strong>${model.bodyFat.latest.value.toFixed(1)} <small>%</small></strong>
         ${model.bodyFat.delta == null
           ? '<em class="bw-ms-delta bw-ms-delta--none">first reading</em>'
           : `<em class="bw-ms-delta" title="Change in percentage points">${model.bodyFat.delta > 0 ? '+' : ''}${roundDisplay(model.bodyFat.delta).toFixed(1)} pp</em>`}
-      </div>`
+      </button>`
     : '';
 
   return `<article class="card-dark p-3 bw-measurements">
     ${head}
     <div class="bw-ms-grid">${cells}${bodyFat}</div>
+    <div id="bwMsTrend" class="bw-ms-trend" hidden></div>
     ${logButton}
   </article>`;
 }
@@ -196,7 +276,18 @@ export function renderBodyWeightAnalytics(_data, getState) {
   if (weekly) weekly.innerHTML = weeklyHtml(model);
 
   const measurements = document.getElementById('bwMeasurements');
-  if (measurements) measurements.innerHTML = measurementsHtml(buildMeasurementModel(state));
+  if (measurements) {
+    const model = buildMeasurementModel(state);
+    if (!model.count) activeMeasurementSite = null;
+    lastMeasurementModel = model;
+    measurements.innerHTML = measurementsHtml(model);
+    // A unit toggle re-renders this card through the normal render path. The
+    // open site stays open, in the new unit, without a second tap.
+    const trend = document.getElementById('bwMsTrend');
+    if (trend && activeMeasurementSite && !paintMeasurementTrend(trend, activeMeasurementSite)) {
+      activeMeasurementSite = null;
+    }
+  }
 
   const date = document.getElementById('analyticsBwDate');
   if (date && !date.value) date.value = todayKey();
