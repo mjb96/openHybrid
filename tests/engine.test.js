@@ -159,6 +159,22 @@ test('computeDiagnosticForLift: falls back to session-level rpe when no per-set 
   assert.equal(r.progression?.action, 'hold', 'high strength-session RPE must not still recommend loading up');
 });
 
+test('computeDiagnosticForLift: a half-step session RPE is not truncated to an integer', () => {
+  const sets = [{ w: '80', r: '5', c: true }, { w: '80', r: '5', c: true }];
+  initEngine(() => makeDiagState(sets, 8.5), () => DAYS);
+  const r = computeDiagnosticForLift('2', 'mon', 'Squat', 5);
+  // parseInt('8.5') read this as 8 and missed the 8.5 fatigue threshold.
+  assert.equal(r.isFatigueOverload, true);
+});
+
+test('computeDiagnosticForLift: RIR-only imported effort feeds the fatigue check', () => {
+  const sets = [{ w: '80', r: '5', c: true, rir: 1 }];
+  initEngine(() => makeDiagState(sets), () => DAYS);
+  const r = computeDiagnosticForLift('2', 'mon', 'Squat', 5);
+  // No rpe was stored, so this used to fall through to the session number.
+  assert.equal(r.isFatigueOverload, true);
+});
+
 test('computeDiagnosticForLift: no rpe data at all does not flag fatigue overload', () => {
   const sets = [{ w: '80', r: '5', c: true }];
   initEngine(() => makeDiagState(sets, null), () => DAYS);

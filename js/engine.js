@@ -18,6 +18,7 @@ import { isJtShedProgram, jtLiftTarget, jtStoredRolesFor } from './programs/jt-s
 import { isShedPplulProgram, shedPplulLiftTarget } from './programs/shed-pplul-model.js';
 import { getCatalogEntry } from './programs/catalog.js';
 import { DEFAULT_PROGRESSION_STYLE, normalizeProgressionStyle } from './programs/progression-style.js';
+import { effortForSet } from './workout/effort.js';
 
 // Re-exported for backwards-compatible import sites (and the engine test suite).
 export { isCompletedSet };
@@ -241,8 +242,10 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
     // exercise's next-load recommendation.
     const sourceDay = lastSession.day;
     lastSessionSets.forEach((set) => {
-      const rpe = parseFloat(set?.rpe) || 0;
-      if (rpe > 0) { totalRpeSum += rpe; rpeCount++; }
+      // RIR-only imports and an unrated failure are real effort; parseFloat on
+      // `rpe` alone left both invisible to the fatigue check.
+      const { rpe } = effortForSet(set);
+      if (rpe != null && rpe > 0 && rpe <= 10) { totalRpeSum += rpe; rpeCount++; }
     });
 
     // Fallback: strength-session RPE only. A run's effort is a separate signal

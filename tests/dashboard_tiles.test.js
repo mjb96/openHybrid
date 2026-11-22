@@ -22,3 +22,25 @@ test('the default-visible dashboard is the focused, non-overlapping six', () => 
   assert.deepEqual(visible, ['avg-pace', 'bodyweight', 'readiness', 'recovery-score', 'streak', 'weekly-volume']);
   assert.ok(!visible.includes('today'));
 });
+
+test('Stress Balance keeps half-step session and run RPE', () => {
+  const tile = TILE_REGISTRY.find((entry) => entry.id === 'stress-balance');
+  const stateFor = (gymRpe, runRpe) => ({ weeks: {
+    '1': {
+      gymRpe: { mon: String(gymRpe) },
+      gymStats: { mon: { time: '60' } },
+      lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } },
+      runs: {},
+      runSessions: { mon: [{ sessionId: 'run1', time: '60:00', rpe: String(runRpe), dist: '10' }] },
+    },
+  } });
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+  // 8.5 × 60 = 510 lift; 6 × 60 = 360 run → 59%. parseInt('8.5') made it 57%.
+  const gymHalf = tile.renderData(stateFor(8.5, 6), days, null, 'mon', { wkNum: 1 });
+  assert.equal(gymHalf.liftPct, 59);
+
+  // 8 × 60 = 480 lift; 6.5 × 60 = 390 run → 55%. parseInt('6.5') made it 57%.
+  const runHalf = tile.renderData(stateFor(8, 6.5), days, null, 'mon', { wkNum: 1 });
+  assert.equal(runHalf.liftPct, 55);
+});

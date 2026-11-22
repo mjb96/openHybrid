@@ -73,7 +73,7 @@ import {
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
 import { weightUnitLabel } from './workout/units.js';
-import { effortForSet } from './workout/effort.js';
+import { formatEffort } from './workout/effort.js';
 import {
   openConfirmResetModal, closeConfirmResetModal, executeResetActiveDayMetrics,
 } from './workout/clear-log.js';
@@ -295,13 +295,13 @@ function _previousSessionPanel(appState, performance, exerciseName, weightUnit) 
   const rows = sets.map((set, index) => {
     const weight = parseFloat(set?.w) || 0;
     const reps = parseInt(set?.r, 10) || 0;
-    // Read through the one effort model so a half-step RIR and a legacy RPE
-    // agree, and an unrated set shows nothing instead of a fabricated number.
-    const effort = effortForSet(set);
-    const effortLabel = !effort.rated ? ''
-      : set?.rir != null ? `${effort.rir} reps left`
-        : `RPE ${effort.rpe}`;
-    const effortText = escapeHtml(String(effortLabel));
+    // One effort reader, and the existing copy: an entered RIR reads as
+    // "1.5 reps left", a legacy RPE-only set keeps "RPE 8.5", and an unrated
+    // set stays blank instead of showing a fabricated number.
+    const hasRir = set?.rir != null && set.rir !== '';
+    const effortText = escapeHtml(hasRir
+      ? formatEffort(set, { style: 'reps-left' })
+      : formatEffort(set, { scale: 'rpe' }));
     return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight > 0 ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effortText}</small></div>`;
   }).join('');
   return `<details class="previous-session">

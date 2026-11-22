@@ -4,26 +4,25 @@
 //
 // The set sheet records reps in reserve in HALF steps (0 … 4+, where 4+ stores
 // 4). A stored set carries the RIR it was entered with and the derived
-// `rpe = 10 - rir`; imported sets may carry only one of the two. Every reader
-// therefore goes through effortForSet() instead of re-deriving the pair, so the
-// logger, the previous-workout panel and sRPE cannot disagree about what a set
-// asked of the athlete.
+// `rpe = 10 - rir`; imported sets may carry only one of the two, or only a
+// `failure` flag. Readers go through effortForSet() instead of re-deriving the
+// pair, so the logger, the previous-workout panel and sRPE agree.
 //
 // Pure: no DOM, no state import. `rated` is false when the effort was INFERRED
 // (a failed set with no rating) rather than entered — analytics may count that
-// set, but the UI must not present it as something the athlete recorded.
+// set as RPE 10, but the UI must not present it as a recorded rating.
 // =============================================================================
 
 /** The scale the sheet offers. `4+` is stored as the maximum, 4. */
 export const EFFORT_SCALE = Object.freeze({ MIN: 0, MAX: 4, STEP: 0.5 });
 
 /**
- * Coerce a number-ish value without letting '' become 0.
+ * Coerce a number-ish value without letting '' or an array become a number.
  * @param {any} value
  * @returns {number|null}
  */
 function numeric(value) {
-  if (value == null) return null;
+  if (value == null || Array.isArray(value)) return null;
   if (typeof value === 'string' && value.trim() === '') return null;
   if (typeof value === 'symbol') return null;
   try {
@@ -33,6 +32,18 @@ function numeric(value) {
     // A hostile valueOf/getter must not break a read of the logger.
     return null;
   }
+}
+
+/**
+ * True for the boolean flag the app writes and the string spellings an import
+ * may carry. Used by the load-memo signature as well as by effortForSet(), so
+ * a failed set invalidates cached ATL/CTL in both encodings.
+ * @param {any} set
+ * @returns {boolean}
+ */
+export function isFailedSet(set) {
+  const value = set && typeof set === 'object' ? set.failure : false;
+  return value === true || value === 'true' || value === 1 || value === '1';
 }
 
 /**
@@ -61,14 +72,14 @@ export function normalizeEffortRir(value) {
  * @returns {{ rir: number|null, rpe: number|null, rated: boolean }}
  */
 export function effortForSet(set) {
-  const source = set && typeof set === 'object' ? set : {};
+  const source = set && typeof set === 'object' && !Array.isArray(set) ? set : {};
   const storedRir = numeric(source.rir);
   const storedRpe = numeric(source.rpe);
   const rir = storedRir != null
     ? storedRir
     : (storedRpe != null ? Math.round((10 - storedRpe) * 100) / 100 : null);
   if (rir == null) {
-    if (source.failure === true) return { rir: 0, rpe: 10, rated: false };
+    if (isFailedSet(source)) return { rir: 0, rpe: 10, rated: false };
     return { rir: null, rpe: null, rated: false };
   }
   return { rir, rpe: Math.round((10 - rir) * 100) / 100, rated: true };
@@ -76,12 +87,14 @@ export function effortForSet(set) {
 
 /**
  * Compact effort label for a set row or detail. '' when nothing was recorded.
+ * `style: 'reps-left'` keeps the previous-workout column's existing wording.
  * @param {any} set
- * @param {{ scale?: 'rir'|'rpe' }} [options]
+ * @param {{ scale?: 'rir'|'rpe', style?: 'label'|'reps-left' }} [options]
  * @returns {string}
  */
-export function formatEffort(set, { scale = 'rir' } = {}) {
+export function formatEffort(set, { scale = 'rir', style = 'label' } = {}) {
   const effort = effortForSet(set);
   if (!effort.rated) return '';
+  if (style === 'reps-left') return `${effort.rir} reps left`;
   return scale === 'rpe' ? `RPE ${effort.rpe}` : `RIR ${effort.rir}`;
 }

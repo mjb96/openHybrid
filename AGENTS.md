@@ -568,7 +568,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   detection. Tick, quick-log and log-all share the PR + per-set comparison
   (`↑`/`=`/`↓` vs the same set index last session). `set.failure` is an
   independent flag — `type:'F'` stays AMRAP — and the draft/prescription
-  predicates recognise it. `set.basis` (`each`, `per-side`, absent/`total`)
+  predicates recognise it. Per-set effort is RIR 0–4 in half steps
+  (`js/workout/effort.js`; `setPerSetRir` stores `rir` + `rpe = 10 - rir`), the
+  previous-workout panel and sRPE read through `effortForSet`, and the load-memo
+  signature includes `failure` so toggling it refreshes ATL/CTL.
+  `set.basis` (`each`, `per-side`, absent/`total`)
   affects VOLUME only: `each` doubles a dumbbell pair, `per-side` and legacy
   sets count once, and e1RM stays per-implement. Blank dumbbell rows default to
   Each (Per side when unilateral); legacy completed sets read as Both and are

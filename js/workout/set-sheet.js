@@ -23,7 +23,7 @@ import {
   setSetLoadMode, setSetMode, setSetRest, setSetType, toggleSetFailure,
 } from './set-mutations.js';
 import { effectiveSetMode } from './set-shape.js';
-import { normalizeEffortRir } from './effort.js';
+import { effortForSet, normalizeEffortRir } from './effort.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
 import { getSelectedDay, getState } from './context.js';
@@ -61,7 +61,9 @@ function previousLabel(liftName, setIndex) {
 
 function markActive(container, attribute, value) {
   container?.querySelectorAll('button').forEach((button) => {
-    button.classList.toggle('is-active', button.getAttribute(attribute) === value);
+    const active = button.getAttribute(attribute) === value;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
 }
 
@@ -100,8 +102,11 @@ function render(liftName, setIndex) {
   markActive(document.getElementById('setSheetLoad'), 'data-mode', resolvedLoadMode(set, liftName));
   markActive(document.getElementById('setSheetBasis'), 'data-basis', basis || '');
   markActive(document.getElementById('setSheetRest'), 'data-rest', set.restSec == null ? '-1' : String(Number(set.restSec)));
-  const rir = set.rir != null ? Number(set.rir) : (set.rpe != null ? 10 - Number(set.rpe) : null);
-  markActive(document.getElementById('setSheetRir'), 'data-rir', String(normalizeEffortRir(rir)));
+  const effort = effortForSet(set);
+  // Only a recorded rating lights a cell. A `''` RIR stays unselected instead
+  // of coercing to 0, and an inferred failure keeps its own Failure button.
+  const shownRir = effort.rated ? normalizeEffortRir(effort.rir) : null;
+  markActive(document.getElementById('setSheetRir'), 'data-rir', shownRir == null ? '' : String(shownRir));
 
   const loadWrap = document.getElementById('setSheetLoadWrap');
   if (loadWrap) loadWrap.toggleAttribute('hidden', !bodyweightCapable);
@@ -205,7 +210,7 @@ export async function handleSetSheetAction(target, action, liftName, sIdx) {
     return;
   }
   if (action === 'set-sheet-rir') {
-    setPerSetRir(name, index, Number(target.getAttribute('data-rir')));
+    setPerSetRir(name, index, target.getAttribute('data-rir'));
     refreshSetSheet();
     return;
   }

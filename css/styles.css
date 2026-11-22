@@ -10464,7 +10464,7 @@ html[data-module-recovery="off"] [data-module="recovery"] {
    than expanding inside the row. Every control is a 44px target and every
    segment states the CURRENT stored value.
    ========================================================================== */
-.set-sheet { max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; }
+.set-sheet { max-height: 88vh; overflow-y: auto; overflow-x: auto; overscroll-behavior: contain; }
 .set-sheet-sub {
   margin: -4px 0 12px; color: var(--text-secondary);
   font-size: 0.72rem; font-weight: 650; line-height: 1.4;
@@ -10476,7 +10476,7 @@ html[data-module-recovery="off"] [data-module="recovery"] {
 .set-sheet-lbl:first-of-type { margin-top: 4px; }
 .set-sheet-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .set-sheet-seg--rest { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.set-sheet-seg--effort { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.set-sheet-seg--effort { grid-template-columns: repeat(5, minmax(44px, 1fr)); }
 .set-sheet-seg button {
   min-height: var(--touch-target);
   border-radius: 11px;

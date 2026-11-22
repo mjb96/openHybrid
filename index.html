@@ -699,7 +699,7 @@
         <div class="run-grid-inputs mb-2">
           <label><span class="set-num-lbl block mb-1" id="runDistUnitLabel">Dist KM</span><input type="number" step="0.01" id="runInputDist" aria-label="Run distance" placeholder="0.00"></label>
           <label><span class="set-num-lbl block mb-1">Time</span><input type="text" id="runInputTime" aria-label="Run time" placeholder="00:00"></label>
-          <label><span class="set-num-lbl block mb-1">RPE</span><input type="number" id="runInputRpeCockpit" aria-label="Run effort (RPE 1-10)" placeholder="1-10" max="10"></label>
+          <label><span class="set-num-lbl block mb-1">RPE</span><input type="number" id="runInputRpeCockpit" aria-label="Run effort (RPE 1-10)" placeholder="1-10" min="1" max="10" step="0.5" inputmode="decimal"></label>
         </div>
 
         <div class="run-pace-row mb-3" id="runPaceRow">
@@ -786,7 +786,7 @@
         </div>
 
         <div class="flex gap-2 mb-2">
-          <input type="number" id="sessionGymRpeCockpit" placeholder="Overall Gym RPE (1-10)" max="10" aria-label="Overall Gym RPE">
+          <input type="number" id="sessionGymRpeCockpit" placeholder="Overall Gym RPE (1-10)" min="1" max="10" step="0.5" inputmode="decimal" aria-label="Overall Gym RPE">
         </div>
         <textarea id="sessionNotesInput" placeholder="How did today feel? Sleep? Energy?" aria-label="Session Notes"></textarea>
 
@@ -2046,11 +2046,11 @@
           <div class="summary-effort__body">
             <div id="summaryGymRpeBlock">
               <label for="summaryGymRPE" class="text-xs-bold block mb-1 text-muted">Gym effort (RPE 1–10)</label>
-              <input type="number" id="summaryGymRPE" min="1" max="10" placeholder="e.g. 7" class="mb-4">
+              <input type="number" id="summaryGymRPE" min="1" max="10" step="0.5" inputmode="decimal" placeholder="e.g. 7" class="mb-4">
             </div>
             <div id="summaryRunRpeBlock">
               <label for="summaryRunRPE" class="text-xs-bold block mb-1 text-muted">Run effort (RPE 1–10)</label>
-              <input type="number" id="summaryRunRPE" min="1" max="10" placeholder="e.g. 6" class="mb-4">
+              <input type="number" id="summaryRunRPE" min="1" max="10" step="0.5" inputmode="decimal" placeholder="e.g. 6" class="mb-4">
             </div>
             <label for="summaryNotes" class="text-xs-bold block mb-1 text-muted">Session notes</label>
             <textarea id="summaryNotes" rows="2" placeholder="Anything worth remembering next time"></textarea>

@@ -474,6 +474,8 @@ try {
         return {
           active: document.querySelector('#setSheet [data-rir="1.5"]')?.classList.contains('is-active'),
           activeCount: document.querySelectorAll('#setSheetRir button.is-active').length,
+          pressed: [...document.querySelectorAll('#setSheetRir button[aria-pressed="true"]')]
+            .map((b) => b.getAttribute('data-rir')),
           rir: set?.rir,
           rpe: set?.rpe,
         };
@@ -481,6 +483,9 @@ try {
       console.log(`${tag} effort-rated:`, JSON.stringify(rated));
       if (!rated.active || rated.activeCount !== 1) {
         fail(`${tag}: tapping 1½ did not leave exactly that button active (${JSON.stringify(rated)})`);
+      }
+      if (rated.pressed.length !== 1 || rated.pressed[0] !== '1.5') {
+        fail(`${tag}: aria-pressed did not follow the active effort (${JSON.stringify(rated.pressed)})`);
       }
       if (rated.rir !== 1.5 || rated.rpe !== 8.5) {
         fail(`${tag}: 1½ stored ${JSON.stringify({ rir: rated.rir, rpe: rated.rpe })}, expected {rir:1.5,rpe:8.5}`);
@@ -493,13 +498,47 @@ try {
         const set = state.weeks?.['1']?.lifts?.thu?.['Incline Barbell Press']?.[0] || null;
         return {
           activeCount: document.querySelectorAll('#setSheetRir button.is-active').length,
+          pressedCount: document.querySelectorAll('#setSheetRir button[aria-pressed="true"]').length,
           rir: set?.rir,
           rpe: set?.rpe,
         };
       });
       console.log(`${tag} effort-cleared:`, JSON.stringify(cleared));
-      if (cleared.activeCount !== 0 || cleared.rir != null || cleared.rpe != null) {
+      if (cleared.activeCount !== 0 || cleared.pressedCount !== 0
+        || cleared.rir != null || cleared.rpe != null) {
         fail(`${tag}: re-tapping 1½ did not clear the rating (${JSON.stringify(cleared)})`);
+      }
+
+      // A legacy/imported set may carry only `rpe`. The sheet must show the
+      // equivalent half-step RIR active, not no selection and not 0.
+      if (width === 320) {
+        await page.evaluate(() => {
+          const key = 'hybrid_engine_v2_state';
+          const state = JSON.parse(localStorage.getItem(key) || '{}');
+          const set = state.weeks?.['1']?.lifts?.thu?.['Incline Barbell Press']?.[0];
+          if (set) {
+            delete set.rir;
+            set.rpe = 8;
+          }
+          localStorage.setItem(key, JSON.stringify(state));
+        });
+        await page.reload({ waitUntil: 'networkidle' });
+        await enterCockpit(page);
+        await page.click(`${effortRow} .set-num-lbl`);
+        await page.waitForSelector('#setSheet.active');
+        const legacy = await page.evaluate(() => ({
+          active: [...document.querySelectorAll('#setSheetRir [data-rir].is-active')]
+            .map((b) => b.getAttribute('data-rir')),
+          pressed: [...document.querySelectorAll('#setSheetRir button[aria-pressed="true"]')]
+            .map((b) => b.getAttribute('data-rir')),
+        }));
+        console.log(`${tag} legacy-rpe-active:`, JSON.stringify(legacy));
+        if (legacy.active.length !== 1 || legacy.active[0] !== '2') {
+          fail(`${tag}: a legacy RPE-only set did not show RIR 2 active (${JSON.stringify(legacy.active)})`);
+        }
+        if (legacy.pressed.length !== 1 || legacy.pressed[0] !== '2') {
+          fail(`${tag}: aria-pressed did not name RIR 2 for a legacy RPE-only set (${JSON.stringify(legacy.pressed)})`);
+        }
       }
       await page.click('#setSheet .sheet-close-btn');
       await page.waitForTimeout(250);
