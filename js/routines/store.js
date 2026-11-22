@@ -15,6 +15,15 @@
 // =============================================================================
 import { secureRandomSuffix } from '../util/secure-id.js';
 
+// Defensive bounds shared by the builder, the copy path and import validation,
+// so the app can never write a routine its own import would refuse. A single
+// lift with more than 50 working sets is not a real session; a routine library
+// with more than 500 records is not a real library.
+export const MAX_ROUTINE_SETS = 50;
+export const MAX_ROUTINE_LIFTS = 60;
+export const MAX_ROUTINES = 500;
+export const MAX_ROUTINE_FOLDERS = 200;
+
 /**
  * Guarantee both root routine arrays exist. Idempotent; returns true when it
  * had to repair something (callers do not need the value).

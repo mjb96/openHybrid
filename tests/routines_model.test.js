@@ -14,8 +14,9 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek } from '../js/routines/model.js';
-import { ensureRoutines, newFolderId, removeRoutine } from '../js/routines/store.js';
+import { ensureRoutines, MAX_ROUTINE_SETS, newFolderId, removeRoutine } from '../js/routines/store.js';
 import { createOneOffStrengthSession } from '../js/workout/one-off-session.js';
+import { buildSetRow } from '../js/templates.js';
 import { wrapExport, parseImport } from '../js/state/route-portability.js';
 import { validateImport } from '../js/state/import-validate.js';
 import { CURRENT_SCHEMA_VERSION, migrateState } from '../js/state/migrations.js';
@@ -70,8 +71,18 @@ function build(options = {}) {
   });
 }
 
+/** A one-day session built from an explicit lift map. */
+function loadWeek(lifts) {
+  return {
+    dates: { mon: '2026-11-16' },
+    lifts: { mon: lifts },
+    liftOrder: { mon: Object.keys(lifts) },
+  };
+}
+
 test('exercise membership and order follow the saved session, warm-ups skipped', () => {
   const routine = build();
+  assert.equal(routine.kind, 'routine', 'a routine is discriminated from a program');
   assert.deepEqual(routine.days.mon.lifts, ['Bench Press', 'Deadlift', 'Plank', 'Farmer Carry', 'Barbell Row', 'Incline DB Press']);
   assert.equal(routine.days.mon.runs, 'Rest');
   assert.equal(routine.days.mon.badge, 'Routine');
@@ -81,6 +92,7 @@ test('exercise membership and order follow the saved session, warm-ups skipped',
     activityId: 'strength:str_saved', programId: 'hybrid_engine', day: 'mon', date: '2026-11-16',
   });
   assert.equal(routine.prescriptions.mon['Warmup Only'], undefined);
+  assert.equal(routine.prescriptions.mon['Bench Press'].basis, undefined, 'barbell lifts carry no load basis');
 });
 
 test('only completed working sets count: warm-ups, blank rows and empty lifts are excluded', () => {
@@ -128,9 +140,9 @@ test('rest precedence: per-set rest, then the exercise override, then the defaul
 test('holds and carries keep their shape, with no invented reps', () => {
   const routine = build();
   assert.deepEqual(routine.prescriptions.mon.Plank, { sets: 1, reps: '', weight: null, restSec: null, mode: 'time', sec: 60 });
-  assert.deepEqual(routine.prescriptions.mon['Farmer Carry'], { sets: 1, reps: '', weight: 40, restSec: null, mode: 'distance', dist: 30 });
+  assert.deepEqual(routine.prescriptions.mon['Farmer Carry'], { sets: 1, reps: '', weight: 40, restSec: null, mode: 'distance', dist: 30, basis: 'total' });
   assert.deepEqual(routine.prescriptions.mon['Incline DB Press'], {
-    sets: 1, reps: 10, weight: 30, restSec: null, basis: 'each', loadMode: 'weighted',
+    sets: 1, reps: 10, weight: 30, restSec: null, basis: 'each',
   });
 });
 
@@ -143,25 +155,116 @@ test('completion, PR, effort, notes and gym stats are never copied', () => {
 
 test('routineSourceWeek seeds a copyable week: count, order, rep target and rest', () => {
   const routine = build();
-  const source = routineSourceWeek(routine);
-  assert.deepEqual(source.liftOrder.mon, routine.days.mon.lifts);
-  assert.deepEqual(Object.keys(source.lifts.mon), routine.days.mon.lifts);
-  assert.deepEqual(source.lifts.mon['Bench Press'][0], { w: '105', r: '8', c: false, tr: '8', restSec: 180 });
-  assert.equal(source.lifts.mon['Bench Press'].length, 3);
-  assert.deepEqual(source.lifts.mon.Plank[0], { w: '', r: '', c: false, mode: 'time', sec: 60 });
-  assert.deepEqual(source.lifts.mon['Farmer Carry'][0], { w: '40', r: '', c: false, mode: 'distance', dist: 30 });
-  assert.deepEqual(source.lifts.mon['Barbell Row'][0], { w: '60', r: '10', c: false, tr: '10', restSec: 90 });
+  const { sourceWeek, sourceDay } = routineSourceWeek(routine);
+  assert.equal(sourceDay, 'mon', 'the day travels with the week so Start cannot pick today');
+  assert.deepEqual(sourceWeek.liftOrder.mon, routine.days.mon.lifts);
+  assert.deepEqual(Object.keys(sourceWeek.lifts.mon), routine.days.mon.lifts);
+  assert.deepEqual(sourceWeek.lifts.mon['Bench Press'][0], { w: '105', r: '8', c: false, tr: '8', restSec: 180 });
+  assert.equal(sourceWeek.lifts.mon['Bench Press'].length, 3);
+  assert.deepEqual(sourceWeek.lifts.mon.Plank[0], { w: '', r: '', c: false, mode: 'time', sec: 60 });
+  assert.deepEqual(sourceWeek.lifts.mon['Farmer Carry'][0], { w: '40', r: '', c: false, mode: 'distance', dist: 30, basis: 'total' });
+  assert.deepEqual(sourceWeek.lifts.mon['Barbell Row'][0], { w: '60', r: '10', c: false, tr: '10', restSec: 90 });
+});
+
+test('load identity survives the routine round trip (modern + legacy)', () => {
+  const week = loadWeek({
+    'Pull-Ups': [{ w: '80', r: '8', c: true, loadMode: 'bodyweight', bw: true }],
+    'Chin-Ups': [{ w: '60', r: '6', c: true, loadMode: 'assisted', band: 'M' }],
+    'Band Triceps Pushdown': [{ w: '20', r: '12', c: true, loadMode: 'banded', band: 'M' }],
+    Dips: [{ w: '80', r: '10', c: true, bw: true }],
+    'Chest Dips': [{ w: '55', r: '6', c: true, band: 'M' }],
+    'Band Leg Curl': [{ w: '30', r: '12', c: true, band: 'H' }],
+  });
+  const routine = buildRoutineFromSession(state(), week, 'mon', { name: 'Loads' });
+  const p = routine.prescriptions.mon;
+
+  // Modern sets: the mode and its flag travel, and a derived effective load is
+  // never stored as a barbell weight.
+  assert.equal(p['Pull-Ups'].loadMode, 'bodyweight');
+  assert.equal(p['Pull-Ups'].bw, true);
+  assert.equal(p['Pull-Ups'].weight, null);
+  assert.equal(p['Chin-Ups'].loadMode, 'assisted');
+  assert.equal(p['Chin-Ups'].band, 'M');
+  assert.equal(p['Chin-Ups'].weight, null);
+  assert.equal(p['Band Triceps Pushdown'].loadMode, 'banded');
+  assert.equal(p['Band Triceps Pushdown'].band, 'M');
+  assert.equal(p['Band Triceps Pushdown'].weight, 20, 'the band IS the load');
+
+  // Legacy flags: keep the flag and let resolvedLoadMode infer the mode, rather
+  // than stamping a weighted load the set never had.
+  assert.equal(p.Dips.bw, true);
+  assert.equal(p.Dips.weight, null);
+  assert.equal(p.Dips.loadMode, undefined);
+  assert.equal(p['Chest Dips'].band, 'M');
+  assert.equal(p['Chest Dips'].weight, null);
+  assert.equal(p['Chest Dips'].loadMode, undefined, 'assistance is inferred from the exercise');
+  assert.equal(p['Band Leg Curl'].band, 'H');
+  assert.equal(p['Band Leg Curl'].weight, 30);
+
+  // The logger agrees: every one of these rows is about body mass or a band,
+  // never a plain barbell load.
+  const { sourceWeek } = routineSourceWeek(routine);
+  for (const name of Object.keys(week.lifts.mon)) {
+    const row = buildSetRow(sourceWeek.lifts.mon[name][0], 0, name, null, 'kg', name, 80);
+    assert.doesNotMatch(row, /data-load-label="weighted"/, `${name} must not come back as weighted`);
+  }
+  const bodyweightRow = buildSetRow(sourceWeek.lifts.mon['Pull-Ups'][0], 0, 'Pull-Ups', null, 'kg', 'Pull-Ups', 80);
+  assert.match(bodyweightRow, /data-load-label="bw"/);
+  assert.match(bodyweightRow, /data-load-mode="bodyweight"/);
+  assert.match(bodyweightRow, /class="input-weight-node"[^>]*value="80"/, 'the cockpit supplies today’s bodyweight');
+  assert.match(buildSetRow(sourceWeek.lifts.mon['Chin-Ups'][0], 0, 'Chin-Ups', null, 'kg', 'Chin-Ups', 80), /data-load-label="M"/);
+  assert.match(buildSetRow(sourceWeek.lifts.mon.Dips[0], 0, 'Dips', null, 'kg', 'Dips', 80), /data-load-label="bw"/);
+});
+
+test('a legacy dumbbell set keeps the pair meaning (Both), not Each', () => {
+  const routine = buildRoutineFromSession(state(), loadWeek({
+    'Incline DB Press': [{ w: '30', r: '10', c: true }],
+  }), 'mon', { name: 'Dumbbells' });
+  assert.equal(routine.prescriptions.mon['Incline DB Press'].basis, 'total');
+  const { sourceWeek } = routineSourceWeek(routine);
+  assert.equal(sourceWeek.lifts.mon['Incline DB Press'][0].basis, 'total');
+  // A blank row would otherwise default to Each and halve the recorded volume.
+  const row = buildSetRow(sourceWeek.lifts.mon['Incline DB Press'][0], 0, 'Incline DB Press', null, 'kg', 'Incline DB Press');
+  assert.match(row, /data-load-basis="total"/);
+  assert.match(row, /data-basis-label="Both"/);
+});
+
+test('routineSourceWeek refuses to overfill a copy from an absurd set count', () => {
+  const routine = {
+    days: { mon: { lifts: ['Bench Press', 'Squat'] } },
+    prescriptions: {
+      mon: {
+        'Bench Press': { sets: 1e9, reps: 5 },
+        Squat: { sets: '3', reps: 5 },
+      },
+    },
+  };
+  const { sourceWeek, sourceDay } = routineSourceWeek(routine);
+  assert.equal(sourceDay, 'mon');
+  assert.equal(sourceWeek.lifts.mon['Bench Press'].length, MAX_ROUTINE_SETS);
+  assert.equal(sourceWeek.lifts.mon.Squat.length, 3);
+  assert.equal(sourceWeek.lifts.mon['Bench Press'][0].r, '5');
+  assert.equal(sourceWeek.lifts.mon.Squat[0].r, '5');
+  // A malformed day list is ignored rather than iterated as a string.
+  const noList = routineSourceWeek({ days: { mon: { lifts: 'Bench Press' } }, prescriptions: {} });
+  assert.deepEqual(noList.sourceWeek.lifts.mon, {});
+  // The builder applies the same bound, so the app cannot write a routine its
+  // own import would refuse.
+  const huge = prescriptionForSets(state(), 'Bench Press', Array.from(
+    { length: MAX_ROUTINE_SETS + 10 }, () => ({ w: '100', r: '5', c: true }),
+  ));
+  assert.equal(huge.sets, MAX_ROUTINE_SETS);
 });
 
 test('routineSourceWeek drives a one-off copy session without touching the program', () => {
   const routine = build();
   const savedState = { weeks: {}, settings: {} };
-  const source = routineSourceWeek(routine);
+  const { sourceWeek, sourceDay } = routineSourceWeek(routine);
   const created = createOneOffStrengthSession(savedState, {
     kind: 'copy',
     title: routine.name,
-    sourceWeek: source,
-    sourceDay: 'mon',
+    sourceWeek,
+    sourceDay,
     now: new Date('2026-11-18T12:00:00Z'),
     tz: 'UTC',
   });

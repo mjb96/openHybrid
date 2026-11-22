@@ -659,6 +659,13 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
     refusal, one-off copy, store repair, full export/import round-trip), a v14
     migration test, the full node suite, typecheck, smoke, precache and workflow
     gates.
+  - Review follow-up: load identity now survives the round trip (bodyweight and
+    assisted sets store no derived weight and keep their `bw`/`band` flag; a
+    banded set keeps the band as its load), a legacy dumbbell set keeps its pair
+    basis (Both), the copy source returns its day with the week, records carry
+    `kind:'routine'`, and imported routines/folders are validated, bounded and
+    counted in the import preview. A real-browser check covers the History
+    action, persistence, Undo and run-detail isolation.
   - Next: a routine list and "Start routine", then folders.
 
 - **2026-11-22 — Plans hierarchy: active plan first, one search, real card art.**

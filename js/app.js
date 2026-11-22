@@ -398,7 +398,7 @@ export async function saveActivityAsRoutine(activityId) {
     : (programTitle && programTitle !== 'Rest' ? programTitle : 'My routine');
   const name = await textPromptModal({
     title: 'Save as routine',
-    message: 'Keeps this session’s exercises, sets, loads and rest so you can start it again in one tap. Your program and logged history stay unchanged.',
+    message: 'Keeps this session’s exercises, sets, loads and rest. It is saved to your routine library; your program and logged history stay unchanged.',
     label: 'Routine name',
     value: suggested,
     maxLength: 60,
@@ -414,11 +414,24 @@ export async function saveActivityAsRoutine(activityId) {
 
   ensureRoutines(appState);
   appState.routines.push(routine);
-  await saveStateToLocalStorage(true);
-  showToast(`“${routine.name}” saved as a routine`);
-  showUndo('Routine saved', async () => {
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    // Never claim a save that did not reach the device: drop it from memory too,
+    // so no later render can show a routine a reload would not have.
     removeRoutine(appState, routine.id);
-    await saveStateToLocalStorage(true);
+    showToast('The routine could not be saved', true);
+    return;
+  }
+  showToast(`“${routine.name}” saved to your routine library`);
+  showUndo('Routine saved', async () => {
+    const removed = removeRoutine(appState, routine.id);
+    const undone = await saveStateToLocalStorage(true);
+    if (removed && !undone) {
+      // The device still holds it; put it back so memory and disk agree.
+      appState.routines.push(removed);
+      showToast('The routine could not be removed', true);
+      return;
+    }
     showToast('Routine removed');
   }, () => {});
 }

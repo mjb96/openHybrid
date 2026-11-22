@@ -157,7 +157,7 @@ test('v13 seeds an empty measurement log and a unit from the weight choice', () 
   assert.deepEqual(chosen.bodyMeasurements, [{ date: '2026-11-01', waist: 84 }]);
 });
 
-test('v13 seeds the routine library and folder arrays without touching programs', () => {
+test('v13→v14 seeds the routine library and folder arrays without touching programs', () => {
   const state = {
     schemaVersion: 13,
     settings: {},

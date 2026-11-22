@@ -74,7 +74,7 @@ test('rejects an oversized payload', () => {
 test('accepts a well-formed snapshot and reports accurate counts', () => {
   const r = validateImport(okState(), { currentSchemaVersion: 5 });
   assert.equal(r.ok, true);
-  assert.deepEqual(r.counts, { weeks: 2, programs: 2, bodyWeights: 1, runs: 1, loggedDays: 3 });
+  assert.deepEqual(r.counts, { weeks: 2, programs: 2, routines: 0, folders: 0, bodyWeights: 1, runs: 1, loggedDays: 3 });
 });
 
 test('import counts ignore empty seeded days and include legacy runs without double-counting projections', () => {
@@ -86,7 +86,55 @@ test('import counts ignore empty seeded days and include legacy runs without dou
         runSessions: { wed: [{ sessionId: 'run_1', dist: '5', time: '25:00' }] },
       },
     },
-  }), { weeks: 1, programs: 0, bodyWeights: 0, runs: 1, loggedDays: 1 });
+  }), { weeks: 1, programs: 0, routines: 0, folders: 0, bodyWeights: 0, runs: 1, loggedDays: 1 });
+});
+
+// ── routine validation: a malformed routine is repaired, a valid one survives ─
+
+function validRoutine(id = 'rtn_valid') {
+  return {
+    kind: 'routine',
+    id,
+    name: 'Push day',
+    folderId: null,
+    sortOrder: 0,
+    createdAt: '2026-11-16T10:00:00.000Z',
+    updatedAt: '2026-11-16T10:00:00.000Z',
+    source: { activityId: 'strength:str_1', programId: 'hybrid_engine', day: 'mon', date: '2026-11-16' },
+    days: { mon: { title: 'Push day', badge: 'Routine', color: 'var(--accent-blue)', desc: '', runs: 'Rest', lifts: ['Bench Press'] } },
+    prescriptions: { mon: { 'Bench Press': { sets: 3, reps: 8, weight: 100, restSec: 180 } } },
+    totalWeeks: 1,
+    weeklyVolModifiers: { 1: { sets: 3, reps: 10, intensityLabel: '' } },
+  };
+}
+
+test('rejects a non-array routine collection', () => {
+  assert.equal(validateImport({ ...okState(), routines: 'x' }).reason, 'bad-routines');
+  assert.equal(validateImport({ ...okState(), libraryFolders: {} }).reason, 'bad-routine-folders');
+});
+
+test('malformed routines and folders are dropped; valid ones survive', () => {
+  const valid = validRoutine();
+  const malformed = [
+    { ...validRoutine('rtn_huge'), prescriptions: { mon: { 'Bench Press': { sets: 1e9 } } } },
+    { ...validRoutine('rtn_lifts'), days: { mon: { lifts: 'Bench Press' } } },
+    { ...validRoutine('rtn_name'), name: 42 },
+    { ...validRoutine('rtn_band'), prescriptions: { mon: { 'Bench Press': { sets: 3, band: 'XXL' } } } },
+  ];
+  const folder = { id: 'fld_travel', name: 'Travel', sortOrder: 0, createdAt: '2026-11-16T10:00:00.000Z', updatedAt: '2026-11-16T10:00:00.000Z' };
+  const r = validateImport({
+    ...okState(),
+    routines: [...malformed, valid],
+    libraryFolders: [folder, { id: 'fld_bad', name: 2 }],
+  });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.state.routines, [valid]);
+  assert.deepEqual(r.state.libraryFolders, [folder]);
+  assert.equal(r.counts.routines, 1);
+  assert.equal(r.counts.folders, 1);
+
+  const message = importPreviewMessage(r.counts);
+  assert.match(message, /1 routine · 1 routine folder/);
 });
 
 // ── avatar sanitization: hostile markup never survives an import ─────────────
@@ -131,6 +179,7 @@ test('import preview reports replacement counts and backup warning honestly', ()
   const message = importPreviewMessage(importCounts(okState()), 3);
   assert.match(message, /3 logged days · 1 run/);
   assert.match(message, /2 custom programs · 1 body-weight entry/);
+  assert.match(message, /0 routines · 0 routine folders/);
   assert.match(message, /3 GPS routes/);
   assert.match(message, /replaces the data currently on this device/);
   assert.match(message, /local backup is created first/);

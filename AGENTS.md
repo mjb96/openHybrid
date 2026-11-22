@@ -97,9 +97,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `state.weeks`, `currentWeek` or `activeProgramId`. `prescriptions` is
   authoritative for sets/reps/load/rest while `days[].lifts` stays bare strings.
   Only completed working sets are saved — never completion flags, PR badges,
-  warm-ups, role stamps, effort, notes or gym stats. History's action menu owns
-  the one "Save as routine" action (name prompt → append → save → Undo); there is
-  no Plans routine surface yet.
+  warm-ups, role stamps, effort, notes or gym stats. Load IDENTITY is preserved
+  (`bw`/`band`/`loadMode`): a bodyweight or assisted set stores no derived
+  weight, so the next session uses today's bodyweight, and a legacy dumbbell set
+  records `basis:'total'` so the pair is not re-read as one bell. Records carry
+  `kind:'routine'`; `js/state/import-validate.js` bounds and repairs the library
+  on import. History's action menu owns the one "Save as routine" action (name
+  prompt → append → save → Undo); there is no Plans routine surface yet.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported

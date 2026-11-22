@@ -74,6 +74,10 @@ export interface RoutinePrescription {
   dist?: number;
   basis?: 'total' | 'each' | 'per-side';
   loadMode?: 'weighted' | 'bodyweight' | 'assisted' | 'banded';
+  /** Bodyweight identity: the load comes from the athlete, never a stored number. */
+  bw?: boolean;
+  /** Band size for assisted/banded work; the effective weight is derived. */
+  band?: 'L' | 'M' | 'H';
 }
 
 export interface RoutineDay {
@@ -91,6 +95,8 @@ export interface RoutineDay {
  * week slot.
  */
 export interface Routine {
+  /** Discriminator: a routine is a session template, never a program. */
+  kind: 'routine';
   id: string;
   name: string;
   folderId: string | null;

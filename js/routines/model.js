@@ -15,14 +15,22 @@
 // What is deliberately NOT saved: completion flags, PR badges, warm-up rows,
 // J&T role stamps, target-weight ghosts, per-set effort/notes, session notes and
 // gym stats. A routine is a future session, not a copy of the past one.
+//
+// What MUST be saved is load IDENTITY. A bodyweight or band-assisted set stores
+// a derived effective load (bodyweight, or bodyweight minus a band), so copying
+// `w` alone would turn an assisted pull-up into a 60 kg barbell lift. The mode
+// and its `bw`/`band` flag travel with the prescription instead.
 // =============================================================================
 import { SET_MODE, isValidWorkingSet, setModeOf } from '../set-utils.js';
+import { resolvedLoadMode } from '../workout/load-mode.js';
+import { supportsLoadBasis } from '../workout/load-basis.js';
 import { buildSavedWorkoutDraft } from '../workout/edit-saved.js';
 import { getExerciseRestOverride } from '../workout/exercise-config.js';
-import { newRoutineId } from './store.js';
+import { MAX_ROUTINE_SETS, newRoutineId } from './store.js';
 
 const ROUTINE_BADGE = 'Routine';
 const ROUTINE_COLOR = 'var(--accent-blue)';
+const LOAD_BASES = ['each', 'per-side', 'total'];
 
 /** Parse a stored numeric field, or null when it carries no usable number. */
 function numberOrNull(value) {
@@ -78,6 +86,40 @@ function shapeValue(working, anchor, field) {
 }
 
 /**
+ * Preserve WHAT the recorded weight meant.
+ *
+ * `resolvedLoadMode` understands both modern sets (`loadMode`) and legacy flags
+ * (`bw`, `band`), and decides a band's role from the EXERCISE — assistance on a
+ * pull-up, resistance on a pushdown. A bodyweight or assisted effective load is
+ * derived from the athlete's mass, so it is stored as "no weight" and the
+ * cockpit supplies today's number; a banded load is the band itself, which is a
+ * fixed product convention and stays numeric.
+ *
+ * @param {any} prescription
+ * @param {any} anchor
+ * @param {string} name
+ * @returns {any}
+ */
+function applyLoadIdentity(prescription, anchor, name) {
+  const loadMode = resolvedLoadMode(anchor, name);
+  const band = anchor?.band ? String(anchor.band) : null;
+  if (loadMode === 'bodyweight') {
+    prescription.bw = true;
+    prescription.weight = null;
+  } else if (loadMode === 'assisted') {
+    prescription.band = band || 'M';
+    prescription.weight = null;
+  } else if (loadMode === 'banded') {
+    prescription.band = band || 'M';
+  }
+  // Only a modern set records its mode explicitly. A legacy `bw`/`band` flag is
+  // deliberately left to resolve on read, so the round trip keeps the shape it
+  // was logged in instead of inventing a mode the set never carried.
+  if (anchor?.loadMode && anchor.loadMode !== 'weighted') prescription.loadMode = loadMode;
+  return prescription;
+}
+
+/**
  * The routine prescription for one exercise, or null when the session has no
  * completed working set for it.
  *
@@ -104,7 +146,7 @@ export function prescriptionForSets(state, name, sets) {
 
   /** @type {any} */
   const prescription = {
-    sets: working.length,
+    sets: Math.min(working.length, MAX_ROUTINE_SETS),
     reps: reps > 0 ? reps : '',
     weight: numberOrNull(anchor?.w),
     restSec,
@@ -116,10 +158,15 @@ export function prescriptionForSets(state, name, sets) {
     prescription.mode = SET_MODE.DISTANCE;
     prescription.dist = shapeValue(working, anchor, 'dist');
   }
-  // Load basis and mode change what a recorded weight MEANS, so they travel
-  // with it; without them a dumbbell pair would come back as a single bell.
-  if (anchor?.basis) prescription.basis = anchor.basis;
-  if (anchor?.loadMode) prescription.loadMode = anchor.loadMode;
+  applyLoadIdentity(prescription, anchor, name);
+
+  // A dumbbell legacy set carries no `basis`, which means the entered number was
+  // the PAIR (Both). Stamping `total` keeps it Both when the routine seeds a new
+  // row; leaving it blank would let a blank dumbbell row default to Each and
+  // halve the volume. Non-dumbbell lifts have no basis to record.
+  const storedBasis = LOAD_BASES.includes(anchor?.basis) ? anchor.basis : null;
+  const basis = storedBasis || (supportsLoadBasis(name) ? 'total' : null);
+  if (basis) prescription.basis = basis;
   return prescription;
 }
 
@@ -153,6 +200,7 @@ export function buildRoutineFromSession(state, week, day, options = {}) {
   const now = options.now instanceof Date ? options.now : new Date();
   const stamp = now.toISOString();
   return {
+    kind: 'routine',
     id: newRoutineId(),
     name,
     folderId: null,
@@ -212,16 +260,24 @@ function routineSet(prescription) {
   if (prescription?.restSec != null) {
     set.restSec = Math.max(0, Math.round(Number(prescription.restSec) || 0));
   }
+  // Load identity travels with the set. Without these the cockpit resolves the
+  // row as "weighted" and a bodyweight/band movement comes back as a barbell.
+  if (prescription?.bw) set.bw = true;
+  if (prescription?.band) set.band = String(prescription.band);
+  if (prescription?.loadMode && prescription.loadMode !== 'weighted') set.loadMode = prescription.loadMode;
   if (prescription?.basis) set.basis = prescription.basis;
-  if (prescription?.loadMode) set.loadMode = prescription.loadMode;
   return set;
 }
 
 /**
- * A week-shaped source for `createOneOffStrengthSession`: every routine day's
- * exercises, in routine order, with one set per prescribed set.
+ * A week-shaped source for `createOneOffStrengthSession`, paired with the day it
+ * describes. Returning the day WITH the week means a future Start cannot pass
+ * today's weekday and get an empty session.
  * @param {any} routine
- * @returns {{ lifts: Record<string, Record<string, any[]>>, liftOrder: Record<string, string[]> }}
+ * @returns {{
+ *   sourceWeek: { lifts: Record<string, Record<string, any[]>>, liftOrder: Record<string, string[]> },
+ *   sourceDay: string|null,
+ * }}
  */
 export function routineSourceWeek(routine) {
   /** @type {Record<string, Record<string, any[]>>} */
@@ -234,15 +290,21 @@ export function routineSourceWeek(routine) {
     const dayLifts = {};
     /** @type {string[]} */
     const order = [];
-    for (const name of routine.days[day]?.lifts || []) {
+    const names = Array.isArray(routine.days[day]?.lifts) ? routine.days[day].lifts : [];
+    for (const name of names) {
       const prescription = routine.prescriptions?.[day]?.[name];
       if (!prescription || typeof prescription !== 'object') continue;
-      const count = Math.max(1, Math.round(Number(prescription.sets) || 1));
+      const count = Math.min(
+        MAX_ROUTINE_SETS,
+        Math.max(1, Math.round(Number(prescription.sets) || 1)),
+      );
       dayLifts[name] = Array.from({ length: count }, () => routineSet(prescription));
       order.push(name);
     }
     lifts[day] = dayLifts;
     liftOrder[day] = order;
   }
-  return { lifts, liftOrder };
+  const sourceDay = Object.keys(lifts).find((day) => Object.keys(lifts[day]).length > 0)
+    || days[0] || null;
+  return { sourceWeek: { lifts, liftOrder }, sourceDay };
 }
