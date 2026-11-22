@@ -472,6 +472,18 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `data-pg-grouping` state alongside the range and focus controls. No new metric
   ids were needed: `strength.muscle-set-credits`, `strength.per-muscle-volume` and
   `strength.weekly-volume` already classify and inventory these numbers.
+- Progress exercises (P4 landed): `js/analytics/exercises-summary.js` ranks the
+  lifts trained most in the selected range by sessions (best e1RM, change across
+  the range, PR flag) and `views/view-exercises.js` renders five rows that link
+  into the drilldown via `data-entity` / `data-entity-name`. The PR flag compares
+  the range's best against the **all-time** best for the same exercise, so a past
+  peak is not this window's record; aliases collapse through `resolveExercise`.
+  `js/strength/set-records.js` owns "heaviest working set at or above each rep
+  target" (`REP_TARGETS` 1/3/5/8/10/12) with its own tie-breaks, plus the
+  hold/carry/bodyweight equivalents — it is attached to the drilldown model as
+  `setRecords` and must never be re-derived inside a view. Warm-ups never count.
+  The drilldown prints the record definition and takes its unit from the model:
+  a view may never hardcode `kg` (an existing guard test enforces this).
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

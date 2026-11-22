@@ -713,6 +713,24 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P4: main exercises and set records.**
+  - `Main exercises` ranks the lifts trained most in the selected window by
+    sessions, with best e1RM, the change across the window and a PR flag. The flag
+    compares the window's best against the **all-time** best for the same exercise,
+    so a lift that peaked two months ago cannot look like a record, and aliases
+    collapse through `resolveExercise` so two stored names are one row. Every row
+    links into the existing drilldown (`data-entity` / `data-entity-name`).
+  - `Set records` ("heaviest working set at or above each rep target") moved into
+    its own module, `js/strength/set-records.js`, rather than a second rule inside
+    `exercise-detail.js`. Holds and carries report their own best; bodyweight
+    history reports most reps in a set and session instead of inventing a weight
+    record; warm-ups never count. The drilldown prints the definition, because a
+    records table without its rule is a rumour.
+  - The "no hardcoded kg" guard caught the first version of that table. The unit
+    now comes from the model.
+  - `npm run verify` green (2,493 tests); hub browser contract passes.
+  - Next: P5 Endurance and the run/walk metric re-pointing.
+
 - **2026-11-23 — Progress P3: Muscles, with credited sets and a grouping switch.**
   - `Muscles` answers "is the volume where I need it?": credited sets per muscle
     over the selected window, bucketed week/month/year, with each muscle's share
