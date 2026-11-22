@@ -505,6 +505,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   zero when unmeasured. Progress photos are not implemented: they would live in
   IndexedDB outside `appState`, Android's `allowBackup` is false, and they must
   ship together with a zip export or not at all.
+- Progress fasting (P7 landed): `js/analytics/fasting-band.js` reports completed
+  fasts in the selected range — average, goal adherence, current streak, longest —
+  and `views/view-fasting-band.js` draws them as discrete bars against a goal line
+  (fourteen points do not support a trend line). **Copy rule:** elapsed time
+  against the athlete's own goal; no autophagy, fat-loss, hormone, metabolic or
+  stage claim, and a test greps the rendered output for those words. A range with
+  no completed fasts renders nothing, and the Fasting module switch removes the
+  band entirely. All eight Progress bands are now built.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

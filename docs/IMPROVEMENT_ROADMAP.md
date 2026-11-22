@@ -713,6 +713,23 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P7: Fasting band.**
+  - `Fasting` answers "is my fasting on plan?" from completed fasts in the selected
+    window: average duration, percentage that met the goal, current streak and the
+    longest fast, with recent fasts as discrete bars against a goal line — fourteen
+    points do not support a smooth trend line.
+  - The band owns one rule: **elapsed time against a self-set target.** No
+    autophagy, fat-loss, hormone or metabolic claim, and no stage interpretation. A
+    test greps the rendered output for those words so a future edit cannot slip one
+    in unnoticed.
+  - A window with no completed fasts renders nothing; the module switch removes the
+    band entirely.
+  - All eight bands are now built and wired. `npm run verify` green (2,527 tests);
+    hub browser contract passes.
+  - Next: P6b photos (v16 + IDB v3 + zip export) and P8 (share, customize reorder,
+    and retiring the legacy domain cards — which means rewriting, not extending,
+    the four-domain assertions in the hub browser check).
+
 - **2026-11-23 — Progress P6a: Body band.**
   - `Body` composes what already exists — `buildBodyweightModel` for weight and its
     change over the selected window, `buildMeasurementModel` for the tape sites and
