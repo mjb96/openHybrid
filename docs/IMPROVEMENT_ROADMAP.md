@@ -79,8 +79,11 @@ upgrade have landed:
   defaults, warm-up rest, a rest timer that survives reload/backgrounding, a
   `+ Drop` shortcut that seeds a lighter typed row, and a Last time / Next time
   recap.
-- **Plans** keeps the active plan first, recommends from athlete fit, and has an
-  Overview | Structure | Plan detail with week-stepped targets.
+- **Plans** keeps the active plan first — its Start/Resume is the only primary,
+  with quiet create/import/manage utilities, one "Search plans" field shared
+  by Discover and My Plans, and a three-up fit-tagged recommendation row — it
+  recommends from athlete fit, and has an Overview | Structure | Plan detail
+  with week-stepped targets.
 
 ### What holds the experience back
 
@@ -627,13 +630,71 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Home | One week surface: optional rail, pinned Today decision, inline day recaps with heat map, bodyweight, one insight, quick actions |
 | Training | Planned/one-off strength, running, set logging, timers, swaps, supersets, bodyweight modes, session completion, focused live-run surface |
 | History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share |
-| Plans | 58-program catalogue, active-plan lead, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
+| Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Plans hierarchy: active plan first, one search, real card art.**
+  - One session, four commits: the search-heading security fix, the active-plan
+    hierarchy, the quiet utility/tab chrome, and the three-up recommendation
+    row. Plans now reads top to bottom as active plan → plan utilities →
+    Discover | My Plans → search → content.
+  - **Security:** the results heading is pure `searchResultsHeading(query,
+    count)` in `js/programs/search.js`, which entity-escapes the query once and
+    normalises the count. Typing `<img src=x onerror="alert(1)">` into
+    `#progSearchInput` renders as text (`&lt;img`) instead of executing, while
+    `3 results for "bench"` still reads naturally; a hostile-query test locks
+    both.
+  - The running plan's Start/Resume is the only primary action, and its badge
+    reads `ACTIVE PLAN` (was `NOW TRAINING`; copy only — no state, attribute or
+    action changed). Beneath the card sits one quiet 44px utility row:
+    `+ New plan`, `Import plan (.json)` and — only while a plan is actually
+    running — `Manage plan`.
+  - Manage only VIEWS the active plan: it dispatches `library:view-active` and
+    never activates, switches or restarts anything. Activation remains the
+    plan's own confirmed action and the banner's Continue is untouched.
+  - One search: the field is visible on both tabs with placeholder/accessible
+    name "Search plans", a query is checked before the tab, and its order is
+    tabs above search, so the whole order is Discover | My Plans → search →
+    content. My Plans no longer hides search or loses catalogue search.
+  - The utility row is inline text — no border, fill or shadow, 44px targets,
+    2px side padding, muted `.74rem`/700; only Manage carries accent text, so
+    New plan is no longer a competing filled primary. The library tabs are a
+    text bar: transparent, no segmented card, 22px gap, a 2px cyan underline on
+    the active tab, `--text-primary` against muted and a quiet grey count pill.
+  - Vertical stack: utility margin 4px; tabs 44px plus a 1px subtle rule with
+    4px below; search margin 8px; the recommendation section's outer gaps
+    collapse (header 0, basis 0, 2px before All programs) because its heading,
+    44px basis summary and cards carry their own internal padding. All programs
+    moved 711px → 639px at 390×844 against the 640px target; cards, art and the
+    44px controls are untouched. The three-up row below then took it to 605px.
+  - "Recommended For You" is one 3-up tile grid (request 3) instead of a
+    horizontal rail, so all three cards sit fully inside 390px at rest —
+    16–130 / 138–252 / 260–374, with no clipped third card. New `tile` size in
+    `program-card.js` (and its DOM mirror): accent-tinted gradient from
+    `accentColor`/`coverGradient[1]`, 1:1 cover, 44px glyph bottom-left, 44px
+    bookmark top-right, name + reason only. `small` and `large` are untouched,
+    so detail Similar programs keeps its rail card.
+  - Cover glyphs stop treating every athletic category as the flame:
+    hyrox→trophy, functional→activity, tactical→gauge, conditioning→flame,
+    triathlon→activity; hybrid keeps bolt. Search's popularity tiebreaker now
+    reads `Number(program.popularity) || 0`, so a custom/imported plan without
+    that catalogue field cannot score NaN and disappear from results.
+  - 390×844 audit (same seed/clock as the quiet-row shot): All programs is
+    605px, inside the 620px target and down from 639px; the recommendation
+    check's own fixture measures 598px. Screenshots `shots/plans-after-quiet.png`
+    and `shots/plans-after-art.png`.
+  - Validation: 2,081 node tests (hostile-query heading, tile glyph/markup and
+    no-popularity search probes added), typecheck, smoke, precache/workflow, and
+    the Plans active-banner, Plans JSON, plan-recommendations,
+    program-detail-viewport, core-ergonomics and touch-target browser checks.
+  - Next: Progress domain detail hierarchy. The recommendation reasons are
+    still identical for athletes who share a goal ("Matches your strength goal"
+    three times) and should name level or equipment next.
 
 - **2026-11-22 — Home hierarchy: date headline, week chip, one Start; compact
   rail; one-line bodyweight; insight inside Today.**

@@ -1061,26 +1061,24 @@
       <!-- ═══════ LIBRARY SCREEN (default entry) ═══════ -->
       <div id="programLibraryScreen">
 
-        <!-- Active Program Banner -->
+        <!-- Active plan first: the card for the plan that is actually running. -->
         <div id="activeProgBanner" class="mb-4" style="display:none;"></div>
 
-        <!-- Plan actions: create, or bring a portable plan file in. -->
-        <div class="plans-actions">
-          <button type="button" class="plans-action-btn" data-action="open-create-program">+ New plan</button>
-          <button type="button" class="plans-action-btn" data-action="import-plan-json">Import plan (.json)</button>
-          <input type="file" id="planImportFile" accept=".json,application/json" class="hidden-input" aria-label="Choose an openHybrid plan JSON file">
-        </div>
+        <!-- Plan utility row: create, import, or open the active plan. The active
+             plan's own action stays the only primary on this screen. -->
+        <div id="plansUtilityRow" class="plans-utility"></div>
+        <input type="file" id="planImportFile" accept=".json,application/json" class="hidden-input" aria-label="Choose an openHybrid plan JSON file">
 
         <!-- Library Tabs: Discover / My Plans -->
         <div id="progLibraryTabs"></div>
 
-        <!-- Search Bar -->
+        <!-- Search Bar — one search across both tabs -->
         <div class="prog-search-bar mb-3">
           <div class="prog-search-input-wrap">
             <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            <input type="text" id="progSearchInput" aria-label="Search programs" placeholder="Search programs, goals, coaches..." autocomplete="off" autocorrect="off" spellcheck="false">
+            <input type="text" id="progSearchInput" aria-label="Search plans" placeholder="Search plans" autocomplete="off" autocorrect="off" spellcheck="false">
             <button id="progSearchClear" aria-label="Clear search">✕</button>
           </div>
         </div>

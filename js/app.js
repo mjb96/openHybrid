@@ -1185,7 +1185,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'close-compare') closeCompareModal();
 
   // New Program Library actions
-  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all'].includes(action)) {
+  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage'].includes(action)) {
     handleLibraryAction(action, target, e);
   }
   else if (['close-program-detail', 'make-active-from-detail', 'view-active-program', 'open-day-preview', 'preview-week-step', 'close-day-preview', 'detail-toggle-bookmark', 'mark-program-complete', 'detail-week-step', 'detail-week-current'].includes(action)) {

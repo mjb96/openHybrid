@@ -18,19 +18,28 @@ export function isWod(program) {
 // a random emoji, so the whole catalogue reads as one system.
 const COVER_GLYPHS = {
   strength: 'dumbbell', powerlifting: 'dumbbell', hypertrophy: 'dumbbell', bodybuilding: 'dumbbell',
-  running: 'run', endurance: 'run', triathlon: 'run',
+  running: 'run', endurance: 'run', triathlon: 'activity',
   hybrid: 'bolt',
-  hyrox: 'flame', functional: 'flame', conditioning: 'flame', tactical: 'flame',
+  hyrox: 'trophy', functional: 'activity', tactical: 'gauge', conditioning: 'flame',
   fitness: 'mountain', general: 'mountain', mobility: 'mountain',
 };
 export function coverGlyphFor(program) {
   const cat = String(program?.category || '').toLowerCase();
   if (COVER_GLYPHS[cat]) return COVER_GLYPHS[cat];
   const tags = (program?.tags || []).map(t => String(t).toLowerCase());
-  if (tags.some(t => /hyrox|wod|functional|conditioning/.test(t))) return 'flame';
-  if (tags.some(t => /run|endurance|5k|10k|marathon|triathlon/.test(t))) return 'run';
+  if (tags.some(t => /hyrox|wod/.test(t))) return 'trophy';
+  if (tags.some(t => /functional/.test(t))) return 'activity';
+  if (tags.some(t => /conditioning/.test(t))) return 'flame';
+  if (tags.some(t => /triathlon/.test(t))) return 'activity';
+  if (tags.some(t => /run|endurance|5k|10k|marathon/.test(t))) return 'run';
   if (tags.some(t => /strength|power|hypertrophy|bodybuild/.test(t))) return 'dumbbell';
   return 'bolt';
+}
+
+// Tile art is a compact, accent-tinted cover. The dark foot keeps the white
+// 44px glyph readable even when the catalogue accent is a bright amber/cyan.
+function tileCoverGradient(accent, base) {
+  return `linear-gradient(180deg, rgba(4,10,18,0.02) 38%, rgba(4,10,18,0.52)), linear-gradient(155deg, ${accent}, ${base})`;
 }
 
 const EQUIP_TIER_LABELS = {
@@ -40,7 +49,7 @@ const EQUIP_TIER_LABELS = {
 
 /**
  * @param {any} program
- * @param {'small'|'large'} [size]
+ * @param {'small'|'large'|'tile'} [size]
  * @param {string} [reason] Why THIS athlete is being shown this programme, from
  *   `programFit`. The third parameter used to be a `showBadge` boolean that the
  *   body never read, so the recommendations row passed `true` and rendered
@@ -54,6 +63,7 @@ export function renderProgramCard(program, size = 'small', reason = '') {
   const completed   = isProgramCompleted(program.id);
   const wod         = isWod(program);
   const isLarge     = size === 'large';
+  const isTile      = size === 'tile';
 
   const equipTierLabel = isLarge && program.equipmentTier && !wod
     ? EQUIP_TIER_LABELS[program.equipmentTier] : null;
@@ -68,9 +78,12 @@ export function renderProgramCard(program, size = 'small', reason = '') {
   const rawCover = Array.isArray(program.coverGradient) && program.coverGradient.length >= 2
     ? program.coverGradient : ['#1a0e2e', '#0d1b2a'];
   const cover = [safeCssColor(rawCover[0], '#1a0e2e'), safeCssColor(rawCover[1], '#0d1b2a')];
-  const coverGlyph = svgIcon(coverGlyphFor(program), { size: 96, cls: 'prog-card-glyph__svg' });
+  const coverGlyph = svgIcon(coverGlyphFor(program), { size: isTile ? 44 : 96, cls: 'prog-card-glyph__svg' });
   const accentColor = safeCssColor(program.accentColor, '#8b5cf6');
   const safeId = escapeHtml(program.id || '');
+  const coverStyle = isTile
+    ? tileCoverGradient(accentColor, cover[1])
+    : `linear-gradient(145deg, ${cover[0]}, ${cover[1]})`;
 
   // No star ratings or "N athletes / % finish" until there are real users to
   // count — the catalog's rating/enrolled/completion values drive curation
@@ -93,15 +106,15 @@ export function renderProgramCard(program, size = 'small', reason = '') {
          data-action="open-program-detail"
          data-program-id="${safeId}">
       <div class="prog-card-cover"
-           style="background: linear-gradient(145deg, ${cover[0]}, ${cover[1]})">
+           style="background: ${coverStyle}">
         <div class="prog-card-glyph" aria-hidden="true">${coverGlyph}</div>
-        <div class="prog-card-badges">
+        ${isTile ? '' : `<div class="prog-card-badges">
           ${isActive ? '<span class="prog-badge prog-badge--active">ACTIVE</span>' : ''}
           ${completed && !isActive ? '<span class="prog-badge prog-badge--completed">DONE</span>' : ''}
           ${wod && !isActive && !completed ? '<span class="prog-badge prog-badge--wod">WOD</span>' : ''}
           ${program.featured && !isActive && !completed && !wod ? '<span class="prog-badge prog-badge--featured">FEATURED</span>' : ''}
           ${program.isNew && !isActive && !completed ? '<span class="prog-badge prog-badge--new">NEW</span>' : ''}
-        </div>
+        </div>`}
         <button class="prog-card-bookmark ${saved ? 'saved' : ''}"
                 data-action="toggle-bookmark"
                 data-program-id="${safeId}"
@@ -110,6 +123,11 @@ export function renderProgramCard(program, size = 'small', reason = '') {
         </button>
         ${ratingHTML}
       </div>
+      ${isTile ? `
+      <div class="prog-card-info">
+        <div class="prog-card-name">${escapeHtml(program.name)}</div>
+        ${reason ? `<div class="prog-card-reason">${escapeHtml(reason)}</div>` : ''}
+      </div>` : `
       <div class="prog-card-info">
         <div class="prog-card-name">${escapeHtml(program.name)}</div>
         ${authorHTML}
@@ -123,7 +141,7 @@ export function renderProgramCard(program, size = 'small', reason = '') {
         ${statsHTML}
         ${reason ? `<div class="prog-card-reason">${escapeHtml(reason)}</div>` : ''}
         <div class="prog-card-diff" style="color: ${diff.color}" title="${diff.label}">${dots}</div>
-      </div>
+      </div>`}
     </div>
   `;
 }
@@ -134,7 +152,7 @@ export function renderProgramCard(program, size = 'small', reason = '') {
  * the user/imported JSON: every text value goes through textContent so a plan
  * name can never be reinterpreted as markup.
  * @param {any} program
- * @param {'small'|'large'} [size]
+ * @param {'small'|'large'|'tile'} [size]
  * @param {string} [reason]
  */
 export function renderProgramCardNode(program, size = 'small', reason = '') {
@@ -145,6 +163,7 @@ export function renderProgramCardNode(program, size = 'small', reason = '') {
   const completed = isProgramCompleted(program.id);
   const wod = isWod(program);
   const isLarge = size === 'large';
+  const isTile = size === 'tile';
   const equipTierLabel = isLarge && program.equipmentTier && !wod ? EQUIP_TIER_LABELS[program.equipmentTier] : null;
   const durationLabel = wod && program.sessionDurationMinutes
     ? `~${program.sessionDurationMinutes.min}–${program.sessionDurationMinutes.max} min`
@@ -153,6 +172,9 @@ export function renderProgramCardNode(program, size = 'small', reason = '') {
   const rawCover = Array.isArray(program.coverGradient) && program.coverGradient.length >= 2 ? program.coverGradient : ['#1a0e2e', '#0d1b2a'];
   const cover = [safeCssColor(rawCover[0], '#1a0e2e'), safeCssColor(rawCover[1], '#0d1b2a')];
   const accentColor = safeCssColor(program.accentColor, '#8b5cf6');
+  const coverStyle = isTile
+    ? tileCoverGradient(accentColor, cover[1])
+    : `linear-gradient(145deg, ${cover[0]}, ${cover[1]})`;
 
   const card = document.createElement('div');
   card.className = `prog-card prog-card--${size}${isActive ? ' prog-card--active' : ''}${completed ? ' prog-card--completed' : ''}`;
@@ -161,23 +183,25 @@ export function renderProgramCardNode(program, size = 'small', reason = '') {
 
   const coverEl = document.createElement('div');
   coverEl.className = 'prog-card-cover';
-  coverEl.style.background = `linear-gradient(145deg, ${cover[0]}, ${cover[1]})`;
+  coverEl.style.background = coverStyle;
   const glyph = document.createElement('div');
   glyph.className = 'prog-card-glyph';
   glyph.setAttribute('aria-hidden', 'true');
-  const glyphNode = iconNode(coverGlyphFor(program), { size: 96, cls: 'prog-card-glyph__svg' });
+  const glyphNode = iconNode(coverGlyphFor(program), { size: isTile ? 44 : 96, cls: 'prog-card-glyph__svg' });
   if (glyphNode) glyph.append(glyphNode);
   coverEl.append(glyph);
 
-  const badges = document.createElement('div');
-  badges.className = 'prog-card-badges';
-  const addBadge = (text, cls) => { const badge = document.createElement('span'); badge.className = `prog-badge ${cls}`; badge.textContent = text; badges.append(badge); };
-  if (isActive) addBadge('ACTIVE', 'prog-badge--active');
-  if (completed && !isActive) addBadge('DONE', 'prog-badge--completed');
-  if (wod && !isActive && !completed) addBadge('WOD', 'prog-badge--wod');
-  if (program.featured && !isActive && !completed && !wod) addBadge('FEATURED', 'prog-badge--featured');
-  if (program.isNew && !isActive && !completed) addBadge('NEW', 'prog-badge--new');
-  coverEl.append(badges);
+  if (!isTile) {
+    const badges = document.createElement('div');
+    badges.className = 'prog-card-badges';
+    const addBadge = (text, cls) => { const badge = document.createElement('span'); badge.className = `prog-badge ${cls}`; badge.textContent = text; badges.append(badge); };
+    if (isActive) addBadge('ACTIVE', 'prog-badge--active');
+    if (completed && !isActive) addBadge('DONE', 'prog-badge--completed');
+    if (wod && !isActive && !completed) addBadge('WOD', 'prog-badge--wod');
+    if (program.featured && !isActive && !completed && !wod) addBadge('FEATURED', 'prog-badge--featured');
+    if (program.isNew && !isActive && !completed) addBadge('NEW', 'prog-badge--new');
+    coverEl.append(badges);
+  }
 
   const bookmark = document.createElement('button');
   bookmark.type = 'button';
@@ -196,6 +220,17 @@ export function renderProgramCardNode(program, size = 'small', reason = '') {
   name.className = 'prog-card-name';
   name.textContent = program.name || 'Unknown Program';
   info.append(name);
+
+  if (isTile) {
+    if (reason) {
+      const reasonEl = document.createElement('div');
+      reasonEl.className = 'prog-card-reason';
+      reasonEl.textContent = reason;
+      info.append(reasonEl);
+    }
+    card.append(info);
+    return card;
+  }
 
   const attr = isLarge && !wod ? programAttribution(program) : null;
   if (attr) {

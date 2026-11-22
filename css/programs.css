@@ -8,6 +8,7 @@
 .prog-search-bar {
   position: relative;
   z-index: 2;
+  margin-bottom: 8px;
 }
 
 .prog-search-input-wrap {
@@ -40,7 +41,8 @@
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 500;
-  padding: 13px 0;
+  line-height: 1.3;
+  padding: 10px 0;
   letter-spacing: -0.01em;
 }
 
@@ -136,6 +138,10 @@
   background: #0d0f1a;
   transition: border-color 0.2s, transform 0.15s;
 }
+
+/* The active card is the plan surface; the utility row beneath it is quiet, so
+   this gap stays compact (12px, matching the plan hero in the mock). */
+#activeProgBanner { margin-bottom: 12px; }
 
 /* The card holds two targets (open the plan / act on the session), so the press
    response belongs to the row being pressed, not to the whole card. */
@@ -440,6 +446,13 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 
 .collection-row {}
 
+/* The first rail is the recommendation section. With the compact three-up tile
+   grid its header, basis and bottom gaps can use normal spacing and still keep
+   All programs above the 620px target; the cards carry their own padding. */
+#progLibraryContent > .collection-row:first-child { margin-bottom: 12px; }
+#progLibraryContent > .collection-row:first-child .collection-header { margin-bottom: 4px; }
+#progLibraryContent > .collection-row:first-child .prog-basis { margin-bottom: 4px; }
+
 .collection-header {
   display: flex;
   align-items: flex-start;
@@ -555,6 +568,81 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 .prog-card--small .prog-card-diff {
   font-size: 0.5rem;
   letter-spacing: 2px;
+}
+
+/* Three-up recommendation tiles. At 390 the row is 358px wide, so each tile is
+   (358 - 2×8) / 3 ≈ 114px; at 320 it is ≈90px. Columns are minmax(0, 1fr) with
+   no min-width, which is what keeps the third tile inside the viewport. */
+.prog-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.prog-card--tile {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+}
+.prog-card--tile .prog-card-cover {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 auto;
+}
+.prog-card--tile .prog-card-info {
+  flex: 1 1 auto;
+  padding: 7px 8px 8px;
+  background: #0d1020;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.prog-card--tile .prog-card-name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #f1f5f9;
+  letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.prog-card--tile .prog-card-reason {
+  font-size: 0.56rem;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--color-cyan, #22d3ee);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.prog-card--tile .prog-card-glyph {
+  left: 6px;
+  right: auto;
+  bottom: 6px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: rgba(255,255,255,0.94);
+}
+.prog-card--tile .prog-card-glyph__svg { width: 44px; height: 44px; }
+.prog-card--tile .prog-card-bookmark {
+  top: 4px;
+  right: 4px;
+  width: var(--touch-target, 44px);
+  height: var(--touch-target, 44px);
+}
+/* At 320px a tile is ~90px wide; two 44px targets only fit if they sit flush to
+   opposite corners. At 390px the normal 4–6px insets have 26px of clearance. */
+@media (max-width: 340px) {
+  .prog-card--tile .prog-card-glyph { left: 0; bottom: 0; }
+  .prog-card--tile .prog-card-bookmark { top: 0; right: 0; }
 }
 
 /* What the recommendations were actually built on. An upgrading athlete never
@@ -2271,16 +2359,21 @@ html[data-theme="light"] .prog-card {
   box-shadow: 0 2px 8px rgba(0,0,0,0.07) !important;
 }
 html[data-theme="light"] .prog-card--small .prog-card-info,
-html[data-theme="light"] .prog-card--large .prog-card-info {
+html[data-theme="light"] .prog-card--large .prog-card-info,
+html[data-theme="light"] .prog-card--tile .prog-card-info {
   background: #ffffff !important;
 }
 html[data-theme="light"] .prog-card--small .prog-card-name,
-html[data-theme="light"] .prog-card--large .prog-card-name {
+html[data-theme="light"] .prog-card--large .prog-card-name,
+html[data-theme="light"] .prog-card--tile .prog-card-name {
   color: #0f172a !important;
 }
 html[data-theme="light"] .prog-card--small .prog-card-meta,
 html[data-theme="light"] .prog-card--large .prog-card-meta {
   color: rgba(0,0,0,0.40) !important;
+}
+html[data-theme="light"] .prog-card--tile .prog-card-reason {
+  color: #0e7490;
 }
 html[data-theme="light"] .prog-card--active {
   border-color: rgba(99,102,241,0.35) !important;
@@ -3313,39 +3406,47 @@ html[data-theme="light"] .hero-badge {
 ============================================================================= */
 #progLibraryTabs {
   display: flex;
-  gap: 4px;
-  padding: 0 16px 12px;
-  border-bottom: 1px solid var(--border-default);
-  margin-bottom: 4px;
+  align-items: stretch;
+  gap: 22px;
+  /* The screen already sits inside .view-container's horizontal padding; a
+     second 16px here indented the tabs from everything above and below. */
+  padding: 0;
+  min-height: var(--touch-target, 44px);
+  border-bottom: 1px solid var(--border-subtle);
+  margin: 0 0 4px;
 }
 
+/* Inline tab text with a 2px underline, not a segmented card: the active tab is
+   the only one that reads as selected, and the row borrows the screen's width. */
 .lib-tab {
-  flex: 1;
+  flex: 0 0 auto;
   min-height: var(--touch-target, 44px);
-  padding: 9px 12px;
-  border-radius: 10px;
+  padding: 0 1px 10px;
   border: none;
+  border-radius: 0;
   background: transparent;
   color: var(--text-muted);
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  letter-spacing: 0.01em;
-  display: flex;
+  letter-spacing: 0.005em;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
+  box-shadow: inset 0 -2px 0 transparent;
+  transition: color 0.15s, box-shadow 0.15s;
 }
 
 .lib-tab.active {
-  background: rgba(37,99,235,0.15);
-  color: var(--accent-purple, var(--color-violet));
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: inset 0 -2px 0 var(--color-cyan);
 }
 
 .lib-tab-count {
-  background: var(--accent-purple, var(--color-violet));
-  color: #fff;
+  background: rgba(148,163,184,0.14);
+  color: var(--text-muted);
   font-size: 0.68rem;
   font-weight: 700;
   padding: 1px 6px;
@@ -3354,7 +3455,7 @@ html[data-theme="light"] .hero-badge {
   text-align: center;
 }
 
-html[data-theme="light"] .lib-tab.active { background: rgba(37,99,235,0.08); color: #1d4ed8; }
+html[data-theme="light"] .lib-tab.active { background: transparent; color: var(--text-primary); }
 
 /* =============================================================================
    LIBRARY EMPTY STATES (Saved / Completed)
@@ -3756,33 +3857,36 @@ html[data-theme="light"] .prog-phase { background: rgba(0,0,0,0.02); }
   line-height: 1.5;
 }
 
-/* Simplified Plans landing */
-.plans-actions {
-  display: flex; gap: 8px; margin: 2px 0 12px;
+/* Simplified Plans landing — plan utilities are inline text, not buttons:
+   the active plan's own action is the only primary on this screen. */
+.plans-utility {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin: 0 0 4px;
 }
-.plans-action-btn {
-  flex: 1 1 0; min-height: 44px; padding: 0 12px;
-  border: 1px solid var(--border-default); border-radius: 11px;
-  background: var(--overlay-sm, rgba(255,255,255,.04));
-  color: var(--text-secondary); font: inherit; font-size: .72rem; font-weight: 750;
+.plans-utility-btn {
+  flex: 0 0 auto;
+  min-height: var(--touch-target, 44px);
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: .74rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
-.plans-action-btn:first-child {
-  border-color: transparent;
-  background: var(--brand-gradient, var(--color-blue));
-  color: #04121a;
+.plans-utility-btn--accent {
+  color: var(--color-cyan);
 }
 .lib-empty-cta + .lib-empty-cta { margin-top: 8px; }
 
-/* Plans selection follows the icon palette, not leftover purple chrome. */
-.lib-tab.active {
-  background: color-mix(in srgb, var(--brand-cobalt, #22d3ee) 14%, transparent);
-  color: var(--brand-ice, var(--color-cyan));
-}
-.lib-tab-count {
-  background: var(--brand-gradient, var(--color-blue));
-  color: #04121a;
-}
 html[data-theme="dark"] .active-prog-continue-btn:not(.active-prog-continue-btn--quiet) {
   border-color: transparent;
   background: var(--brand-gradient);
