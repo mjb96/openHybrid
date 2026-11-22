@@ -11,7 +11,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { createBrowserContext, resolveChromium, pinClock } from './browser-runtime.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const required = process.argv.includes('--required');
@@ -85,6 +85,45 @@ function fixture(theme) {
   };
 }
 
+// A 50-character unbroken custom exercise name. Athlete data must wrap, never
+// widen the page; the seasonal contexts assert that at 320 and 412.
+const LONG_EXERCISE = 'CableCrossoverVariationWithExtremeGripAndRangeXYZQ';
+
+// A calendar year of training for the seasonal Year in Review: one strength +
+// run week in each month of 2026, a three-day January streak and two e1RM PRs
+// (Bench Press and the long-named custom lift in June). January is the busiest
+// month. Week keys use the real numeric programme slots plus `arch:*` keys for
+// the imported/archived January days, not fixture-only names.
+function yearReviewFixture({ weightUnit = 'kg', distanceUnit = 'km', theme = 'dark' } = {}) {
+  const weeks = {};
+  const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+  months.forEach((month, i) => {
+    const date = `2026-${month}-10`;
+    const longSets = [set(i === 5 ? 20 : 10, 10), set(i === 5 ? 20 : 10, 10)];
+    weeks[String(i + 1)] = {
+      dates: { mon: date },
+      lifts: { mon: {
+        'Back Squat': [set(100, 5)],
+        'Bench Press': [set(i === 5 ? 110 : 100, 5)],
+        ...(i === 0 || i === 5 ? { [LONG_EXERCISE]: longSets } : {}),
+      } },
+      runs: { mon: { dist: '5.0', time: '25:00' } },
+    };
+  });
+  // Two more consecutive January days: a three-day streak inside 2026. Archived
+  // keys mirror an imported week, which is a real storage shape.
+  weeks['arch:streak:1'] = { dates: { tue: '2026-01-11' }, lifts: { tue: { 'Back Squat': [set(100, 5), set(100, 5)] } } };
+  weeks['arch:streak:2'] = { dates: { wed: '2026-01-12' }, lifts: { wed: { 'Back Squat': [set(100, 5), set(100, 5)] } } };
+  return {
+    schemaVersion: 5, currentWeek: '1', activeProgramId: 'hybrid_engine', activeActivationId: 'current',
+    settings: {
+      name: 'Year Athlete', theme, weightUnit, distanceUnit,
+      weekStartDay: 'mon', onboardingComplete: true,
+    },
+    weeks,
+  };
+}
+
 // The hub is a top-level destination; drive it the way the bottom nav does.
 async function openHub(page) {
   await page.evaluate(() => {
@@ -106,6 +145,61 @@ async function waitForNavLabel(page, expected) {
     expected,
     { timeout: 2000 },
   ).then(() => true).catch(() => false);
+}
+
+// Open Review → Stats on a pinned day. Off-season the Year section settles by
+// hiding itself; in-season it settles by rendering content.
+async function openYearReview(browser, { todayISO, width, theme = 'dark', weightUnit = 'kg', distanceUnit = 'km' }, failures) {
+  const label = `year review ${width}px/${weightUnit}`;
+  const context = await createBrowserContext(browser, { viewport: { width, height: 844 }, timezoneId: TZ, colorScheme: theme });
+  await context.addInitScript(pinClock, Date.parse(`${todayISO}T09:00:00+11:00`));
+  await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(yearReviewFixture({ weightUnit, distanceUnit, theme }))]);
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && !/frame-ancestors.*ignored.*meta/i.test(message.text()) && !/net::ERR_/.test(message.text())) errors.push(message.text());
+  });
+  await page.goto(BASE, { waitUntil: 'networkidle' });
+  await openHub(page);
+  await page.waitForSelector('#analytics-hub.active .ph-card');
+  await page.click('.ph-card[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review card did not open`));
+  await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => failures.push(`${label}: Review did not open`));
+  await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Stats tab did not open`));
+  await page.waitForFunction(() => {
+    const el = document.getElementById('yearReviewContainer');
+    return !!el && (el.hidden === true || el.children.length > 0);
+  }, null, { timeout: 4000 }).catch(() => failures.push(`${label}: Year in Review never settled`));
+  return { context, page, errors };
+}
+
+async function readYearReview(page) {
+  return page.$eval('#analytics-weekly-review', (section, longName) => {
+    const el = document.getElementById('yearReviewContainer');
+    const heading = el?.querySelector('h2.section-header');
+    return {
+      exists: !!el,
+      hidden: el?.hidden === true,
+      display: el ? getComputedStyle(el).display : 'missing',
+      height: el ? el.getBoundingClientRect().height : 0,
+      headingText: heading?.textContent?.trim() || '',
+      headingHeight: heading ? heading.getBoundingClientRect().height : 0,
+      yearHeadings: [...section.querySelectorAll('h2.section-header')]
+        .filter((node) => node.textContent.trim() === 'Year in Review')
+        .map((node) => ({ display: getComputedStyle(node).display, height: node.getBoundingClientRect().height })),
+      text: el?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      sectionText: section.textContent || '',
+      statLabels: [...(el?.querySelectorAll('.wrev-stats .wrev-stat__k') || [])].map((node) => node.textContent.trim()),
+      statValues: [...(el?.querySelectorAll('.wrev-stats .wrev-stat__v') || [])].map((node) => node.textContent.trim()),
+      containerOverflow: !!el && el.scrollWidth > el.clientWidth + 1,
+      documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      longNameVisible: !!el && el.textContent.includes(longName),
+      weeklyReviewVisible: (() => {
+        const weekly = document.getElementById('weeklyReviewContainer');
+        return !!weekly && weekly.getBoundingClientRect().height > 0;
+      })(),
+    };
+  }, LONG_EXERCISE);
 }
 
 const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] });
@@ -426,6 +520,108 @@ try {
     if (empty.hasWeekHero) failures.push('empty profile: rendered a this-week hero with no data');
     if (empty.cards !== 4) failures.push('empty profile: expected all four domains to still render');
     if (empty.deltas !== 0) failures.push('empty profile: rendered a comparison with nothing to compare');
+    await context.close();
+  }
+
+  // The Year in Review is seasonal, so its real surface can only be exercised
+  // with a pinned clock. The fixture spans 2026 with a strength + run week in
+  // every month, a January streak, two PRs and a 50-character custom lift.
+  {
+    const { context, page, errors } = await openYearReview(browser, { todayISO: '2026-12-15', width: 390 }, failures);
+    const seen = await readYearReview(page);
+    console.log('Year in Review (390px/kg, pinned December):', JSON.stringify({ ...seen, text: seen.text.slice(0, 360) }));
+
+    if (!seen.exists || seen.hidden || seen.display === 'none' || seen.height <= 0) {
+      failures.push('year review 390kg: the section is not visible in December');
+    }
+    if (seen.headingText !== 'Year in Review' || seen.headingHeight <= 0) {
+      failures.push(`year review 390kg: missing a visible Year in Review heading (${seen.headingText}/${seen.headingHeight})`);
+    }
+    if (!/Year in Review/.test(seen.sectionText)) failures.push('year review 390kg: missing the Year in Review heading');
+    if (!/2026/.test(seen.text)) failures.push('year review 390kg: the hero does not name the year');
+    if (!seen.text.includes('Jan 1 – Dec 15, 2026')) failures.push(`year review 390kg: missing the explicit partial-year range (${seen.text.slice(0, 140)})`);
+    if (!/\b26 sessions\b/.test(seen.text)) failures.push('year review 390kg: the hero does not report the annual session count');
+    if (!seen.statLabels.includes('Working sets')) failures.push('year review 390kg: missing the working-sets stat');
+    if (seen.statValues[0] !== '14.7t') failures.push(`year review 390kg: Lifted should be 14.7t (got ${seen.statValues[0]})`);
+    if (seen.statValues[1] !== '60 km') failures.push(`year review 390kg: Run should be 60 km (got ${seen.statValues[1]})`);
+    if (seen.statValues[2] !== '32') failures.push(`year review 390kg: working sets should be 32 (got ${seen.statValues[2]})`);
+    if (seen.statValues[3] !== '2') failures.push(`year review 390kg: e1RM PR count should be 2 (got ${seen.statValues[3]})`);
+    if (!/Most trained/.test(seen.text) || !/January/.test(seen.text)) failures.push('year review 390kg: missing the best month');
+    if (!/Longest consecutive run/.test(seen.text) || !/3 days/.test(seen.text) || !/14 active days/.test(seen.text)) {
+      failures.push('year review 390kg: missing the in-year consecutive run or active-day count');
+    }
+    if (!/Top exercises/.test(seen.text) || !seen.longNameVisible) failures.push('year review 390kg: missing the top exercises/long-named lift');
+    if (!/e1RM PRs/.test(seen.text) || !/Barbell Bench Press/.test(seen.text) || !/128 kg/.test(seen.text)) {
+      failures.push('year review 390kg: missing the annual e1RM PR');
+    }
+    if (seen.documentOverflow || seen.containerOverflow) failures.push('year review 390kg: horizontal overflow');
+    if (errors.length) failures.push(`year review 390kg: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // The same recap in the athlete's other units: pounds are labelled, never
+  // converted, and the run follows the distance setting.
+  {
+    const { context, page, errors } = await openYearReview(browser, {
+      todayISO: '2026-12-15', width: 390, theme: 'light', weightUnit: 'lbs', distanceUnit: 'mi',
+    }, failures);
+    const seen = await readYearReview(page);
+    console.log('Year in Review (390px/lbs, pinned December):', JSON.stringify({ ...seen, text: seen.text.slice(0, 220) }));
+
+    if (!seen.exists || seen.hidden || seen.height <= 0) failures.push('year review 390lbs: the section is not visible');
+    if (seen.statValues[0] !== '14,650 lb') failures.push(`year review 390lbs: Lifted should be 14,650 lb (got ${seen.statValues[0]})`);
+    if (seen.statValues[1] !== '37.3 mi') failures.push(`year review 390lbs: Run should be 37.3 mi (got ${seen.statValues[1]})`);
+    if (!/128 lbs/.test(seen.text)) failures.push('year review 390lbs: the PR does not use pounds');
+    if (seen.documentOverflow || seen.containerOverflow) failures.push('year review 390lbs: horizontal overflow');
+    if (errors.length) failures.push(`year review 390lbs: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // A long custom exercise name must wrap at both narrow widths (light theme).
+  for (const width of [320, 412]) {
+    const { context, page, errors } = await openYearReview(browser, {
+      todayISO: '2026-12-15', width, theme: 'light',
+    }, failures);
+    const seen = await readYearReview(page);
+    console.log(`Year in Review (${width}px/light, long name):`, JSON.stringify({
+      visible: seen.exists && !seen.hidden && seen.height > 0,
+      longNameVisible: seen.longNameVisible,
+      containerOverflow: seen.containerOverflow,
+      documentOverflow: seen.documentOverflow,
+    }));
+
+    if (!seen.exists || seen.hidden || seen.height <= 0) failures.push(`year review ${width}px: the section is not visible`);
+    if (seen.headingText !== 'Year in Review') failures.push(`year review ${width}px: missing the heading`);
+    if (!seen.longNameVisible) failures.push(`year review ${width}px: the long-named exercise is missing`);
+    if (seen.containerOverflow) failures.push(`year review ${width}px: the container overflows horizontally`);
+    if (seen.documentOverflow) failures.push(`year review ${width}px: the page overflows horizontally`);
+    if (errors.length) failures.push(`year review ${width}px: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // Off-season (June 2027): the whole section is absent — container AND heading
+  // — while the rest of Stats still renders.
+  {
+    const { context, page, errors } = await openYearReview(browser, { todayISO: '2027-06-15', width: 390 }, failures);
+    const seen = await readYearReview(page);
+    console.log('Year in Review (June, off-season):', JSON.stringify({
+      exists: seen.exists,
+      hidden: seen.hidden,
+      display: seen.display,
+      height: seen.height,
+      yearHeadings: seen.yearHeadings,
+      weeklyReviewVisible: seen.weeklyReviewVisible,
+    }));
+
+    if (!seen.exists) failures.push('year review off-season: the container is missing');
+    if (!seen.hidden || seen.display !== 'none' || seen.height !== 0) {
+      failures.push(`year review off-season: the container is visible (${seen.display}/${seen.height})`);
+    }
+    if (seen.yearHeadings.length !== 0 || seen.headingHeight !== 0 || seen.text !== '') {
+      failures.push('year review off-season: a Year in Review heading or copy survived');
+    }
+    if (!seen.weeklyReviewVisible) failures.push('year review off-season: hiding the year blanked the rest of Stats');
+    if (errors.length) failures.push(`year review off-season: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
 } finally {
