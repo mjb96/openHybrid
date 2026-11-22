@@ -26,6 +26,7 @@ import { buildMuscleModel } from './muscles.js';
 import { buildExerciseSummaryModel } from './exercises-summary.js';
 import { buildEnduranceModel } from './endurance.js';
 import { buildBodyMetricsModel } from './body-metrics.js';
+import { buildFastingBandModel } from './fasting-band.js';
 
 /**
  * @typedef {'pulse'|'balance'|'muscles'|'exercises'|'endurance'|'body'|'fasting'|'reports'} BandId
@@ -77,6 +78,7 @@ export const BAND_BUILDERS = Object.freeze({
     previous: ctx.previous,
   }),
   body: (state, ctx) => buildBodyMetricsModel(state, { range: ctx.range }),
+  fasting: (state, ctx) => buildFastingBandModel(state, { range: ctx.range }),
 });
 
 /** @param {unknown} value */

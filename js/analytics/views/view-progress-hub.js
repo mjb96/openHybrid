@@ -17,12 +17,13 @@ import { renderMuscles } from './view-muscles.js';
 import { renderExercises } from './view-exercises.js';
 import { renderEndurance } from './view-endurance.js';
 import { renderBody } from './view-body.js';
+import { renderFastingBand } from './view-fasting-band.js';
 import { focusBar, rangeBar } from './band-kit.js';
 import { RANGE_PRESETS } from '../ranges.js';
 
 const BAND_VIEWS = Object.freeze({
   pulse: renderPulse, balance: renderBalance, muscles: renderMuscles, exercises: renderExercises,
-  endurance: renderEndurance, body: renderBody,
+  endurance: renderEndurance, body: renderBody, fasting: renderFastingBand,
 });
 
 /**

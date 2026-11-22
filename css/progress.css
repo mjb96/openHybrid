@@ -677,3 +677,20 @@ html[data-theme="light"] .pg-statrow span { color: #475569; }
 .pg-body__fat small { font-size: 0.54rem; }
 
 html[data-theme="light"] .pg-site__value { color: #0f172a; }
+
+/* ------------------------------------------------------- 16. FASTING BAND */
+.pg-fast-chart { position: relative; margin-top: 14px; }
+.pg-fast__goal {
+  position: absolute;
+  top: 0; bottom: 4px;
+  left: calc(var(--pg-goal) * 1);
+  border-left: 1px dashed rgba(34, 211, 238, 0.55);
+}
+.pg-fast { display: grid; grid-template-columns: 52px 1fr 44px; align-items: center; gap: 8px; height: 20px; }
+.pg-fast small { font-size: 0.54rem; font-weight: 700; color: var(--text-secondary); }
+.pg-fast__track { height: 8px; border-radius: 99px; background: var(--overlay-md, rgba(255, 255, 255, 0.06)); overflow: hidden; }
+.pg-fast__track i { display: block; height: 100%; border-radius: 99px; background: var(--color-violet, #8b5cf6); }
+.pg-fast.is-short .pg-fast__track i { background: rgba(245, 158, 11, 0.75); }
+.pg-fast b { font-size: 0.56rem; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+
+html[data-theme="light"] .pg-fast b, html[data-theme="light"] .pg-fast small { color: #475569; }

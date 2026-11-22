@@ -43,8 +43,8 @@ test('bands that are declared but not built never reach the surface', () => {
   const ids = model.bands.map((band) => band.id);
   assert.ok(!ids.includes('balance'), 'Balance has nothing to say yet');
   assert.ok(ids.includes('muscles'), 'Muscles is built now');
-  // Every strength/running/body band is built now; only Fasting is pending.
-  assert.equal(model.availability.fasting.pending, true);
+  // Every band is built now.
+  assert.equal(model.availability.fasting.pending, undefined, 'fasting is built now');
   assert.equal(model.availability.body.pending, undefined, 'body is built now');
   assert.equal(model.availability.endurance.hasData, false, 'no runs in the fixture');
   // Balance IS built, but a strength-only fixture gives it nothing to say, so
