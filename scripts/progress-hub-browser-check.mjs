@@ -547,8 +547,8 @@ try {
     if (seen.statValues[2] !== '32') failures.push(`year review 390kg: working sets should be 32 (got ${seen.statValues[2]})`);
     if (seen.statValues[3] !== '2') failures.push(`year review 390kg: e1RM PR count should be 2 (got ${seen.statValues[3]})`);
     if (!/Most trained/.test(seen.text) || !/January/.test(seen.text)) failures.push('year review 390kg: missing the best month');
-    if (!/Longest consecutive run/.test(seen.text) || !/3 days/.test(seen.text) || !/consecutive training days/.test(seen.text)) {
-      failures.push('year review 390kg: missing the in-year consecutive run');
+    if (!/Longest consecutive run/.test(seen.text) || !/3 days/.test(seen.text) || !/14 active days/.test(seen.text)) {
+      failures.push('year review 390kg: missing the in-year consecutive run or active-day count');
     }
     if (!/Top exercises/.test(seen.text) || !seen.longNameVisible) failures.push('year review 390kg: missing the top exercises/long-named lift');
     if (!/e1RM PRs/.test(seen.text) || !/Barbell Bench Press/.test(seen.text) || !/128 kg/.test(seen.text)) {

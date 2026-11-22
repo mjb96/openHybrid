@@ -94,7 +94,7 @@ export function renderYearInReview(state, days, todayISO) {
     <article class="card-dark p-3">
       <div class="wrev-label">Longest consecutive run</div>
       <div class="wrev-stat__v" style="margin-top:4px;">${review.totals.longestStreak} day${review.totals.longestStreak === 1 ? '' : 's'}</div>
-      <div class="wrev-stat__k" style="text-transform:none;letter-spacing:0;">consecutive training days</div>
+      <div class="wrev-stat__k" style="text-transform:none;letter-spacing:0;">${review.totals.activeDays} active day${review.totals.activeDays === 1 ? '' : 's'}${soFar}</div>
     </article>`;
 
   const topHTML = review.topExercises.length ? `
