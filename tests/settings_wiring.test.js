@@ -5,11 +5,16 @@
 // athlete changes it, nothing is stored, and the next open silently reverts it.
 // Static checks cannot prove a handler WORKS, but they can prove one exists.
 //
-// Every input/select/textarea inside #settingsOverlay must be referenced by an
-// app/settings handler module. The exception list is for controls wired by
-// ATTRIBUTE rather than id, and it may only shrink: an entry that gains an id
-// reference fails the test until it is removed, and the hard cap of six stops
-// new exemptions being added.
+// Scope: STATIC input/select/textarea elements inside #settingsOverlay. Buttons
+// and JS-rendered controls (plate-count inputs, machine-stack rows, the toast
+// search button) are out of scope because they are not in the parsed markup.
+//
+// Matching is on the EXACT quoted id (`'id'`, `"id"`, `` `id` ``), not a
+// substring: a handler for `settingsNameInput` must not satisfy
+// `settingsNameInputExtra`. The exception list is for controls wired by
+// ATTRIBUTE rather than id, and it may only shrink: an exception that gains an
+// id reference fails until it is removed, and the hard cap of six stops new
+// exemptions being added.
 // =============================================================================
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,6 +55,11 @@ function handlerSources() {
     .join('\n');
 }
 
+/** True only when the source contains the id as an exact quoted string. */
+function referencesId(sources, id) {
+  return [`'${id}'`, `"${id}"`, `\`${id}\``].some((quoted) => sources.includes(quoted));
+}
+
 function settingsControlIds() {
   const start = HTML.indexOf('id="settingsOverlay"');
   assert.ok(start > 0, '#settingsOverlay is missing from index.html');
@@ -59,11 +69,11 @@ function settingsControlIds() {
   return [...block.matchAll(/<(input|select|textarea)\b[^>]*\bid="([^"]+)"/g)].map((match) => match[2]);
 }
 
-test('every settings control is referenced by an app/settings handler', () => {
+test('every static settings input/select/textarea is referenced by a handler', () => {
   const ids = settingsControlIds();
   assert.ok(ids.length >= 30, `expected the settings controls, found ${ids.length}`);
   const sources = handlerSources();
-  const unwired = ids.filter((id) => !sources.includes(id) && !ATTRIBUTE_WIRED_EXCEPTIONS.includes(id));
+  const unwired = ids.filter((id) => !referencesId(sources, id) && !ATTRIBUTE_WIRED_EXCEPTIONS.includes(id));
   assert.deepEqual(unwired, [],
     `settings controls with no handler:\n${unwired.map((id) => `  - #${id}`).join('\n')}`);
 });
@@ -75,7 +85,10 @@ test('the attribute-wired exception list can only shrink', () => {
   const sources = handlerSources();
   for (const id of ATTRIBUTE_WIRED_EXCEPTIONS) {
     assert.ok(settingsControlIds().includes(id), `stale exception: #${id} is no longer a settings control`);
-    assert.ok(!sources.includes(id),
+    const tag = HTML.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
+    assert.ok(tag, `#${id} is not an input`);
+    assert.match(tag, /data-hc-field="[^"]+"/, `#${id} must be dispatched by data-hc-field`);
+    assert.ok(!referencesId(sources, id),
       `#${id} now has an id handler — remove it from ATTRIBUTE_WIRED_EXCEPTIONS so the list shrinks`);
   }
 });
