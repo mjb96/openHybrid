@@ -713,6 +713,24 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P6a: Body band.**
+  - `Body` composes what already exists — `buildBodyweightModel` for weight and its
+    change over the selected window, `buildMeasurementModel` for the tape sites and
+    any entered body fat. Nothing re-derived, nothing estimated.
+  - The chart IS `bodyWeightChartSVG`, the same one Home and Progress already draw,
+    so there is no second sparkline. It renders only from two points: a single
+    weigh-in cannot imply a trend, and it also produces no change line.
+  - Body fat reads as a percentage with its own point delta, and as absent rather
+    than zero when nothing was measured. Both units come from state.
+  - A defect worth recording: body-fat points carry `value`, not `cm`, so the first
+    model read silently dropped every reading. The test caught it.
+  - **Progress photos are deliberately not in this slice.** They live outside
+    `appState`, Android's `allowBackup` is false, and a photo store without the zip
+    export would be the only user data in the app with no backup path. They ship
+    with their export or not at all.
+  - `npm run verify` green (2,520 tests); hub browser contract passes.
+  - Next: P6b photos (v16 + IDB v3 + zip export) as its own session, then P7 fasting.
+
 - **2026-11-23 — Progress P5: Endurance band, and running metrics become run-only.**
   - `Endurance` answers "is my running improving?" from the same canonical
     collector the Running screen uses, so the band cannot disagree with the screen

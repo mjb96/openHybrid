@@ -495,6 +495,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   and distance, and gives a walk no pace. FIT imports classify via
   `isWalkingSport` (`walk|hik` → `type:'walk'`). Any new running metric must keep
   the run-only filter.
+- Progress body (P6a landed): `js/analytics/body-metrics.js` composes
+  `buildBodyweightModel` (weight + change over the selected range) and
+  `buildMeasurementModel` (tape sites, body fat) — nothing re-derived, nothing
+  estimated. `views/view-body.js` draws the SAME `bodyWeightChartSVG` Home uses,
+  only from two points, and claims no change from a single weigh-in. Body fat is
+  an entered percentage (`bodyFat.latest.value`, **not `.cm`** — the tape sites use
+  `cm`, body fat uses `value`), shown with a point delta and absent rather than
+  zero when unmeasured. Progress photos are not implemented: they would live in
+  IndexedDB outside `appState`, Android's `allowBackup` is false, and they must
+  ship together with a zip export or not at all.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside
