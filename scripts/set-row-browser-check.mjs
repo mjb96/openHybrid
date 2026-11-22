@@ -9,6 +9,8 @@
 //   "invalid input explained inline" — the complaint lands on the offending
 //                                   row, not in a toast that appears elsewhere
 //                                   and is gone before you look up.
+//   "the record badge is readable" — a real PR row's badge sits left of the ✓
+//                                   and above the centred number at 320/390/412.
 //
 // The load-bearing assertion is the negative weight. setVolume is
 // parseFloat(w) * parseInt(r), so a stored -50 SUBTRACTS from tonnage, weekly
@@ -220,6 +222,79 @@ try {
       document.querySelector('.cockpit-exercise:not(.collapsed) .set-plate-line:not([hidden])')?.textContent?.trim() || '');
     console.log(`${tag} plate-line:`, JSON.stringify(plateLine));
     if (!/\/ side/.test(plateLine)) fail(`${tag}: per-set plate line is missing (got "${plateLine}")`);
+
+    // ---- the PR badge sits LEFT of the tick and clears the value ----------
+    // The archived session already contains 62.5×8, so the valid set above is a
+    // tie, not a record. Correct the completed row upward (one `change`, the
+    // same blur path an athlete uses) so a real PR badge renders, then measure
+    // the actual boxes rather than trusting the declaration: `right: 4px` put it
+    // on top of the ✓, and a longer "Carry PR" label could reach the number.
+    await page.evaluate(() => {
+      const input = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row .input-weight-node');
+      if (!input) return;
+      input.value = '70';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(250);
+    const prStored = await page.evaluate(async () => {
+      const state = await import('./js/state.js');
+      return state.appState.weeks?.['1']?.lifts?.thu?.['Incline Barbell Press']?.[0] || null;
+    });
+    if (Number(prStored?.w) !== 70 || prStored?.isPR !== true) {
+      fail(`${tag}: correcting a completed row to 70×8 did not earn and persist the PR (${JSON.stringify(prStored)})`);
+    }
+    const prLayout = await page.evaluate(() => {
+      const row = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row.is-pr');
+      if (!row) return null;
+      const rect = (node) => (node ? node.getBoundingClientRect() : null);
+      const badge = row.querySelector('.pr-badge');
+      const tick = row.querySelector('.gym-check-wrap');
+      const value = row.querySelector('.input-reps-node');
+      const weight = row.querySelector('.input-weight-node');
+      const b = rect(badge);
+      const t = rect(tick);
+      const v = rect(value);
+      const style = value ? getComputedStyle(value) : null;
+      const inlinePadding = style
+        ? (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
+        : 0;
+      return {
+        label: badge?.textContent || '',
+        badge: b && { left: b.left, right: b.right, bottom: b.bottom },
+        tick: t && { left: t.left },
+        value: v && { top: v.top, bottom: v.bottom },
+        valueText: value?.value || '',
+        valuePadding: inlinePadding,
+        // A number input's clientWidth includes padding. This is the actual box
+        // the digits can use; the old 12px-per-side padding left it at zero.
+        valueContentWidth: value ? value.clientWidth - inlinePadding : 0,
+        valueClipped: value ? value.scrollWidth > value.clientWidth : true,
+        weightText: weight?.value || '',
+        weightClipped: weight ? weight.scrollWidth > weight.clientWidth : true,
+        rowOverflow: row.scrollWidth - row.clientWidth,
+      };
+    });
+    console.log(`${tag} pr-layout:`, JSON.stringify(prLayout));
+    if (!prLayout) {
+      fail(`${tag}: a set that beat the prior session rendered no PR badge`);
+    } else {
+      if (prLayout.label !== 'PR') fail(`${tag}: e1RM badge reads "${prLayout.label}"`);
+      if (!prLayout.badge || !prLayout.tick || prLayout.badge.right > prLayout.tick.left) {
+        fail(`${tag}: PR badge overlaps the ✓ (badge right ${prLayout.badge?.right}, tick left ${prLayout.tick?.left})`);
+      }
+      if (prLayout.valueText !== '8') fail(`${tag}: PR row lost its value (${prLayout.valueText})`);
+      if (prLayout.valueClipped) fail(`${tag}: the value input clips its number`);
+      if (prLayout.valueContentWidth < 24) {
+        fail(`${tag}: the value field has no usable content box (${prLayout.valueContentWidth}px after ${prLayout.valuePadding}px padding)`);
+      }
+      if (prLayout.weightClipped) fail(`${tag}: the weight input clips its load (${prLayout.weightText})`);
+      if (prLayout.rowOverflow > 0) fail(`${tag}: the PR row overflows horizontally by ${prLayout.rowOverflow}px`);
+      if (prLayout.badge && prLayout.value
+        && prLayout.badge.bottom > (prLayout.value.top + prLayout.value.bottom) / 2) {
+        fail(`${tag}: the PR badge reaches the middle of the value field`);
+      }
+    }
 
     // ---- plate calculator sheet: real profile, real shortfall --------------
     // Row 2 is deliberately used here: row 1 is the blank row the exercise

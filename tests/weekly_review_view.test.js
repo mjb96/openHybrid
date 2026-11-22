@@ -105,7 +105,7 @@ test('a historical week renders no plan adherence bar and no next-week advice', 
   assert.match(html, /1\.1t/);
   assert.match(html, /6 km/);
   assert.match(html, /wrev-stat__v">2<\/div><div class="wrev-stat__k">Sessions/);
-  assert.match(html, /wrev-stat__v">0<\/div><div class="wrev-stat__k">PRs/);
+  assert.match(html, /wrev-stat__v">0<\/div><div class="wrev-stat__k">e1RM PR lifts/);
   // … but the active plan and the coming week are not claims about that week.
   assert.doesNotMatch(html, /Plan adherence/);
   assert.doesNotMatch(html, /wrev-bar/);

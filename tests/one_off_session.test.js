@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  activeWorkoutDay, activeWorkoutWeekKey, clearActiveOneOffSession,
+  activeWorkoutDay, activeWorkoutDayForWeek, activeWorkoutWeekKey, clearActiveOneOffSession,
   createOneOffStrengthSession, oneOffBlueprint,
 } from '../js/workout/one-off-session.js';
 
@@ -46,4 +46,16 @@ test('one-off weekday and stored date stay aligned across a timezone boundary', 
   assert.equal(session.day, 'wed');
   assert.equal(session.week.dates.wed, '2026-07-15');
   assert.ok(session.week.lifts.wed);
+});
+
+test('a day resolved for a week is the tick/untick pair, never the one-off day alone', () => {
+  const state = { currentWeek: '2', weeks: {} };
+  createOneOffStrengthSession(state, {
+    now: new Date('2026-07-16T08:00:00+10:00'),
+    tz: 'Australia/Sydney',
+  });
+  assert.equal(activeWorkoutDayForWeek(state, activeWorkoutWeekKey(state), 'mon'), 'thu');
+  // A programme week keeps the selected programme day; the one-off's weekday
+  // must not be borrowed for a different storage slot.
+  assert.equal(activeWorkoutDayForWeek(state, '2', 'mon'), 'mon');
 });

@@ -15,7 +15,7 @@ import { createServer } from 'node:http';
 import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { createBrowserContext, resolveChromium, pinClock } from './browser-runtime.mjs';
 import { enterCockpit } from './cockpit-entry.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,6 +44,14 @@ const server = createServer(async (req, res) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const BASE = `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (server.address()).port}`;
 const TZ = 'Australia/Sydney';
+// PINNED. The fixture's programme week is anchored at
+// `weekStartedAt: '2026-11-16'`. With an unpinned clock, the app offered "Time
+// to Advance?" once that week was seven days old, and its sheet covered the app
+// and made the bottom nav inert on 2026-11-23 (the check went red for a calendar
+// accident, not a product regression). Pin a time INSIDE the anchored week so
+// the check asserts the circuit, not the date.
+const TODAY = '2026-11-16';
+const CLOCK = Date.parse(`${TODAY}T09:00:00+10:00`);
 const DAY = 'thu';
 const LIFTS = ['Bench Press', 'Barbell Row', 'Overhead Press', 'Bicep Curl'];
 
@@ -152,6 +160,7 @@ try {
     viewport: { width: 390, height: 844 }, timezoneId: TZ, colorScheme: 'dark',
   });
   await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(fixture)]);
+  await context.addInitScript(pinClock, CLOCK);
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -279,6 +288,7 @@ try {
       viewport: { width: 390, height: 844 }, timezoneId: TZ, colorScheme: 'dark',
     });
     await orderContext.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(fixture)]);
+    await orderContext.addInitScript(pinClock, CLOCK);
     const orderPage = await orderContext.newPage();
     const orderErrors = [];
     orderPage.on('pageerror', (error) => orderErrors.push(error.message));

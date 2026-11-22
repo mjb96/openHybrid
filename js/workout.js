@@ -66,9 +66,12 @@ import {
 } from './workout/exercise-config.js';
 import { createReferenceLink } from './workout/reference-link.js';
 import { openExerciseOptions } from './workout/exercise-options.js';
-import { estimatedE1rmForSet, isE1rmExercise, isE1rmPr } from './strength/e1rm.js';
+import { isE1rmExercise } from './strength/e1rm.js';
 import {
-  activeOneOffSession, activeWorkoutDay, activeWorkoutWeekKey,
+  RECORD_KIND, bestRecordBefore, bestRecordForSession, isRecord, prKindLabel, recordKindForSet,
+} from './strength/records.js';
+import {
+  activeOneOffSession, activeWorkoutDay, activeWorkoutDayForWeek, activeWorkoutWeekKey,
   clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
@@ -1071,33 +1074,78 @@ function applySetComparison(parentRow, value, mode = SET_MODE.REPS, weight = 0) 
   cmp.title = result.label;
 }
 
-// PR detection for one completed set. Extracted from the tick path so quick-log
-// and log-all get the same live PR feedback instead of only manual ticks.
-function detectSetPR(parentRow, liftName, setIndex, w, r, appState, weekKey, day) {
-  if (!parentRow || !liftName || setIndex < 0 || !(w > 0) || !(r > 0)) return;
-  const setType = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex]?.type || '';
-  if (setType === 'W') return;
-  const storedSet = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex] || {};
-  const e1rm = estimatedE1rmForSet(liftName, { ...storedSet, w, r });
-  const prior = exerciseLoggerHistory(appState, liftName, {
-    weekKey,
-    day,
+// PR detection for one completed set, shape-aware via the shared records model.
+// Extracted from the tick path so quick-log and log-all get the same live PR
+// feedback instead of only manual ticks. Called for EVERY shape: a 60-second
+// hold earns a Hold PR and a 40 m carry a Carry PR, never an estimated 1RM.
+//
+// The function always SYNCHRONISES the row: when the candidate no longer earns
+// the record (a corrected-down weight, a shape change, a bodyweight load) it
+// removes the class, badge and stored stamp. That removal branch is why a set
+// edited after it was ticked cannot keep a trophy it no longer deserves.
+//
+// `options.justTicked` marks the unticked→ticked transition. The baseline toast
+// ("Baseline set — not a trophy") belongs to that moment only; a completed row
+// corrected on blur must not re-announce it.
+export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, weekKey, day, options = {}) {
+  if (!parentRow || !liftName || setIndex < 0) return null;
+  const storedSet = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex] || null;
+  const live = { ...(storedSet || {}), ...(candidate || {}), c: true };
+  const wasPR = parentRow.classList.contains('is-pr') || storedSet?.isPR === true;
+  if (isWarmupSet(live)) { clearSetPR(parentRow, storedSet); return null; }
+  const kind = recordKindForSet(live, liftName);
+  if (!kind) { clearSetPR(parentRow, storedSet); return null; }
+  const before = bestRecordBefore(appState, liftName, {
+    excludeWeekKey: weekKey,
+    excludeDay: day,
     beforeDate: appState.weeks?.[weekKey]?.dates?.[day] || dateKey(),
   });
-  const prevMax = Math.max(prior.datedBestEstimated1RM, prior.globalBestEstimated1RM);
-  const hasHistory = prior.hasHistory;
-  if (hasHistory && isE1rmPr(e1rm, prevMax)) {
-    parentRow.classList.add('is-pr');
-    hapticSuccess();
-    if (!parentRow.querySelector('.pr-badge')) {
-      const badge = document.createElement('span');
-      badge.className = 'pr-badge';
-      badge.textContent = 'PR';
-      parentRow.appendChild(badge);
+  // Rep records are bucketed by load. A single-set candidate has exactly one
+  // bucket, so take it rather than indexing an array as if it were a record.
+  const sessionRecords = bestRecordForSession(liftName, [live]);
+  const record = kind === RECORD_KIND.REPS ? (sessionRecords.reps[0] || null) : sessionRecords[kind];
+  if (!record || !isRecord(kind, record, before[kind])) {
+    const noPrior = kind === RECORD_KIND.REPS
+      ? !(Array.isArray(before?.reps) && before.reps.length > 0)
+      : !(Number(before?.[kind]?.value) > 0);
+    clearSetPR(parentRow, storedSet);
+    if (options.justTicked === true && !wasPR && kind === 'e1rm' && noPrior) {
+      showToast(`Baseline set — ${liftName} ✓`);
     }
-    showToast(`🏆 New PR — ${liftName}!`);
-  } else if (e1rm > 0 && !hasHistory) {
-    showToast(`Baseline set — ${liftName} ✓`);
+    return null;
+  }
+  parentRow.classList.add('is-pr');
+  if (parentRow.dataset) parentRow.dataset.prKind = kind;
+  let badge = parentRow.querySelector('.pr-badge');
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.className = 'pr-badge';
+    parentRow.appendChild(badge);
+  }
+  badge.textContent = prKindLabel(kind);
+  // Persist additively. `prKind` names what was measured so a re-render shows
+  // "Hold PR"/"Carry PR" instead of a generic trophy.
+  if (storedSet) {
+    storedSet.isPR = true;
+    storedSet.prKind = kind;
+  }
+  if (!wasPR) {
+    hapticSuccess();
+    showToast(kind === 'e1rm'
+      ? `🏆 New PR — ${liftName}!`
+      : `🏆 ${prKindLabel(kind)} — ${liftName}!`);
+  }
+  return { kind, record };
+}
+
+/** Remove a row's PR presentation and its stored stamp, if any. */
+function clearSetPR(parentRow, storedSet) {
+  parentRow?.classList.remove('is-pr');
+  parentRow?.querySelector('.pr-badge')?.remove();
+  if (parentRow?.dataset) delete parentRow.dataset.prKind;
+  if (storedSet && typeof storedSet === 'object') {
+    delete storedSet.isPR;
+    delete storedSet.prKind;
   }
 }
 
@@ -1265,13 +1313,15 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
   } catch(e) { console.warn(e); }
 
   const quickW = parseFloat(targetW);
-  if (setShape === SET_MODE.REPS) {
-    const quickR = parseInt(targetV, 10);
-    detectSetPR(parentRow, liftName, sIdx, quickW, quickR, appState, wk, selectedDay);
-    applySetComparison(parentRow, quickR, setShape, quickW);
-  } else {
-    applySetComparison(parentRow, _setRowValue(setShape, targetV), setShape, quickW);
-  }
+  // Every shape gets live PR feedback; a hold/carry was previously skipped
+  // entirely because detection only ran for REPS.
+  detectSetPR(parentRow, liftName, sIdx, {
+    ...(_setArr[sIdx] || {}),
+    w: targetW,
+    mode: setShape,
+    c: true,
+  }, appState, wk, selectedDay, { justTicked: true });
+  applySetComparison(parentRow, _setRowValue(setShape, targetV), setShape, quickW);
 
   _saveState(true);
   evaluateAccordionAutoFlowTransitions();
@@ -1466,6 +1516,13 @@ export function updateInputState(inputNode) {
     setObj.r = inputNode.value;
     if (ph != null && setObj.tr == null) setObj.tr = ph;
   }
+  // A COMPLETED row can still be corrected. `updateInputState` is driven by
+  // `change`/blur, not by every keystroke, so this re-evaluation costs one
+  // history scan when the athlete leaves the field — not one per typed digit.
+  // Tick, quick-log and log-all stay immediate (they pass `justTicked`).
+  if (isCompletedSet(setObj)) {
+    detectSetPR(row, liftName, sIdx, setObj, appState, wk, selectedDay);
+  }
   // High-frequency keystroke path: debounce the local write instead of
   // serialising the whole state on every digit. Set-completion, quick-log and
   // finish still persist immediately (they use _saveState). A backgrounded app
@@ -1566,7 +1623,9 @@ export function commitWorkoutUIState() {
             if (rowLoadMode === 'bodyweight') storedSet.bw = true;
             else storedSet.band = storedSet.band || 'M';
           }
-          if (row.classList.contains('is-pr')) appState.weeks[wk].lifts[selectedDay][liftName][idx].isPR = true;
+          // PR stamps are written by detectSetPR (shape-aware, with `prKind`)
+          // and cleared there when a corrected set no longer earns one. Copying
+          // the row's class here used to persist a stale badge forever.
         }
       });
     });
@@ -1588,8 +1647,8 @@ export function toggleGymCheckLoggingState(checkboxNode) {
   const parentRow = checkboxNode.closest('.cockpit-set-row');
   const exCard = checkboxNode.closest('.cockpit-exercise');
   const lifecycleState = _getState();
-  const lifecycleDay = activeWorkoutDay(lifecycleState, _getSelectedDay());
   const lifecycleWeek = activeWorkoutWeekKey(lifecycleState);
+  const lifecycleDay = activeWorkoutDayForWeek(lifecycleState, lifecycleWeek, _getSelectedDay());
   markSessionInProgress(lifecycleState.weeks?.[lifecycleWeek], lifecycleDay);
   
   if (checkboxNode.checked) {
@@ -1677,8 +1736,11 @@ export function toggleGymCheckLoggingState(checkboxNode) {
       const gymRpeEl = document.getElementById('sessionGymRpeCockpit');
       const setRpe = gymRpeEl && gymRpeEl.value ? parseFloat(gymRpeEl.value) : null;
       const _appState = _getState();
-      const _selDay = _getSelectedDay();
       const _wk = activeWorkoutWeekKey(_appState);
+      // Resolve the day FROM the week the tick will write to. `activeWorkoutDay`
+      // alone answers for the active one-off and can disagree with `_wk` when a
+      // programme day is selected, which would stamp one slot and untick another.
+      const _selDay = activeWorkoutDayForWeek(_appState, _wk, _getSelectedDay());
       const _sIdx = exCard ? Array.from(exCard.querySelectorAll('.cockpit-set-row')).indexOf(parentRow) : -1;
       const storedForRest = _appState.weeks[_wk].lifts?.[_selDay]?.[liftName]?.[_sIdx] || {};
       const setType = storedForRest.type || '';
@@ -1691,16 +1753,22 @@ export function toggleGymCheckLoggingState(checkboxNode) {
         _appState.weeks[_wk].dates[_selDay] = dateKey();
       }
 
-      // PR + per-set comparison. Shared with quick-log/log-all so those paths
-      // cannot silently skip the feedback a manual tick gets.
+      // PR + per-set comparison, for EVERY shape. Shared with quick-log/log-all
+      // so those paths cannot silently skip the feedback a manual tick gets.
       if (liftName && _sIdx >= 0) {
         const wIn = parentRow?.querySelector('.input-weight-node');
         const valueIn = parentRow ? _setValueInput(parentRow) : null;
         const w = parseFloat(wIn?.value) || 0;
-        if (rowMode === SET_MODE.REPS) {
-          const r = parseInt(valueIn?.value, 10) || 0;
-          detectSetPR(parentRow, liftName, _sIdx, w, r, _appState, _wk, _selDay);
-        }
+        const candidate = {
+          ...storedForRest,
+          w: wIn ? wIn.value : storedForRest.w,
+          mode: rowMode,
+          c: true,
+        };
+        if (rowMode === SET_MODE.TIME) candidate.sec = parseDuration(valueIn?.value) || '';
+        else if (rowMode === SET_MODE.DISTANCE) candidate.dist = parseFloat(valueIn?.value) || '';
+        else candidate.r = valueIn?.value ?? storedForRest.r;
+        detectSetPR(parentRow, liftName, _sIdx, candidate, _appState, _wk, _selDay, { justTicked: true });
         applySetComparison(parentRow, _setRowValue(rowMode, valueIn?.value), rowMode, w);
       }
     } catch(e) { console.warn(e); }
@@ -1708,6 +1776,18 @@ export function toggleGymCheckLoggingState(checkboxNode) {
     if (parentRow) {
       parentRow.classList.remove('is-complete');
       parentRow.querySelector('.set-cmp')?.remove();
+      // Withdrawing the entry withdraws its claim. A PR ticked by mistake must
+      // not survive unticking or the next render would resurrect the trophy.
+      const liftName = exCard ? exCard.getAttribute('data-liftname') : null;
+      if (liftName && exCard) {
+        const sIdx = Array.from(exCard.querySelectorAll('.cockpit-set-row')).indexOf(parentRow);
+        const appState = _getState();
+        const wk = activeWorkoutWeekKey(appState);
+        // Same pair the tick used: the week decides its own day.
+        const selDay = activeWorkoutDayForWeek(appState, wk, _getSelectedDay());
+        const stored = appState.weeks?.[wk]?.lifts?.[selDay]?.[liftName]?.[sIdx];
+        clearSetPR(parentRow, stored);
+      }
     }
     // Un-ticking is the athlete withdrawing the entry, so the complaint about it
     // goes too. Leaving it would accuse a row that no longer claims anything.
@@ -2126,15 +2206,26 @@ function renderSessionHighlights(appState, weekKey, day, liftNames) {
   }
   const unit = weightUnitLabel(appState || {});
   const round = (value) => (Math.round(value * 10) / 10).toString().replace(/\.0$/, '');
+  const gainText = (h) => {
+    if (h.kind === 'hold') return `Hold PR · ${formatDuration(h.value)} · +${round(h.delta)}s`;
+    if (h.kind === 'carry') return `Carry PR · ${formatDistance(h.value)}m · +${round(h.delta)}m`;
+    if (h.kind === 'reps') {
+      const load = Number(h.load) > 0 ? `${round(h.load)} ${unit} × ` : '';
+      return `Rep PR · ${load}${round(h.value)} reps · +${round(h.delta)}`;
+    }
+    return `${round(h.e1rm)} ${unit} est. 1RM · +${round(h.delta)}`;
+  };
   host.hidden = false;
   host.innerHTML = `
     <div class="summary-highlights__title">Notable progress</div>
     ${highlights.map((h) => `
       <div class="summary-highlights__row">
         <span class="summary-highlights__lift">${escapeHtml(h.lift)}</span>
-        <span class="summary-highlights__gain">${round(h.e1rm)} ${escapeHtml(unit)} est. 1RM · +${round(h.delta)}</span>
+        <span class="summary-highlights__gain">${gainText(h)}</span>
       </div>`).join('')}
-    <div class="summary-highlights__note">Estimated from your best set — not a tested max.</div>
+    <div class="summary-highlights__note">${highlights.some((h) => h.kind !== 'hold' && h.kind !== 'carry' && h.kind !== 'reps')
+      ? 'Estimated from your best set — not a tested max.'
+      : 'Measured from the sets you completed.'}</div>
   `;
 }
 

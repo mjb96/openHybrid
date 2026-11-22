@@ -196,16 +196,14 @@ function collectAnalyticsData() {
           const displayName = resolveExercise(lift)?.name || lift;
 
           if (!data.dynamicStats[displayName]) {
-            // priorBestMax = best e1RM from any week BEFORE the current one. It's
-            // what separates a real PR (beat a prior best) from a first-ever
-            // baseline (no history) — so analytics stops calling a baseline a PR,
-            // matching the cockpit's "Baseline set, not a trophy" rule.
-            data.dynamicStats[displayName] = { allTimeMax: 0, currentEstimatedMax: 0, previousWeekMax: 0, priorBestMax: 0 };
+            // priorBestMax lived here and was never read. The live PR baseline
+            // is `computeStrengthAnalytics().liftProgression[lift].priorBestMax`
+            // (prior e1RM history); this aggregate only feeds the all-time
+            // headline and the two comparison columns below.
+            data.dynamicStats[displayName] = { allTimeMax: 0, currentEstimatedMax: 0, previousWeekMax: 0 };
           }
 
           const prevWeek = (parseInt(appState.currentWeek, 10) - 1).toString();
-          const curWeekNum = parseInt(appState.currentWeek, 10);
-          const wkNum = parseInt(wKey, 10);
 
           dayLifts[lift].forEach(s => {
             const completed = isCompletedSet(s);
@@ -217,7 +215,6 @@ function collectAnalyticsData() {
               if (e1rm > data.dynamicStats[displayName].allTimeMax)          data.dynamicStats[displayName].allTimeMax = e1rm;
               if (wKey === appState.currentWeek && e1rm > data.dynamicStats[displayName].currentEstimatedMax) data.dynamicStats[displayName].currentEstimatedMax = e1rm;
               if (wKey === prevWeek && e1rm > data.dynamicStats[displayName].previousWeekMax)                 data.dynamicStats[displayName].previousWeekMax = e1rm;
-              if (Number.isFinite(wkNum) && wkNum < curWeekNum && e1rm > data.dynamicStats[displayName].priorBestMax) data.dynamicStats[displayName].priorBestMax = e1rm;
             }
           });
         }

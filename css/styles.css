@@ -4038,7 +4038,11 @@ html[data-theme="light"] .global-timer-bar {
 .pr-badge {
   position: absolute;
   top: 4px;
-  right: 4px;
+  /* Left of the tick. The DONE column is 44px plus an 8px gap, so `right: 4px`
+     sat on top of the ✓; 34px still overlapped it by 14px at 320/390. 56px puts
+     the badge's right edge 4px clear of the column. It overlays only the TOP of
+     the value cell — the number is vertically centred, below the badge. */
+  right: 56px;
   font-size: 0.52rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -4048,6 +4052,7 @@ html[data-theme="light"] .global-timer-bar {
   color: #000;
   pointer-events: none;
   z-index: 2;
+  white-space: nowrap;
   box-shadow: 0 2px 8px rgba(251, 191, 36, 0.40);
   animation: prBadgePop 0.5s var(--ease-bounce, cubic-bezier(0.34,1.56,0.64,1)) forwards;
 }
@@ -9782,6 +9787,26 @@ input[type="checkbox"].gym-check {
 }
 .cockpit-set-row input { min-width: 0; }
 .cockpit-set-row input { min-height: var(--touch-target); }
+/* The VALUE track is a fixed 54px and time/reps/distance all render through
+   `.input-set-value-node`. The global input rule above 380px keeps 12px of
+   inline padding each side, leaving no content box at all — a two-digit number
+   overflowed on Linux Chromium while the 320px media query below (4px) hid the
+   defect on macOS. Give the value field its own 4px padding; the weight field
+   keeps its roomier padding because its track is flexible. */
+.cockpit-set-row .input-set-value-node { padding-inline: 4px; }
+/* Touch-first row: a platform number spinner would steal the same 54px
+   content box. Hide the inner/outer buttons; arrow-key stepping still works. */
+.cockpit-set-row input[type="number"] {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+.cockpit-set-row input[type="number"]::-webkit-inner-spin-button,
+.cockpit-set-row input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
 .set-entry { min-width: 0; display: grid; gap: 3px; }
 .set-entry small {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

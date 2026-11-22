@@ -120,7 +120,7 @@ export function renderReviewOverview(body, review) {
   const hero = `<article class="card-dark an-hero">
       <div class="an-hero__k">${esc(review.label)}</div>
       <div class="an-hero__val">${review.totals.sessions}</div>
-      <div class="an-hero__empty">${review.totals.sessions === 1 ? 'session' : 'sessions'} logged · ${review.totals.prCount} PR${review.totals.prCount === 1 ? '' : 's'}</div>
+      <div class="an-hero__empty">${review.totals.sessions === 1 ? 'session' : 'sessions'} logged · ${review.totals.prCount} e1RM PR lift${review.totals.prCount === 1 ? '' : 's'}</div>
     </article>`;
 
   const cards = [statCard({ label: 'Sessions', value: String(review.totals.sessions), sub: `logged ${period}`, color: '#3b82f6' })];
@@ -175,7 +175,7 @@ export function renderWeeklyReview(review, state) {
     { v: review.totals.volume >= 1000 ? `${(review.totals.volume / 1000).toFixed(1)}t` : `${review.totals.volume} ${weightUnitOf(state)}`, k: 'Lifted', d: deltaChip(review.deltas.volumePct) },
     { v: dist, k: 'Run', d: deltaChip(review.deltas.distancePct) },
     { v: String(review.totals.sessions), k: 'Sessions', d: '' },
-    { v: String(review.totals.prCount), k: 'PRs', d: review.totals.prCount > 0 ? '<span class="wrev-delta" style="color:var(--color-amber)">🏆</span>' : '' },
+    { v: String(review.totals.prCount), k: 'e1RM PR lifts', d: review.totals.prCount > 0 ? '<span class="wrev-delta" style="color:var(--color-amber)">🏆</span>' : '' },
   ].map(s => `<div class="wrev-stat"><div class="wrev-stat__v">${s.v}</div><div class="wrev-stat__k">${s.k}</div>${s.d}</div>`).join('');
 
   const consHTML = review.consistency.total != null ? `

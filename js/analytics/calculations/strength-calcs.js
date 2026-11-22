@@ -115,7 +115,7 @@ export function computeStrengthAnalytics(state, days, maxWeek, options = {}) {
   const currentWeek   = parseInt(state.currentWeek || '1', 10);
   const volSeries     = weeklyTonnageSeries(state, days, maxWeek);
   const e1rmByLift    = weeklyE1rmByLift(state, days, maxWeek);
-  const allTimeByLift = allLiftsStats(state, days);
+  const allTimeByLift = allLiftsStats(state, days, { excludeWeekKey: currentWeek });
   const muscleByWeek  = weeklyVolumeByMuscle(state, days, maxWeek);
   const muscleGroups  = aggregateMuscleGroups(muscleByWeek, maxWeek);
   const calendarCredits = calendarVolumeByMuscle(state, { weekStart: options.weekStart, today: options.today, tz: options.tz });
@@ -141,6 +141,10 @@ export function computeStrengthAnalytics(state, days, maxWeek, options = {}) {
       lifetimePR, blockPR,
       seriesScope: 'active-program-run',
       lifetimeScope: 'all-stored-activations',
+      // Best e1RM this lift has ever had OUTSIDE the current program week.
+      // Archived activations count; the current week's own sets do not, so a tie
+      // with history can never read as a new record.
+      priorBestMax: Math.max(0, Number(allTimeByLift[lift]?.priorMax) || 0),
       currentWeekPR: series[currentWeek - 1] || 0,
       previousWeekPR: series[currentWeek - 2] || 0,
       roi,           // kg/week
