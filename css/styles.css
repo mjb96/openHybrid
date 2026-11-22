@@ -10423,28 +10423,36 @@ html[data-theme="dark"][data-palette="ember"] {
 .customize-row__label { color: var(--text-primary); font-size: .82rem; font-weight: 750; }
 .customize-row__note { color: var(--text-muted); font-size: .7rem; line-height: 1.35; }
 
-/* Home bodyweight card — compact chart + one-tap prefilled log. */
+/* Home bodyweight card — one 44px row: latest value, 30-day spark, Log. */
 .home-bw {
-  margin: 12px 0 16px; padding: 14px 16px 12px;
-  border: 1px solid var(--border-light); border-radius: 16px;
+  margin: 10px 0 14px; padding: 10px 14px;
+  border: 1px solid var(--border-light); border-radius: 14px;
 }
-.home-bw__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.home-bw__eyebrow { display: block; color: var(--text-muted); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.home-bw__title { display: block; margin-top: 2px; color: var(--text-primary); font-size: 1.22rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-bw__line {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; min-height: 44px; padding: 0; border: 0;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.home-bw__line:active { transform: scale(.995); }
+.home-bw__line:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; }
+.home-bw__copy { display: grid; align-content: center; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.home-bw__eyebrow { display: block; color: var(--text-muted); font-size: .58rem; line-height: 1.1; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.home-bw__title { display: block; color: var(--text-primary); font-size: 1.05rem; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.home-bw__meta {
+  display: block; overflow: hidden;
+  color: var(--text-muted); font-size: .62rem; line-height: 1.2;
+  white-space: nowrap; text-overflow: ellipsis;
+}
+.home-bw__chart { display: flex; align-items: center; flex: 0 0 96px; min-height: 28px; }
+.home-bw__spark { display: block; width: 100%; height: 28px; }
+.home-bw__empty { display: block; overflow: hidden; color: var(--text-muted); font-size: .6rem; line-height: 1.15; }
 .home-bw__log {
-  min-height: 44px; min-width: 64px; padding: 0 14px; border-radius: 11px;
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 46px; height: 26px; padding: 0 10px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--color-cyan) 45%, transparent);
   background: color-mix(in srgb, var(--color-cyan) 14%, transparent);
-  color: var(--color-cyan); font: inherit; font-size: .78rem; font-weight: 800;
+  color: var(--color-cyan); font-size: .68rem; font-weight: 800;
 }
-.home-bw__chart {
-  display: block; width: 100%; min-height: 64px; margin: 6px 0 2px; padding: 0;
-  border: 0; background: none; color: inherit; text-align: left;
-}
-.home-bw__spark { display: block; width: 100%; height: 62px; }
-.home-bw__empty { display: flex; align-items: center; min-height: 62px; color: var(--text-muted); font-size: .74rem; }
-.home-bw__meta { display: flex; justify-content: space-between; gap: 10px; color: var(--text-muted); font-size: .68rem; }
-.home-bw__trend { margin-top: 4px; color: var(--text-secondary); font-size: .7rem; }
 
 /* Saved-workout editor */
 .edit-saved-sheet { max-height: min(88vh, 760px); }
