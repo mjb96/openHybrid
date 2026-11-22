@@ -80,9 +80,10 @@ upgrade have landed:
   `+ Drop` shortcut that seeds a lighter typed row, and a Last time / Next time
   recap.
 - **Plans** keeps the active plan first — its Start/Resume is the only primary,
-  with quiet create/import/manage utilities and one "Search plans" field shared
-  by Discover and My Plans — recommends from athlete fit, and has an
-  Overview | Structure | Plan detail with week-stepped targets.
+  with quiet create/import/manage utilities, one "Search plans" field shared
+  by Discover and My Plans, and a three-up fit-tagged recommendation row — it
+  recommends from athlete fit, and has an Overview | Structure | Plan detail
+  with week-stepped targets.
 
 ### What holds the experience back
 
@@ -636,6 +637,29 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | ~2,000 node tests, typecheck, smoke, precache/workflow gates, 43 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Plans card art: a three-up recommendation row.**
+  - "Recommended For You" is one 3-up tile grid (request 3) instead of a
+    horizontal rail, so all three cards sit fully inside 390px at rest. It keeps
+    the `.prog-basis` block and its three groups, then All programs, the real
+    `${all.length} plans` count and Show all.
+  - New `tile` size in `program-card.js` (and its DOM mirror): accent-tinted
+    gradient from `accentColor` / `coverGradient[1]`, 1:1 cover, 44px glyph
+    bottom-left, 44px bookmark top-right, name + reason only. `small` and
+    `large` are untouched, so detail Similar programs keeps its rail card.
+  - Cover glyphs stop treating every athletic category as the flame:
+    hyrox→trophy, functional→activity, tactical→gauge, conditioning→flame,
+    triathlon→activity; hybrid keeps bolt.
+  - Search's popularity tiebreaker now reads `Number(program.popularity) || 0`,
+    so a custom/imported plan without that catalogue field cannot score NaN and
+    disappear from results.
+  - 390×844 audit (same seed/clock as the quiet-row shot): All programs is
+    605px, inside the 620px target and down from 639px; tiles occupy
+    16–130 / 138–252 / 260–374. Screenshot `shots/plans-after-art.png`.
+  - Validation: 2,081 node tests (tile glyph/markup and no-popularity search
+    probes added), typecheck, smoke, precache, and the Plans
+    banner/JSON/recommendation, detail viewport, core ergonomics and
+    touch-target browser checks.
 
 - **2026-11-22 — Plans follow-up: quiet utility row and tab bar.**
   - The plan utilities are inline text now — no border, fill or shadow, 44px

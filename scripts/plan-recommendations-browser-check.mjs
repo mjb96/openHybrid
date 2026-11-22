@@ -230,16 +230,13 @@ try {
         grid: document.querySelectorAll('#progLibraryContent .program-grid .prog-card').length,
       };
     };
-    // A recommended card lives in a horizontal rail. "Inside the viewport"
-    // therefore means each card can be brought fully on screen by scrolling its
-    // own row: all four or five at once is not possible at 390px without either
-    // clipping them or pushing All programs below the fold.
+    // The recommendation row is one three-up grid: all three cards must fit at
+    // rest. There is no horizontal rail to scroll into view any more.
     const readCardReach = () => {
       const row = [...document.querySelectorAll('.collection-row')]
         .find((r) => /Recommended For You/i.test(r.querySelector('.collection-title')?.textContent || ''));
       const cards = [...(row?.querySelectorAll('.prog-card') || [])];
       return cards.map((card) => {
-        card.scrollIntoView({ block: 'nearest', inline: 'center' });
         const rect = card.getBoundingClientRect();
         return {
           name: card.querySelector('.prog-card-name')?.textContent?.trim() || '',
@@ -257,10 +254,12 @@ try {
       failures.push('the simplified Discover must not render chip walls');
     }
     if (before.allProgramsTop == null) failures.push('All programs must be reachable');
-    else if (before.allProgramsTop >= before.viewport) {
-      failures.push(`All programs starts at ${before.allProgramsTop}px, below the ${before.viewport}px fold at 390px`);
+    else if (before.allProgramsTop > 620) {
+      failures.push(`All programs starts at ${before.allProgramsTop}px, past the 620px target at 390px`);
     }
-    if (!cardReach.length) failures.push('no recommended cards to measure');
+    if (cardReach.length !== 3) {
+      failures.push(`the Discover recommendation row must be one three-up grid, got ${cardReach.length} cards`);
+    }
     for (const card of cardReach) {
       if (card.left < -0.5 || card.right > card.viewport + 0.5) {
         failures.push(`recommended card "${card.name}" is clipped by the viewport (${Math.round(card.left)}–${Math.round(card.right)} of ${card.viewport})`);

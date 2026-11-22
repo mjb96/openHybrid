@@ -138,7 +138,7 @@ function scoreProgram(program, queryTokens) {
   if (contentScore === 0) return 0; // No real keyword match — exclude
 
   // Popularity tiebreaker
-  contentScore += (program.popularity / 100) * 2;
+  contentScore += ((Number(program.popularity) || 0) / 100) * 2;
 
   return contentScore;
 }

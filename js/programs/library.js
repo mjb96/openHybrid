@@ -345,17 +345,28 @@ function renderLibraryContent() {
 }
 
 function renderSimpleDiscover(content) {
-  const recommendations = getRecommendations(_appState, 4);
+  // One three-up row, not a horizontal rail: the third card must be fully
+  // visible at 390px, so the row shows exactly what fits. The engine may return
+  // fewer than three when it has fewer true reasons; the browser contract still
+  // covers three to five.
+  const recommendations = getRecommendations(_appState, 3);
   let html = '';
   if (recommendations.length > 0) {
-    const reasons = new Map(recommendations.map((item) => [item.program.id, item.reason]));
-    html += renderCollectionRow({
-      id: 'recommended',
-      label: 'Recommended For You',
-      icon: '',
-      hideSeeAll: true,
-      afterHeader: renderRecommendationBasis(recommendationBasis(athleteProfile(_appState))),
-    }, recommendations.map((item) => item.program), reasons);
+    html += `
+      <div class="collection-row collection-row--recommended mb-2">
+        <div class="collection-header mb-2">
+          <div class="collection-title-wrap">
+            <div>
+              <div class="collection-title">Recommended For You</div>
+            </div>
+          </div>
+        </div>
+        ${renderRecommendationBasis(recommendationBasis(athleteProfile(_appState)))}
+        <div class="prog-tile-grid">
+          ${recommendations.map((item) => renderProgramCard(item.program, 'tile', item.reason)).join('')}
+        </div>
+      </div>
+    `;
   }
   const all = PROGRAM_CATALOG.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
   const shown = _showAllPrograms ? all : all.slice(0, 12);
