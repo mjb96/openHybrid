@@ -74,32 +74,11 @@ import {
   validateImport,
   importReasonMessage,
 } from './state/import-validate.js';
+import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery } from './settings/nav.js';
 
 let _getState;
 let _autoBackupUiRequest = 0;
 let _settingsGroup = 'profile';
-
-const SETTINGS_TABS = Object.freeze([
-  { id: 'profile', label: 'Profile' },
-  { id: 'training', label: 'Training' },
-  { id: 'health', label: 'Health' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'data', label: 'Data' },
-]);
-
-const SETTINGS_GROUP_BY_LABEL = Object.freeze({
-  Profile: 'profile',
-  Training: 'training',
-  Modules: 'training',
-  'Program Week': 'training',
-  Equipment: 'training',
-  Fasting: 'health',
-  Notifications: 'health',
-  Appearance: 'appearance',
-  'Data & Backups': 'data',
-  'Health Connect': 'health',
-  App: 'data',
-});
 
 export function initSettings(getStateFn) {
   _getState = getStateFn;
@@ -121,7 +100,7 @@ function _setupSettingsNavigation() {
   const sections = _settingsSections();
   sections.forEach((section) => {
     const label = section.querySelector('.settings-section-label:not(.settings-section-label--sub)')?.textContent?.trim() || '';
-    section.dataset.settingsGroup = SETTINGS_GROUP_BY_LABEL[label] || 'training';
+    section.dataset.settingsGroup = settingsGroupForLabel(label);
   });
   if (!tabs.childElementCount) {
     tabs.innerHTML = SETTINGS_TABS.map((tab) => `<button type="button" class="settings-tab" role="tab" data-settings-tab="${tab.id}" aria-selected="false">${tab.label}</button>`).join('');
@@ -153,7 +132,7 @@ function _applySettingsFilter() {
   let shown = 0;
   _settingsSections().forEach((section) => {
     const inGroup = !!query || section.dataset.settingsGroup === _settingsGroup;
-    const matches = !query || section.textContent.toLowerCase().includes(query);
+    const matches = sectionMatchesQuery(section, query);
     section.hidden = !(inGroup && matches);
     if (!section.hidden) shown++;
   });
