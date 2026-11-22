@@ -514,14 +514,22 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   both surfaces. `shareImageCanvas` (pr-share.js) is the single
   navigator.share → download path for every card; run distance/pace formatting
   lives in `js/workout/run-units.js` so the recap and card cannot drift.
-- Circuits / supersets: `js/workout/superset.js` is the pure group model —
-  same-day lifts sharing a non-empty `liftMeta[day][lift].groupId`, rendered in
-  `liftOrder`, with A…Z then AA…ZZ ids and one **group rest** resolved through
-  `js/workout/rest-duration.js` (longest member wins; per-set rest still wins
-  outright). Warm-up ticks keep the warm-up tier; drop rows never start a rest
-  or advance a round. `prescriptions[day][lift].groupId` carries a circuit
-  through routines and copies. A lone tag is pruned on read and on last-set
-  removal (Undo snapshots liftMeta).
+- Circuits / supersets: `js/workout/superset.js` is the pure group model — any
+  pair or circuit of three or more same-day lifts sharing a non-empty
+  `liftMeta[day][lift].groupId`, rendered in `liftOrder`, with A…Z then AA…ZZ
+  ids and stable A–F colours (the palette continues beyond F). Adding a lift to
+  an existing circuit JOINS its letter instead of minting a new one; a
+  cross-group merge is refused. The in-place panel adds, removes one member (a
+  lone remaining tag is cleared) and unlinks all, with 44px controls. One
+  **group rest** is resolved through `js/workout/rest-duration.js` (longest
+  member wins; per-set rest still wins outright) and starts only after the last
+  member catches up. Warm-up ticks keep the warm-up tier; drop rows never start
+  a rest or advance a round. `prescriptions[day][lift].groupId` carries a
+  circuit through routines and copies; a malformed imported routine tag is
+  dropped rather than the routine, and copies carry only `{groupId}`. A lone tag
+  is pruned on read, on last-set removal and in copied/restored sessions (Undo
+  snapshots liftMeta). Values live in existing `liftMeta`/`prescriptions`
+  fields — no schema migration.
 - Bands do TWO opposite jobs (`js/workout/load-mode.js`): on a bodyweight movement a
   band ASSISTS (`w = bodyweight − band`, `loadMode: 'assisted'`); on anything else the
   band IS the load (`w = band`, `loadMode: 'banded'`). `bandRole()` decides from the
