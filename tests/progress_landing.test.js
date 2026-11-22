@@ -482,12 +482,13 @@ test('fasting appears only for people who actually fast', () => {
   assert.equal(fastingIsEnabled({ fastingSession: { active: false, history: [] } }), false);
   assert.equal(fastingIsEnabled({ fastingSession: { active: true, history: [] } }), true);
   assert.equal(fastingIsEnabled({ fastingSession: { active: false, history: [{ hours: 16 }] } }), true);
-  // An explicit setting always wins, in both directions.
-  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: true } }), true);
-  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: false }, fastingSession: { active: true } }), false);
+  // A write-less legacy flag is not a signal; real usage is.
+  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: true } }), false);
 
   assert.ok(!secondaryDestinations({}).some((entry) => entry.id === 'fasting'));
   assert.ok(secondaryDestinations({ fastingSession: { active: true } }).some((entry) => entry.id === 'fasting'));
+  assert.ok(!secondaryDestinations({ fastingSession: { active: true }, settings: { modules: { fasting: false } } })
+    .some((entry) => entry.id === 'fasting'), 'a hidden Fasting module removes the destination');
 });
 
 test('the period label describes the real calendar week being viewed', () => {

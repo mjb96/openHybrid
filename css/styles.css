@@ -3347,6 +3347,10 @@ html[data-theme="light"] .cockpit-routine-note__label { color: #5b21b6; }
   flex: 1;
   overflow-y: auto;
   padding: 14px 0 calc(40px + env(safe-area-inset-bottom, 0px));
+  /* The Android WebView only reports env(safe-area-inset-bottom) for a display
+     cutout; the shell publishes --app-safe-bottom instead. The env-only line
+     above stays first as the engine fallback, as everywhere else. */
+  padding-bottom: calc(40px + var(--safe-bottom));
 }
 
 /* Settings search + section tabs */
@@ -3640,6 +3644,8 @@ html[data-theme="light"] input[type="time"].settings-input { color-scheme: light
   display: flex;
   align-items: center;
   gap: 10px;
+  /* The visible checkbox is 16px; the label row is the hit area. */
+  min-height: var(--touch-target);
   padding: 8px 0;
   border-bottom: 1px solid var(--border-subtle);
   cursor: pointer;
@@ -3717,6 +3723,10 @@ html[data-theme="light"] input[type="time"].settings-input { color-scheme: light
   position: relative;
   display: inline-flex;
   align-items: center;
+  /* The track stays 42×24: growing the paint would redesign the component.
+     The label is the hit area, and it must be a 44px square. */
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
   cursor: pointer;
 }
 .settings-switch input[type="checkbox"] {
@@ -9651,6 +9661,7 @@ html[data-theme="light"] .activity-filter--active { color: #07566b; }
 .settings-toggle-btn,
 .settings-action-btn,
 .settings-input,
+.settings-switch,
 .ob-toggle-btn,
 .ob-input,
 .ob-cta,

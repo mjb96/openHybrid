@@ -57,11 +57,6 @@ const _parseRest = (str) => {
   const n = parseInt(s, 10);
   return Number.isFinite(n) ? n : null;
 };
-const REST_PRESETS = {
-  strength:    { warmup: 60, compound: 240, accessory: 180, isolation: 120 },
-  hypertrophy: { warmup: 45, compound: 180, accessory: 120, isolation: 90 },
-  efficient:   { warmup: 30, compound: 120, accessory: 90,  isolation: 60 },
-};
 import { showToast } from './state.js';
 import { rearmReminder, notificationsGranted } from './notifications.js';
 import { confirmModal } from './ui/confirm-modal.js';
@@ -74,32 +69,13 @@ import {
   validateImport,
   importReasonMessage,
 } from './state/import-validate.js';
+import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery } from './settings/nav.js';
+import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
+import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
 let _getState;
 let _autoBackupUiRequest = 0;
 let _settingsGroup = 'profile';
-
-const SETTINGS_TABS = Object.freeze([
-  { id: 'profile', label: 'Profile' },
-  { id: 'training', label: 'Training' },
-  { id: 'health', label: 'Health' },
-  { id: 'appearance', label: 'Appearance' },
-  { id: 'data', label: 'Data' },
-]);
-
-const SETTINGS_GROUP_BY_LABEL = Object.freeze({
-  Profile: 'profile',
-  Training: 'training',
-  Modules: 'training',
-  'Program Week': 'training',
-  Equipment: 'training',
-  Fasting: 'health',
-  Notifications: 'health',
-  Appearance: 'appearance',
-  'Data & Backups': 'data',
-  'Health Connect': 'health',
-  App: 'data',
-});
 
 export function initSettings(getStateFn) {
   _getState = getStateFn;
@@ -114,6 +90,12 @@ function _settingsSections() {
   return [...document.querySelectorAll('#settingsPanel .settings-section')];
 }
 
+/** Is this card hidden by a feature-module switch (not by the search filter)? */
+function _sectionEnabledByModules(section) {
+  const moduleId = section.getAttribute('data-module');
+  return !moduleId || moduleEnabled(_getState?.(), moduleId);
+}
+
 function _setupSettingsNavigation() {
   const tabs = document.getElementById('settingsTabs');
   const search = document.getElementById('settingsSearch');
@@ -121,10 +103,15 @@ function _setupSettingsNavigation() {
   const sections = _settingsSections();
   sections.forEach((section) => {
     const label = section.querySelector('.settings-section-label:not(.settings-section-label--sub)')?.textContent?.trim() || '';
-    section.dataset.settingsGroup = SETTINGS_GROUP_BY_LABEL[label] || 'training';
+    section.dataset.settingsGroup = settingsGroupForLabel(label);
   });
   if (!tabs.childElementCount) {
-    tabs.innerHTML = SETTINGS_TABS.map((tab) => `<button type="button" class="settings-tab" role="tab" data-settings-tab="${tab.id}" aria-selected="false">${tab.label}</button>`).join('');
+    // These are FILTERS over one scrolling list, not a tablist with tabpanels.
+    // Claiming role="tab" made assistive tech announce a nonexistent tabpanel
+    // relationship (arrow keys, aria-controls, one-panel-per-tab). Buttons with
+    // aria-pressed describe exactly what happens.
+    tabs.setAttribute('role', 'group');
+    tabs.innerHTML = SETTINGS_TABS.map((tab) => `<button type="button" class="settings-tab" data-settings-tab="${tab.id}" aria-pressed="false">${tab.label}</button>`).join('');
     tabs.addEventListener('click', (event) => {
       const button = /** @type {HTMLElement|null} */ (event.target instanceof Element ? event.target.closest('[data-settings-tab]') : null);
       if (!button) return;
@@ -135,12 +122,17 @@ function _setupSettingsNavigation() {
       if (body) body.scrollTop = 0;
       _applySettingsFilter();
     });
-    search?.addEventListener('input', _applySettingsFilter);
+    search?.addEventListener('input', () => {
+      const body = document.querySelector('#settingsPanel .settings-body');
+      if (body) body.scrollTop = 0;
+      _applySettingsFilter();
+    });
   }
   if (!document.getElementById('settingsNoResults')) {
     const empty = document.createElement('p');
     empty.id = 'settingsNoResults';
     empty.className = 'settings-empty';
+    empty.setAttribute('role', 'status');
     empty.textContent = 'No settings match that search.';
     empty.hidden = true;
     document.querySelector('#settingsPanel .settings-body')?.appendChild(empty);
@@ -153,14 +145,19 @@ function _applySettingsFilter() {
   let shown = 0;
   _settingsSections().forEach((section) => {
     const inGroup = !!query || section.dataset.settingsGroup === _settingsGroup;
-    const matches = !query || section.textContent.toLowerCase().includes(query);
+    const matches = sectionMatchesQuery(section, query, {
+      isModuleEnabled: (moduleId) => moduleEnabled(_getState?.(), moduleId),
+    });
     section.hidden = !(inGroup && matches);
-    if (!section.hidden) shown++;
+    // The no-results state must agree with what the athlete can actually see:
+    // a card hidden by a module switch does not count just because its words
+    // match, or the panel would look empty with no explanation.
+    if (!section.hidden && _sectionEnabledByModules(section)) shown++;
   });
   document.querySelectorAll('#settingsTabs [data-settings-tab]').forEach((button) => {
     const active = !query && button.getAttribute('data-settings-tab') === _settingsGroup;
     button.classList.toggle('active', active);
-    button.setAttribute('aria-selected', active ? 'true' : 'false');
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   const empty = document.getElementById('settingsNoResults');
   if (empty) empty.hidden = shown > 0;
@@ -173,6 +170,10 @@ export function openSettings() {
   const overlay = document.getElementById('settingsOverlay');
   const panel   = document.getElementById('settingsPanel');
   if (!overlay || !panel) return;
+  // A stale query would reopen the panel on a filtered list that looks like
+  // missing settings. Every open starts from the active destination.
+  const search = document.getElementById('settingsSearch');
+  if (search) search.value = '';
   _syncSettingsUI();
   _setupSettingsNavigation();
   overlay.classList.add('active');
@@ -183,6 +184,8 @@ export function openSettings() {
 export function closeSettings() {
   const overlay = document.getElementById('settingsOverlay');
   const panel   = document.getElementById('settingsPanel');
+  const search = document.getElementById('settingsSearch');
+  if (search) search.value = '';
   overlay?.classList.remove('active');
   panel?.classList.remove('active');
   overlay?.setAttribute('aria-hidden', 'true');
@@ -254,9 +257,6 @@ function _syncPlateSetupUI(appState) {
   const dumbbellUnit = document.getElementById('settingsDumbbellUnit');
   if (dumbbellUnit) dumbbellUnit.textContent = unit;
   _renderMachineStacks(appState, unit);
-
-  const showHints = document.getElementById('settingsShowPlateHints');
-  if (showHints) showHints.checked = appState.settings?.showPlateHints === true;
 }
 
 function _syncSettingsUI() {
@@ -352,16 +352,22 @@ function _syncSettingsUI() {
   // Plate setup for the active profile and current weight unit.
   _syncPlateSetupUI(appState);
 
+  // The plate-hint preference is a logger default, not part of the profile's
+  // plate data, so it is synced here even if the equipment card is rebuilt.
+  const showHints = document.getElementById('settingsShowPlateHints');
+  if (showHints) showHints.checked = s.showPlateHints === true;
+
   // Rest tiers + auto-timer toggle
-  const rp = s.restPeriods || { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
+  const rp = s.restPeriods || { ...DEFAULT_REST_TIERS };
   const rw = document.getElementById('settingsRestWarmup');
   const rc = document.getElementById('settingsRestCompound');
   const ra = document.getElementById('settingsRestAccessory');
   const ri = document.getElementById('settingsRestIsolation');
-  if (rw) rw.value = _fmtRest(rp.warmup ?? 45);
+  if (rw) rw.value = _fmtRest(rp.warmup ?? DEFAULT_REST_TIERS.warmup);
   if (rc) rc.value = _fmtRest(rp.compound);
   if (ra) ra.value = _fmtRest(rp.accessory);
   if (ri) ri.value = _fmtRest(rp.isolation);
+  _setRestPresetActive(restPresetFor(rp));
   const rEnabled = document.getElementById('settingsRestEnabled');
   if (rEnabled) rEnabled.checked = s.restTimerEnabled !== false;
   const rSound = document.getElementById('settingsRestAlertSound');
@@ -381,9 +387,11 @@ function _syncSettingsUI() {
   const notifWeekly   = document.getElementById('settingsNotifWeeklySummary');
   const notifStreak   = document.getElementById('settingsNotifStreak');
   const notifMissed   = document.getElementById('settingsNotifMissedWorkout');
+  const notifFasting  = document.getElementById('settingsNotifFastingStage');
   if (notifWeekly) notifWeekly.checked = !!s.notifWeeklySummary;
   if (notifStreak)  notifStreak.checked  = !!s.notifStreak;
   if (notifMissed)  notifMissed.checked  = !!s.notifMissedWorkout;
+  if (notifFasting) notifFasting.checked = s.notifFastingStage !== false;
 
   // Reminder time picker
   const rtEl = document.getElementById('settingsReminderTime');
@@ -467,6 +475,13 @@ function _setToggleActive(groupSelector, activeSelector) {
   // in the DOM, so an unscoped querySelector would highlight the wrong element (or
   // nothing in this group). Compound the selectors so we always hit this group's button.
   document.querySelector(groupSelector + activeSelector)?.classList.add('active');
+}
+
+/** Highlight the preset whose tiers exactly match the stored ones; none if custom. */
+function _setRestPresetActive(name) {
+  document.querySelectorAll('[data-action="rest-preset"]').forEach((button) => {
+    button.classList.toggle('active', !!name && button.getAttribute('data-preset') === name);
+  });
 }
 
 // ==========================================
@@ -739,6 +754,7 @@ export function setNotifToggle(type, enabled) {
   if (type === 'weeklySummary')   appState.settings.notifWeeklySummary = enabled;
   else if (type === 'streak')     appState.settings.notifStreak = enabled;
   else if (type === 'missed')     appState.settings.notifMissedWorkout = enabled;
+  else if (type === 'fasting')    appState.settings.notifFastingStage = enabled;
   saveStateToLocalStorage(true);
   rearmReminder();
 }
@@ -824,18 +840,19 @@ export async function deleteActiveEquipmentProfile() {
 // Persist the three rest tiers from the Settings inputs (clamped 30–600s).
 export function saveRestPeriods() {
   const appState = _ensureSettings();
-  const cur = appState.settings.restPeriods || { warmup: 45, compound: 180, accessory: 120, isolation: 90 };
+  const cur = appState.settings.restPeriods || { ...DEFAULT_REST_TIERS };
   const read = (id, fallback, min = 30) => {
     const sec = _parseRest(document.getElementById(id)?.value);
     return sec != null ? Math.min(600, Math.max(min, sec)) : fallback;
   };
   appState.settings.restPeriods = {
-    warmup:   read('settingsRestWarmup',   cur.warmup ?? 45, 0),
+    warmup:   read('settingsRestWarmup',   cur.warmup ?? DEFAULT_REST_TIERS.warmup, 0),
     compound:  read('settingsRestCompound',  cur.compound),
     accessory: read('settingsRestAccessory', cur.accessory),
     isolation: read('settingsRestIsolation', cur.isolation),
   };
   setRestTiers(appState.settings.restPeriods);
+  _setRestPresetActive(restPresetFor(appState.settings.restPeriods));
   saveStateToLocalStorage(true);
 }
 
@@ -850,10 +867,11 @@ export function applyRestPreset(name) {
   const rc = document.getElementById('settingsRestCompound');
   const ra = document.getElementById('settingsRestAccessory');
   const ri = document.getElementById('settingsRestIsolation');
-  if (rw) rw.value = _fmtRest(preset.warmup ?? 45);
+  if (rw) rw.value = _fmtRest(preset.warmup ?? DEFAULT_REST_TIERS.warmup);
   if (rc) rc.value = _fmtRest(preset.compound);
   if (ra) ra.value = _fmtRest(preset.accessory);
   if (ri) ri.value = _fmtRest(preset.isolation);
+  _setRestPresetActive(name);
   saveStateToLocalStorage(true);
 }
 
@@ -1005,19 +1023,9 @@ export function toggleModule(id, on) {
   applyModuleVisibility(appState);
   saveStateToLocalStorage(true);
   document.dispatchEvent(new CustomEvent('app:modules-changed', { detail: { id, on: !!on } }));
-}
-
-export function saveThresholdPace() {
-  const val = document.getElementById('settingsThresholdPace')?.value?.trim() || '';
-  const parts = val.split(':');
-  if (parts.length !== 2) return;
-  const mins = parseInt(parts[0], 10);
-  const secs = parseInt(parts[1], 10);
-  if (isNaN(mins) || isNaN(secs)) return;
-  const appState = _getState();
-  appState.thresholdPaceSeconds = mins * 60 + secs;
-  saveStateToLocalStorage(true);
-  showToast('Threshold pace saved');
+  // A card hidden by the module switch must stop counting as a search result
+  // immediately, while the panel is open.
+  _applySettingsFilter();
 }
 
 // ==========================================

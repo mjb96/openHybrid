@@ -50,6 +50,40 @@ export function parsePaceSeconds(distKm, timeStr) {
   return totalSecs / parseFloat(distKm);
 }
 
+const THRESHOLD_PACE_MIN_SECONDS = 60;
+const THRESHOLD_PACE_MAX_SECONDS = 3600;
+
+/**
+ * Parse the athlete's threshold pace. Accepts `mm:ss` (the Settings and
+ * analytics fields) and a legacy bare integer of seconds.
+ *
+ * Returns null for empty, malformed or implausible input. `4.30` is a typo for
+ * `4:30`, not four seconds: a dot is never a valid separator, and a pace below
+ * one minute or above one hour is not a running threshold. The caller must
+ * leave the stored value untouched when this returns null.
+ * @param {string|number|null|undefined} val
+ * @returns {number|null} seconds
+ */
+export function parseThresholdPace(val) {
+  const raw = String(val ?? '').trim();
+  if (!raw) return null;
+  let seconds;
+  if (raw.includes(':')) {
+    const match = /^(\d{1,3}):(\d{1,2})$/.exec(raw);
+    if (!match) return null;
+    const minutes = Number(match[1]);
+    const part = Number(match[2]);
+    if (!Number.isFinite(minutes) || !Number.isFinite(part) || part >= 60) return null;
+    seconds = minutes * 60 + part;
+  } else {
+    if (!/^\d+$/.test(raw)) return null;
+    seconds = Number(raw);
+  }
+  if (!Number.isFinite(seconds)) return null;
+  if (seconds < THRESHOLD_PACE_MIN_SECONDS || seconds > THRESHOLD_PACE_MAX_SECONDS) return null;
+  return seconds;
+}
+
 export function formatPace(secsPerKm) {
   if (!secsPerKm || secsPerKm === 0) return '--';
   const m = Math.floor(secsPerKm / 60);

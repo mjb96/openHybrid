@@ -81,7 +81,6 @@ import {
   initSettings, openSettings, closeSettings,
   saveName, saveBodyWeight, setWeightUnit,
   setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, stepCurrentWeek, setAutoAdvanceWeek,
-  saveThresholdPace as saveSettingsThresholdPace,
   exportData, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
   triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
@@ -1943,6 +1942,7 @@ document.addEventListener('change', (e) => {
   if (target.id === 'settingsNotifWeeklySummary')   { setNotifToggle('weeklySummary', target.checked); return; }
   if (target.id === 'settingsNotifStreak')          { setNotifToggle('streak', target.checked); return; }
   if (target.id === 'settingsNotifMissedWorkout')   { setNotifToggle('missed', target.checked); return; }
+  if (target.id === 'settingsNotifFastingStage')    { setNotifToggle('fasting', target.checked); return; }
   if (target.id === 'settingsEquipmentProfile')     { selectEquipmentProfile(target.value); return; }
   if (target.id === 'settingsEquipmentProfileName') { saveEquipmentProfileName(); return; }
   const eqKey = target.getAttribute?.('data-equipment');
@@ -1988,7 +1988,10 @@ document.addEventListener('blur', (e) => {
   const id = e.target.id;
   if (id === 'settingsNameInput') saveName();
   else if (id === 'settingsBodyWeight') saveBodyWeight();
-  else if (id === 'settingsThresholdPace') saveSettingsThresholdPace();
+  else if (id === 'settingsThresholdPace') {
+    const saved = saveThresholdPace(e.target.value);
+    showToast(saved ? 'Threshold pace saved' : 'Enter pace as mm:ss', !saved);
+  }
   else if (id === 'settingsStepGoal') saveStepGoal();
   else if (id === 'settingsReminderTime')    saveReminderTime();
   else if (id === 'settingsStreakAlertTime') saveStreakAlertTime();

@@ -67,3 +67,25 @@ test('the native hidden contract wins over component display rules', () => {
   assert.match(CSS, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/,
     'dynamic hidden controls must not be resurfaced by .btn display rules');
 });
+
+test('every settings switch has an accessible name and keeps its 42×24 track', () => {
+  const blocks = [...HTML.matchAll(/<label class="settings-switch">([\s\S]*?)<\/label>/g)].map((m) => m[1]);
+  assert.ok(blocks.length >= 9, `expected the settings switches, found ${blocks.length}`);
+  for (const block of blocks) {
+    const input = block.match(/<input\b[^>]*>/)?.[0];
+    assert.ok(input, `settings switch has no input: ${block.slice(0, 80)}`);
+    const aria = input.match(/\baria-label="([^"]+)"/)?.[1]?.trim();
+    const id = input.match(/\bid="([^"]+)"/)?.[1];
+    const labelled = id ? new RegExp(`<label\\b[^>]*\\bfor="${id}"`).test(HTML) : false;
+    assert.ok(aria || labelled, `settings switch has no accessible name: ${input}`);
+  }
+  assert.match(CSS, /\.settings-switch-track\s*\{[^}]*width:\s*42px;[^}]*height:\s*24px;/s,
+    'the switch paint must stay 42×24; only the label hit area grows');
+});
+
+test('.hc-data-toggle is a 44px target with centred content', () => {
+  const body = CSS.match(/\.hc-data-toggle\s*\{([^}]*)\}/)?.[1];
+  assert.ok(body, '.hc-data-toggle rule not found');
+  assert.match(body, /min-height:\s*var\(--touch-target\)/, '.hc-data-toggle must be a 44px target');
+  assert.match(body, /align-items:\s*center/, '.hc-data-toggle content must stay centred');
+});
