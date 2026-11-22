@@ -2286,12 +2286,26 @@
       <button class="sheet-close-btn" data-action="close-measurements-sheet" aria-label="Close">✕</button>
     </div>
     <div class="ms-sheet-grid">
-        <label class="ms-sheet-field"><span>Waist</span><input id="msSheet_waist" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Waist"></label>
-        <label class="ms-sheet-field"><span>Chest</span><input id="msSheet_chest" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Chest"></label>
-        <label class="ms-sheet-field"><span>Hips</span><input id="msSheet_hips" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Hips"></label>
-        <label class="ms-sheet-field"><span>Arm</span><input id="msSheet_arm" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm"></label>
-        <label class="ms-sheet-field"><span>Thigh</span><input id="msSheet_thigh" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh"></label>
         <label class="ms-sheet-field"><span>Neck</span><input id="msSheet_neck" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Neck"></label>
+        <label class="ms-sheet-field"><span>Shoulders</span><input id="msSheet_shoulders" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Shoulders"></label>
+        <label class="ms-sheet-field"><span>Chest</span><input id="msSheet_chest" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Chest"></label>
+        <label class="ms-sheet-field"><span>Waist</span><input id="msSheet_waist" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Waist"></label>
+        <label class="ms-sheet-field"><span>Hips</span><input id="msSheet_hips" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Hips"></label>
+        <label class="ms-sheet-field"><span>Glutes</span><input id="msSheet_glutes" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Glutes"></label>
+        <details class="ms-sheet-more">
+          <summary>Arms, thighs and calves</summary>
+          <p class="ms-sheet-hint">Earlier single Arm and Thigh readings are preserved and exported as “Arm” and “Thigh”. A wrong one can only be removed by deleting that whole date.</p>
+          <div class="ms-sheet-more-grid">
+            <label class="ms-sheet-field"><span>Arm L</span><input id="msSheet_arm_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm L"></label>
+            <label class="ms-sheet-field"><span>Arm R</span><input id="msSheet_arm_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Arm R"></label>
+            <label class="ms-sheet-field"><span>Forearm L</span><input id="msSheet_forearm_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Forearm L"></label>
+            <label class="ms-sheet-field"><span>Forearm R</span><input id="msSheet_forearm_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Forearm R"></label>
+            <label class="ms-sheet-field"><span>Thigh L</span><input id="msSheet_thigh_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh L"></label>
+            <label class="ms-sheet-field"><span>Thigh R</span><input id="msSheet_thigh_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Thigh R"></label>
+            <label class="ms-sheet-field"><span>Calf L</span><input id="msSheet_calf_l" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Calf L"></label>
+            <label class="ms-sheet-field"><span>Calf R</span><input id="msSheet_calf_r" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Calf R"></label>
+          </div>
+        </details>
         <label class="ms-sheet-field ms-sheet-field--full ms-sheet-field--bodyfat">
           <span>Body fat (%)</span>
           <input id="msSheet_bodyFat" type="number" step="0.1" min="2" max="70" inputmode="decimal" aria-label="Body fat (%)" aria-describedby="msSheet_bodyFatHint">

@@ -10476,9 +10476,14 @@ html[data-module-recovery="off"] [data-module="recovery"] {
 .bw-ms-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
 .bw-ms-site {
   display: flex; flex-direction: column; gap: 2px;
+  width: 100%; min-height: var(--touch-target); margin: 0;
   padding: 8px 10px; border-radius: 12px;
   border: 1px solid var(--border-subtle); background: var(--overlay-md);
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
 }
+.bw-ms-site.active { border-color: var(--color-cyan); box-shadow: inset 0 0 0 1px var(--color-cyan); }
+.bw-ms-site:focus-visible { outline: 2px solid var(--color-cyan); outline-offset: 2px; }
 .bw-ms-site span { color: var(--text-muted); font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .bw-ms-site strong { color: var(--text-primary); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .bw-ms-site small { color: var(--text-muted); font-size: .66rem; font-weight: 700; }
@@ -10487,6 +10492,19 @@ html[data-module-recovery="off"] [data-module="recovery"] {
 .bw-ms-site--bodyfat strong small { color: var(--color-cyan); }
 .bw-ms-delta { color: var(--color-cyan); font-size: .68rem; font-style: normal; font-weight: 700; }
 .bw-ms-delta--none { color: var(--text-muted); font-weight: 600; }
+/* One site's history, drawn directly under the grid after a tap. */
+.bw-ms-trend {
+  margin: -2px 0 12px; padding: 8px 8px 2px;
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  background: var(--overlay-md);
+}
+.bw-ms-trend[hidden] { display: none; }
+.bw-ms-trend svg { display: block; width: 100%; height: auto; }
+.bw-ms-trend text { fill: var(--text-secondary); }
+.bw-ms-trend .bw-site-grid { stroke: var(--border-subtle); stroke-width: 1; }
+.bw-ms-trend .bw-site-line { stroke: var(--color-cyan); stroke-width: 2; }
+.bw-ms-trend .bw-site-dot { fill: var(--color-cyan); }
+.bw-ms-trend-note { color: var(--text-muted); font-size: .76rem; line-height: 1.4; margin: 4px 2px 8px; }
 /* Cyan is a dark-surface accent: on the light sheet/card it falls under 2:1.
    #155e75 measures >5.7:1 on the card's composited surface and >6.9:1 on white,
    keeping every delta and the body-fat accent legible. */
@@ -10494,6 +10512,10 @@ html[data-theme="light"] .bw-ms-delta:not(.bw-ms-delta--none),
 html[data-theme="light"] .bw-ms-site--bodyfat strong small,
 html[data-theme="light"] .ms-sheet-field--bodyfat > span { color: #155e75; }
 html[data-theme="light"] .bw-ms-site--bodyfat { border-left-color: #155e75; }
+html[data-theme="light"] .bw-ms-site.active,
+html[data-theme="light"] .bw-ms-site:focus-visible { border-color: #155e75; box-shadow: inset 0 0 0 1px #155e75; outline-color: #155e75; }
+html[data-theme="light"] .bw-ms-trend .bw-site-line { stroke: #155e75; }
+html[data-theme="light"] .bw-ms-trend .bw-site-dot { fill: #155e75; }
 .ms-sheet-unit { color: var(--text-muted); font-size: .72rem; font-weight: 800; margin-left: auto; margin-right: 8px; }
 .ms-sheet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 4px 0 10px; }
 .ms-sheet-field { display: flex; flex-direction: column; gap: 4px; }
@@ -10506,6 +10528,28 @@ html[data-theme="light"] .bw-ms-site--bodyfat { border-left-color: #155e75; }
 /* Body fat is a percentage, not a tape length: it spans the whole grid and gets
    its own divider so it never reads like a seventh centimetre site. */
 .ms-sheet-field--full { grid-column: 1 / -1; }
+/* Bilateral sites live behind one disclosure: six primary fields stay scannable,
+   and a 14-field wall never greets someone who only measures their waist. */
+.ms-sheet-more {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border-subtle); border-radius: 12px;
+  background: var(--overlay-md); padding: 0 10px;
+}
+.ms-sheet-more summary {
+  display: flex; align-items: center; gap: 8px;
+  min-height: var(--touch-target); cursor: pointer;
+  color: var(--text-secondary); font-size: .7rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  list-style: none;
+}
+.ms-sheet-more summary::-webkit-details-marker { display: none; }
+.ms-sheet-more summary::after {
+  content: '⌄'; margin-left: auto; font-size: .9rem; line-height: 1;
+  transition: transform .16s ease;
+}
+.ms-sheet-more[open] summary::after { transform: rotate(180deg); }
+.ms-sheet-more .ms-sheet-hint { margin: 0 0 8px; }
+.ms-sheet-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-bottom: 10px; }
 .ms-sheet-field--bodyfat {
   border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 2px;
 }

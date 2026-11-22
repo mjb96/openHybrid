@@ -172,19 +172,39 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/analytics/charts.js`, and the prefilled weigh-in sheet (steppers, date,
   recent edit/delete) in `js/bodyweight-sheet.js`.
 - Body measurements: `js/metrics/measurements.js` is the pure model behind the
-  Measurements card beside the bodyweight trend — waist, chest, hips, arm,
-  thigh and neck, stored canonically in CENTIMETRES with one record per date
-  and any site optional (`bodyMeasurements: [{ date, waist?, … }]`). A unit
+  Measurements card beside the bodyweight trend — 14 canonical length sites
+  (neck, shoulders, chest, waist, hips, glutes, arm_l/r, forearm_l/r,
+  thigh_l/r, calf_l/r), stored canonically in CENTIMETRES with one record per
+  date and any site optional (`bodyMeasurements: [{ date, neck?, … }]`). A unit
   toggle reads cm/in without rewriting stored values; `settings.measurementUnit`
   is seeded by v12→v13 from the existing weight unit. The sheet
-  (`js/measurements-sheet.js`) prefills an existing date exactly and leaves a
-  new date blank (the last reading is only a placeholder; for body fat it is the
-  latest reading ON OR BEFORE the date) — changing the date must reload the
-  fields. `buildMeasurementsCsv` exports the raw centimetres
-  from Settings → Data, and `js/portability/import-measurements-csv.js` reads
-  that shape back (`date,waist_cm,…`, `_in` columns converted): rows for the
-  same date merge site by site, implausible readings are skipped, and an
-  existing date is never overwritten. Body fat is an ENTERED reading (scale,
+  (`js/measurements-sheet.js`) shows six primary fields and puts the eight
+  bilateral fields behind “Arms, thighs and calves”. It prefills an existing
+  date exactly and leaves a new date blank (each placeholder is that site's
+  latest reading ON OR BEFORE the chosen date, tape and body fat alike) —
+  changing the date must reload the fields. Editing a date with bilateral
+  readings opens the disclosure and echoes the count; a new or legacy-only date
+  keeps it closed. The pre-14-site single `arm`/`thigh` readings are
+  `LEGACY_MEASUREMENT_SITES` (“Arm (old)”/“Thigh (old)”): readable, shown on the
+  card and exported, never an input, and `preserveLegacySites` carries them
+  across an edit so adding a waist cannot drop them. A wrong old reading can
+  only be removed by deleting the whole date; the sheet hint says so. Every
+  measured cell is a 44px button: `showMeasurementTrend` opens one site at a time
+  in `#bwMsTrend` from the last rendered model (a second tap collapses it) and
+  `renderSiteTrend` draws a dependency-free SVG line oldest → newest,
+  min/mid/max and date labels, body fat on a percentage scale, and a note rather
+  than a line under two readings. The view converts stored centimetres to the
+  display unit before calling the chart (site points and deltas); `renderSiteTrend`
+  never converts, and its `role="img"` label carries the unit, first/latest
+  readings, dates and change. A cm/in toggle repaints the open trend in the new
+  unit. Light mode overrides the line/dot to `#155e75` (5.76:1 measured).
+  `buildMeasurementsCsv` exports the raw centimetres (14 canonical columns, then
+  Arm/Thigh, then body fat) from Settings → Data, and
+  `js/portability/import-measurements-csv.js` reads that shape back
+  (`date,waist_cm,…`, `_in` columns converted): all 14 canonical keys and the
+  legacy arm/thigh import, old six-site files still work, rows for the same date
+  merge site by site, implausible readings are skipped, and an existing date is
+  never overwritten. Body fat is an ENTERED reading (scale,
   calipers, DEXA), never estimated — there is no height/sex/age in state, so a
   formula would fabricate data. It is an additive `bodyFat` percentage on the
   same records (2–70, one decimal, `bodyFatPercent`), deliberately NOT a

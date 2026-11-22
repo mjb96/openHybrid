@@ -492,16 +492,17 @@ not rebuild a ✅.
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on a body diagram with a week switcher | ◐ | 2 |
 | P5 | Sets per muscle per week | `analytics/volume-guide.js` | Weekly/monthly/yearly buckets, muscle selection, long ranges | ◐ | 2 |
 | P6 | Muscle distribution | `analytics/muscle-load.js` | Volume share with sessions/time/sets and period comparison | ◐ | 2 |
-| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ◐ | 3 |
+| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ✅ | 3 |
 | P8 | Progress photos | — | Dated photos, timeline, compare, edit/replace/delete, share | ○ | 3 |
 | P9 | Exercise performance | `analytics/exercise-detail.js` | Graph, PR summary, set records by rep target, history | ◐ | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js` | Calendar, consecutive-week streak, rest days, year zoom | ◐ | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
 | P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — |
 
-P7 stays ◐ on purpose: body fat is now an ENTERED reading on the measurements
-record (scale/caliper/DEXA, never a formula), and six tape sites ship, but the
-plan's 14-site catalogue and per-site graph are still open.
+P7 is complete: the measurements record carries an entered body fat, 14
+canonical bilateral tape sites (pre-14-site single Arm/Thigh readings preserved
+and exported), and each measured cell toggles its own per-site trend below the
+card — body fat on a percentage scale.
 
 ### Workout logging (14)
 
@@ -670,9 +671,37 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,309 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,319 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — 14-site review fixes: display units, disclosure, trend labels.**
+  - The per-site chart now receives DISPLAY values: `measurementTrendData`
+    converts stored centimetres with `cmToDisplay` before `renderSiteTrend`, and
+    the chart never converts. A cm→in toggle repaints the open trend at 13.0 in
+    / 13.4 in (fixture) instead of relabelling centimetres as inches. The site
+    delta uses the same boundary, so Arm L reads `+0.4` in inch mode, not `+1`.
+    The SVG `role="img"` label is now
+    `Arm L trend (in): 13.0 in on 10/11, 13.4 in on 19/11, +0.4 in` — unit,
+    first/latest and change — and the one-reading note uses the active unit too.
+  - Tape placeholders now follow the body-fat rule: each site suggests its
+    latest reading ON OR BEFORE the chosen date, so back-dating the 12th shows
+    the 10th's tape rather than the 19th's.
+  - Editing a date with bilateral readings opens the “Arms, thighs and calves”
+    disclosure and echoes `N recorded` in the summary; a new or legacy-only date
+    keeps it closed. The hint now states that a wrong legacy Arm/Thigh can only
+    be removed by deleting the whole date (no half-wired destructive action).
+  - Light mode's existing `#155e75` trend stroke/dot override is measured in the
+    real light card: both 5.76:1 against the composited surface.
+  - Validation: 1 new node test plus the updated chart contract (2,319
+    combined), typecheck, smoke, precache/workflow gates. The bodyweight browser
+    check now covers forearm_l/r render, the `+9 more` recent cap, the
+    one-reading note, cm→in chart + delta conversion, back-dated tape
+    placeholders, disclosure auto-open/count, and light stroke/dot contrast,
+    then the full 45-check browser suite. Screenshots remain untracked:
+    `shots/measurements-14-sites.png`, `shots/measurements-14-sites-sheet.png`,
+    `shots/measurements-trend.png`.
+  - Next: Progress photos (P8), the only remaining body-composition row.
 
 - **2026-11-23 — Year in Review (P12).**
   - Review → Stats now leads with a seasonal calendar-year recap. In December it
@@ -733,6 +762,55 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - Next: the monthly-report share card, then a Year in Review share image built
     from the values this screen shows.
 
+- **2026-11-23 — Per-site measurement trend (P7 complete).**
+  - Every measured cell on the Measurements card is now a 44px button
+    (`data-action="measurement-site"`). One tap opens `#bwMsTrend` below the
+    grid, a second tap on the same site collapses it, `aria-pressed` reports the
+    choice, and no analytics re-render or scroll call runs.
+  - `renderSiteTrend` (`js/analytics/charts.js`) is a dependency-free SVG line:
+    readings sort oldest → newest, y labels show the min/mid/max, x labels show
+    the dates, and under two readings it states what is missing instead of
+    drawing a line. Body fat renders on a percentage scale; tape sites use the
+    athlete's chosen unit.
+  - The chart is painted from the last rendered model (`showMeasurementTrend`),
+    so a cm/in toggle keeps the open site open in the new unit. The app router
+    maps `measurement-site` to that function; the card itself does not change.
+  - Validation: 3 new node tests (2,318 combined), typecheck, smoke, precache
+    and workflow gates. The extended bodyweight browser check taps Arm L (SVG
+    with both dots, 390px fit), taps again (collapsed), checks the body-fat
+    percentage scale, measures 44px controls and the trend at 320px, then ran
+    the full 45-check browser suite. Screenshot: `shots/measurements-trend.png`.
+  - Next: Progress photos (P8), the only remaining body-composition row.
+
+
+- **2026-11-23 — Fourteen measurement sites, legacy readings preserved.**
+  - The measurements record now tracks 14 canonical length sites: neck,
+    shoulders, chest, waist, hips, glutes, arm_l/r, forearm_l/r, thigh_l/r and
+    calf_l/r (`MEASUREMENT_SITES`). Left and right are independent readings;
+    nothing derives one side from the other.
+  - The sheet keeps six primary fields visible and puts the eight bilateral
+    fields behind an “Arms, thighs and calves” disclosure, with a hint that
+    earlier single Arm/Thigh readings are preserved and exported. Body fat stays
+    a full-width percentage field.
+  - The old single `arm`/`thigh` keys are `LEGACY_MEASUREMENT_SITES`
+    (“Arm (old)”/“Thigh (old)”). Normalization keeps them, `measurementSiteTrends`
+    returns them only with `{ includeLegacy: true }`, and the card asks for
+    them so no historical reading disappears. `buildMeasurementRecord` is
+    canonical only, and `preserveLegacySites` carries an existing Arm/Thigh into
+    the replacement record, so editing a waist cannot drop them.
+  - CSV columns are the 14 canonical labels, then `Arm (cm)`/`Thigh (cm)`, then
+    `Body fat (%)`. The reader resolves all 16 length keys with `_cm`/`_in`
+    suffixes; old six-site files still import into the legacy keys, and a new
+    export round-trips canonical + legacy + body fat.
+  - Validation: 6 new node tests (2,286 combined), typecheck, smoke, precache
+    and workflow gates. The extended bodyweight browser check seeds a legacy
+    `{2026-11-05, arm 36, thigh 58}`, edits that date (waist 81) and asserts the
+    legacy pair survives, fills shoulders/glutes/arm_l/arm_r/thigh_l/thigh_r/
+    calf_l/calf_r on 2026-11-19 behind the disclosure, and covers stored values,
+    the card, legacy deletion and 320px fit. 390×844 screenshots:
+    `shots/measurements-14-sites.png` (card) and
+    `shots/measurements-14-sites-sheet.png` (details open).
+  - Next: the P7 per-site graph.
 
 - **2026-11-23 — Body fat as an entered reading.**
   - Body fat joins the body-measurements record as an additive `bodyFat`
