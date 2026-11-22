@@ -1,8 +1,9 @@
 // =============================================================================
 // BODY WEIGHT BROWSER CHECK
 // Seeds three weeks of weigh-ins plus a goal/corridor, then proves the Progress
-// graph, weekly rate, range filter, weigh-in entry and goal editor work in the
-// real app. No personal data.
+// graph, weekly rate, range filter, weigh-in entry, goal editor and the
+// measurements sheet's entered body-fat field work in the real app. No personal
+// data.
 // =============================================================================
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -157,13 +158,31 @@ try {
   await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await page.waitForSelector('#measurementsSheet.active');
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Log measurements', 'the measurements sheet opens in log mode');
+  const bfField = await page.evaluate(() => {
+    const input = document.getElementById('msSheet_bodyFat');
+    const field = input?.closest('.ms-sheet-field');
+    const grid = input?.closest('.ms-sheet-grid');
+    return {
+      type: input?.type || '',
+      min: input?.getAttribute('min') || '',
+      max: input?.getAttribute('max') || '',
+      step: input?.getAttribute('step') || '',
+      inputmode: input?.getAttribute('inputmode') || '',
+      width: field?.getBoundingClientRect().width || 0,
+      gridWidth: grid?.getBoundingClientRect().width || 0,
+    };
+  });
+  ok(bfField.type === 'number' && bfField.min === '2' && bfField.max === '70' && bfField.step === '0.1' && bfField.inputmode === 'decimal',
+    'body fat is a 2–70 percentage field with a 0.1 step');
+  ok(bfField.width >= bfField.gridWidth - 2, `body fat spans the full sheet width (${Math.round(bfField.width)} of ${Math.round(bfField.gridWidth)}px)`);
   await page.fill('#msSheet_waist', '84.5');
   await page.fill('#msSheet_chest', '102');
+  await page.fill('#msSheet_bodyFat', '18.4');
   await page.click('[data-action="save-measurements-sheet"]');
   await page.waitForFunction((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     const day = stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-19');
-    return Number(day?.waist) === 84.5 && Number(day?.chest) === 102;
+    return Number(day?.waist) === 84.5 && Number(day?.chest) === 102 && Number(day?.bodyFat) === 18.4;
   }, STORAGE_KEY);
   await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
   const cardText = () => page.locator('#bwMeasurements').innerText();
@@ -178,14 +197,18 @@ try {
   ok(msTargets.log >= 44, `the Log measurements button is ${msTargets.log}px, at least 44px`);
   ok(/84\.5 cm/.test(await cardText()), 'the card shows the saved waist in centimetres');
   ok(/102\.0 cm/.test(await cardText()), 'the card shows the saved chest');
+  ok(/body fat/i.test(await cardText()) && /18[.]4\s*%/.test(await cardText()), 'the card shows the entered body fat percentage');
 
   await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await page.waitForSelector('#measurementsSheet.active');
   ok((await page.locator('#msSheet_waist').inputValue()) === '84.5', 'an existing date prefills its own numbers');
+  ok((await page.locator('#msSheet_bodyFat').inputValue()) === '18.4', 'an existing date prefills its body fat');
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Edit measurements', 'an existing date opens in edit mode');
   await page.fill('#msSheetDate', '2026-11-10');
   await page.locator('#msSheetDate').dispatchEvent('change');
   ok((await page.locator('#msSheet_waist').inputValue()) === '', 'another date starts blank instead of copying today');
+  ok((await page.locator('#msSheet_bodyFat').inputValue()) === '', 'another date starts with a blank body fat field');
+  ok((await page.locator('#msSheet_bodyFat').getAttribute('placeholder')) === '18.4', 'the last body fat reading is only a placeholder on a new date');
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Log measurements', 'another date opens in log mode');
   await page.fill('#msSheet_waist', '85.5');
   await page.click('[data-action="save-measurements-sheet"]');
@@ -193,29 +216,80 @@ try {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     return stored.bodyMeasurements?.length === 2;
   }, STORAGE_KEY);
+  ok(await page.evaluate((key) => {
+    const stored = JSON.parse(localStorage.getItem(key) || '{}');
+    const day = stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-10');
+    return day && !('bodyFat' in day);
+  }, STORAGE_KEY), 'a new date without a body-fat reading stores none');
   ok(/2 entries/.test(await cardText()), 'the card counts both measurement dates');
 
   await page.click('#bwMeasurements [data-action="measurement-unit"][data-unit="in"]');
   await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.settings?.measurementUnit === 'in', STORAGE_KEY);
   ok(/33\.3 in/.test(await cardText()), 'the card reads inches after the unit toggle');
+  ok(/18[.]4\s*%/.test(await cardText()), 'the unit toggle leaves body fat in percent');
   const storedCm = await page.evaluate((key) => {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     return stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-19')?.waist;
   }, STORAGE_KEY);
   ok(storedCm === 84.5, 'changing the unit never rewrites stored centimetres');
+  ok(await page.evaluate((key) => {
+    const stored = JSON.parse(localStorage.getItem(key) || '{}');
+    return stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-19')?.bodyFat === 18.4;
+  }, STORAGE_KEY), 'changing the unit never rewrites stored body fat');
 
+  // Deleting the date that owns the body-fat reading removes it from the card
+  // as well as from the log. Open another date so the sheet's recent rows show
+  // today's entry, then delete that row.
   await page.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await page.waitForSelector('#measurementsSheet.active');
+  await page.fill('#msSheetDate', '2026-11-10');
+  await page.locator('#msSheetDate').dispatchEvent('change');
   ok((await page.locator('#msSheetRecent .bw-sheet-recent-row').count()) >= 1, 'other measurement dates are one tap away');
+  ok((await page.locator('[data-action="delete-ms-row"]').first().getAttribute('data-date')) === '2026-11-19', 'the body-fat date is listed for deletion');
   await page.click('[data-action="delete-ms-row"]');
   await page.waitForSelector('.cmodal [data-cm="ok"]');
   await page.click('.cmodal [data-cm="ok"]');
   await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.bodyMeasurements?.length === 1, STORAGE_KEY);
-  ok(true, 'delete removes a measurement date');
+  ok(await page.evaluate((key) => {
+    const stored = JSON.parse(localStorage.getItem(key) || '{}');
+    const day = stored.bodyMeasurements?.[0];
+    return day?.date === '2026-11-10' && !('bodyFat' in day);
+  }, STORAGE_KEY), 'delete removes the body-fat entry with its date');
+  ok(!/body fat/i.test(await cardText()), 'deleting the body-fat entry removes it from the card');
   await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
+
+  // One narrow context: the full-width body-fat field must still fit a 320px
+  // phone and must not push the sheet sideways.
+  const narrowContext = await createBrowserContext(browser, { viewport: { width: 320, height: 700 }, timezoneId: 'Australia/Sydney' });
+  await narrowContext.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(state)]);
+  await narrowContext.addInitScript(pinClock, Date.parse(`${todayISO}T09:00:00+11:00`));
+  const narrowPage = await narrowContext.newPage();
+  await narrowPage.goto(base, { waitUntil: 'networkidle' });
+  await narrowPage.waitForSelector('#homeWeekStrip');
+  await narrowPage.click('.nav-item[data-target="analytics"]');
+  await narrowPage.waitForSelector('#view-analytics.active');
+  await narrowPage.click('#view-analytics [data-action="open-analytics"][data-context="bodyweight"]:visible');
+  await narrowPage.waitForSelector('#analytics-bodyweight.active');
+  await narrowPage.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
+  await narrowPage.waitForSelector('#measurementsSheet.active');
+  const narrowFit = await narrowPage.evaluate(() => {
+    const input = document.getElementById('msSheet_bodyFat');
+    const rect = input?.getBoundingClientRect();
+    return {
+      left: rect?.left ?? -1,
+      right: rect?.right ?? -1,
+      viewport: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      label: input?.closest('.ms-sheet-field')?.querySelector('span')?.textContent || '',
+    };
+  });
+  ok(narrowFit.label === 'Body fat (%)', 'the narrow sheet labels the body-fat field');
+  ok(narrowFit.left >= 0 && narrowFit.right <= narrowFit.viewport, `the body-fat field fits a 320px viewport (${Math.round(narrowFit.left)}–${Math.round(narrowFit.right)} of ${narrowFit.viewport})`);
+  ok(narrowFit.scrollWidth <= narrowFit.viewport + 1, `the 320px sheet does not overflow sideways (${narrowFit.scrollWidth}px)`);
+  await narrowContext.close();
 } finally {
   await browser.close();
   server.close();
@@ -224,4 +298,4 @@ if (failures.length) {
   console.error(`bodyweight-browser-check: FAIL — ${failures.length} failure(s)`);
   process.exit(1);
 }
-console.log('bodyweight-browser-check: PASS — graph, goal line, weekly rate, range, weight entry and measurements.');
+console.log('bodyweight-browser-check: PASS — graph, goal line, weekly rate, range, weight entry, measurements and body fat.');

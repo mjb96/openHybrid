@@ -10482,6 +10482,9 @@ html[data-module-recovery="off"] [data-module="recovery"] {
 .bw-ms-site span { color: var(--text-muted); font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .bw-ms-site strong { color: var(--text-primary); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
 .bw-ms-site small { color: var(--text-muted); font-size: .66rem; font-weight: 700; }
+/* An entered percentage lives beside the tape sites but is not one of them. */
+.bw-ms-site--bodyfat { border-left: 3px solid var(--color-cyan); }
+.bw-ms-site--bodyfat strong small { color: var(--color-cyan); }
 .bw-ms-delta { color: var(--color-cyan); font-size: .68rem; font-style: normal; font-weight: 700; }
 .bw-ms-delta--none { color: var(--text-muted); font-weight: 600; }
 .ms-sheet-unit { color: var(--text-muted); font-size: .72rem; font-weight: 800; margin-left: auto; margin-right: 8px; }
@@ -10493,6 +10496,14 @@ html[data-module-recovery="off"] [data-module="recovery"] {
   background: var(--bg-input); color: var(--text-primary); font-size: 1rem; font-weight: 700;
   padding: 0 10px; font-variant-numeric: tabular-nums;
 }
+/* Body fat is a percentage, not a tape length: it spans the whole grid and gets
+   its own divider so it never reads like a seventh centimetre site. */
+.ms-sheet-field--full { grid-column: 1 / -1; }
+.ms-sheet-field--bodyfat {
+  border-top: 1px solid var(--border-subtle); padding-top: 10px; margin-top: 2px;
+}
+.ms-sheet-field--bodyfat > span { color: var(--color-cyan); }
+.ms-sheet-hint { color: var(--text-muted); font-size: .66rem; font-weight: 600; line-height: 1.35; }
 
 /* ============================================================================
    PER-SET SHEET

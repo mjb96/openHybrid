@@ -183,7 +183,19 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   from Settings → Data, and `js/portability/import-measurements-csv.js` reads
   that shape back (`date,waist_cm,…`, `_in` columns converted): rows for the
   same date merge site by site, implausible readings are skipped, and an
-  existing date is never overwritten.
+  existing date is never overwritten. Body fat is an ENTERED reading (scale,
+  calipers, DEXA), never estimated — there is no height/sex/age in state, so a
+  formula would fabricate data. It is an additive `bodyFat` percentage on the
+  same records (2–70, one decimal, `bodyFatPercent`), deliberately NOT a
+  `MEASUREMENT_SITES` entry (that set is cm-validated) and never changed by the
+  cm/in toggle; `bodyFatTrend` reports percentage-point deltas and the card
+  renders it only when measured (a body-fat-only record still counts as an
+  entry). The sheet's full-width `msSheet_bodyFat` field replaces the record, so
+  editing another site cannot drop the stored percentage. The measurements CSV
+  has a `Body fat (%)` column, and imports accept `body_fat`, `bodyfat`,
+  `body_fat_pct` or `body_fat_percent` as a percentage (never cm/in). Known
+  limitation: a combined weigh-in + body-fat CSV belongs to the bodyweight
+  reader, so body fat from that file is not imported.
 - Warm-up ramp: `js/workout/warmup-ramp.js` builds editable warm-up rows above
   the working weight. Barbells ramp 40/60/80% above the bar, rounded to the
   active profile's plates and pair counts; dumbbells have no bar, so each rung

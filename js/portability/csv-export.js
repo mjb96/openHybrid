@@ -53,14 +53,14 @@ export function buildBodyweightCsv(state) {
 }
 
 /**
- * Body measurements, canonical centimetres, one row per date. Blank sites are
- * empty cells rather than zeros.
+ * Body measurements and an entered body-fat percentage, canonical centimetres,
+ * one row per date. Blank sites are empty cells rather than zeros.
  * @param {any} state
  */
 export function buildMeasurementsCsv(state) {
-  let csv = row(['Date', ...MEASUREMENT_SITES.map((site) => `${site.label} (cm)`)]);
+  let csv = row(['Date', ...MEASUREMENT_SITES.map((site) => `${site.label} (cm)`), 'Body fat (%)']);
   for (const entry of normalizeMeasurements(state?.bodyMeasurements)) {
-    csv += row([entry.date, ...MEASUREMENT_SITES.map((site) => entry[site.key] ?? '')]);
+    csv += row([entry.date, ...MEASUREMENT_SITES.map((site) => entry[site.key] ?? ''), entry.bodyFat ?? '']);
   }
   return csv;
 }

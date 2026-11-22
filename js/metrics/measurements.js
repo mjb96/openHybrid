@@ -25,6 +25,12 @@ export const CM_PER_INCH = 2.54;
 /** A tape reading outside this range is a typo, not a body. */
 export const MIN_MEASUREMENT_CM = 20;
 export const MAX_MEASUREMENT_CM = 300;
+/**
+ * Body fat is an ENTERED reading (scale, calipers, DEXA), never estimated: there
+ * is no height, sex or age, and inventing them would fabricate a number.
+ */
+export const BODY_FAT_MIN = 2;
+export const BODY_FAT_MAX = 70;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -79,9 +85,25 @@ export function measurementCm(value, unit) {
 }
 
 /**
+ * One entered body-fat reading, one decimal, or null when it is blank,
+ * unparseable or outside a plausible percentage. Always a percentage — a cm/in
+ * toggle must never convert it.
+ * @param {number|string} value
+ * @returns {number|null}
+ */
+export function bodyFatPercent(value) {
+  if (value == null || String(value).trim() === '') return null;
+  const percent = Number(value);
+  if (!Number.isFinite(percent) || percent < BODY_FAT_MIN || percent > BODY_FAT_MAX) return null;
+  return roundDisplay(percent);
+}
+
+/**
  * Valid records, oldest first. Duplicate dates keep the last reading, matching
  * the one-entry-per-day storage rule. Sites are only present when measured, so
- * a waist-only entry is a real record rather than five zeros.
+ * a waist-only entry is a real record rather than five zeros. Body fat is not a
+ * length site: it is retained as its own additive `bodyFat` percentage, and a
+ * body-fat-only record is just as real.
  * @param {any} log
  * @returns {Array<{ date: string } & Record<string, number|string>>}
  */
@@ -99,6 +121,8 @@ export function normalizeMeasurements(log) {
         values[site.key] = roundCm(cm);
       }
     }
+    const bodyFat = bodyFatPercent(entry?.bodyFat);
+    if (bodyFat != null) values.bodyFat = bodyFat;
     if (Object.keys(values).length) byDate.set(date, { date, ...values });
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
@@ -131,6 +155,30 @@ export function measurementSiteTrends(log) {
 }
 
 /**
+ * Body-fat history: the entered percentage per date, latest/previous reading,
+ * the change in PERCENTAGE POINTS since the previous reading and the total
+ * change since the first. A percentage-point delta is what an athlete reads
+ * ("down 1.4 pp"); percent-of-percent would be a different, misleading number.
+ * @param {any} log
+ */
+export function bodyFatTrend(log) {
+  const entries = normalizeMeasurements(log);
+  const points = entries
+    .filter((entry) => typeof entry.bodyFat === 'number')
+    .map((entry) => ({ date: entry.date, value: /** @type {number} */ (entry.bodyFat) }));
+  const latest = points.length ? points[points.length - 1] : null;
+  const previous = points.length > 1 ? points[points.length - 2] : null;
+  const first = points.length ? points[0] : null;
+  return {
+    points,
+    latest,
+    previous,
+    delta: latest && previous ? roundDisplay(latest.value - previous.value) : null,
+    total: latest && first && first.date !== latest.date ? roundDisplay(latest.value - first.value) : null,
+  };
+}
+
+/**
  * Build the stored record from raw sheet inputs. `invalid` lists the site
  * labels that were filled but implausible, so the caller can say which field to
  * check instead of silently dropping it.
@@ -150,6 +198,12 @@ export function buildMeasurementRecord(date, values, unit) {
     if (cm == null) { invalid.push(site.label); continue; }
     record[site.key] = cm;
   }
+  const rawBodyFat = values?.bodyFat;
+  if (rawBodyFat != null && String(rawBodyFat).trim() !== '') {
+    const percent = bodyFatPercent(rawBodyFat);
+    if (percent == null) invalid.push('Body fat');
+    else record.bodyFat = percent;
+  }
   return { record, invalid };
 }
 
@@ -168,6 +222,7 @@ export function buildMeasurementModel(state, { recentCount = 4 } = {}) {
     entries,
     sites,
     tracked,
+    bodyFat: bodyFatTrend(entries),
     count: entries.length,
     latestDate: entries.length ? entries[entries.length - 1].date : null,
     recent: [...entries].reverse().slice(0, recentCount),

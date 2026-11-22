@@ -2,16 +2,24 @@
 // =============================================================================
 // BODY MEASUREMENTS CSV IMPORT
 //
-// Reads the file Settings → Data writes (`Date,Waist (cm),Chest (cm),…`) and
+// Reads the file Settings → Data writes (`Date,Waist (cm),…,Body fat (%)`) and
 // the same shape hand-made in a spreadsheet. Storage is canonical centimetres,
 // so `_in` / `(in)` columns convert on the way in and bare columns follow the
-// athlete's unit. Existing dates are never overwritten — the same rule as the
-// bodyweight reader.
+// athlete's unit. Body fat is always a percentage (`body_fat`, `bodyfat`,
+// `body_fat_pct`, `body_fat_percent`) and is never converted from cm/in.
+// Existing dates are never overwritten — the same rule as the bodyweight reader.
+//
+// KNOWN LIMITATION: a file carrying a weight column belongs to the bodyweight
+// reader, so a combined weigh-in + body-fat export (`date,weight_kg,body_fat`)
+// imports the weigh-ins and leaves body fat behind. Split the export (or use a
+// measurements-only file) to import body fat.
 //
 // Clean-room: parseCsv comes from import-workout-csv.js; no third-party reader.
 // =============================================================================
 import { parseCsv, CSV_IMPORT_LIMITS } from './import-workout-csv.js';
-import { MEASUREMENT_SITES, MIN_MEASUREMENT_CM, MAX_MEASUREMENT_CM } from '../metrics/measurements.js';
+import {
+  MEASUREMENT_SITES, MIN_MEASUREMENT_CM, MAX_MEASUREMENT_CM, bodyFatPercent,
+} from '../metrics/measurements.js';
 
 const normalizeHeader = (h) => String(h || '')
   .trim()
@@ -47,6 +55,14 @@ function headersOf(text) {
 /** @type {Set<string>} */
 const SITE_KEYS = new Set(MEASUREMENT_SITES.map((site) => site.key));
 
+/** Normalized headers that carry an entered body-fat percentage. */
+const BODY_FAT_HEADERS = new Set(['body_fat', 'bodyfat', 'body_fat_pct', 'body_fat_percent']);
+
+/** @param {string[]} headers */
+function bodyFatIndex(headers) {
+  return headers.findIndex((header) => BODY_FAT_HEADERS.has(header));
+}
+
 /**
  * Which column feeds which site, and whether that column is centimetres or
  * inches. `waist` with no suffix is resolved by the caller's unit.
@@ -65,7 +81,9 @@ function columnMap(headers) {
 
 /**
  * True for a measurements export without mistaking a weigh-in or workout CSV.
- * A file carrying a weight column belongs to the bodyweight reader.
+ * A file carrying a weight column belongs to the bodyweight reader — including a
+ * combined weigh-in + body-fat export, which therefore does not import body fat.
+ * A body-fat-only file is still a measurements file.
  * @param {string} text
  */
 export function looksLikeMeasurementsCsv(text) {
@@ -73,7 +91,7 @@ export function looksLikeMeasurementsCsv(text) {
   if (!headers.includes('date')) return false;
   if (headers.some((h) => h === 'exercise' || h === 'exercise_name' || h === 'exercise_title')) return false;
   if (headers.some((h) => h === 'weight' || h.startsWith('weight_'))) return false;
-  return Object.keys(columnMap(headers)).length > 0;
+  return Object.keys(columnMap(headers)).length > 0 || bodyFatIndex(headers) >= 0;
 }
 
 /**
@@ -91,8 +109,9 @@ export function parseMeasurementsCsv(text, opts = {}) {
   const headers = rows[0].map(normalizeHeader);
   const dateIndex = headers.indexOf('date');
   const columns = columnMap(headers);
+  const bodyFatColumn = bodyFatIndex(headers);
   if (dateIndex < 0) throw new Error('The CSV has no date column.');
-  if (!Object.keys(columns).length) throw new Error('The CSV has no measurement columns.');
+  if (!Object.keys(columns).length && bodyFatColumn < 0) throw new Error('The CSV has no measurement columns.');
 
   /** @type {Map<string, Record<string, number|string>>} */
   const byDate = new Map();
@@ -112,6 +131,11 @@ export function parseMeasurementsCsv(text, opts = {}) {
       if (!(cm >= MIN_MEASUREMENT_CM && cm <= MAX_MEASUREMENT_CM)) continue;
       record[key] = round1(cm);
       touched = true;
+    }
+    if (bodyFatColumn >= 0) {
+      // Always a percentage: never cm/in, and 2–70 rejects a typo or a weight.
+      const percent = bodyFatPercent(cell(row, bodyFatColumn));
+      if (percent != null) { record.bodyFat = percent; touched = true; }
     }
     if (touched) byDate.set(date, record);
     else skipped++;
