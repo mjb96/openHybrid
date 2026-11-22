@@ -426,6 +426,124 @@ try {
       }
     }
 
+    // ---- half-step effort: 5-column grid, tap to rate, tap again to clear --
+    // 412/dark is the standard cockpit; 320/dark is the narrowest width, where
+    // five 44px columns must still fit without horizontal overflow.
+    if ((width === 412 || width === 320) && theme === 'dark') {
+      const effortRow = '.cockpit-exercise:not(.collapsed) .cockpit-set-row[data-set-index="0"]';
+      await page.click(`${effortRow} .set-num-lbl`);
+      await page.waitForSelector('#setSheet.active');
+      const effortGrid = await page.evaluate(() => {
+        const group = document.getElementById('setSheetRir');
+        const sheet = document.getElementById('setSheet');
+        const buttons = [...group.querySelectorAll('button')];
+        const rated = buttons.filter((b) => b.hasAttribute('data-rir'));
+        const rects = buttons.map((b) => b.getBoundingClientRect());
+        return {
+          count: buttons.length,
+          rated: rated.length,
+          columns: getComputedStyle(group).gridTemplateColumns.split(/\s+/).filter(Boolean).length,
+          rows: [...new Set(rects.map((r) => Math.round(r.top)))].length,
+          groupOverflow: group.scrollWidth - group.clientWidth,
+          sheetOverflow: sheet.scrollWidth - sheet.clientWidth,
+          minWidth: Math.round(Math.min(...rects.map((r) => r.width))),
+          minHeight: Math.round(Math.min(...rects.map((r) => r.height))),
+          aria: group.querySelector('[data-rir="1.5"]')?.getAttribute('aria-label') || '',
+        };
+      });
+      console.log(`${tag} effort-grid:`, JSON.stringify(effortGrid));
+      if (effortGrid.count !== 10) fail(`${tag}: effort grid has ${effortGrid.count} buttons, expected 10`);
+      if (effortGrid.rated !== 9) fail(`${tag}: effort grid has ${effortGrid.rated} RIR buttons, expected 9`);
+      if (effortGrid.columns !== 5) fail(`${tag}: effort grid is ${effortGrid.columns} columns, expected 5`);
+      if (effortGrid.rows !== 2) fail(`${tag}: effort grid is ${effortGrid.rows} rows, expected 2`);
+      if (effortGrid.groupOverflow > 1) fail(`${tag}: effort grid overflows by ${effortGrid.groupOverflow}px`);
+      if (effortGrid.sheetOverflow > 1) fail(`${tag}: the set sheet overflows horizontally by ${effortGrid.sheetOverflow}px`);
+      if (effortGrid.minHeight < 44) fail(`${tag}: an effort button is ${effortGrid.minHeight}px tall, below 44px`);
+      if (width === 320 && effortGrid.minWidth < 44) {
+        fail(`${tag}: a 5-column effort button is only ${effortGrid.minWidth}px wide`);
+      }
+      if (effortGrid.aria !== '1.5 reps in reserve') {
+        fail(`${tag}: the 1½ button is named "${effortGrid.aria}"`);
+      }
+
+      await page.click('#setSheet [data-rir="1.5"]');
+      await page.waitForTimeout(350);
+      const rated = await page.evaluate(() => {
+        const state = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+        const set = state.weeks?.['1']?.lifts?.thu?.['Incline Barbell Press']?.[0] || null;
+        return {
+          active: document.querySelector('#setSheet [data-rir="1.5"]')?.classList.contains('is-active'),
+          activeCount: document.querySelectorAll('#setSheetRir button.is-active').length,
+          pressed: [...document.querySelectorAll('#setSheetRir button[aria-pressed="true"]')]
+            .map((b) => b.getAttribute('data-rir')),
+          rir: set?.rir,
+          rpe: set?.rpe,
+        };
+      });
+      console.log(`${tag} effort-rated:`, JSON.stringify(rated));
+      if (!rated.active || rated.activeCount !== 1) {
+        fail(`${tag}: tapping 1½ did not leave exactly that button active (${JSON.stringify(rated)})`);
+      }
+      if (rated.pressed.length !== 1 || rated.pressed[0] !== '1.5') {
+        fail(`${tag}: aria-pressed did not follow the active effort (${JSON.stringify(rated.pressed)})`);
+      }
+      if (rated.rir !== 1.5 || rated.rpe !== 8.5) {
+        fail(`${tag}: 1½ stored ${JSON.stringify({ rir: rated.rir, rpe: rated.rpe })}, expected {rir:1.5,rpe:8.5}`);
+      }
+
+      await page.click('#setSheet [data-rir="1.5"]');
+      await page.waitForTimeout(350);
+      const cleared = await page.evaluate(() => {
+        const state = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+        const set = state.weeks?.['1']?.lifts?.thu?.['Incline Barbell Press']?.[0] || null;
+        return {
+          activeCount: document.querySelectorAll('#setSheetRir button.is-active').length,
+          pressedCount: document.querySelectorAll('#setSheetRir button[aria-pressed="true"]').length,
+          rir: set?.rir,
+          rpe: set?.rpe,
+        };
+      });
+      console.log(`${tag} effort-cleared:`, JSON.stringify(cleared));
+      if (cleared.activeCount !== 0 || cleared.pressedCount !== 0
+        || cleared.rir != null || cleared.rpe != null) {
+        fail(`${tag}: re-tapping 1½ did not clear the rating (${JSON.stringify(cleared)})`);
+      }
+
+      // A legacy/imported set may carry only `rpe`. The sheet must show the
+      // equivalent half-step RIR active, not no selection and not 0.
+      if (width === 320) {
+        await page.evaluate(() => {
+          const key = 'hybrid_engine_v2_state';
+          const state = JSON.parse(localStorage.getItem(key) || '{}');
+          const set = state.weeks?.['1']?.lifts?.thu?.['Incline Barbell Press']?.[0];
+          if (set) {
+            delete set.rir;
+            set.rpe = 8;
+          }
+          localStorage.setItem(key, JSON.stringify(state));
+        });
+        await page.reload({ waitUntil: 'networkidle' });
+        await enterCockpit(page);
+        await page.click(`${effortRow} .set-num-lbl`);
+        await page.waitForSelector('#setSheet.active');
+        const legacy = await page.evaluate(() => ({
+          active: [...document.querySelectorAll('#setSheetRir [data-rir].is-active')]
+            .map((b) => b.getAttribute('data-rir')),
+          pressed: [...document.querySelectorAll('#setSheetRir button[aria-pressed="true"]')]
+            .map((b) => b.getAttribute('data-rir')),
+        }));
+        console.log(`${tag} legacy-rpe-active:`, JSON.stringify(legacy));
+        if (legacy.active.length !== 1 || legacy.active[0] !== '2') {
+          fail(`${tag}: a legacy RPE-only set did not show RIR 2 active (${JSON.stringify(legacy.active)})`);
+        }
+        if (legacy.pressed.length !== 1 || legacy.pressed[0] !== '2') {
+          fail(`${tag}: aria-pressed did not name RIR 2 for a legacy RPE-only set (${JSON.stringify(legacy.pressed)})`);
+        }
+      }
+      await page.click('#setSheet .sheet-close-btn');
+      await page.waitForTimeout(250);
+    }
+
     if (width === 412 && theme === 'dark') {
       await page.click('.cockpit-exercise:not(.collapsed) .btn-ex-config');
       await page.waitForSelector('.exercise-config');

@@ -505,7 +505,7 @@ not rebuild a ✅.
 | L7 | Previous values | `workout.js` | Last anywhere vs last in routine, tap-to-fill | ✅ | 1 |
 | L8 | Warm-up calculator | `workout/warmup-ramp.js` | Percentage rows, plate/dumbbell rounding, insert/delete | ✅ | 1 |
 | L9 | Plate calculator | `workout/plates.js`, `workout/plate-sheet-model.js` | Target, bar, plates, counts, per-side, shortfall | ✅ | 1 |
-| L10 | RPE | `workout/set-sheet.js` | 6–10 in half steps, live entry, review later | ◐ | 1 |
+| L10 | RPE | `workout/effort.js`, `workout/set-sheet.js` | 0–4 RIR (6–10 RPE) in half steps, per-set sheet, live entry, review later | ✅ | 1 |
 | L11 | Supersets | `workout/superset.js` | Pairs and circuits, stable colours, rest after the group | ✅ | 1 |
 | L12 | Saving a workout | `workout/session-status.js` | Name, duration, date, notes, summary | ✅ | 1 |
 | L13 | Live PR | `workout.js` | 1RM/weight/volume/reps/duration detection and banner | ◐ | 1 |
@@ -659,9 +659,31 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,180 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,201 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-22 — Half-step effort ratings: review fixes.**
+  - Per-set effort is now RIR 0–4 in half steps (0 … 4+, with 4+ stored as 4)
+    beside Failure in a 5×2 grid. `js/workout/effort.js` is the one reader:
+    `normalizeEffortRir` rejects blanks, arrays and out-of-range values,
+    `effortForSet` turns `rir` or a legacy `rpe` into both numbers, and a failed
+    set with no rating counts as RPE 10 without claiming to be rated.
+  - The load-memo signature now hashes `failure` as well as `rpe`/`rir`, so
+    toggling Failure on a completed unrated set invalidates the cache and ATL/CTL
+    refresh immediately instead of waiting for an unrelated save.
+  - Session RPE inputs accept half steps with `step="0.5"`/`inputmode="decimal"`;
+    Dashboard Stress Balance keeps half-step session/run RPE, and the engine
+    fatigue fallback and weekly performance average read RIR-only imports
+    instead of ignoring them. The previous-workout panel and sheet share
+    `effortForSet`.
+  - The effort grid keeps 44px cells at 320/390/412; at 280px the cells hold
+    their 44px minimum (the sheet can scroll horizontally below that) instead of
+    shrinking below the touch target.
+  - Validation: 2,201 node tests, typecheck, smoke, precache, set-row at
+    320/dark + 390/light + 412/dark (including legacy `{rpe:8}` active state and
+    `aria-pressed`), touch-target and all 45 browser checks.
+  - Next: Android device checklist and the remaining capability-backlog rows.
 
 - **2026-11-22 — Plate calculator review fixes.**
   - **Use this weight refuses what the sheet calls unbuildable.** 101 kg now

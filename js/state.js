@@ -22,6 +22,7 @@ import {
 } from './state/activation-identity.js';
 import { migrateLegacyRunSessions, runSessionsForDay } from './state/run-sessions.js';
 import { isCompletedSet, isValidWorkingSet } from './set-utils.js';
+import { isFailedSet } from './workout/effort.js';
 import { sessionSetPlan, clearSessionSetPlan, clearDaySetPlans } from './workout/set-plan.js';
 import { ensureEquipmentProfiles, projectActiveEquipmentProfile } from './equipment-profiles.js';
 import { ensureRoutines } from './routines/store.js';
@@ -639,13 +640,15 @@ function loadMetricsSignature(state) {
       const runSig = runSessionsForDay(wd, d)
         .map(run => `${run.sessionId || ''}:${run.rpe || ''}/${run.time || ''}`)
         .join(',');
-      // Session RPE can now fall back to the MEAN of per-set RPE/RIR when the
-      // source has no session-level number. The memo must see those set fields,
-      // or editing a set's RIR leaves a stale ATL/CTL cached.
+      // Session RPE can fall back to the MEAN of per-set RPE/RIR when the
+      // source has no session-level number, and an unrated failed set counts as
+      // RPE 10. The memo must see all three fields, or toggling Failure leaves
+      // stale ATL/CTL cached.
       const setRpeSig = Object.values(wd.lifts?.[d] || {})
         .flat()
-        .filter((set) => isValidWorkingSet(set) && (set.rpe != null || set.rir != null))
-        .map(set => `${set.rpe ?? ''}:${set.rir ?? ''}`)
+        .filter((set) => isValidWorkingSet(set)
+          && (set.rpe != null || set.rir != null || isFailedSet(set)))
+        .map(set => `${set.rpe ?? ''}:${set.rir ?? ''}:${isFailedSet(set) ? 1 : 0}`)
         .join(',');
       if (gr || gt || runSig || setRpeSig) {
         parts.push(`${wk}${d}:${gr || ''}/${gt || ''}/${runSig}/${setRpeSig}`);
@@ -654,6 +657,10 @@ function loadMetricsSignature(state) {
   }
   return parts.join('|');
 }
+
+// Exported for the regression test that proves a failure toggle invalidates the
+// memo. Production callers use memoizedLoadMetrics() below.
+export { loadMetricsSignature };
 
 function memoizedLoadMetrics(state) {
   const sig = loadMetricsSignature(state);

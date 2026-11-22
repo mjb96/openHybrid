@@ -73,6 +73,7 @@ import {
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
 import { weightUnitLabel } from './workout/units.js';
+import { formatEffort } from './workout/effort.js';
 import {
   openConfirmResetModal, closeConfirmResetModal, executeResetActiveDayMetrics,
 } from './workout/clear-log.js';
@@ -294,9 +295,14 @@ function _previousSessionPanel(appState, performance, exerciseName, weightUnit) 
   const rows = sets.map((set, index) => {
     const weight = parseFloat(set?.w) || 0;
     const reps = parseInt(set?.r, 10) || 0;
-    const effort = set?.rir != null ? `${escapeHtml(String(set.rir))} reps left`
-      : set?.rpe != null ? `RPE ${escapeHtml(String(set.rpe))}` : '';
-    return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight > 0 ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effort}</small></div>`;
+    // One effort reader, and the existing copy: an entered RIR reads as
+    // "1.5 reps left", a legacy RPE-only set keeps "RPE 8.5", and an unrated
+    // set stays blank instead of showing a fabricated number.
+    const hasRir = set?.rir != null && set.rir !== '';
+    const effortText = escapeHtml(hasRir
+      ? formatEffort(set, { style: 'reps-left' })
+      : formatEffort(set, { scale: 'rpe' }));
+    return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight > 0 ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effortText}</small></div>`;
   }).join('');
   return `<details class="previous-session">
     <summary><span><small>Last performed · ${escapeHtml(_priorDateLabel(performance.date))}</small><strong>${escapeHtml(top)} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}</strong></span><b>Details</b></summary>
@@ -2387,7 +2393,6 @@ document.addEventListener('click', (e) => {
   else if (action === 'unlink-superset') unpairSuperset(liftName);
   else if (action === 'toggle-accordion') toggleAccordionManual(exCard);
   else if (action === 'jump-to-exercise') jumpToExercise(liftName);
-  else if (action === 'set-rir') setPerSetRir(liftName, sIdx, parseInt(target.getAttribute('data-rir'), 10));
   else if (action === 'toggle-set-failure') toggleSetFailure(liftName, sIdx);
   else if (action === 'toggle-load-basis') toggleLoadBasis(liftName, sIdx);
   else if (action === 'edit-set-rest') void editSetRest(liftName, sIdx);

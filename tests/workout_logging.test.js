@@ -194,16 +194,63 @@ test('setSetLoadMode exposes direct Bodyweight, Weighted, and Assisted choices',
   assert.equal(sets('Dips')[0].w, '');
 });
 
-test('setPerSetRir sets RIR + derived RPE, and taps to clear', () => {
+test('setPerSetRir stores a half-step RIR + derived RPE, and taps to clear', () => {
   initWith(freshState());
   workout.appendCustomSetRow(null, 'Row');
-  workout.setPerSetRir('Row', 0, 2);
-  assert.equal(sets('Row')[0].rir, 2);
-  assert.equal(sets('Row')[0].rpe, 8);   // 10 - RIR
-  // tapping the same value clears it
+  workout.setPerSetRir('Row', 0, 1.5);
+  assert.equal(sets('Row')[0].rir, 1.5);
+  assert.equal(sets('Row')[0].rpe, 8.5);   // 10 - RIR
+  // tapping the same value clears both
+  workout.setPerSetRir('Row', 0, 1.5);
+  assert.equal(sets('Row')[0].rir, null);
+  assert.equal(sets('Row')[0].rpe, null);
+});
+
+test('setPerSetRir snaps an off-scale input and refuses an impossible one', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Row');
+  workout.setPerSetRir('Row', 0, 1.3);
+  assert.equal(sets('Row')[0].rir, 1.5);
+  assert.equal(sets('Row')[0].rpe, 8.5);
+  workout.setPerSetRir('Row', 0, 9);
+  assert.equal(sets('Row')[0].rir, 1.5, 'an out-of-range tap never clears the real rating');
+  assert.equal(sets('Row')[0].rpe, 8.5);
+});
+
+test('a legacy RPE-only set clears when its already-active RIR is tapped', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Row');
+  sets('Row')[0].rpe = 8;                  // imported without an RIR
+  workout.setPerSetRir('Row', 0, 2);       // the sheet shows "2" as active
+  assert.equal(sets('Row')[0].rir, null);
+  assert.equal(sets('Row')[0].rpe, null);
+});
+
+test('setPerSetRir replaces one half-step with another instead of clearing', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Row');
+  workout.setPerSetRir('Row', 0, 1.5);
+  workout.setPerSetRir('Row', 0, 3.5);
+  assert.equal(sets('Row')[0].rir, 3.5);
+  assert.equal(sets('Row')[0].rpe, 6.5);
+});
+
+test('a string-stored RIR clears when the same numeric rating is tapped', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Row');
+  sets('Row')[0].rir = '2';                // CSV/backup import keeps it as text
   workout.setPerSetRir('Row', 0, 2);
   assert.equal(sets('Row')[0].rir, null);
   assert.equal(sets('Row')[0].rpe, null);
+});
+
+test('an invalid tap on an unrated set is a no-op', () => {
+  initWith(freshState());
+  workout.appendCustomSetRow(null, 'Row');
+  workout.setPerSetRir('Row', 0, 9);
+  workout.setPerSetRir('Row', 0, null);
+  assert.equal('rir' in sets('Row')[0], false);
+  assert.equal('rpe' in sets('Row')[0], false);
 });
 
 test('toggleSetFailure is independent of the AMRAP set type and toggles off', () => {

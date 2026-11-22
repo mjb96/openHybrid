@@ -90,6 +90,12 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // and `rir`/`type` are copied verbatim by an import. Every dynamic value in
   // the row's start tag is therefore escaped — including the ones whose current
   // writers only ever produce a closed vocabulary.
+  //
+  // `data-rir` is not read by the app: the set sheet renders its active cell
+  // from stored state. It stays as a read-only inspection mirror AND as the
+  // imported-content contract's canary for hostile stored RIR escaping
+  // (tests/imported_content_rendering.test.js), which no other row attribute
+  // covers.
   const rirAttr = sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '');
 
   return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${escapeHtml(String(mode))}" data-load-mode="${escapeHtml(String(directMode))}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${escapeHtml(String(type))}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${escapeHtml(String(rirAttr))}">

@@ -28,6 +28,7 @@ import { renderExerciseDetail, renderMuscleDetail } from './analytics/views/view
 import { renderRunningMetricDetail } from './analytics/views/view-running-metric.js';
 import { renderStrengthMetricDetail } from './analytics/views/view-strength-metric.js';
 import { renderRunPerformance } from './analytics/views/view-run-performance.js';
+import { effortForSet } from './workout/effort.js';
 import { renderRecoveryPerformance } from './analytics/views/view-recovery-performance.js';
 import { renderRecoveryMetricDetail } from './analytics/views/view-recovery-metric.js';
 import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progress-landing.js';
@@ -279,8 +280,11 @@ function collectAnalyticsData() {
             weekVol += setVolume(s);
             data.globalTotalSets++;
           }
-          if (completed && s.rpe && s.type !== 'W') {
-            daySetRpeSum += parseFloat(s.rpe) || 0;
+          // Per-set RIR is measured effort too; reading only `s.rpe` made an
+          // imported RIR-only set invisible to the weekly RPE average.
+          const effort = effortForSet(s);
+          if (completed && s.type !== 'W' && effort.rpe != null && effort.rpe > 0 && effort.rpe <= 10) {
+            daySetRpeSum += effort.rpe;
             daySetRpeCount++;
           }
         });
