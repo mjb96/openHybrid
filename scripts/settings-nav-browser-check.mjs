@@ -78,6 +78,16 @@ try {
     el.closest('.settings-section')?.querySelector('.settings-section-label')?.textContent?.trim()
   ));
   ok(hintsCard === 'Logging', 'plate hints live in the Logging card');
+
+  // The filters are buttons in a group, not a tablist: there are no tabpanels,
+  // no aria-controls and no arrow-key contract to honour.
+  ok((await page.getAttribute('#settingsTabs', 'role')) === 'group', 'settings filters expose role="group"');
+  ok((await page.locator('#settingsTabs [role="tab"]').count()) === 0, 'no fake tab roles remain');
+  ok((await page.getAttribute('#settingsTabs [data-settings-tab="training"]', 'aria-pressed')) === 'true',
+    'the active filter reports aria-pressed=true');
+  ok((await page.getAttribute('#settingsTabs [data-settings-tab="profile"]', 'aria-pressed')) === 'false',
+    'an inactive filter reports aria-pressed=false');
+
   ok(await page.locator('#settingsRestWarmup').isVisible(), 'warm-up rest tier is visible');
   ok(await page.locator('#settingsRestCompound').isVisible(), 'compound rest tier is visible');
   ok(await page.locator('#settingsRestAccessory').isVisible(), 'accessory rest tier is visible');
@@ -97,13 +107,47 @@ try {
   const searchLabels = await visibleLabel();
   ok(searchLabels.includes('Appearance'), 'search finds Appearance');
   ok(!searchLabels.includes('Training'), 'search hides non-matching groups');
+  ok((await page.locator('#settingsTabs [aria-pressed="true"]').count()) === 0,
+    'a search does not claim a filter is active');
+
+  // Matching is by words the athlete can see OR that the control exposes to
+  // assistive tech. "Light band weight" only exists as the input's aria-label.
+  await page.fill('#settingsSearch', 'light band weight');
+  ok((await visibleLabel()).includes('Equipment'), 'search matches an accessible name');
+  await page.fill('#settingsSearch', '');
+
+  // A card switched off with a feature module must not count as a result.
+  const fastingModule = page.locator('.settings-row', { has: page.locator('[data-module-toggle="fasting"]') }).locator('.settings-switch');
+  await fastingModule.click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'off');
+  await page.fill('#settingsSearch', 'default protocol');
+  ok(await page.locator('#settingsNoResults').isVisible(),
+    'a module-hidden card does not suppress the no-results explanation');
+  await page.fill('#settingsSearch', '');
+  await fastingModule.click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'on');
+
+  await page.evaluate(() => { document.querySelector('#settingsPanel .settings-body').scrollTop = 600; });
+  await page.fill('#settingsSearch', 'theme');
+  ok((await page.evaluate(() => document.querySelector('#settingsPanel .settings-body').scrollTop)) === 0,
+    'typing a search resets the panel scroll');
 
   await page.fill('#settingsSearch', 'zzzz-no-setting');
   ok(await page.locator('#settingsNoResults').isVisible(), 'no-results state is shown');
+  ok((await page.getAttribute('#settingsNoResults', 'role')) === 'status', 'no-results is announced as a status');
 
   await page.fill('#settingsSearch', '');
   ok((await visibleLabel()).includes('Training'), 'clearing search returns to the active tab');
   ok(await page.locator('#settingsNoResults').isHidden(), 'no-results state is hidden again');
+
+  // Closing and reopening starts fresh rather than resurrecting a filter.
+  await page.fill('#settingsSearch', 'zzzz-no-setting');
+  await page.click('#settingsOverlay [data-action="close-settings"]');
+  await page.click('#view-profile [data-action="open-settings"]');
+  await page.waitForSelector('#settingsOverlay.active');
+  ok((await page.inputValue('#settingsSearch')) === '', 'reopening settings clears the search');
+  ok((await visibleLabel()).includes('Training'), 'reopening settings shows the active destination');
+  ok((await page.locator('#settingsNoResults').isHidden()), 'reopening settings hides the stale no-results state');
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();

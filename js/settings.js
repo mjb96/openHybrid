@@ -93,6 +93,12 @@ function _settingsSections() {
   return [...document.querySelectorAll('#settingsPanel .settings-section')];
 }
 
+/** Is this card hidden by a feature-module switch (not by the search filter)? */
+function _sectionEnabledByModules(section) {
+  const moduleId = section.getAttribute('data-module');
+  return !moduleId || moduleEnabled(_getState?.(), moduleId);
+}
+
 function _setupSettingsNavigation() {
   const tabs = document.getElementById('settingsTabs');
   const search = document.getElementById('settingsSearch');
@@ -103,7 +109,12 @@ function _setupSettingsNavigation() {
     section.dataset.settingsGroup = settingsGroupForLabel(label);
   });
   if (!tabs.childElementCount) {
-    tabs.innerHTML = SETTINGS_TABS.map((tab) => `<button type="button" class="settings-tab" role="tab" data-settings-tab="${tab.id}" aria-selected="false">${tab.label}</button>`).join('');
+    // These are FILTERS over one scrolling list, not a tablist with tabpanels.
+    // Claiming role="tab" made assistive tech announce a nonexistent tabpanel
+    // relationship (arrow keys, aria-controls, one-panel-per-tab). Buttons with
+    // aria-pressed describe exactly what happens.
+    tabs.setAttribute('role', 'group');
+    tabs.innerHTML = SETTINGS_TABS.map((tab) => `<button type="button" class="settings-tab" data-settings-tab="${tab.id}" aria-pressed="false">${tab.label}</button>`).join('');
     tabs.addEventListener('click', (event) => {
       const button = /** @type {HTMLElement|null} */ (event.target instanceof Element ? event.target.closest('[data-settings-tab]') : null);
       if (!button) return;
@@ -114,12 +125,17 @@ function _setupSettingsNavigation() {
       if (body) body.scrollTop = 0;
       _applySettingsFilter();
     });
-    search?.addEventListener('input', _applySettingsFilter);
+    search?.addEventListener('input', () => {
+      const body = document.querySelector('#settingsPanel .settings-body');
+      if (body) body.scrollTop = 0;
+      _applySettingsFilter();
+    });
   }
   if (!document.getElementById('settingsNoResults')) {
     const empty = document.createElement('p');
     empty.id = 'settingsNoResults';
     empty.className = 'settings-empty';
+    empty.setAttribute('role', 'status');
     empty.textContent = 'No settings match that search.';
     empty.hidden = true;
     document.querySelector('#settingsPanel .settings-body')?.appendChild(empty);
@@ -134,12 +150,15 @@ function _applySettingsFilter() {
     const inGroup = !!query || section.dataset.settingsGroup === _settingsGroup;
     const matches = sectionMatchesQuery(section, query);
     section.hidden = !(inGroup && matches);
-    if (!section.hidden) shown++;
+    // The no-results state must agree with what the athlete can actually see:
+    // a card hidden by a module switch does not count just because its words
+    // match, or the panel would look empty with no explanation.
+    if (!section.hidden && _sectionEnabledByModules(section)) shown++;
   });
   document.querySelectorAll('#settingsTabs [data-settings-tab]').forEach((button) => {
     const active = !query && button.getAttribute('data-settings-tab') === _settingsGroup;
     button.classList.toggle('active', active);
-    button.setAttribute('aria-selected', active ? 'true' : 'false');
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   const empty = document.getElementById('settingsNoResults');
   if (empty) empty.hidden = shown > 0;
@@ -152,6 +171,10 @@ export function openSettings() {
   const overlay = document.getElementById('settingsOverlay');
   const panel   = document.getElementById('settingsPanel');
   if (!overlay || !panel) return;
+  // A stale query would reopen the panel on a filtered list that looks like
+  // missing settings. Every open starts from the active destination.
+  const search = document.getElementById('settingsSearch');
+  if (search) search.value = '';
   _syncSettingsUI();
   _setupSettingsNavigation();
   overlay.classList.add('active');
@@ -162,6 +185,8 @@ export function openSettings() {
 export function closeSettings() {
   const overlay = document.getElementById('settingsOverlay');
   const panel   = document.getElementById('settingsPanel');
+  const search = document.getElementById('settingsSearch');
+  if (search) search.value = '';
   overlay?.classList.remove('active');
   panel?.classList.remove('active');
   overlay?.setAttribute('aria-hidden', 'true');
@@ -984,6 +1009,9 @@ export function toggleModule(id, on) {
   applyModuleVisibility(appState);
   saveStateToLocalStorage(true);
   document.dispatchEvent(new CustomEvent('app:modules-changed', { detail: { id, on: !!on } }));
+  // A card hidden by the module switch must stop counting as a search result
+  // immediately, while the panel is open.
+  _applySettingsFilter();
 }
 
 export function saveThresholdPace() {
