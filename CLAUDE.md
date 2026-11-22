@@ -135,9 +135,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - Progress overview: `buildProgressLanding` returns `weekSummary`, `units` and
   `recentWeeks`; `buildRecentWeekSeries` and `buildCalendarTrainingWeeks`
   (`js/analytics/training-calendar.js`) are date-strict, so imported/archived
-  sessions appear in the real week. The hub leads with a this-week hero and a
-  12-week strip before the domain cards. Review Stats' Training Calendar and
-  Consistency Log use the same calendar weeks (no `W1..Wn` program grid).
+  sessions appear in the real week. The hub leads with a hero for the SELECTED
+  calendar week (eyebrow and aria-label are the Mon–Sun range, never a relative
+  "N weeks ago") and a 12-week strip before the domain cards. An untrained
+  selected week renders an honest `0 sessions · <range>` hero rather than
+  vanishing, and a historical week is never scored against the active plan —
+  "of N planned" and the adherence bar appear only for the live week. Review
+  Stats' Training Calendar and Consistency Log use the same calendar weeks (no
+  `W1..Wn` program grid).
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
   run — not slots, so a strength+run day is two sessions. The Training Report
   (`js/brain/monthly-report.js`) uses the same rule through
@@ -434,6 +439,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/workout/clear-log.js`, and cockpit run rendering/manual persistence in
   `js/workout/run-logging.js`; row addition/removal, removal Undo, set type/RIR,
   and bodyweight/band load choices live in `js/workout/set-mutations.js`; the
+  per-set sheet lives in `js/workout/set-sheet.js` and owns set type / value
+  shape / load / weight meaning / rest / effort / note / remove, opened by
+  tapping the set number or the PREVIOUS column. The row itself is five columns
+  — SET | PREVIOUS | WEIGHT | VALUE | ✓ — the tick is the ONLY completion action
+  (the old wide `Log S1` button overflowed its 28px track and squeezed the
+  weight/reps fields), and a completed row reads as one compact line. The value
+  column says Time/Distance on a card whose sets are all holds or carries.
+  Comparison against last time is `compareWithPrevious`
+  (`js/workout/set-entry.js`), shared by the template and the in-place refresh
+  after a tick so the glyph appears without a re-render. The
   weight-unit label lives in `js/workout/units.js`, and run distance/pace
   conversion lives in `js/workout/run-units.js` (pure; distance is
   STORED in km and the display value is rounded, so a UI round trip is lossy by

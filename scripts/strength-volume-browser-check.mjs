@@ -89,7 +89,7 @@ try {
     await page.goto(BASE, { waitUntil: 'networkidle' });
 
     // Both legacy contexts must resolve here AND choose the correct opening tab.
-    for (const [ctx, expectedTab] of [['weekly-volume', 'This week'], ['gym-performance', 'Trends']]) {
+    for (const [ctx, expectedTab] of [['weekly-volume', 'Week'], ['gym-performance', 'Trends']]) {
       await open(page, ctx);
       await page.waitForSelector('#analytics-strength-volume.active .sv-tabs', { timeout: 4000 }).catch(() => {
         failures.push(`${width}px: legacy context "${ctx}" did not resolve to the merged screen`);
@@ -129,7 +129,7 @@ try {
     if (!trends.hasEvidence) failures.push(`${width}px: trends tab lost its contributing-workouts evidence`);
     if (!trends.hasPeriodNav) failures.push(`${width}px: trends tab lost its period navigation`);
 
-    // Switching to This week must keep the weekly depth.
+    // Switching to the Week tab must keep the weekly depth.
     await page.click('[data-strength-volume-tab="week"]');
     await page.waitForTimeout(200);
     const week = await page.$eval('#analytics-strength-volume', (s) => ({

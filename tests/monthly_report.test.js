@@ -36,6 +36,9 @@ function makeState(todayISO = TODAY) {
 test('buildMonthlyReport: 28-day totals, deltas, score avg + trend', () => {
   const r = buildMonthlyReport(makeState(), DAYS, null, NOW);
   assert.equal(r.hasData, true);
+  // The window names what it measures: four weeks (28 days), never "30 days".
+  assert.equal(r.window.days, 28);
+  assert.equal(r.window.label, 'Last 4 weeks');
   // Current window: 5 training days, but offsets 2 and 14 hold strength AND
   // a run, so there are 7 real sessions.
   assert.equal(r.totals.sessions, 7);
@@ -53,9 +56,14 @@ test('buildMonthlyReport: 28-day totals, deltas, score avg + trend', () => {
 test('reportToText: numbers-first monthly copy', () => {
   const r = buildMonthlyReport(makeState(), DAYS, null, NOW);
   const txt = reportToText(r, 'km');
-  assert.match(txt, /Last 30 days on openHybrid: 7 sessions/);
+  assert.match(txt, /Last 4 weeks on openHybrid: 7 sessions/);
+  assert.doesNotMatch(txt, /30[- ]day|Last 30 days/i);
   assert.match(txt, /Avg Hybrid Score 82 \(\+8 vs prior month\)/);
-  assert.match(reportToText({ hasData: false }), /will build as you train/);
+  // A report with no window at all falls back to a span-free sentence.
+  assert.match(reportToText({ hasData: false }), /Your training report will build as you train/);
+  // A real empty 28-day report names its own window.
+  const empty = buildMonthlyReport({ weeks: {} }, DAYS, null, NOW);
+  assert.match(reportToText(empty, 'km'), /Your 28-day report will build as you train/);
 });
 
 test('sessions count strength plus every run, not unique days', () => {

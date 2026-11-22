@@ -194,7 +194,9 @@ try {
       text: el.textContent || '',
     }));
     console.log('Recovery empty profile:', JSON.stringify({ value: empty.value, hasComparison: empty.hasComparison }));
-    if (empty.value !== '—') failures.push(`empty profile: expected an em dash, got "${empty.value}"`);
+    // The empty headline names the gap in words; a bare em dash was the old
+    // placeholder and read as a broken value beside "0 check-ins".
+    if (empty.value !== 'No check-ins') failures.push(`empty profile: expected "No check-ins", got "${empty.value}"`);
     if (empty.hasComparison) failures.push('empty profile: rendered a comparison with nothing to compare');
     if (/NaN|Infinity|undefined/.test(empty.text)) failures.push('empty profile: rendered NaN/Infinity/undefined');
     await context.close();

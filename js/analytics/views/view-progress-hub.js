@@ -13,6 +13,8 @@
 import { esc, spark } from './screen-kit.js';
 import { icon } from '../../ui/icons.js';
 import { formatDist } from '../utils.js';
+import { addDaysISO } from '../weekly-aggregate.js';
+import { formatWeekRange } from '../../dates.js';
 
 const DOMAIN_ICON = {
   consistency: 'calendar',
@@ -90,22 +92,38 @@ const SECONDARY_CARD_ID = {
 
 function weekHero(model) {
   const week = model.weekSummary;
-  if (!week || !week.hasData) return '';
+  if (!week) return '';
   const unit = model.units?.weight || 'kg';
   const distUnit = model.units?.distance || 'km';
+  // The eyebrow and accessible name are the real Monday–Sunday range, the same
+  // span the navigator above prints. The relative period ("2 weeks ago") stays
+  // in the navigator: an aria-label reading "2 weeks ago overview" did not say
+  // which two weeks, and the visible eyebrow already disagreed with it.
+  const range = model.weekRangeLabel || model.periodLabel;
   const sessions = week.planned ? `${week.sessions} / ${week.planned}` : String(week.sessions);
+  const head = `<div class="ph-week__head">
+      <div>
+        <span class="ph-week__eyebrow">${esc(range)}</span>
+        <h2 class="ph-week__title">${week.hasData ? `${sessions} session${week.sessions === 1 ? '' : 's'}` : '0 sessions'}</h2>
+      </div>
+      <button type="button" class="ph-week__link" data-action="open-activities">History →</button>
+    </div>`;
+
+  // An untrained selection used to drop the whole section, so stepping back to a
+  // rest week made the page silently lose its week surface. Say it plainly.
+  if (!week.hasData) {
+    return `<section class="ph-week ph-week--empty" aria-label="${esc(`${range} overview`)}">
+      ${head}
+      <p class="ph-week__empty text-muted text-sm">No training logged ${model.isCurrentWeek ? 'this week yet' : 'in that week'}. Use the week arrows above to find a trained week.</p>
+    </section>`;
+  }
+
   const adherence = week.adherencePct == null
     ? ''
     : `<div class="ph-week__adherence"><span style="width:${week.adherencePct}%"></span></div>
        <p class="ph-week__adherence-label">${week.adherencePct}% of planned sessions</p>`;
-  return `<section class="ph-week" aria-label="This week">
-    <div class="ph-week__head">
-      <div>
-        <span class="ph-week__eyebrow">${esc(model.periodLabel)}</span>
-        <h2 class="ph-week__title">${esc(sessions)} session${week.sessions === 1 ? '' : 's'}</h2>
-      </div>
-      <button type="button" class="ph-week__link" data-action="open-activities" data-view="calendar">History →</button>
-    </div>
+  return `<section class="ph-week" aria-label="${esc(`${range} overview`)}">
+    ${head}
     <div class="ph-week__stats">
       <div><b>${week.volumeKg.toLocaleString('en-AU')} ${esc(unit)}</b><span>Volume</span></div>
       <div><b>${esc(formatDist(week.distanceKm, distUnit, 1))}</b><span>Distance</span></div>
@@ -117,16 +135,28 @@ function weekHero(model) {
 
 function recentWeeksStrip(model) {
   const weeks = Array.isArray(model.recentWeeks) ? model.recentWeeks : [];
-  if (!weeks.some((week) => week.sessions > 0)) return '';
-  const max = Math.max(1, ...weeks.map((week) => week.volumeKg || 0));
-  return `<section class="ph-weeks" aria-label="Last 12 calendar weeks">
-    <div class="ph-weeks__head"><span>Last 12 weeks</span><span>Sessions</span></div>
+  const total = weeks.reduce((sum, week) => sum + (week.sessions || 0), 0);
+  if (total === 0) return '';
+  // The label says "Sessions", so the bar height must encode sessions. It used
+  // to encode volume, which painted a running-only week as an empty dash even
+  // though it had training in it.
+  const max = Math.max(1, ...weeks.map((week) => week.sessions || 0));
+  const busiest = Math.max(0, ...weeks.map((week) => week.sessions || 0));
+  const period = String(model.periodLabel || 'the selected week').toLowerCase();
+  // The window ends on whatever week the navigator selected, so the heading has
+  // to move with it — "last 12 weeks" was a claim about today, not this window.
+  const windowLabel = `${weeks.length} weeks ending ${period}`;
+  const summary = `${total} session${total === 1 ? '' : 's'} in the ${windowLabel}; busiest week ${busiest}.`;
+  return `<section class="ph-weeks" aria-label="${esc(`Sessions per calendar week over the ${windowLabel}`)}">
+    <div class="ph-weeks__head"><span>${esc(windowLabel)}</span><span>Sessions</span></div>
+    <p class="sr-only">${esc(summary)}</p>
     <div class="ph-weeks__bars">
       ${weeks.map((week) => {
-        const height = week.sessions > 0 ? Math.max(10, Math.round((week.volumeKg / max) * 100)) : 4;
-        return `<span class="ph-weeks__bar${week.sessions > 0 ? ' is-trained' : ''}" style="height:${height}%" title="Week of ${esc(week.weekStart)}: ${week.sessions} session${week.sessions === 1 ? '' : 's'}"></span>`;
+        const height = week.sessions > 0 ? Math.max(12, Math.round((week.sessions / max) * 100)) : 4;
+        return `<span class="ph-weeks__bar${week.sessions > 0 ? ' is-trained' : ''}" style="height:${height}%" aria-hidden="true" title="${esc(formatWeekRange(week.weekStart, addDaysISO(week.weekStart, 6)))}: ${week.sessions} session${week.sessions === 1 ? '' : 's'}"></span>`;
       }).join('')}
     </div>
+    <div class="ph-weeks__scale"><span>Oldest</span><span>${esc(model.weekRangeLabel || model.periodLabel)}</span></div>
   </section>`;
 }
 
@@ -137,14 +167,17 @@ export function renderProgressHub(container, model, hidden = []) {
   const secondary = model.secondary.filter((entry) => !hiddenSet.has(SECONDARY_CARD_ID[entry.id]));
 
   const intro = model.allEmpty
-    ? `<p class="ph-empty">Nothing is logged yet. Finish a workout or a run and this page starts explaining what changed, and why.</p>`
+    ? `<div class="ph-empty">
+        <p>Nothing is logged yet. Finish a workout or a run and this page starts explaining what changed, and why.</p>
+        <button type="button" class="ph-empty__cta" data-action="switch-tab" data-target="workout">Start a workout</button>
+      </div>`
     : '';
 
   container.innerHTML = `
     <div class="hub-head">
       <div>
         <h2 class="hub-title">Progress</h2>
-        <p class="hub-sub">${esc(model.periodLabel)} · ${esc(model.weekStart)} to ${esc(model.weekEnd)}</p>
+        <p class="hub-sub">What changed, and why.</p>
       </div>
       <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
     </div>

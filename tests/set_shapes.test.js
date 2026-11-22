@@ -92,19 +92,19 @@ test('previous values show the shape that was actually logged', () => {
   assert.equal(previousSetLabel({ w: '100', r: '5' }, 'kg').text, 'Last 100kg × 5');
 });
 
-test('a timed row renders a time field and a shape control', () => {
+test('a timed row renders a time field and states its shape on the row', () => {
   const html = buildSetRow({ w: '20', sec: 90, mode: 'time', c: false }, 0, 'Plank', '', 'kg', 'Plank');
   assert.match(html, /data-set-mode="time"/);
   assert.match(html, /input-time-node/);
-  assert.match(html, /data-action="cycle-set-mode"/);
   assert.doesNotMatch(html, /input-reps-node/);
+  assert.doesNotMatch(html, /cycle-set-mode/, 'the shape lives in the set sheet');
 });
 
 test('a carry row renders a distance field', () => {
   const html = buildSetRow({ w: '40', dist: 20, mode: 'distance', c: false }, 1, 'Farmer Carry', '', 'kg', 'Farmer Carry');
   assert.match(html, /data-set-mode="distance"/);
   assert.match(html, /input-dist-node/);
-  assert.match(html, /Distance\s*<\/button>/);
+  assert.match(html, /aria-label="Distance for set 2 \(metres\)"/);
 });
 
 test('one-line summaries carry each shape', () => {

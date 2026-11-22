@@ -816,9 +816,9 @@
         <button id="weekNavPrev" class="week-nav-arrow" aria-label="Previous week" disabled>&#8592;</button>
         <div class="week-nav-center">
           <span class="week-nav-eyebrow">Viewing</span>
-          <span id="weekNavLabel" class="week-nav-label">Week 1 · Current</span>
-          <span id="weekNavDates" class="week-nav-dates"></span>
-          <button id="weekNavToday" class="week-nav-today" hidden>Return to this week</button>
+          <span id="weekNavLabel" class="week-nav-label" aria-live="polite">Week 1 · Current</span>
+          <span id="weekNavDates" class="week-nav-dates" aria-live="polite"></span>
+          <button id="weekNavToday" class="week-nav-today hit-target" hidden>Return to this week</button>
         </div>
         <button id="weekNavNext" class="week-nav-arrow" aria-label="Next week" disabled>&#8594;</button>
       </div>
@@ -2279,6 +2279,80 @@
       <button type="button" class="btn-action-block btn-blue mt-0" style="width:100%;" data-action="save-measurements-sheet">Save</button>
     </div>
     <div id="msSheetRecent" class="bw-sheet-recent"></div>
+  </div>
+
+  <!-- Per-set sheet — the row's metadata lives here instead of in an expanding
+       row, so the logger keeps one line per set and one primary action (the
+       tick). Opened by tapping the set number or the PREVIOUS column. -->
+  <div id="setSheetBackdrop" class="sheet-backdrop" data-action="close-set-sheet"></div>
+  <div id="setSheet" class="bottom-sheet set-sheet" role="dialog" aria-labelledby="setSheetTitle" data-modal-root data-modal-close-action="close-set-sheet" data-modal-companion="#setSheetBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="setSheetTitle" class="bottom-sheet-title">Set</h3>
+      <button class="sheet-close-btn" data-action="close-set-sheet" aria-label="Close">✕</button>
+    </div>
+    <p id="setSheetSub" class="set-sheet-sub"></p>
+
+    <p class="set-sheet-lbl">Set type</p>
+    <div class="set-sheet-seg" id="setSheetType" role="group" aria-label="Set type">
+      <button type="button" data-action="set-sheet-type" data-type="">Working</button>
+      <button type="button" data-action="set-sheet-type" data-type="W">Warm-up</button>
+      <button type="button" data-action="set-sheet-type" data-type="D">Drop</button>
+      <button type="button" data-action="set-sheet-type" data-type="F">AMRAP</button>
+    </div>
+
+    <p class="set-sheet-lbl">Value</p>
+    <div class="set-sheet-seg" id="setSheetMode" role="group" aria-label="Set value">
+      <button type="button" data-action="set-sheet-mode" data-mode="reps">Reps</button>
+      <button type="button" data-action="set-sheet-mode" data-mode="time">Time</button>
+      <button type="button" data-action="set-sheet-mode" data-mode="distance">Distance</button>
+    </div>
+
+    <div id="setSheetLoadWrap">
+      <p class="set-sheet-lbl">Load</p>
+      <div class="set-sheet-seg" id="setSheetLoad" role="group" aria-label="Load">
+        <button type="button" data-action="set-sheet-load" data-mode="weighted">Weighted</button>
+        <button type="button" data-action="set-sheet-load" data-mode="bodyweight">Bodyweight</button>
+        <button type="button" data-action="set-sheet-load" data-mode="assisted">Assisted</button>
+        <button type="button" data-action="set-sheet-load" data-mode="band">Band</button>
+      </div>
+    </div>
+
+    <div id="setSheetBasisWrap">
+      <p class="set-sheet-lbl">Weight means</p>
+      <div class="set-sheet-seg" id="setSheetBasis" role="group" aria-label="Weight meaning">
+        <button type="button" data-action="set-sheet-basis" data-basis="each">Each</button>
+        <button type="button" data-action="set-sheet-basis" data-basis="total">Both</button>
+        <button type="button" data-action="set-sheet-basis" data-basis="per-side">Per side</button>
+      </div>
+    </div>
+
+    <p class="set-sheet-lbl">Rest after this set</p>
+    <div class="set-sheet-seg set-sheet-seg--rest" id="setSheetRest" role="group" aria-label="Rest after this set">
+      <button type="button" data-action="set-sheet-rest" data-rest="-1">Default</button>
+      <button type="button" data-action="set-sheet-rest" data-rest="0">Off</button>
+      <button type="button" data-action="set-sheet-rest" data-rest="60">1:00</button>
+      <button type="button" data-action="set-sheet-rest" data-rest="90">1:30</button>
+      <button type="button" data-action="set-sheet-rest" data-rest="120">2:00</button>
+      <button type="button" data-action="set-sheet-rest" data-rest="180">3:00</button>
+    </div>
+
+    <p class="set-sheet-lbl">Effort</p>
+    <div class="set-sheet-seg" id="setSheetRir" role="group" aria-label="Reps in reserve">
+      <button type="button" data-action="set-sheet-rir" data-rir="0">0</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="1">1</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="2">2</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="3">3</button>
+      <button type="button" data-action="set-sheet-rir" data-rir="4">4+</button>
+      <button type="button" class="is-wide" data-action="toggle-set-failure" data-failure-toggle>Failure</button>
+    </div>
+
+    <div class="set-sheet-actions">
+      <button type="button" class="set-sheet-btn" data-action="set-sheet-note">Note <span id="setSheetNoteState"></span></button>
+      <button type="button" class="set-sheet-btn" data-action="set-sheet-custom-rest">Custom rest…</button>
+    </div>
+
+    <button type="button" class="set-sheet-remove" data-action="set-sheet-remove">Remove set</button>
   </div>
 
   <!-- Quick-start sheet — opened from Train; start another workout, run, walk or fast. -->

@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  addDaysISO, dateKey, daysBetween, estimateWeekStart, formatDayMonth, localDayKey,
-  slotDate, slotDateISO, todayKey, weekRangeLabel,
+  addDaysISO, dateKey, daysBetween, estimateWeekStart, formatDayMonth,
+  formatDayMonthShort, localDayKey, slotDate, slotDateISO, todayKey,
 } from '../js/dates.js';
 
 // Monday 2026-06-08 as the week start.
@@ -37,9 +37,18 @@ test('daysBetween counts whole days', () => {
   assert.equal(daysBetween('x', '2026-06-08'), null);
 });
 
-test('weekRangeLabel renders a readable range', () => {
-  assert.equal(weekRangeLabel(MON), 'Jun 8–14');
-  assert.equal(weekRangeLabel('2026-05-25T00:00:00.000Z'), 'May 25–31');
+test('formatDayMonthShort is the one "22 Nov" formatter, with an optional year', () => {
+  assert.equal(formatDayMonthShort('2026-11-22'), '22 Nov');
+  assert.equal(formatDayMonthShort('2026-11-22', { year: true }), '22 Nov 2026');
+  assert.equal(formatDayMonthShort('2026-01-01'), '1 Jan');
+  assert.equal(formatDayMonthShort('2026-01-01', { year: true }), '1 Jan 2026');
+  // Intentional calendar days never shift through a timezone.
+  assert.equal(formatDayMonthShort('2026-07-14'), '14 Jul');
+  // An unreadable key returns '' so callers can label it honestly, never ISO.
+  assert.equal(formatDayMonthShort('2026-02-31'), '');
+  assert.equal(formatDayMonthShort('not-a-date'), '');
+  assert.equal(formatDayMonthShort(null), '');
+  assert.equal(formatDayMonthShort(''), '');
 });
 
 test('local calendar keys honour positive and negative UTC offsets', () => {

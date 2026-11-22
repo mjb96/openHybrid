@@ -2,7 +2,7 @@
 // Date-strict Strength metric details. Program week remains plan metadata;
 // persisted local dates decide chronology and every point retains exact workout
 // evidence. Only valid completed working sets contribute.
-import { addDaysISO, localDayKey, todayKey } from '../dates.js';
+import { addDaysISO, formatDayMonthShort, formatWeekRange, localDayKey, todayKey } from '../dates.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { muscleCreditsForExercise } from '../exercises/catalog.js';
 import { indexSlotsByDate, weekStartOf } from './weekly-aggregate.js';
@@ -116,9 +116,9 @@ function aggregate(metricId, records, allRecords, endDate) {
 function periodFor(definition, today) {
   if (definition.scope === 'calendar-week') {
     const start = weekStartOf(today);
-    return { start, end: today, label: `${start} – ${addDaysISO(start, 6)}`, status: 'Live calendar week' };
+    return { start, end: today, label: formatWeekRange(start, addDaysISO(start, 6)), status: 'Live calendar week' };
   }
-  return { start: addDaysISO(today, -27), end: today, label: `Trailing 28 days · through ${today}`, status: 'Rolling window' };
+  return { start: addDaysISO(today, -27), end: today, label: `Trailing 28 days · through ${formatDayMonthShort(today) || 'Date unavailable'}`, status: 'Rolling window' };
 }
 
 function rangeWeekStarts(records, rangeId, currentWeek) {
@@ -199,6 +199,9 @@ export function buildStrengthMetricDetail(state, metricId, options = {}) {
   return {
     definition, metricId, range, rangeOptions: STRENGTH_RANGE_OPTIONS, value,
     formattedValue: empty ? '—' : formatStrengthMetricValue(definition, value, state),
+    // The visible headline: a bare em dash under "Log workouts…" told the
+    // athlete nothing, so the empty state names what is missing instead.
+    emptyHeadline: 'No workouts',
     period, comparison, series, contributing: currentRecords, empty,
     interpretation: empty ? definition.empty : interpretation,
     exclusions: history.exclusions, recordCount: records.length,

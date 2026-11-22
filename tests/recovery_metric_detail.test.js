@@ -116,6 +116,10 @@ test('an empty domain is honestly empty rather than zero', () => {
   assert.equal(model.value, null);
   assert.equal(model.comparison, null, 'nothing to compare must not fabricate a comparison');
   assert.equal(model.interpretation, recoveryMetricById('recovery.sleep').empty);
+  assert.equal(model.period.label, 'Last 28 days · through 20 Jul');
+  assert.doesNotMatch(model.period.label, /\d{4}-\d{2}-\d{2}/);
+  assert.equal(model.emptyHeadline, 'No check-ins', 'self-reported metrics are check-ins');
+  assert.equal(build({ healthConnect: { hrv: [] } }, 'recovery.hrv').emptyHeadline, 'No readings', 'device metrics are readings');
 });
 
 test('too few readings says so instead of implying a trend', () => {

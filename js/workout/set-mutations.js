@@ -11,6 +11,7 @@
 // out: they coordinate PRs, timers, accordion flow and session completion, which
 // are separate seams rather than simple row mutations.
 // =============================================================================
+import { setRowNumberLabel } from './set-entry.js';
 import { showToast } from '../state.js';
 import { dateKey } from '../dates.js';
 import { numberPromptModal, textPromptModal } from '../ui/confirm-modal.js';
@@ -154,6 +155,36 @@ export function appendWarmupSetRow(btnNode, liftName) {
   rerenderWorkout();
 }
 
+/**
+ * Set a row's shape directly. The set sheet offers the three shapes as a
+ * segment, so it must not have to cycle through the two it does not want.
+ * @param {string} liftName
+ * @param {number} setIndex
+ * @param {'reps'|'time'|'distance'} mode
+ */
+export function setSetMode(liftName, setIndex, mode) {
+  const appState = _getState();
+  if (!appState) return;
+  const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
+  const weekKey = activeWorkoutWeekKey(appState);
+  const set = appState.weeks?.[weekKey]?.lifts?.[selectedDay]?.[liftName]?.[setIndex];
+  if (!set) return;
+  if (setModeOf(set) === mode) return;
+  // A completed row must not stay ticked when the new shape has no value to
+  // show (60×8 is not a hold). Switching back to a shape that still carries its
+  // old value keeps completion; nothing typed is ever deleted.
+  const hasValue = mode === SET_MODE.TIME ? (Number(set.sec) || 0) > 0
+    : mode === SET_MODE.DISTANCE ? (Number(set.dist) || 0) > 0
+    : (parseInt(set.r, 10) || 0) > 0;
+  if (!hasValue) {
+    set.c = false;
+    delete set.isPR;
+  }
+  set.mode = mode;
+  _saveState(true);
+  rerenderWorkout();
+}
+
 /** Cycle a row's shape: Reps → Time → Distance → Reps. */
 export function cycleSetMode(liftName, setIndex) {
   const appState = _getState();
@@ -165,19 +196,7 @@ export function cycleSetMode(liftName, setIndex) {
   const current = setModeOf(set);
   const next = current === SET_MODE.REPS ? SET_MODE.TIME
     : current === SET_MODE.TIME ? SET_MODE.DISTANCE : SET_MODE.REPS;
-  // A completed row must not stay ticked when the new shape has no value to
-  // show (60×8 is not a hold). Switching back to a shape that still carries its
-  // old value keeps completion; nothing typed is ever deleted.
-  const hasValue = next === SET_MODE.TIME ? (Number(set.sec) || 0) > 0
-    : next === SET_MODE.DISTANCE ? (Number(set.dist) || 0) > 0
-    : (parseInt(set.r, 10) || 0) > 0;
-  if (!hasValue) {
-    set.c = false;
-    delete set.isPR;
-  }
-  set.mode = next;
-  _saveState(true);
-  rerenderWorkout();
+  setSetMode(liftName, setIndex, /** @type {any} */ (next));
 }
 
 export function removeCustomSetRow(liftName, setIndex) {
@@ -245,32 +264,45 @@ function _offerSetUndo(undo) {
   _undoSnackTimer = setTimeout(dismiss, 6000);
 }
 
+/**
+ * Set the type directly (the set sheet offers four choices) instead of cycling
+ * through them. Same DOM refresh as the cycle path so the row's colour, label
+ * and stored shape cannot disagree.
+ * @param {string} liftName
+ * @param {number} setIndex
+ * @param {''|'W'|'D'|'F'} type
+ */
+export function setSetType(liftName, setIndex, type) {
+  const next = type === 'W' || type === 'D' || type === 'F' ? type : '';
+  const appState = _getState();
+  const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
+  const weekKey = activeWorkoutWeekKey(appState);
+  const sets = appState.weeks?.[weekKey]?.lifts?.[selectedDay]?.[liftName];
+  if (!sets || setIndex >= sets.length) return;
+  if ((sets[setIndex].type || '') === next) return;
+  sets[setIndex].type = next;
+
+  const exerciseCard = document.querySelector(`.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"]`);
+  const row = exerciseCard?.querySelectorAll('.cockpit-set-row')?.[setIndex];
+  if (row) {
+    row.classList.remove('type-warmup', 'type-dropset', 'type-amrap');
+    if (next === 'W') row.classList.add('type-warmup');
+    else if (next === 'D') row.classList.add('type-dropset');
+    else if (next === 'F') row.classList.add('type-amrap');
+    const label = row.querySelector('.set-num-lbl');
+    if (label) label.textContent = setRowNumberLabel(next, setIndex);
+  }
+  _saveState(true);
+}
+
 export function cycleSetType(liftName, setIndex) {
   const appState = _getState();
   const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
   const weekKey = activeWorkoutWeekKey(appState);
   const sets = appState.weeks?.[weekKey]?.lifts?.[selectedDay]?.[liftName];
   if (!sets || setIndex >= sets.length) return;
-
   const cycle = /** @type {Record<string, string>} */ ({ '': 'W', W: 'D', D: 'F', F: '' });
-  const newType = cycle[sets[setIndex].type || ''];
-  sets[setIndex].type = newType;
-
-  const exerciseCard = document.querySelector(`.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"]`);
-  const row = exerciseCard?.querySelectorAll('.cockpit-set-row')?.[setIndex];
-  if (row) {
-    row.classList.remove('type-warmup', 'type-dropset', 'type-amrap');
-    if (newType === 'W') row.classList.add('type-warmup');
-    else if (newType === 'D') row.classList.add('type-dropset');
-    else if (newType === 'F') row.classList.add('type-amrap');
-    const label = row.querySelector('.set-num-lbl');
-    const pill = row.querySelector('.type-pill');
-    const numberLabels = { '': `S${setIndex + 1}`, W: 'W', D: 'D', F: 'F' };
-    const pillLabels = { '': 'set', W: 'warm', D: 'drop', F: 'amrp' };
-    if (label) label.textContent = numberLabels[newType];
-    if (pill) pill.textContent = pillLabels[newType];
-  }
-  _saveState(true);
+  setSetType(liftName, setIndex, /** @type {any} */ (cycle[sets[setIndex].type || '']));
 }
 
 /** The latest athlete-supplied body weight, or null. Never fabricate a default. */
@@ -296,11 +328,6 @@ function _syncLoadModeRow(liftName, setIndex, set) {
   if (!row) return;
   const mode = resolvedLoadMode(set, liftName);
   row.dataset.loadMode = mode;
-  row.querySelectorAll('.set-load-choice__btn').forEach((button) => {
-    const active = button.getAttribute('data-mode') === mode;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
-  });
   const weightInput = /** @type {HTMLInputElement|null} */ (row.querySelector('.input-weight-node'));
   if (weightInput) weightInput.value = set.w || '';
 }
@@ -417,7 +444,7 @@ export function toggleSetFailure(liftName, setIndex) {
   const row = document.querySelector(
     `.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"] .cockpit-set-row[data-set-index="${setIndex}"]`,
   );
-  row?.querySelector('[data-action="toggle-set-failure"]')?.classList.toggle('is-failure', !!set.failure);
+  row?.setAttribute('data-failure', set.failure ? '1' : '');
 }
 
 /**
@@ -425,6 +452,33 @@ export function toggleSetFailure(liftName, setIndex) {
  * dumbbell) and Both (the entered number is the pair total). Volume only; e1RM
  * remains per-implement. Legacy completed sets with no basis read as Both.
  */
+/**
+ * Set what the entered weight means. The set sheet offers all three choices as
+ * a segment, so this takes the value directly instead of cycling — `nextBasis`
+ * only ever toggles between the exercise's primary basis and `total`, which
+ * would make "Per side" unreachable on a dumbbell lift.
+ * @param {string} liftName
+ * @param {number} setIndex
+ * @param {'each'|'total'|'per-side'} basis
+ */
+export function setLoadBasis(liftName, setIndex, basis) {
+  const appState = _getState();
+  const day = _getSelectedDay();
+  const weekKey = activeWorkoutWeekKey(appState);
+  const sets = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName];
+  if (!sets || !sets[setIndex]) return;
+  const set = sets[setIndex];
+  const current = normalizeBasis(set.basis || (set.c ? 'total' : defaultBasisForExercise(liftName)));
+  const next = normalizeBasis(basis);
+  if (current === next) return;
+  set.basis = next;
+  _saveState(true);
+  const row = document.querySelector(
+    `.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"] .cockpit-set-row[data-set-index="${setIndex}"]`,
+  );
+  if (row) row.setAttribute('data-load-basis', next);
+}
+
 export function toggleLoadBasis(liftName, setIndex) {
   const appState = _getState();
   const day = _getSelectedDay();
@@ -433,26 +487,7 @@ export function toggleLoadBasis(liftName, setIndex) {
   if (!sets || !sets[setIndex]) return;
   const set = sets[setIndex];
   const current = normalizeBasis(set.basis || (set.c ? 'total' : defaultBasisForExercise(liftName)));
-  const next = nextBasis(liftName, current);
-  set.basis = next;
-  _saveState(true);
-  const row = document.querySelector(
-    `.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"] .cockpit-set-row[data-set-index="${setIndex}"]`,
-  );
-  if (row) {
-    row.setAttribute('data-load-basis', next);
-    const button = row.querySelector('[data-action="toggle-load-basis"]');
-    if (button) {
-      button.textContent = next === 'each' ? 'Each' : next === 'per-side' ? 'Per side' : 'Both';
-      button.classList.toggle('is-each', next !== 'total');
-      button.setAttribute('aria-pressed', String(next !== 'total'));
-      button.setAttribute('title', next === 'each'
-        ? 'The entered weight is per dumbbell'
-        : next === 'per-side'
-          ? 'The entered weight is for the working side'
-          : 'The entered weight is the pair total');
-    }
-  }
+  setLoadBasis(liftName, setIndex, /** @type {any} */ (nextBasis(liftName, current)));
 }
 
 function _setAt(liftName, setIndex) {
@@ -468,31 +503,25 @@ function _syncSetMetaRow(liftName, setIndex) {
   );
   if (!row) return;
   const set = _setAt(liftName, setIndex).sets?.[setIndex] || {};
-  const restButton = row.querySelector('[data-action="edit-set-rest"]');
-  const restReset = row.querySelector('[data-action="clear-set-rest"]');
+  // The row states its rest as an attribute; the set sheet reads it back and
+  // the accessibility label uses it. The visible control lives in the sheet, so
+  // this must be updated here rather than by rewriting a button that no longer
+  // exists in the row.
   const rest = Number(set.restSec);
-  if (restButton) {
-    restButton.textContent = set.restSec == null
-      ? 'Rest default'
-      : rest <= 0 ? 'Rest off' : `Rest ${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`;
-    restButton.classList.toggle('has-rest', set.restSec != null);
-  }
-  if (restReset) {
-    if (set.restSec == null) restReset.setAttribute('hidden', '');
-    else restReset.removeAttribute('hidden');
-  }
-  const noteButton = row.querySelector('[data-action="edit-set-note"]');
-  if (noteButton) {
-    noteButton.textContent = set.note ? 'Note ✓' : 'Note';
-    noteButton.classList.toggle('has-note', !!set.note);
-  }
+  row.setAttribute('data-rest-label', set.restSec == null
+    ? 'Rest default'
+    : rest <= 0 ? 'Rest off' : `Rest ${Math.floor(rest / 60)}:${String(rest % 60).padStart(2, '0')}`);
+  row.querySelector('.set-num-lbl')?.setAttribute(
+    'aria-label',
+    `Set ${setIndex + 1} options: ${(row.getAttribute('data-rest-label') || '').toLowerCase()}`,
+  );
   let noteEl = row.querySelector('.set-note');
   if (set.note) {
     if (!noteEl) {
       noteEl = document.createElement('div');
       noteEl.className = 'set-note';
-      const adv = row.querySelector('.set-adv-row');
-      if (adv) row.insertBefore(noteEl, adv);
+      const plate = row.querySelector('.set-plate-line');
+      if (plate) row.insertBefore(noteEl, plate);
       else row.appendChild(noteEl);
     }
     noteEl.textContent = set.note;
@@ -566,11 +595,4 @@ export function setPerSetRir(liftName, setIndex, rir) {
   sets[setIndex].rir = cleared ? null : rir;
   sets[setIndex].rpe = cleared ? null : 10 - rir;
   _saveState(true);
-
-  const row = document.querySelector(
-    `.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"] .cockpit-set-row[data-set-index="${setIndex}"]`,
-  );
-  row?.querySelectorAll('.btn-rpe').forEach((button) => {
-    button.classList.toggle('rpe-selected', parseInt(button.getAttribute('data-rir'), 10) === sets[setIndex].rir);
-  });
 }

@@ -174,7 +174,13 @@ try {
     // Train opens on its landing; this check is about COCKPIT ergonomics, so
     // enter the cockpit deterministically via the landing's Workout quick start
     // (present regardless of whether today is a training or rest day).
-    await page.click('#trainLanding .tl-today__primary');
+    if (await page.locator('#trainLanding [data-action="select-program-workout"][data-day="thu"]').count()) {
+      await page.click('#trainLanding [data-action="select-program-workout"][data-day="thu"]');
+      await page.waitForTimeout(400);
+    }
+    if (!(await page.locator('#trainCockpit:not([hidden])').count())) {
+      await page.click('#trainLanding .tl-today__primary');
+    }
     await page.waitForSelector('#trainCockpit:not([hidden])');
     const trainCurrent = await page.$$eval('.bottom-nav [aria-current="page"]', (items) => items.map((item) => item.textContent.trim()));
     check(trainCurrent.join('|') === 'Train', `workout ${width}px: aria-current was ${trainCurrent.join('|')}`);
@@ -183,24 +189,34 @@ try {
     // depend on which weekday the suite happens to run on — today could be a Rest
     // day with no exercises to inspect.
     await page.click('#view-workout .day-pill[data-day="thu"]');
-    await page.waitForSelector('#view-workout .cockpit-exercise:has(.set-load-choice)');
-    await inspect(page, `workout ${width}px`, ['#view-workout .day-pill', '#view-workout #startWorkoutBtn', '#view-workout .train-quick-start-btn', '#view-workout .set-num-lbl[data-action="quick-log"]', '#view-workout .gym-check-wrap', '#view-workout .btn-set-more']);
+    await page.waitForSelector('#view-workout .cockpit-exercise');
+    await inspect(page, `workout ${width}px`, ['#view-workout .day-pill', '#view-workout #startWorkoutBtn', '#view-workout .train-quick-start-btn', '#view-workout .set-num-lbl', '#view-workout .gym-check-wrap']);
     if (width === 360) {
-      const bodyweightCard = page.locator('#view-workout .cockpit-exercise:has(.set-load-choice)').first();
-      if (await bodyweightCard.evaluate((card) => card.classList.contains('collapsed'))) {
-        await bodyweightCard.locator('.cockpit-header-clickzone').click();
-      }
-      const bodyweightRow = bodyweightCard.locator('.cockpit-set-row:has(.set-load-choice)').first();
-      check(await bodyweightRow.count() === 1, 'workout 360px: no direct bodyweight load-mode row');
-      if (await bodyweightRow.count()) {
-        const labels = await bodyweightRow.locator('.set-load-choice__btn').allTextContents();
-        check(labels.join('|') === 'Bodyweight|Weighted|Assisted', `workout 360px: load modes were ${labels.join('|')}`);
-        await inspect(page, 'workout load modes 360px', ['#view-workout .set-load-choice__btn']);
-        const quick = bodyweightRow.locator('.set-num-lbl[data-action="quick-log"]');
-        check(/^Log S1$/.test((await quick.textContent() || '').trim()), 'workout 360px: set shortcut is not visibly labelled Log S1');
-        await bodyweightRow.locator('.set-load-choice__btn[data-mode="bodyweight"]').click();
+      // Set metadata now lives in the per-set sheet, so the bodyweight path is
+      // exercised the way an athlete reaches it: tap the set number, choose the
+      // load, close, then tick. The tick must still stamp the same metadata the
+      // old inline shortcut did. Dips is Thursday's first bodyweight movement —
+      // Pull-Ups live on Tuesday, so naming that card here silently depended on
+      // the old check's "first card with a load choice" shortcut.
+      const bodyweightCard = page.locator('#view-workout .cockpit-exercise[data-liftname="Dips"]').first();
+      check(await bodyweightCard.count() === 1, 'workout 360px: the Dips card is missing from Thursday');
+      if (await bodyweightCard.count()) {
+        if (await bodyweightCard.evaluate((card) => card.classList.contains('collapsed'))) {
+          await bodyweightCard.locator('.cockpit-header-clickzone').click();
+        }
+        const bodyweightRow = bodyweightCard.locator('.cockpit-set-row').first();
+        await bodyweightRow.locator('.set-num-lbl').click();
+        await page.waitForSelector('#setSheet.active', { timeout: 5000 });
+        const labels = await page.locator('#setSheetLoad button').allTextContents();
+        check(labels.join('|') === 'Weighted|Bodyweight|Assisted|Band', `workout 360px: load modes were ${labels.join('|')}`);
+        await inspect(page, 'set sheet 360px', ['#setSheetLoad button', '#setSheetType button', '#setSheet .sheet-close-btn']);
+        await page.locator('#setSheetLoad button[data-mode="bodyweight"]').click();
+        await page.waitForTimeout(150);
+        await page.click('#setSheet .sheet-close-btn');
+        await page.waitForTimeout(150);
         await bodyweightRow.locator('.input-reps-node').fill('5');
-        await quick.click();
+        await bodyweightRow.locator('.gym-check').click();
+        await page.waitForTimeout(250);
         const logged = await bodyweightRow.evaluate(async (row) => {
           const lift = row.closest('.cockpit-exercise')?.getAttribute('data-liftname');
           const index = Number.parseInt(row.getAttribute('data-set-index') || '0', 10);
@@ -227,9 +243,15 @@ try {
   // The Train landing is itself a primary surface at 200% text, so assert it
   // BEFORE stepping into the cockpit — it is where the tab now opens.
   await inspect(page, 'train landing 360px @200% text', ['#trainLanding .tl-today__primary', '#trainLanding .tl-quick__item', '#trainLanding .tl-section__more']);
-  await page.click('#trainLanding .tl-today__primary');
+  if (await page.locator('#trainLanding [data-action="select-program-workout"][data-day="thu"]').count()) {
+    await page.click('#trainLanding [data-action="select-program-workout"][data-day="thu"]');
+    await page.waitForTimeout(400);
+  }
+  if (!(await page.locator('#trainCockpit:not([hidden])').count())) {
+    await page.click('#trainLanding .tl-today__primary');
+  }
   await page.waitForSelector('#trainCockpit:not([hidden])');
-  await inspect(page, 'workout 360px @200% text', ['#view-workout .day-pill', '#view-workout #startWorkoutBtn', '#view-workout .set-num-lbl[data-action="quick-log"]', '#view-workout .gym-check-wrap', '#view-workout .btn-set-more']);
+  await inspect(page, 'workout 360px @200% text', ['#view-workout .day-pill', '#view-workout #startWorkoutBtn', '#view-workout .set-num-lbl', '#view-workout .gym-check-wrap']);
   await context.close();
 } catch (error) {
   failures.push(error?.stack || error?.message || String(error));

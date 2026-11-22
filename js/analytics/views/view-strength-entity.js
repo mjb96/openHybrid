@@ -11,11 +11,17 @@ import { VOLUME_LANDMARKS, zoneLabel, classifyVolume } from '../calculations/vol
 import { esc } from './screen-kit.js';
 import { buildVolumeGuideModel, musclePriorityLabel, muscleVolumeCorridor } from '../volume-guide.js';
 import { resolveProgramForState } from '../../state.js';
+import { formatWeekRange } from '../../dates.js';
 
 /** @type {'12w'|'6m'|'all'} */
 let _exerciseRange = '12w';
 
-const fmtDate = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+const fmtDate = (iso) => {
+  if (!iso) return 'Date unavailable';
+  const parsed = new Date(`${iso}T12:00:00`);
+  if (Number.isNaN(parsed.getTime())) return 'Date unavailable';
+  return parsed.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+};
 const fmtVolume = (value, unit) => `${Math.round(value).toLocaleString()} ${unit}`;
 const muscleName = (id) => String(id || '').replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
 function fmtNumber(value) {
@@ -172,7 +178,7 @@ export function renderMuscleDetail(state, entity = {}, weekStart) {
   const contributingExercises = current.exerciseCredits || [];
 
   root.innerHTML = `<header class="an-detail-head"><div><span class="an-detail-kicker">Muscle analytics</span><h2>${esc(name)}</h2></div><span class="an-period-status ${model.isCurrentWeek ? 'is-live' : ''}">${model.status}</span></header>
-    <p class="an-detail-period">${fmtDate(model.weekStart)} – ${fmtDate(model.weekEnd)}</p>
+    <p class="an-detail-period">${formatWeekRange(model.weekStart, model.weekEnd) || 'Date unavailable'}</p>
     <section class="an-volume-summary" aria-label="Estimated muscle-set summary">
       <article><span>Total set credits</span><strong>${current.totalSetCredits.toFixed(1)}</strong></article>
       <article><span>Direct sets</span><strong>${current.directSets.toFixed(1)}</strong></article>
