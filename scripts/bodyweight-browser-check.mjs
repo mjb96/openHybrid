@@ -202,6 +202,8 @@ try {
   await page.fill('#msSheet_glutes', '100');
   await page.fill('#msSheet_arm_l', '34');
   await page.fill('#msSheet_arm_r', '35');
+  await page.fill('#msSheet_forearm_l', '27');
+  await page.fill('#msSheet_forearm_r', '28');
   await page.fill('#msSheet_thigh_l', '55');
   await page.fill('#msSheet_thigh_r', '56');
   await page.fill('#msSheet_calf_l', '37');
@@ -216,6 +218,7 @@ try {
     return Number(day?.waist) === 84.5 && Number(day?.chest) === 102 && Number(day?.bodyFat) === 18.4
       && Number(day?.shoulders) === 120 && Number(day?.glutes) === 100
       && Number(day?.arm_l) === 34 && Number(day?.arm_r) === 35
+      && Number(day?.forearm_l) === 27 && Number(day?.forearm_r) === 28
       && Number(day?.thigh_l) === 55 && Number(day?.thigh_r) === 56
       && Number(day?.calf_l) === 37 && Number(day?.calf_r) === 38;
   }, STORAGE_KEY);
@@ -236,6 +239,8 @@ try {
   ok(/100\.0 cm/.test(await cardText()), 'the card shows glutes');
   ok(/arm l/i.test(await cardText()) && /34\.0 cm/.test(await cardText()), 'the card shows the left arm reading');
   ok(/arm r/i.test(await cardText()) && /35\.0 cm/.test(await cardText()), 'the card shows the right arm reading');
+  ok(/forearm l/i.test(await cardText()) && /27\.0 cm/.test(await cardText()), 'the card shows the left forearm reading');
+  ok(/forearm r/i.test(await cardText()) && /28\.0 cm/.test(await cardText()), 'the card shows the right forearm reading');
   ok(/thigh l/i.test(await cardText()) && /55\.0 cm/.test(await cardText()), 'the card shows the left thigh reading');
   ok(/calf r/i.test(await cardText()) && /38\.0 cm/.test(await cardText()), 'the card shows the right calf reading');
   ok(/body fat/i.test(await cardText()) && /18[.]4\s*%/.test(await cardText()), 'the card shows the entered body fat percentage');
@@ -268,6 +273,11 @@ try {
   await page.locator('#msSheetDate').dispatchEvent('change');
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Edit measurements', 'the legacy date opens in edit mode');
   ok((await page.locator('#msSheet_waist').inputValue()) === '', 'the legacy date has no canonical reading to prefill');
+  const legacyDetails = await page.evaluate(() => {
+    const more = document.querySelector('#measurementsSheet .ms-sheet-more');
+    return { open: more?.open ?? null, summary: more?.querySelector('summary')?.textContent || '' };
+  });
+  ok(legacyDetails.open === false && !/recorded/.test(legacyDetails.summary), 'a legacy-only date keeps the disclosure closed');
   await page.fill('#msSheet_waist', '81');
   await page.click('[data-action="save-measurements-sheet"]');
   await page.waitForFunction((key) => {
@@ -285,14 +295,26 @@ try {
   ok((await page.locator('#msSheet_waist').inputValue()) === '84.5', 'an existing date prefills its own numbers');
   ok((await page.locator('#msSheet_bodyFat').inputValue()) === '18.4', 'an existing date prefills its body fat');
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Edit measurements', 'an existing date opens in edit mode');
+  const bilateralOpen = await page.evaluate(() => {
+    const more = document.querySelector('#measurementsSheet .ms-sheet-more');
+    return { open: more?.open ?? null, summary: more?.querySelector('summary')?.textContent || '' };
+  });
+  ok(bilateralOpen.open === true, 'editing a date with bilateral readings opens the disclosure');
+  ok(/8 recorded/.test(bilateralOpen.summary), 'the disclosure echoes the recorded bilateral count (8)');
   await page.fill('#msSheetDate', '2026-11-10');
   await page.locator('#msSheetDate').dispatchEvent('change');
   ok((await page.locator('#msSheet_waist').inputValue()) === '', 'another date starts blank instead of copying today');
   ok((await page.locator('#msSheet_bodyFat').inputValue()) === '', 'another date starts with a blank body fat field');
   ok((await page.locator('#msSheet_bodyFat').getAttribute('placeholder')) === '%', 'a future body-fat reading is never a placeholder for an earlier date');
   ok((await page.locator('#measurementsSheetTitle').innerText()) === 'Log measurements', 'another date opens in log mode');
+  const oneBilateral = await page.evaluate(() => {
+    const more = document.querySelector('#measurementsSheet .ms-sheet-more');
+    return { open: more?.open ?? null, summary: more?.querySelector('summary')?.textContent || '' };
+  });
+  ok(oneBilateral.open === false && !/recorded/.test(oneBilateral.summary), 'a new date starts with the disclosure closed');
   await page.fill('#msSheet_waist', '85.5');
   await page.fill('#msSheet_bodyFat', '19.0');
+  await ensureBilateralOpen(page);
   await page.fill('#msSheet_arm_l', '33');
   await page.click('[data-action="save-measurements-sheet"]');
   await page.waitForFunction((key) => {
@@ -323,10 +345,23 @@ try {
       pressed: cells[0]?.getAttribute('aria-pressed') || '',
     };
   });
-  ok(siteTargets.count === 13, `every measured site and body fat is a control (${siteTargets.count})`);
+  ok(siteTargets.count === 15, `every measured site and body fat is a control (${siteTargets.count})`);
   ok(siteTargets.minHeight >= 44, `the smallest site control is ${Math.round(siteTargets.minHeight)}px, at least 44px`);
   ok(siteTargets.tags.length === 1 && siteTargets.tags[0] === 'BUTTON', 'site cells are buttons');
   ok(siteTargets.action === 'measurement-site' && siteTargets.pressed === 'false', 'a site control starts unpressed');
+
+  const forearmLeft = '#bwMeasurements [data-action="measurement-site"][data-site="forearm_l"]';
+  await page.click(forearmLeft);
+  await page.waitForSelector('#bwMsTrend .bw-ms-trend-note');
+  ok(await page.evaluate(() => {
+    const button = document.querySelector('#bwMeasurements [data-action="measurement-site"][data-site="forearm_l"]');
+    const container = document.getElementById('bwMsTrend');
+    return button?.getAttribute('aria-pressed') === 'true'
+      && !container?.querySelector('svg')
+      && /One Forearm L reading logged \(27\.0 cm\)\. Log another to see the trend\./.test(container?.textContent || '');
+  }), 'a one-reading site explains the missing trend instead of drawing a line');
+  await page.click(forearmLeft);
+  await page.waitForFunction(() => document.getElementById('bwMsTrend')?.hidden === true);
 
   const armLeft = '#bwMeasurements [data-action="measurement-site"][data-site="arm_l"]';
   await page.click(armLeft);
@@ -359,7 +394,7 @@ try {
 
   if (trendShotPath) {
     await page.waitForTimeout(2600);
-    await page.evaluate(() => document.getElementById('bwMeasurements')?.scrollIntoView({ block: 'center' }));
+    await page.evaluate(() => document.getElementById('bwMsTrend')?.scrollIntoView({ block: 'center' }));
     await mkdir(path.dirname(trendShotPath), { recursive: true });
     await page.screenshot({ path: trendShotPath });
     console.log(`  shot · ${trendShotPath}`);
@@ -378,7 +413,7 @@ try {
   await page.waitForSelector('#bwMsTrend svg');
   ok(await page.evaluate(() => {
     const container = document.getElementById('bwMsTrend');
-    return /Body fat trend in %/.test(container?.innerHTML || '')
+    return /Body fat trend \(%\)/.test(container?.innerHTML || '')
       && /%<\/text>/.test(container?.innerHTML || '');
   }), 'body fat uses the percentage scale');
   await page.click('#bwMeasurements [data-action="measurement-site"][data-site="bodyFat"]');
@@ -397,6 +432,30 @@ try {
     const stored = JSON.parse(localStorage.getItem(key) || '{}');
     return stored.bodyMeasurements?.find((entry) => entry.date === '2026-11-19')?.bodyFat === 18.4;
   }, STORAGE_KEY), 'changing the unit never rewrites stored body fat');
+
+  const armDeltaIn = page.locator('#bwMeasurements [data-site="arm_l"] .bw-ms-delta');
+  ok((await armDeltaIn.innerText()) === '+0.4', 'the card delta converts to inches too (+0.4, not +1)');
+  await page.click(armLeft);
+  await page.waitForSelector('#bwMsTrend svg');
+  const inchTrend = await page.evaluate(() => {
+    const container = document.getElementById('bwMsTrend');
+    return {
+      text: container?.textContent || '',
+      aria: container?.querySelector('svg')?.getAttribute('aria-label') || '',
+    };
+  });
+  ok(/13\.0 in/.test(inchTrend.text) && /13\.4 in/.test(inchTrend.text) && !/cm/.test(inchTrend.text),
+    'the open chart repaints with inch values and no centimetre label');
+  ok(/Arm L trend \(in\): 13\.0 in on 10\/11, 13\.4 in on 19\/11, \+0\.4 in/.test(inchTrend.aria),
+    'the chart aria-label carries the display unit, first/latest and change');
+  await page.click(armLeft);
+  await page.waitForFunction(() => document.getElementById('bwMsTrend')?.hidden === true);
+  await page.click(forearmLeft);
+  await page.waitForSelector('#bwMsTrend .bw-ms-trend-note');
+  ok(/10\.6 in/.test(await page.locator('#bwMsTrend').innerText()) && !/cm/.test(await page.locator('#bwMsTrend').innerText()),
+    'a one-reading note uses the active display unit too');
+  await page.click(forearmLeft);
+  await page.waitForFunction(() => document.getElementById('bwMsTrend')?.hidden === true);
 
   await page.click('#bwMeasurements [data-action="measurement-unit"][data-unit="cm"]');
   await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.settings?.measurementUnit === 'cm', STORAGE_KEY);
@@ -422,9 +481,15 @@ try {
   await page.locator('#msSheetDate').dispatchEvent('change');
   ok((await page.locator('#msSheet_bodyFat').inputValue()) === '', 'a date without a body-fat entry starts blank');
   ok((await page.locator('#msSheet_bodyFat').getAttribute('placeholder')) === '19', 'the placeholder is the latest body-fat reading on or before the chosen date');
+  ok((await page.locator('#msSheet_waist').getAttribute('placeholder')) === '85.5', 'the tape placeholder is the latest reading on or before a back-dated entry');
+  ok((await page.locator('#msSheet_arm_l').getAttribute('placeholder')) === '33', 'the bilateral placeholder is also on or before, not the newest');
   await page.fill('#msSheetDate', '2026-11-05');
   await page.locator('#msSheetDate').dispatchEvent('change');
   ok((await page.locator('#msSheet_bodyFat').getAttribute('placeholder')) === '%', 'no body-fat reading is offered before the first one');
+  await page.fill('#msSheetDate', '2026-11-04');
+  await page.locator('#msSheetDate').dispatchEvent('change');
+  ok((await page.locator('#msSheet_waist').getAttribute('placeholder')) === 'cm', 'no tape reading is suggested before the first one');
+  ok((await page.locator('#msSheet_bodyFat').getAttribute('placeholder')) === '%', 'no body-fat reading is suggested before the first one either');
   await page.click('#measurementsSheet .sheet-close-btn');
   await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'));
 
@@ -434,8 +499,14 @@ try {
   await page.waitForSelector('#measurementsSheet.active');
   await page.fill('#msSheetDate', '2026-11-10');
   await page.locator('#msSheetDate').dispatchEvent('change');
+  const reEditBilateral = await page.evaluate(() => {
+    const more = document.querySelector('#measurementsSheet .ms-sheet-more');
+    return { open: more?.open ?? null, summary: more?.querySelector('summary')?.textContent || '' };
+  });
+  ok(reEditBilateral.open === true && /1 recorded/.test(reEditBilateral.summary), 'editing the saved date reopens the disclosure and counts 1');
   ok((await page.locator('#msSheetRecent .bw-sheet-recent-row').count()) >= 1, 'other measurement dates are one tap away');
   ok((await page.locator('[data-action="delete-ms-row"]').first().getAttribute('data-date')) === '2026-11-19', 'the body-fat date is listed for deletion');
+  ok(/\+9 more/.test(await page.locator('#msSheetRecent .bw-sheet-recent-row strong').first().innerText()), 'a recent summary caps at four values plus the remaining count');
   await page.click('[data-action="delete-ms-row"]');
   await page.waitForSelector('.cmodal [data-cm="ok"]');
   await page.click('.cmodal [data-cm="ok"]');
@@ -569,6 +640,8 @@ try {
   await lightPage.waitForSelector('#view-analytics.active');
   await lightPage.click('#view-analytics [data-action="open-analytics"][data-context="bodyweight"]:visible');
   await lightPage.waitForSelector('#analytics-bodyweight.active');
+  await lightPage.click('#bwMeasurements [data-action="measurement-site"][data-site="waist"]');
+  await lightPage.waitForSelector('#bwMsTrend svg');
   await lightPage.click('#analytics-bodyweight [data-action="open-ms-sheet"]');
   await lightPage.waitForSelector('#measurementsSheet.active');
   const lightContrast = await lightPage.evaluate(() => {
@@ -615,11 +688,30 @@ try {
         background: `rgb(${Math.round(bg.r)}, ${Math.round(bg.g)}, ${Math.round(bg.b)})`,
       };
     };
+    // Non-text graphics: measure the stroke/fill against the same composited
+    // surface the text uses.
+    const measurePaint = (selector, property) => {
+      const el = document.querySelector(selector);
+      if (!el) return null;
+      const paint = parse(getComputedStyle(el)[property]);
+      if (!paint) return null;
+      const bg = backgroundOf(el);
+      const drawn = composite(paint, bg);
+      const light = luminance(drawn);
+      const dark = luminance(bg);
+      return {
+        ratio: Math.round(((Math.max(light, dark) + 0.05) / (Math.min(light, dark) + 0.05)) * 100) / 100,
+        color: getComputedStyle(el)[property],
+        background: `rgb(${Math.round(bg.r)}, ${Math.round(bg.g)}, ${Math.round(bg.b)})`,
+      };
+    };
     return {
       theme: document.documentElement.getAttribute('data-theme'),
       label: measure('#measurementsSheet .ms-sheet-field--bodyfat > span'),
       percent: measure('#bwMeasurements .bw-ms-site--bodyfat strong small'),
       delta: measure('#bwMeasurements .bw-ms-site--bodyfat .bw-ms-delta'),
+      line: measurePaint('#bwMsTrend path.bw-site-line', 'stroke'),
+      dot: measurePaint('#bwMsTrend circle.bw-site-dot', 'fill'),
     };
   });
   const lightResult = (entry) => `${entry.ratio}:1 (${entry.color} on ${entry.background})`;
@@ -627,6 +719,8 @@ try {
   ok(lightContrast.label?.ratio >= 4.5, `the body-fat sheet label passes light contrast ${lightResult(lightContrast.label || {})}`);
   ok(lightContrast.percent?.ratio >= 4.5, `the card body-fat % passes light contrast ${lightResult(lightContrast.percent || {})}`);
   ok(lightContrast.delta?.ratio >= 4.5, `the card delta passes light contrast ${lightResult(lightContrast.delta || {})}`);
+  ok(lightContrast.line?.ratio >= 3, `the trend line passes light non-text contrast ${lightResult(lightContrast.line || {})}`);
+  ok(lightContrast.dot?.ratio >= 3, `the trend dots pass light non-text contrast ${lightResult(lightContrast.dot || {})}`);
   ok((await lightPage.locator('#bwMeasurements .bw-ms-site--bodyfat .bw-ms-delta').innerText()) === '-0.6 pp', 'the light card also reports -0.6 pp');
   ok(lightErrors.length === 0, `no light-context page errors (${lightErrors.join('; ') || 'none'})`);
   await lightContext.close();

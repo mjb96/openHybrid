@@ -24,6 +24,9 @@ import {
 
 let _render = () => {};
 
+/** The eight sites inside the disclosure; used for the auto-open count. */
+const BILATERAL_SITES = MEASUREMENT_SITES.filter((site) => site.key.endsWith('_l') || site.key.endsWith('_r'));
+
 /** @param {() => void} render */
 export function initMeasurementsSheet(render) {
   _render = typeof render === 'function' ? render : () => {};
@@ -56,7 +59,6 @@ function inputFor(key) {
 function fillSheet(chosen) {
   const newest = entries();
   const existing = newest.find((entry) => entry.date === chosen);
-  const latest = newest[0];
   const unit = measurementUnit(appState);
 
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('msSheetDate'));
@@ -70,12 +72,28 @@ function fillSheet(chosen) {
     const input = inputFor(site.key);
     if (!input) continue;
     const own = existing?.[site.key];
-    const last = latest?.[site.key];
+    // The last reading ON OR BEFORE the chosen date, never a future one: a
+    // back-dated entry must not be suggested this week's tape.
+    const last = newest.find((entry) => entry.date <= chosen && typeof entry[site.key] === 'number')?.[site.key];
     input.value = typeof own === 'number' ? String(roundDisplay(cmToDisplay(own, unit), unit)) : '';
     input.placeholder = typeof last === 'number'
       ? String(roundDisplay(cmToDisplay(last, unit), unit))
       : unit;
     input.setAttribute('aria-label', `${site.label} (${unit})`);
+  }
+
+  // Stored bilateral values are behind the disclosure; opening it on an edit
+  // makes them visible instead of silently hiding half the record.
+  const details = /** @type {HTMLDetailsElement|null} */ (document.querySelector('#measurementsSheet .ms-sheet-more'));
+  if (details) {
+    const recorded = BILATERAL_SITES.filter((site) => typeof existing?.[site.key] === 'number').length;
+    details.open = recorded > 0;
+    const summary = details.querySelector('summary');
+    if (summary) {
+      summary.textContent = recorded
+        ? `Arms, thighs and calves · ${recorded} recorded`
+        : 'Arms, thighs and calves';
+    }
   }
 
   // Body fat is a percentage, so it is neither converted by the cm/in toggle

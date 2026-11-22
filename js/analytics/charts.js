@@ -527,8 +527,14 @@ export function renderSiteTrend(container, points, options = {}) {
   const dateLabels = labelIndexes.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 7}" text-anchor="${index === 0 ? 'start' : index === readings.length - 1 ? 'end' : 'middle'}" font-size="9.5">${formatDayMonth(readings[index].date)}</text>`).join('');
   const line = readings.map((reading, index) => `${index === 0 ? 'M' : 'L'}${xs[index].toFixed(1)},${toY(reading.value).toFixed(1)}`).join(' ');
   const dots = readings.map((reading, index) => `<circle class="bw-site-dot" cx="${xs[index].toFixed(1)}" cy="${toY(reading.value).toFixed(1)}" r="2.8"><title>${reading.date} · ${formatValue(reading.value)}</title></circle>`).join('');
+  const first = readings[0];
+  const latest = readings[readings.length - 1];
+  const change = latest.value - first.value;
+  const ariaLabel = `${label} trend (${unit}): ${formatValue(first.value)} on ${formatDayMonth(first.date)}, `
+    + `${formatValue(latest.value)} on ${formatDayMonth(latest.date)}, `
+    + `${change > 0 ? '+' : ''}${formatValue(change)}`;
 
-  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="${label} trend in ${unit}">`
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="${ariaLabel}">`
     + grid
     + `<path class="bw-site-line" d="${line}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
     + dots + dateLabels

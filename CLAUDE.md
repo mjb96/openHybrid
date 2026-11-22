@@ -180,17 +180,24 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   is seeded by v12→v13 from the existing weight unit. The sheet
   (`js/measurements-sheet.js`) shows six primary fields and puts the eight
   bilateral fields behind “Arms, thighs and calves”. It prefills an existing
-  date exactly and leaves a new date blank (the last reading is only a
-  placeholder; for body fat it is the latest reading ON OR BEFORE the date) —
-  changing the date must reload the fields. The pre-14-site single `arm`/`thigh`
-  readings are `LEGACY_MEASUREMENT_SITES` (“Arm (old)”/“Thigh (old)”): readable,
-  shown on the card and exported, never an input, and `preserveLegacySites`
-  carries them across an edit so adding a waist cannot drop them. Every measured
-  cell is a 44px button: `showMeasurementTrend` opens one site at a time in
-  `#bwMsTrend` from the last rendered model (a second tap collapses it) and
-  `renderSiteTrend` draws a dependency-free SVG line oldest → newest, min/mid/max
-  and date labels, body fat on a percentage scale, and a note rather than a line
-  under two readings. A cm/in toggle repaints the open trend in the new unit.
+  date exactly and leaves a new date blank (each placeholder is that site's
+  latest reading ON OR BEFORE the chosen date, tape and body fat alike) —
+  changing the date must reload the fields. Editing a date with bilateral
+  readings opens the disclosure and echoes the count; a new or legacy-only date
+  keeps it closed. The pre-14-site single `arm`/`thigh` readings are
+  `LEGACY_MEASUREMENT_SITES` (“Arm (old)”/“Thigh (old)”): readable, shown on the
+  card and exported, never an input, and `preserveLegacySites` carries them
+  across an edit so adding a waist cannot drop them. A wrong old reading can
+  only be removed by deleting the whole date; the sheet hint says so. Every
+  measured cell is a 44px button: `showMeasurementTrend` opens one site at a time
+  in `#bwMsTrend` from the last rendered model (a second tap collapses it) and
+  `renderSiteTrend` draws a dependency-free SVG line oldest → newest,
+  min/mid/max and date labels, body fat on a percentage scale, and a note rather
+  than a line under two readings. The view converts stored centimetres to the
+  display unit before calling the chart (site points and deltas); `renderSiteTrend`
+  never converts, and its `role="img"` label carries the unit, first/latest
+  readings, dates and change. A cm/in toggle repaints the open trend in the new
+  unit. Light mode overrides the line/dot to `#155e75` (5.76:1 measured).
   `buildMeasurementsCsv` exports the raw centimetres (14 canonical columns, then
   Arm/Thigh, then body fat) from Settings → Data, and
   `js/portability/import-measurements-csv.js` reads that shape back

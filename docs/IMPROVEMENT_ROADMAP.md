@@ -671,9 +671,37 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,318 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,319 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — 14-site review fixes: display units, disclosure, trend labels.**
+  - The per-site chart now receives DISPLAY values: `measurementTrendData`
+    converts stored centimetres with `cmToDisplay` before `renderSiteTrend`, and
+    the chart never converts. A cm→in toggle repaints the open trend at 13.0 in
+    / 13.4 in (fixture) instead of relabelling centimetres as inches. The site
+    delta uses the same boundary, so Arm L reads `+0.4` in inch mode, not `+1`.
+    The SVG `role="img"` label is now
+    `Arm L trend (in): 13.0 in on 10/11, 13.4 in on 19/11, +0.4 in` — unit,
+    first/latest and change — and the one-reading note uses the active unit too.
+  - Tape placeholders now follow the body-fat rule: each site suggests its
+    latest reading ON OR BEFORE the chosen date, so back-dating the 12th shows
+    the 10th's tape rather than the 19th's.
+  - Editing a date with bilateral readings opens the “Arms, thighs and calves”
+    disclosure and echoes `N recorded` in the summary; a new or legacy-only date
+    keeps it closed. The hint now states that a wrong legacy Arm/Thigh can only
+    be removed by deleting the whole date (no half-wired destructive action).
+  - Light mode's existing `#155e75` trend stroke/dot override is measured in the
+    real light card: both 5.76:1 against the composited surface.
+  - Validation: 1 new node test plus the updated chart contract (2,319
+    combined), typecheck, smoke, precache/workflow gates. The bodyweight browser
+    check now covers forearm_l/r render, the `+9 more` recent cap, the
+    one-reading note, cm→in chart + delta conversion, back-dated tape
+    placeholders, disclosure auto-open/count, and light stroke/dot contrast,
+    then the full 45-check browser suite. Screenshots remain untracked:
+    `shots/measurements-14-sites.png`, `shots/measurements-14-sites-sheet.png`,
+    `shots/measurements-trend.png`.
+  - Next: Progress photos (P8), the only remaining body-composition row.
 
 - **2026-11-23 — Year in Review (P12).**
   - Review → Stats now leads with a seasonal calendar-year recap. In December it

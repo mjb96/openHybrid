@@ -19,7 +19,7 @@ test('the site chart orders points oldest to newest', () => {
   ], { unit: 'cm', label: 'Arm L' });
   const html = container.innerHTML;
   assert.match(html, /<svg /);
-  assert.match(html, /Arm L trend in cm/);
+  assert.match(html, /Arm L trend \(cm\): 32\.5 cm on 5\/11, 34\.0 cm on 19\/11, \+1\.5 cm/);
   assert.match(html, /<path class="bw-site-line"/);
   const dots = dotsOf(html);
   assert.deepEqual(dots.map((dot) => dot.title.split(' · ')[0]), [
@@ -49,8 +49,20 @@ test('body fat renders on a percentage scale, never the tape unit', () => {
     { date: '2026-11-10', value: 19 },
   ], { unit: '%', label: 'Body fat', percent: true });
   const html = container.innerHTML;
-  assert.match(html, /Body fat trend in %/);
+  assert.match(html, /Body fat trend \(%\): 19\.0% on 10\/11, 18\.4% on 19\/11, -0\.6%/);
   assert.match(html, /19\.0%/);
   assert.match(html, /18\.4%/);
   assert.doesNotMatch(html, / cm/);
+});
+
+test('the chart labels the supplied display values without converting them', () => {
+  const container = { innerHTML: '' };
+  renderSiteTrend(container, [
+    { date: '2026-11-10', value: 13.0 },
+    { date: '2026-11-19', value: 13.4 },
+  ], { unit: 'in', label: 'Arm L' });
+  const html = container.innerHTML;
+  assert.match(html, /Arm L trend \(in\): 13\.0 in on 10\/11, 13\.4 in on 19\/11, \+0\.4 in/);
+  assert.match(html, /13\.4 in/);
+  assert.doesNotMatch(html, /cm/);
 });

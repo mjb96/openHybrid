@@ -122,7 +122,9 @@ function measurementTrendData(model, key) {
   const site = model.sites.find((entry) => entry.key === key);
   if (!site?.latest) return null;
   return {
-    points: site.points.map((point) => ({ date: point.date, value: point.cm })),
+    // Convert at the boundary: storage is centimetres, the chart receives what
+    // the athlete reads. renderSiteTrend never converts.
+    points: site.points.map((point) => ({ date: point.date, value: cmToDisplay(point.cm, model.unit) })),
     options: { unit: model.unit, label: site.label, percent: false },
   };
 }
@@ -209,7 +211,7 @@ function measurementsHtml(model) {
     const value = roundDisplay(cmToDisplay(site.latest.cm, unit), unit);
     const delta = site.delta == null
       ? '<em class="bw-ms-delta bw-ms-delta--none">first reading</em>'
-      : `<em class="bw-ms-delta">${site.delta > 0 ? '+' : ''}${roundDisplay(site.delta, unit)}</em>`;
+      : `<em class="bw-ms-delta">${site.delta > 0 ? '+' : ''}${roundDisplay(cmToDisplay(site.delta, unit))}</em>`;
     const active = activeMeasurementSite === site.key;
     return `<button type="button" class="bw-ms-site${active ? ' active' : ''}" data-action="measurement-site" data-site="${site.key}" aria-pressed="${active}" aria-controls="bwMsTrend" title="Show the ${site.label} trend">
       <span>${site.label}</span>
