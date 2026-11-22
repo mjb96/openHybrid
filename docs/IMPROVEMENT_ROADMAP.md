@@ -713,6 +713,27 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P3: Muscles, with credited sets and a grouping switch.**
+  - `Muscles` answers "is the volume where I need it?": credited sets per muscle
+    over the selected window, bucketed week/month/year, with each muscle's share
+    and its change against the equal-length previous window.
+  - Credits stay owned by `muscleCreditsForExercise` (1 / 0.5 / 0.25), so a
+    compound set is one set for the chest and half for the triceps and the shares
+    sum to 100. Warm-ups contribute nothing; holds and carries count as sets with
+    zero tonnage.
+  - Colour carries the six GROUP hues; the legend is capped at six series plus
+    Other, because 19 distinguishable hues do not exist on a 390 px screen. Every
+    bucket states its total in text and every number reappears in the rows and
+    the data table.
+  - Deleted the dead `renderWeeklyVolumeDetail`, which summed `setVolume` over
+    `isCompletedSet` sets and therefore counted warm-up tonnage. Nothing imported
+    it; it was a future bug, not a screen.
+  - No new metric ids were needed — `strength.muscle-set-credits`,
+    `strength.per-muscle-volume` and `strength.weekly-volume` already classify and
+    inventory these numbers.
+  - `npm run verify` green (2,461 tests); hub browser contract passes.
+  - Next: P4 main exercises, the exercise metric switcher and set records.
+
 - **2026-11-23 — Progress P2: Balance, plus the range and focus controls.**
   - `Balance` answers "is the mix right?" over the selected window, in sRPE when
     the athlete rates effort and training minutes when they do not, saying which.

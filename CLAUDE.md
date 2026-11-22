@@ -458,6 +458,20 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   bar (30D/3M/1Y/All) and the All/Strength/Endurance filter are ephemeral module
   state driven by one delegated listener (`data-pg-range` / `data-pg-focus`) —
   never persisted, because a remembered mode silently hides half the dashboard.
+- Progress muscles (P3 landed): `js/analytics/muscles.js` answers "is the volume
+  where I need it?" — credited sets per muscle over the selected range, bucketed
+  `week|month|year`, with each muscle's share and its change against the
+  equal-length previous window. **Credits are never re-derived**:
+  `muscleCreditsForExercise` owns 1 / 0.5 / 0.25, so a compound set is one set for
+  the prime mover and half for a synergist, and per-muscle shares sum to 100
+  because the denominator is the sum of all credits. Warm-ups contribute nothing
+  and holds/carries count as sets with zero tonnage (set-utils). The view caps the
+  legend at six series plus `Other` — colour carries the six GROUP hues, never 19
+  individual ones — and every bucket states its total in text. `renderMuscles`
+  lives in `views/view-muscles.js`; the grouping chips are ephemeral
+  `data-pg-grouping` state alongside the range and focus controls. No new metric
+  ids were needed: `strength.muscle-set-credits`, `strength.per-muscle-volume` and
+  `strength.weekly-volume` already classify and inventory these numbers.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside
