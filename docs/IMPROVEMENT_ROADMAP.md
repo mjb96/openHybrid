@@ -713,6 +713,28 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P6b: progress photos, with their backup path.**
+  - Photos are the only user data here with no platform backup (Android sets
+    `allowBackup="false"`, so IndexedDB is device-local). They ship **with** their
+    export or not at all.
+  - Storage: metadata in `appState` (**v15 → v16**, additive and validated), JPEG
+    bytes in a new IndexedDB `photos` store (**DB v2 → v3**). One photo per date —
+    the id IS the date, so adding a second replaces instead of orphaning a blob and
+    a re-import is idempotent. Deleting a record deletes its blob, and a delete asks
+    first because a photo has no Undo.
+  - Capture downscales before storage (longest edge 1200, JPEG q 0.82 ≈ 200 KB):
+    a 4 MB camera photo per entry would eat a phone's quota. `fitWithin` is pure and
+    tested without a canvas.
+  - Export is a **store-only zip written by hand** (`js/portability/zip.js`) rather
+    than a dependency — JPEGs are already compressed. The writer and reader are one
+    module, so the round-trip test proves both, and an archive without a manifest is
+    refused instead of half-imported.
+  - The calendar guard caught `toISOString().slice(0,10)` in the export filename;
+    it lands on the wrong day near midnight and now uses `localDayKey`.
+  - `npm run verify` green (2,548 tests) and **all 46 browser checks pass**.
+  - Remaining: customize reorder UI + the `bodyPhotos`/`musclesBody` sub-toggles,
+    and share-any-band. The catalogue already supports `order`/`moveCard`.
+
 - **2026-11-23 — Progress P8a: one dashboard, and a no-paywall ratchet.**
   - The four legacy Consistency/Strength/Running/Recovery domain cards are
     **retired**. They were a second dashboard on the same tab; the bands ARE

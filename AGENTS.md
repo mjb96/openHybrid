@@ -526,6 +526,17 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   any Progress source, no cap exported from `ranges.js`, no `.pg-*locked` or blurred
   style. Progress photos remain unbuilt (they need v16 + IDB v3 + zip export in one
   change); customize reorder UI and sub-toggles are the rest of P8.
+- Progress photos (P6b landed): metadata in `appState.progressPhotos` (schema
+  **v16**), JPEG bytes in the IndexedDB `photos` store (**DB v3**) — never base64 in
+  state. `js/photos/library.js` owns add/replace/delete/export/import; the id IS the
+  date (`photo:<YYYY-MM-DD>`), so one photo per day, replacement cannot orphan a
+  blob and re-import is idempotent. `js/photos/capture.js` downscales before storage
+  (longest edge 1200, JPEG q 0.82; `fitWithin` is pure and canvas-free to test).
+  Export is a **hand-written store-only zip** (`js/portability/zip.js`, no
+  dependency — JPEGs are already compressed); the writer and reader are one module
+  and an archive without a manifest is refused rather than half-imported. Deleting a
+  photo deletes its blob and asks first (no Undo). This matters because Android sets
+  `allowBackup="false"`: the zip is the only backup path for photo bytes.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside
