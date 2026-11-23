@@ -229,6 +229,7 @@ function recentWeeksStrip(model) {
  *   focus?: string,
  *   focusAvailable?: { strength: boolean, endurance: boolean },
  *   visibleCount?: number,
+ *   renderableCount?: number,
  *   showRunning?: boolean,
  *   hidden?: string[],
  *   weightUnit?: string,
@@ -275,7 +276,12 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
           <p>All Progress cards are hidden. Your data is still here — bring a card back to see it.</p>
           <button type="button" class="ph-empty__cta" data-action="open-customize" data-surface="progress">Show a card</button>
         </div>`
-      : bands}
+      : (Number(extras.renderableCount) === 0
+        ? `<div class="ph-empty">
+            <p>Nothing to show for this range yet. Widen the range, switch a module on, or log a session.</p>
+            <button type="button" class="ph-empty__cta" data-action="open-customize" data-surface="progress">Customize</button>
+          </div>`
+        : bands)}
     ${secondary.length ? `<h3 class="section-header mt-4">More detail</h3>
     <div class="hub-group">${secondary.map(secondaryRow).join('')}</div>` : ''}
     ${extras.showRunning === false ? '' : `<button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="running">
@@ -308,8 +314,8 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
     </button>
     <details class="an-method mt-3">
       <summary>How this page is calculated</summary>
-      <p>Every figure here covers one <strong>calendar</strong> week (Monday to Sunday), attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the week they happened in.</p>
-      <p>A part-finished week is only ever compared with the same elapsed days of the previous week, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
+      <p>Every band covers the <strong>range you selected</strong> above, attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the period they happened in. <strong>Pulse</strong> is the one exception: it is always the current calendar week (Monday to Sunday), and it ignores the range on purpose.</p>
+      <p>A part-finished period is compared only with the same elapsed days of the previous one, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
     </details>`;
 
   // Thumbnails read a blob, which is async; the band must not wait on the disk.

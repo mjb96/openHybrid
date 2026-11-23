@@ -64,7 +64,7 @@ export function renderFastingBand(model, options = {}) {
       <span class="pg-fast__goal" aria-hidden="true"></span>
       ${rows}
     </div>
-    <p class="pg-band__sub" style="margin-top:6px">Goal ${esc(String(model.goalHours))} h · ${esc(`last ${model.fasts.length} of ${model.windowCount} fasts`)}</p>
+    <p class="pg-band__sub" style="margin-top:6px">Goal ${esc(String(model.goalHours))} h (current) · ${esc(`last ${model.fasts.length} of ${model.windowCount} fasts`)}. Each fast is judged against the goal it was done under.</p>
     <div class="pg-statrow">
       <div><b>${esc(`${model.averageHours} h`)}</b><span>Average</span></div>
       <div><b>${esc(`${model.adherencePct}%`)}</b><span>Met goal</span></div>

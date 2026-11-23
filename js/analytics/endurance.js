@@ -34,21 +34,22 @@ function bucketKeys(startISO, endISO, monthly) {
   const keys = [];
   if (monthly) {
     let [year, month] = startISO.split('-').map(Number);
-    while (keys.length < 60) {
+    while (keys.length < 240) {
       const key = `${year}-${String(month).padStart(2, '0')}`;
       if (`${key}-01` > endISO) break;
       keys.push(key);
       month += 1;
       if (month > 12) { month = 1; year += 1; }
     }
-    return keys;
+    // Keep the newest months: a capped chart must never omit current training.
+    return keys.length > 60 ? keys.slice(-60) : keys;
   }
   let cursor = /** @type {string} */ (weekStartOf(startISO));
-  while (cursor && cursor <= endISO && keys.length < 60) {
+  while (cursor && cursor <= endISO) {
     keys.push(cursor);
     cursor = /** @type {string} */ (addDaysISO(cursor, 7));
   }
-  return keys;
+  return keys.length > 60 ? keys.slice(-60) : keys;
 }
 
 /**

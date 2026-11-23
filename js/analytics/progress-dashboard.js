@@ -130,6 +130,9 @@ export function buildProgressDashboard(state, options = {}) {
   const availability = {};
   /** @type {Array<{ id: BandId, collapsed: boolean, model?: any, error?: string }>} */
   const bands = [];
+  // A band that can actually appear. Distinct from "not hidden": a visible band
+  // with no data for this range is not something to show either.
+  let renderableCount = 0;
 
   // Render order follows the athlete's saved order, then catalogue order for
   // anything missing (a band added in a later release).
@@ -162,7 +165,9 @@ export function buildProgressDashboard(state, options = {}) {
         days: options.days,
         weekStartISO: options.weekStartISO || null,
         grouping: options.grouping || 'week',
-        unit: options.unit || 'kg',
+        // The athlete's unit, from state — a caller that forgets it must not
+        // relabel pounds as kilograms.
+        unit: options.unit || (state?.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg'),
         distanceUnit: options.distanceUnit || 'km',
       });
       const hasData = !!model?.hasData;
@@ -171,6 +176,7 @@ export function buildProgressDashboard(state, options = {}) {
       // the answer (Pulse) or it is a static link row (Reports).
       if (!isHidden && (hasData || def.alwaysShow)) {
         bands.push({ id, collapsed: isCollapsed(id, focus), model });
+        renderableCount += 1;
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -194,6 +200,8 @@ export function buildProgressDashboard(state, options = {}) {
     // remaining band look hidden; a module-off band is not visible either.
     visibleCount: BAND_DEFINITIONS.filter((band) => !hidden.has(band.id)
       && !(band.module && !moduleEnabled(state, band.module))).length,
+    // What the surface can actually put on screen right now.
+    renderableCount,
     // The filter is derived from visibility AND data: one modality means no
     // filter at all, because a one-choice control is noise.
     focusAvailable: {

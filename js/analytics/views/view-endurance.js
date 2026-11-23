@@ -16,8 +16,9 @@ const WALK_COLOR = 'rgba(148, 163, 184, 0.55)';
 /** @param {number} secondsPerKm @param {string} unit */
 function paceText(secondsPerKm, unit) {
   if (!(secondsPerKm > 0)) return null;
-  const perUnit = unit === 'mi' ? secondsPerKm / 0.621371 : secondsPerKm;
-  return `${Math.floor(perUnit / 60)}:${String(Math.round(perUnit % 60)).padStart(2, '0')} /${unit}`;
+  // Whole seconds first — rounding the remainder alone renders 5:60.
+  const perUnit = Math.round(unit === 'mi' ? secondsPerKm / 0.621371 : secondsPerKm);
+  return `${Math.floor(perUnit / 60)}:${String(perUnit % 60).padStart(2, '0')} /${unit}`;
 }
 
 /**

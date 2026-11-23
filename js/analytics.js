@@ -190,21 +190,52 @@ function onProgressPhotoChange(event) {
 }
 
 /**
- * Progress's two controls. One delegated listener rather than per-render
- * handlers, so re-rendering the hub cannot leak listeners.
+ * Which Progress action does this element mean? Extracted as a pure decision so
+ * the ORDER can be tested: the previous inline version resolved a control first
+ * and returned when it found none, which silently disabled Share, Export photos
+ * and Delete photo — none of which carries a data-pg-* attribute.
+ *
+ * @param {any} el
+ * @returns {'delete-photo'|'export-photos'|'share-progress'|'grouping'|'focus'|'range'|null}
+ */
+export function progressControlTarget(el) {
+  if (!el || typeof el.closest !== 'function') return null;
+  if (el.closest('[data-photo-delete]')) return 'delete-photo';
+  if (el.closest('[data-action="export-photos"]')) return 'export-photos';
+  if (el.closest('[data-action="share-progress"]')) return 'share-progress';
+  if (el.closest('[data-pg-grouping]')) return 'grouping';
+  if (el.closest('[data-pg-focus]')) return 'focus';
+  if (el.closest('[data-pg-range]')) return 'range';
+  return null;
+}
+
+/**
+ * Progress's delegated listener. One listener rather than per-render handlers,
+ * so re-rendering the hub cannot leak listeners.
  */
 function onProgressControlClick(event) {
-  const target = event.target instanceof Element
-    ? event.target.closest('[data-pg-range], [data-pg-focus], [data-pg-grouping]')
-    : null;
+  const el = event.target instanceof Element ? event.target : null;
+  if (!el) return;
+
+  // RESOLVE THE TARGET FIRST, then dispatch. Resolving only a control and
+  // returning early made Share, Export photos and Delete photo dead buttons:
+  // none of them carries a data-pg-* attribute, so the handler bailed before
+  // reaching them. That also made the only backup path for photo bytes
+  // unreachable.
+  const action = progressControlTarget(el);
+  if (!action) return;
+
+  if (action === 'delete-photo') {
+    void deleteProgressPhoto(el.closest('[data-photo-delete]')?.getAttribute('data-photo-delete') || '');
+    return;
+  }
+  if (action === 'export-photos') { void exportProgressPhotos(); return; }
+  if (action === 'share-progress') { void shareProgressSummary(); return; }
+
+  const target = el.closest('[data-pg-range], [data-pg-focus], [data-pg-grouping]');
   if (!target) return;
   const range = target.getAttribute('data-pg-range');
   const focus = target.getAttribute('data-pg-focus');
-  const photoDelete = target.closest('[data-photo-delete]');
-  if (photoDelete) { void deleteProgressPhoto(photoDelete.getAttribute('data-photo-delete') || ''); return; }
-  if (target.closest('[data-action="export-photos"]')) { void exportProgressPhotos(); return; }
-  if (target.closest('[data-action="share-progress"]')) { void shareProgressSummary(); return; }
-
   const grouping = target.getAttribute('data-pg-grouping');
   if (grouping) {
     const next = grouping === 'month' || grouping === 'year' ? grouping : 'week';
@@ -610,6 +641,7 @@ export function renderAnalytics() {
         focus: progressDashboard.focus,
         focusAvailable: progressDashboard.focusAvailable,
         visibleCount: progressDashboard.visibleCount,
+        renderableCount: progressDashboard.renderableCount,
         showRunning: !progressDashboard.availability?.endurance?.moduleOff,
         hidden: st.settings?.ui?.progress?.hidden || [],
         weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',

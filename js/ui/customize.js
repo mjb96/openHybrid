@@ -32,7 +32,7 @@ export const PROGRESS_CARDS = Object.freeze([
   { id: 'pulse', label: 'Pulse', note: 'Last 7 days, streak and training days' },
   { id: 'balance', label: 'Balance', note: 'Strength vs endurance split' },
   { id: 'muscles', label: 'Muscles', note: 'Sets per muscle, distribution and body split' },
-  { id: 'exercises', label: 'Main exercises', note: 'Most-trained lifts and next load' },
+  { id: 'exercises', label: 'Main exercises', note: 'The lifts you train most and how they moved' },
   { id: 'endurance', label: 'Endurance', note: 'Run and walk distance, pace, consistency' },
   { id: 'body', label: 'Body', note: 'Weight, measurements and photos' },
   { id: 'fasting', label: 'Fasting', note: 'Fast length against your goal' },

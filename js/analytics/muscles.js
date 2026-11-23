@@ -55,23 +55,25 @@ function bucketKeysIn(startISO, endISO, grouping) {
   const keys = [];
   if (grouping === 'week') {
     let cursor = /** @type {string} */ (weekStartOf(startISO));
-    while (cursor && cursor <= endISO && keys.length < MAX_BUCKETS) {
+    while (cursor && cursor <= endISO) {
       keys.push(cursor);
       cursor = /** @type {string} */ (addDaysISO(cursor, 7));
     }
-    return keys;
+    // Keep the NEWEST buckets when the window exceeds the cap: dropping the
+    // recent weeks while the headline counted them was the bug.
+    return keys.length > MAX_BUCKETS ? keys.slice(-MAX_BUCKETS) : keys;
   }
   if (grouping === 'month') {
     let [year, month] = startISO.split('-').map(Number);
-    while (keys.length < MAX_BUCKETS) {
+    while (true) {
       const key = `${year}-${String(month).padStart(2, '0')}`;
-      if (`${key}-31` < startISO) { /* not reached */ }
       if (`${key}-01` > endISO) break;
       keys.push(key);
       month += 1;
       if (month > 12) { month = 1; year += 1; }
+      if (keys.length > MAX_BUCKETS * 2) break; // hard stop on absurd spans
     }
-    return keys;
+    return keys.length > MAX_BUCKETS ? keys.slice(-MAX_BUCKETS) : keys;
   }
   for (let year = Number(startISO.slice(0, 4)); year <= Number(endISO.slice(0, 4)); year++) {
     keys.push(String(year));
@@ -176,6 +178,10 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
     })
     .sort((a, b) => b.sets - a.sets || a.label.localeCompare(b.label));
 
+  // The headline is the sum of the ROWS, not an independently rounded total:
+  // they disagreed by a tenth whenever a muscle rounded down.
+  const displayedTotal = round1(muscles.reduce((sum, muscle) => sum + muscle.sets, 0));
+
   const startISO = range.startISO || earliestISO;
   const keys = startISO ? bucketKeysIn(startISO, range.endISO, grouping) : [];
   const buckets = keys.map((key) => ({
@@ -191,7 +197,7 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
     grouping,
     buckets,
     muscles,
-    totalSets: round1(totalSets),
+    totalSets: displayedTotal,
     totalVolumeKg: Math.round(Object.values(volume).reduce((sum, value) => sum + value, 0)),
     regions: map.regions,
     top: map.top,

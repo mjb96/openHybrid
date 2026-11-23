@@ -53,7 +53,10 @@ test('both modalities produce a split that sums to 100', () => {
   );
   assert.equal(model.hasData, true);
   assert.equal(model.basis, 'minutes', 'no RPE anywhere, so minutes');
-  assert.equal(model.strengthSharePct + model.enduranceSharePct, 100);
+  // An explicit value, not just the sum: `enduranceSharePct` is DERIVED from
+  // 100 - strength, so a sum check can never fail.
+  assert.equal(model.strengthSharePct, 66.7);
+  assert.equal(model.enduranceSharePct, 33.3);
   assert.equal(model.strengthSharePct, 66.7, '60 of 90 minutes');
 });
 

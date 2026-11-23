@@ -7,6 +7,7 @@ import { metricMethodHTML } from './metric-contract.js';
 import { addDaysISO, formatDayMonthShort, localDayKey } from '../../dates.js';
 import { weekStartOf } from '../weekly-aggregate.js';
 import { getSelectedWeekStart } from '../week-nav.js';
+import { formatRunDistance } from '../../workout/run-units.js';
 
 const rangeByMetric = new Map();
 const selectedPointByMetric = new Map();
@@ -107,7 +108,7 @@ function chartHTML(model, selectedKey) {
   </div>`;
 }
 
-function evidenceHTML(model, point) {
+function evidenceHTML(model, point, distanceUnit = 'km') {
   const evidence = point ? (point.evidence || []) : model.contributing;
   const period = point ? `${fullDateLabel(point.weekStart)} – ${fullDateLabel(point.weekEnd)}` : model.period.label;
   if (!evidence.length) {
@@ -116,7 +117,7 @@ function evidenceHTML(model, point) {
   return `<div class="metric-evidence-list">
     ${evidence.slice(-50).reverse().map((record) => `<button type="button" class="metric-evidence-row" data-action="open-activity-detail" data-activity-id="${esc(record.activityId)}" aria-label="Open ${esc(record.title)} from ${esc(fullDateLabel(record.date))}">
       <span class="metric-evidence-row__main"><strong>${esc(record.title)}</strong><small>${esc(fullDateLabel(record.date))} · ${esc(record.sourceLabel)}</small></span>
-      <span class="metric-evidence-row__metric">${record.distanceKm > 0 ? `${record.distanceKm.toFixed(2)} km` : 'View'}<b aria-hidden="true">›</b></span>
+      <span class="metric-evidence-row__metric">${record.distanceKm > 0 ? esc(formatRunDistance(record.distanceKm, distanceUnit)) : 'View'}<b aria-hidden="true">›</b></span>
     </button>`).join('')}
   </div>`;
 }
@@ -192,7 +193,7 @@ export function renderRunningMetricDetail(state, entity = {}) {
       </section>
       <section class="metric-detail__section" aria-labelledby="runningMetricEvidenceTitle">
         <div class="metric-detail__section-head"><div><span>Evidence</span><h3 id="runningMetricEvidenceTitle">Contributing activities</h3></div></div>
-        ${evidenceHTML(model, selectedPoint)}
+        ${evidenceHTML(model, selectedPoint, state?.settings?.distanceUnit === 'mi' ? 'mi' : 'km')}
       </section>
       ${metricMethodHTML({
         metricId: model.metricId,

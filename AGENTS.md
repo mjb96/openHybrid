@@ -554,6 +554,18 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   the screens that really are one calendar week (Strength/Running/Volume/Review
   Overview). The hub browser check asserts the navigator is ABSENT there and that
   switching the range changes what the Endurance band reports.
+- Progress, second-audit facts: the hub's delegated handler dispatches through
+  `progressControlTarget(el)` in `js/analytics.js` — **Share, Export photos and
+  Delete photo are checked BEFORE the range/focus/grouping controls**, because those
+  buttons carry no `data-pg-*` attribute and a control-first lookup silently disabled
+  all three (that also cut the only backup path for photo bytes). `gymTimeIsSession`
+  (weekly-aggregate) decides whether a saved gym duration is a session on its own: it
+  is for an imported FIT gym file (no sets at all) and is NOT for a day whose only
+  sets are warm-ups. The composer exposes `renderableCount` beside `visibleCount`, so
+  the hub distinguishes "all cards hidden" from "nothing for this range". Capped
+  charts (104 weeks / 60 months) keep the NEWEST buckets. Balance's "was this
+  modality trained?" comes from the slot index, never from the split currency.
+  Exercises take their unit from `state.settings.weightUnit` via the composer.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

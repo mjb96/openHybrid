@@ -96,6 +96,13 @@ export function renderBody(model, options = {}) {
       </li>
     </ul>`;
 
+  // Weight and tape are the latest RECORDED values; the chart, change and photos
+  // are range-scoped. Saying "as of <date>" stops the newest reading being read
+  // as part of the selected window.
+  const latestOutOfRange = model.weight.date
+    && model.range?.startISO
+    && model.weight.date < model.range.startISO;
+
   const body = `
     ${changeLine}
     ${chart}
@@ -114,7 +121,7 @@ export function renderBody(model, options = {}) {
         site.latestCm == null ? '—' : String(roundDisplay(cmToDisplay(site.latestCm, model.measurementUnit))),
         site.deltaCm == null ? '—' : String(roundDisplay(cmToDisplay(site.deltaCm, model.measurementUnit))),
       ]),
-      `Body measurements for ${model.range?.spanLabel || 'the selected period'}`,
+      'Body measurements — latest recorded per site',
     )}`;
 
   return band({
@@ -122,7 +129,9 @@ export function renderBody(model, options = {}) {
     eyebrow: 'Body',
     title: 'Body',
     value: weightText,
-    sub: model.range?.spanLabel,
+    sub: latestOutOfRange && model.weight.date
+      ? `Latest · ${formatDayMonthShort(model.weight.date)}`
+      : model.range?.spanLabel,
     ariaLabel: `${model.range?.spanLabel || 'Selected period'} body: ${weightText}${model.weight.change == null ? '' : `, ${model.weight.change > 0 ? 'up' : 'down'} ${Math.abs(model.weight.change)} ${model.unit}`}`,
     body,
   });

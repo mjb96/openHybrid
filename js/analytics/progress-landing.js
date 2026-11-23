@@ -27,6 +27,7 @@
 
 import {
   weekStartOf, localDayKey, addDaysISO, DAY_KEYS, loggedSessionsByDate, indexSlotsByDate,
+  gymTimeIsSession,
 } from './weekly-aggregate.js';
 import { comparePeriodValues } from './period-comparison.js';
 import { calendarStrengthSummary, calendarWeekE1rmSeriesForLift } from './strength-calendar.js';
@@ -400,7 +401,7 @@ export function fastingIsEnabled(state) {
 }
 
 function slotSessionCount(slot) {
-  const strength = (slot?.stats?.workingSets > 0 || String(slot?.gymStats?.time || '').trim()) ? 1 : 0;
+  const strength = ((slot?.stats?.workingSets || 0) > 0 || gymTimeIsSession(slot)) ? 1 : 0;
   const runs = Array.isArray(slot?.runSessions) ? slot.runSessions.length : 0;
   return strength + runs;
 }

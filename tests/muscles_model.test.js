@@ -46,7 +46,9 @@ test('per-muscle shares always sum to 100', () => {
     { range: range30 },
   );
   const sum = model.muscles.reduce((total, muscle) => total + muscle.sharePct, 0);
-  assert.ok(Math.abs(sum - 100) < 0.6, `shares summed to ${sum}`);
+  // The rule is EXACTLY 100 (largest-remainder allocation), so a 0.5 error or a
+  // dropped muscle must fail.
+  assert.equal(Math.round(sum * 10) / 10, 100);
 });
 
 test('warm-up sets contribute nothing', () => {

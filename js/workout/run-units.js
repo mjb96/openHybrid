@@ -73,8 +73,9 @@ export function formatRunPace(pacePerKm, unit) {
   const match = String(pacePerKm).match(/^(\d+):(\d{2})$/);
   if (!match) return `${pacePerKm} /${unit}`;
   const secsPerKm = Number(match[1]) * 60 + Number(match[2]);
-  const secs = unit === 'mi' ? secsPerKm / KM_TO_MI : secsPerKm;
-  return `${Math.floor(secs / 60)}:${String(Math.round(secs % 60)).padStart(2, '0')} /${unit}`;
+  // Round to whole seconds FIRST: rounding the remainder alone renders 5:60.
+  const secs = Math.round(unit === 'mi' ? secsPerKm / KM_TO_MI : secsPerKm);
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')} /${unit}`;
 }
 
 export function _timeFromPaceDist(paceStr, distKm) {

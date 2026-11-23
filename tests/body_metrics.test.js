@@ -67,8 +67,12 @@ test('an empty body offers one action and no chart', () => {
 test('the band takes its units from state, never a hardcoded kg', () => {
   const imperial = buildBodyMetricsModel(state({ settings: { weightUnit: 'lbs', measurementUnit: 'in' } }), { range });
   const html = renderBody(imperial);
-  assert.match(html, /lb|lbs|in/);
-  assert.doesNotMatch(html, /<b class="pg-site__value">\d+<\/b><small>cm<\/small>/);
+  // Precise: the metric render contains BOTH "cm" and "kg"; a loose /in/ regex
+  // matched "weigh-in" and could never fail.
+  assert.match(html, /<small>in<\/small>/, 'tape sites use inches');
+  assert.doesNotMatch(html, /<small>cm<\/small>/);
+  assert.match(html, /78\.4 lb|78\.4 lbs/, 'weight uses pounds');
+  assert.doesNotMatch(html, /78\.4 kg/);
 });
 
 test('the chart is the shared bodyweight chart, and only from two points', () => {

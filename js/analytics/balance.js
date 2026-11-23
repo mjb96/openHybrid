@@ -15,6 +15,7 @@
 // a 100 %-strength split is not an insight, it is a bar with one colour.
 // =============================================================================
 import { dailyLoadBreakdownTimeline } from '../metrics/training-load.js';
+import { indexSlotsByDate } from './weekly-aggregate.js';
 import { inRange } from './ranges.js';
 
 const round1 = (value) => Math.round(value * 10) / 10;
@@ -30,7 +31,9 @@ export function buildBalanceModel(state, options = /** @type {any} */ ({})) {
   const range = options.range;
   if (!range) throw new Error('buildBalanceModel: range is required');
 
-  const timeline = dailyLoadBreakdownTimeline(state, { throughDate: range.endISO });
+  // One slot index feeds both the timeline and the "was it trained?" question.
+  const index = indexSlotsByDate(state);
+  const timeline = dailyLoadBreakdownTimeline(state, { throughDate: range.endISO, index });
   const rows = timeline.filter((row) => inRange(row.date, range));
   const previousRows = options.previous
     ? timeline.filter((row) => inRange(row.date, options.previous))
@@ -83,8 +86,25 @@ export function buildBalanceModel(state, options = /** @type {any} */ ({})) {
   // Whether a modality was TRAINED is independent of the currency the split
   // settled on: a strength-only window has no common basis, but it certainly has
   // strength work, and the copy must say "no runs" rather than "no strength".
-  const hasStrength = strengthHasLoad || strengthHasMinutes;
-  const hasEndurance = enduranceHasLoad || enduranceHasMinutes;
+  // Independent of the currency: a session with sets but no duration/RPE is
+  // still training, and a run with distance but no time is still a run. Deriving
+  // this from load/minutes made the band claim "no strength work" about real
+  // sessions — the exact sentence this audit found the first time.
+  let trainedStrength = false;
+  let trainedEndurance = false;
+  for (const [dateISO, slots] of index.allByDate) {
+    if (!inRange(dateISO, range)) continue;
+    for (const slot of slots) {
+      if ((slot.stats?.workingSets || 0) > 0) trainedStrength = true;
+      for (const run of slot.runSessions || []) {
+        if (run?.type === 'walk') continue;
+        if ((parseFloat(run?.dist) || 0) > 0 || String(run?.time || '').trim()) trainedEndurance = true;
+      }
+    }
+  }
+
+  const hasStrength = trainedStrength || strengthHasLoad || strengthHasMinutes;
+  const hasEndurance = trainedEndurance || enduranceHasLoad || enduranceHasMinutes;
 
   return {
     range,

@@ -713,6 +713,35 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress: second audit. Two fixes were incomplete, and three buttons were dead.**
+  - **Share, Export photos and Delete photo did nothing.** The delegated handler
+    resolved a range/focus control first and bailed when it found none; those three
+    buttons carry none of those attributes. That also made the only backup path for
+    photo bytes unreachable. The dispatch is now a pure, tested function
+    (`progressControlTarget`) whose ORDER is asserted, so the regression cannot recur
+    silently.
+  - **The exercises band labelled pounds as kilograms.** The composer defaulted the
+    unit to `kg` and neither caller passed the athlete's; it now defaults from state.
+  - **A capped chart dropped the NEWEST buckets** (104 weeks / 60 months started at
+    the earliest date), so a five-year athlete saw old training and not current
+    training, while the headline counted everything.
+  - **Balance still said "no strength work"** about a session with sets but no
+    duration or RPE: "was this modality trained?" now comes from the slot index, not
+    from the split's currency.
+  - **A warm-up-only day with a saved duration counted as a session.** `gymTimeIsSession`
+    distinguishes preparation (sets exist, none valid) from an imported FIT gym file
+    (no sets at all, duration is the only evidence).
+  - Also: the empty state now distinguishes "all cards hidden" from "nothing for this
+    range"; Reports stops advertising Year in Review outside December/January; the
+    body band labels all-time values "Latest · <date>"; running evidence rows and
+    pace formatting respect the athlete's unit and can no longer print `5:60`; the
+    Muscles headline is the sum of the rows it shows; the method disclosure describes
+    the range rather than a week.
+  - The audit also found tests that could not fail (a tautological share sum, a `/in/`
+    regex that matched "weigh-in", a 0.6-point tolerance on a rule that says exactly
+    100). Those now assert the real values, and six new regression tests cover the
+    findings. `npm run verify` green (2,578 tests).
+
 - **2026-11-23 — Progress: independent rules audit, and the fixes it forced.**
   - An adversarial audit of all 13 rule families found six failures. The worst:
     the **Fasting band never rendered**, because the model read `entry.hours` while
