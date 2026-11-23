@@ -264,9 +264,9 @@ Each row is one commit. "Acceptance" is what the test asserts, not what the PR s
 | T6.1 | State field | `js/state.js`, `js/state/migrations.js`, `tests/migration_v16.test.js` | v15→v16 adds `progressPhotos: []`; **one record per date**, `id = photo:<YYYY-MM-DD>`; additive, independently validated, existing keys untouched |
 | T6.2 | IDB v3 store | `js/db.js`, `tests/photo_db_migration.test.js` | v2→v3 creates `photos`; `runMaps`/`routes` preserved; blocked upgrade rejects rather than hangs |
 | T6.3 | Capture + downscale | **new** `js/photos/capture.js`, `tests/photo_capture.test.js` | Longest edge ≤ 1200; JPEG q≈0.82; returns bytes + dimensions; refuses non-images |
-| T6.4 | Blob store | **new** `js/photos/store.js`, `tests/photo_store.test.js` | put/get/delete by id; a second photo for the same date upserts and the UI asks *Replace* or *Cancel*; delete removes blob **and** metadata; `clearAll` for data deletion |
+| T6.4 | Blob store | **new** `js/photos/library.js`, `tests/photos_library.test.js` | put/get/delete by id; a second photo for the same date upserts (Replace is the explicit action in the viewer); delete removes blob **and** metadata; a failed blob delete throws instead of reporting success |
 | T6.5 | ZIP writer | **new** `js/portability/zip.js`, `tests/zip.test.js` | Store-only archive round-trips through a reader; CRC32 correct; no dependency added |
-| T6.6 | Export/import photos | `js/photos/store.js`, Settings → Data | `openhybrid-photos-<date>.zip` + manifest; re-import idempotent by photo id (which is the date) |
+| T6.6 | Export/import photos | `js/photos/library.js`, Measures → See All | `openhybrid-photos-<date>.zip` + manifest; re-import idempotent by photo id (which is the date); both buttons live beside the library, not on a band that can be absent (Settings → Data has no photo control) |
 | T6.7 | Body band view | **new** `js/analytics/views/view-body.js` | Weight + rate + 4 sites + photo strip; reuses `bodyWeightChartSVG`; sheet focus lands on Close |
 | T6.8 | Quota display + copy | `js/settings.js` | Usage shown; >80 % warns; states plainly that automatic backups exclude photos; the roadmap records automatic photo backup as a **parked follow-up** needing a binary bridge method and device verification |
 
@@ -294,6 +294,28 @@ Each row is one commit. "Acceptance" is what the test asserts, not what the PR s
 | T8.6 | Perf pass | `scripts/performance-baseline.mjs` | Hub paint ≤150 ms warm at the 5-year corpus; range switch ≤100 ms (≤300 ms All); hub DOM ≤1.20× light corpus; no long task >50 ms |
 
 **P8 gate:** `npm run preflight` green; measured numbers recorded in the roadmap session log.
+
+### P9 — Measures: the dated entry behind the Body band
+
+The Body band answers "is my body responding?" over a selected range. A photo
+without that day's weight, body fat and tape is just a picture, so the date-level
+record lives on ONE screen — reached from Progress → Body, and from a quiet footer
+link so a profile with no body data can still record a first entry — rather than
+being split between a photo strip, a measurements card and a weigh-in sheet.
+
+| ID | Deliverable | Files | Acceptance |
+| --- | --- | --- | --- |
+| T9.1 | Compose one dated entry from three stores | **new** `js/metrics/measures.js` | `{ date, weight, bodyFat, sites, photo, hasAnything }`, newest first, every field optional, nothing derived |
+| T9.2 | Coherent upsert + whole-entry delete | `measures.js` | A cleared field removes that part of the date; an implausible value changes NOTHING; legacy Arm/Thigh survive an edit; the photo blob is deleted through an injected deleter (the model stays DOM/IDB-free) |
+| T9.3 | Measures screen | **new** `js/analytics/views/view-measures.js` | `+`, See All ⇄ Entries, entry rows with a photo thumb, a photo library; units from the model |
+| T9.4 | Sheet: Add picture at the TOP, weight, Save | `js/measurements-sheet.js`, `index.html` | The picture is STAGED until Save, so Cancel cannot orphan a blob; every field optional |
+| T9.5 | Viewer: compare, replace, edit, delete | `js/ui/photo-viewer.js` | Two photos side by side from a picker that hides itself when there is nothing to compare with; Delete asks first |
+| T9.6 | Band becomes a preview, not a second editor | `js/analytics/views/view-body.js` | The strip opens the viewer; the add tile opens the SAME dated entry (no camera shortcut that skips the numbers); the bodyweight graph stays reachable |
+| T9.7 | Browser contract | **new** `scripts/measures-browser-check.mjs` | empty profile → add → save → entry → abandoned pick leaves nothing → second date → See All → compare → Edit entry (one history marker) → replace (blob HASH changes) → delete, asserting records AND blobs at 390/320 |
+
+**P9 gate:** the entry, not the model, is what must be proven. Unit tests cannot
+see a covered tile or a history marker that blanks the page; `measures-browser-check`
+drives the real file chooser and the real confirm.
 
 ---
 

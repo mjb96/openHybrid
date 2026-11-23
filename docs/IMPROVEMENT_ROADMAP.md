@@ -707,11 +707,82 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share, save as routine |
 | Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder, routine list with Start and folders |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
-| Progress | Calendar-week strength/running, exact evidence, load/readiness, weekly/monthly review, Gym/Run/Recovery detail |
+| Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,319 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
+| Quality | 2,619 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — Measures: adversarial audit, and the eight things green did not mean.**
+  - **A duplicated date silently discarded the athlete's correction.** The readers
+    keep the LAST row for a date (`normalizeWeighIns`/`normalizeMeasurements`), and a
+    JSON restore can create that duplicate, but the writer touched only the FIRST —
+    so a corrected weight was saved where nothing read it, and clearing every field
+    left the date populated. The writer now replaces/removes every row for the date.
+  - **The photo backup had no reachable restore and no reliable export.** `Export
+    photos` sat on a range-scoped band that can be absent, `importPhotosZip` had **no
+    caller at all**, and Settings → Data never had a photo control — so the "only
+    backup path for photo bytes" could be unreachable and could never be restored.
+    Both buttons now live beside the library, and the browser check exports a real
+    zip, deletes a photo, and imports it back.
+  - **A failed blob delete reported success.** `deletePhotoBlob` resolves false and
+    never rejects, so metadata went and the bytes stayed, invisibly. `removePhoto`
+    now throws and keeps BOTH; `deleteMeasureEntry` deletes bytes **before** rows so
+    a throw changes nothing at all instead of half-deleting an entry.
+  - **Edit entry raced the history marker**, the same class that blanked the page on
+    Delete: the viewer closed (queueing `history.back()`) and then opened the sheet
+    (`pushState`). It now hands the dialog over with `replaceManagedModal` — and the
+    check caught the hand-off being wired to a missing import.
+  - **The same tile did two different things.** The Body band's `+` opened the
+    camera directly while Measures' `+` opened the entry — so one tap produced a
+    photo with no context, the exact split this screen exists to close. Both now
+    open the dated entry, and the band's bare file input is gone.
+  - Also: `listPhotos`/import now reject a record whose id disagrees with its date
+    (it could be neither viewed nor deleted, yet the confirm said "deleted"); the
+    `bodyPhotos` privacy switch is honoured on Measures; "Delete measurements" in the
+    sheet now says it is tape-only (it never removed the weigh-in or photo).
+  - **Four tests/checks could not fail** — the audit's most useful finding. The 44px
+    walk skipped any missing control; the replace step asserted `updatedAt > 0`, true
+    before the action; `hasAnything` was a constant; the photo check collected a tile
+    count and never asserted it. All four now assert the real value (the replace
+    compares a SHA-256 of the stored bytes, since the clock is pinned).
+  - Docs corrected where they described features that do not exist (a `mime` field, a
+    `rollupMeta` store, photo share, quota warnings, `js/photos/store.js`).
+  - `npm run verify` green (2,619 tests); all 48 browser checks green (one
+    progress-hub attempt crossed the 180s kill under 3-way load and passed on the
+    built-in retry — that check is 119s on its own, the suite's longest).
+
+- **2026-11-23 — Measures: the photo gets the numbers it belongs to, and four defects the browser found.**
+  - **A progress photo on its own is a picture.** Weight, body fat, tape and a photo
+    were split across three surfaces (a photo strip, a measurements card, a weigh-in
+    sheet), so the before/after story had no single home. **Progress → Measures** is
+    now one dated entry composed from the three stores that already own the pieces
+    (`js/metrics/measures.js`): every field optional, nothing re-derived, photos
+    untouched by the save so a cancelled sheet cannot orphan a blob.
+  - **The photo surface was built by driving it, and it was broken.** A 44px delete
+    button covered the 64px tile, so tapping a photo asked "delete?" and there was
+    **no way to see it at all**. Deleting from that viewer **navigated the app to
+    `about:blank`** — closing the viewer popped a history marker while the confirm
+    pushed another, and the later pops landed past the app entry. And the file input
+    used `hidden`, which removes it from the tab order, so the picker was
+    unreachable by keyboard. Tiles now open a real viewer (compare, replace, edit,
+    delete), the confirm stacks OVER the viewer, and the visible control is always a
+    button with the input `hidden`.
+  - **Measures was unreachable on a fresh profile.** The Body band is range-scoped
+    and only renders with data, so a new athlete — the one who most needs to record
+    a first entry — had no route in. It now has a quiet footer destination, and the
+    browser check starts from an empty profile specifically to keep that honest.
+  - Three check failures on the way were the CHECK's fault, not the app's: a seeded
+    weigh-in made "empty" non-empty, and the compare picker's placeholder
+    `<option value="">` was being selected as if it were a photo. Both are the kind
+    of thing that reads green for months.
+  - Two new browser contracts, both clock-pinned: `measures-browser-check.mjs`
+    (empty → + → real file chooser → weight/waist/fat → entry → second date →
+    See All → compare → replace → delete, asserting records **and** blobs at
+    390/320) and an extended `photo-browser-check.mjs` that now adds a photo through
+    the button's real chooser instead of writing `input.files` behind its back.
+  - `npm run verify` green (2,614 tests) and **all 48 browser checks** passed, with
+    the hub check now proving both routes into Measures.
 
 - **2026-11-23 — Progress: second audit. Two fixes were incomplete, and three buttons were dead.**
   - **Share, Export photos and Delete photo did nothing.** The delegated handler

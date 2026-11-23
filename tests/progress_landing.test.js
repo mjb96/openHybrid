@@ -752,3 +752,13 @@ test('the hub renders the empty lead instead of a fabricated week hero', () => {
   assert.match(container.innerHTML, /All Progress cards are hidden|Nothing is logged yet/);
   assert.match(container.innerHTML, /open-customize/);
 });
+
+test('Measures has a route that does not depend on body data', () => {
+  // The Body band is range-scoped and only renders when it has something true
+  // to say, so it cannot be the only way into the record behind it. A fresh
+  // athlete (and an athlete whose last weigh-in is outside the selected range)
+  // must still be able to log a first entry.
+  const container = { innerHTML: '' };
+  renderProgressHub(container, buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }));
+  assert.match(container.innerHTML, /data-action="open-analytics" data-context="measures"/);
+});

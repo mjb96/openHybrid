@@ -28,6 +28,18 @@ export const RATE_MIN_SPAN_DAYS = 10;
  * @param {any} log
  * @returns {WeighIn[]}
  */
+/**
+ * The DISPLAY label for a body weight: 'kg' or 'lb'. Weigh-ins are stored in the
+ * athlete's then-current unit and never converted, so this only names the number.
+ * One helper because the sheet, the Measures model and the delete confirmations
+ * all quote the same value.
+ * @param {any} state
+ * @returns {'kg'|'lb'}
+ */
+export function weightUnitLabel(state) {
+  return state?.settings?.weightUnit === 'lbs' ? 'lb' : 'kg';
+}
+
 export function normalizeWeighIns(log) {
   /** @type {Map<string, number>} */
   const byDate = new Map();

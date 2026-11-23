@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-hbc6708dee6cd';
+const CACHE_NAME = 'openhybrid-v122-hbdf953afeef7';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -93,6 +93,7 @@ const REQUIRED_ASSETS = [
   "./js/analytics/views/view-fasting-band.js",
   "./js/analytics/views/view-fasting.js",
   "./js/analytics/views/view-gym-performance.js",
+  "./js/analytics/views/view-measures.js",
   "./js/analytics/views/view-monthly-report.js",
   "./js/analytics/views/view-muscle-load.js",
   "./js/analytics/views/view-muscles.js",
@@ -188,6 +189,7 @@ const REQUIRED_ASSETS = [
   "./js/measurements-sheet.js",
   "./js/metrics/bodyweight.js",
   "./js/metrics/measurements.js",
+  "./js/metrics/measures.js",
   "./js/metrics/metrics-load.js",
   "./js/metrics/metrics-running.js",
   "./js/metrics/metrics-strength.js",
@@ -292,6 +294,7 @@ const REQUIRED_ASSETS = [
   "./js/ui/icons.js",
   "./js/ui/leaflet-loader.js",
   "./js/ui/modal-stack.js",
+  "./js/ui/photo-viewer.js",
   "./js/ui/render.js",
   "./js/ui/sortable.js",
   "./js/ui/undo-bar.js",

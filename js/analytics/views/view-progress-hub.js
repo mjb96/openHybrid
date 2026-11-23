@@ -305,6 +305,13 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
       </span>
       <span class="hub-link__arrow" aria-hidden="true">→</span>
     </button>
+    <button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="measures">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Measures</span>
+        <span class="hub-link__desc">Weight, body fat, tape and progress photos by date</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>
     <button type="button" class="hub-link hub-link--quiet" data-action="open-activities">
       <span class="hub-link__label">
         <span class="hub-link__title">History</span>

@@ -1047,6 +1047,10 @@
         <div id="bwWeeklyStats"></div>
       </div>
 
+      <div id="analytics-measures" class="analytics-section">
+        <div id="measuresScreen"></div>
+      </div>
+
       <div id="analytics-muscle-load" class="analytics-section">
         <h2 class="section-header">Muscle Load</h2>
         <div id="muscleLoadSummary"></div>
@@ -2293,7 +2297,23 @@
       <span id="msSheetUnit" class="ms-sheet-unit">cm</span>
       <button class="sheet-close-btn" data-action="close-measurements-sheet" aria-label="Close">✕</button>
     </div>
+    <div class="ms-sheet-photo" id="msSheetPhoto">
+      <div class="ms-sheet-photo__preview" id="msSheetPhotoPreview" aria-live="polite">
+        <span class="ms-sheet-photo__empty">No picture</span>
+      </div>
+      <div class="ms-sheet-photo__actions">
+        <button type="button" class="ms-sheet-photo__pick" data-ms-photo-pick="library">Add picture</button>
+        <button type="button" class="ms-sheet-photo__pick" data-ms-photo-pick="camera">Take photo</button>
+        <input type="file" accept="image/*" hidden id="msSheetPhotoFile" data-ms-photo="library">
+        <input type="file" accept="image/*" capture="environment" hidden data-ms-photo="camera">
+        <button type="button" class="ms-sheet-photo__remove" data-action="ms-sheet-photo-remove" hidden>Remove picture</button>
+      </div>
+    </div>
     <div class="ms-sheet-grid">
+        <label class="ms-sheet-field ms-sheet-field--full ms-sheet-field--weight">
+          <span>Body weight (<span id="msSheetWeightUnit">kg</span>)</span>
+          <input id="msSheet_weight" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Body weight">
+        </label>
         <label class="ms-sheet-field"><span>Neck</span><input id="msSheet_neck" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Neck"></label>
         <label class="ms-sheet-field"><span>Shoulders</span><input id="msSheet_shoulders" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Shoulders"></label>
         <label class="ms-sheet-field"><span>Chest</span><input id="msSheet_chest" type="number" step="0.1" min="0" inputmode="decimal" aria-label="Chest"></label>

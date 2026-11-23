@@ -11,6 +11,8 @@ const checks = [
   'scripts/customize-browser-check.mjs',
   'scripts/settings-nav-browser-check.mjs',
   'scripts/progress-hub-browser-check.mjs',
+  'scripts/photo-browser-check.mjs',
+  'scripts/measures-browser-check.mjs',
   'scripts/module-toggles-browser-check.mjs',
   'scripts/equipment-profiles-browser-check.mjs',
   'scripts/volume-guide-browser-check.mjs',

@@ -36,6 +36,8 @@ import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
 import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildProgressDashboard } from './analytics/progress-dashboard.js';
+import { renderMeasures } from './analytics/views/view-measures.js';
+import { buildMeasuresModel } from './metrics/measures.js';
 import { isRangeId } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatRunDistance } from './workout/run-units.js';
@@ -55,6 +57,9 @@ let _lastScoreResult = null;   // most recent Score-detail result, for the Share
 let _progressRangeId = '30d';
 let _progressFocus = 'all';
 let _progressGrouping = 'week';
+// Measures is a two-faced screen (entry list | photo library). Ephemeral like
+// the Progress controls: returning to it from elsewhere starts on the list.
+let _measuresMode = 'list';
 
 // V2-5 — share the Hybrid Score card. Uses the result last rendered into the
 // Score detail (falls back to a fresh compute so the button always works).
@@ -74,6 +79,7 @@ export function setAnalyticsContext(ctx, options = {}) {
   const previousOrigin = _analyticsOrigin;
   const previousParentContext = _analyticsParentContext;
   _analyticsContext = ctx || 'weekly-summary';
+  if (_analyticsContext !== 'measures') _measuresMode = 'list';
   if (options.origin) _analyticsOrigin = options.origin === 'home' ? 'home' : 'insights';
   _analyticsEntity = options.entity ? { id: options.entity, name: options.entityName || '' } : null;
   _analyticsParentContext = options.parentContext || null;
@@ -91,12 +97,16 @@ export function setAnalyticsContext(ctx, options = {}) {
  * Progress photos. Adding downscales before storing (a camera photo is several
  * megabytes and IndexedDB has a quota); deleting asks first, because a photo is
  * the one thing in this app with no Undo.
+ *
+ * `dateISO` is explicit because Replace must write the SAME day's blob (the id
+ * IS the date), while the strip's Add control means today.
+ * @param {File|Blob} file
+ * @param {string} [dateISO]
  */
-async function addProgressPhoto(file) {
+async function addProgressPhoto(file, dateISO = localDayKey(new Date())) {
   const state = _getState?.();
   if (!state || !file) return;
   const { addPhoto } = await import('./photos/library.js');
-  const dateISO = localDayKey(new Date());
   try {
     await addPhoto({ state, dateISO, file, save: () => saveStateToLocalStorage(true) });
     showToast('Progress photo saved');
@@ -104,6 +114,70 @@ async function addProgressPhoto(file) {
   } catch (error) {
     showToast(error instanceof Error ? error.message : 'That photo could not be saved.');
   }
+}
+
+/**
+ * A hidden picker reused for Replace. It is created on demand because the input
+ * has to be clicked inside the Replace click's user activation; a picker that is
+ * only appended after an await silently stops opening.
+ * @param {string} dateISO
+ */
+function pickProgressPhoto(dateISO) {
+  if (!dateISO || typeof document === 'undefined') return;
+  let input = /** @type {HTMLInputElement|null} */ (document.getElementById('progressPhotoReplaceInput'));
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.id = 'progressPhotoReplaceInput';
+    // HIDDEN, not sr-only: this input is never the tap target (the Replace
+    // button is), and a 1x1 visible input is measured as an unreachable control.
+    input.hidden = true;
+    input.addEventListener('change', () => {
+      const file = input?.files?.[0] || null;
+      const date = input?.getAttribute('data-date') || '';
+      if (input) input.value = '';
+      if (file && date) void addProgressPhoto(file, date);
+    });
+    document.body.append(input);
+  }
+  input.setAttribute('data-date', dateISO);
+  input.click();
+}
+
+/**
+ * Open the entry sheet for a date, optionally handing it over from the photo
+ * viewer so exactly one history marker exists.
+ * @param {string} dateISO
+ * @param {HTMLElement} [viewerRoot]
+ */
+async function editMeasureEntry(dateISO, viewerRoot) {
+  if (!dateISO) return;
+  const { openMeasurementsSheet } = await import('./measurements-sheet.js');
+  openMeasurementsSheet(dateISO, { replaceRoot: viewerRoot || null });
+  if (viewerRoot) {
+    // The dialog is already closed by the hand-off; this releases its object
+    // URLs so the next open cannot paint a stale image.
+    const { closePhotoViewer } = await import('./ui/photo-viewer.js');
+    closePhotoViewer();
+  }
+}
+
+async function openProgressPhoto(dateISO) {
+  if (!dateISO) return;
+  const state = _getState?.();
+  const [{ openPhotoViewer }, { listPhotos }] = await Promise.all([
+    import('./ui/photo-viewer.js'),
+    import('./photos/library.js'),
+  ]);
+  const dates = listPhotos(state).map((photo) => photo.date);
+  await openPhotoViewer({
+    date: dateISO,
+    dates,
+    onDelete: (date) => { void deleteProgressPhoto(date); },
+    onReplace: (date) => pickProgressPhoto(date),
+    onEditEntry: (date, root) => { void editMeasureEntry(date, root); },
+  });
 }
 
 async function deleteProgressPhoto(dateISO) {
@@ -115,9 +189,61 @@ async function deleteProgressPhoto(dateISO) {
     confirmLabel: 'Delete', danger: true,
   });
   if (!confirmed) return;
-  const { removePhoto } = await import('./photos/library.js');
-  await removePhoto({ state, id: `photo:${dateISO}`, save: () => saveStateToLocalStorage(true) });
+  try {
+    const { removePhoto } = await import('./photos/library.js');
+    await removePhoto({ state, id: `photo:${dateISO}`, save: () => saveStateToLocalStorage(true) });
+  } catch (error) {
+    // The record is kept when its bytes cannot go, so this is a failure, not a
+    // deletion that half-worked.
+    showToast(error instanceof Error ? error.message : 'That photo could not be deleted.', true);
+    return;
+  }
+  // Close the viewer only now, so its history marker pops after the confirm's.
+  const { closePhotoViewer } = await import('./ui/photo-viewer.js');
+  closePhotoViewer();
   showToast('Photo deleted');
+  renderAnalytics();
+}
+
+/**
+ * Remove a WHOLE dated entry — weight, tape, body fat and its photo. Deleting a
+ * photo has no Undo, so this asks first and names every part that goes.
+ * `deleteMeasureEntry` removes the metadata; the library removes the blob.
+ * @param {string} dateISO
+ */
+async function deleteMeasureEntryAction(dateISO) {
+  const state = _getState?.();
+  if (!state || !dateISO) return;
+  const entry = buildMeasuresModel(state).entries.find((row) => row.date === dateISO);
+  if (!entry) return;
+  const weightUnit = weightUnitLabel(state);
+  const parts = [];
+  if (entry.weight != null) parts.push(`${Number(entry.weight).toFixed(1)} ${weightUnit}`);
+  if (entry.bodyFat != null) parts.push(`${entry.bodyFat}% body fat`);
+  if (entry.sites.length) parts.push(`${entry.sites.length} tape ${entry.sites.length === 1 ? 'site' : 'sites'}`);
+  if (entry.photo) parts.push('a photo');
+  const confirmed = await confirmModal({
+    title: 'Delete this entry?',
+    message: `${formatDayMonthShort(dateISO, { year: true })}${parts.length ? ` · ${parts.join(' · ')}` : ''}. This cannot be undone${entry.photo ? ', and the photo file is removed from this device' : ''}.`,
+    confirmLabel: 'Delete', danger: true,
+  });
+  if (!confirmed) return;
+  try {
+    const { removePhoto } = await import('./photos/library.js');
+    const { deleteMeasureEntry } = await import('./metrics/measures.js');
+    // The library owns the blob and the metadata record; this module owns the
+    // weigh-in/measurement rows, so both run before the single save.
+    const result = await deleteMeasureEntry(state, dateISO, {
+      removePhoto: (id) => removePhoto({ state, id }),
+      save: () => saveStateToLocalStorage(true),
+    });
+    // Report what actually happened: an imported or half-foreign date can reach
+    // this handler with nothing to remove, and "Entry deleted" would be a lie.
+    showToast(result.removed ? 'Entry deleted' : 'That entry was already gone');
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'That entry could not be deleted.', true);
+    return;
+  }
   renderAnalytics();
 }
 
@@ -181,12 +307,47 @@ async function exportProgressPhotos() {
   }
 }
 
-function onProgressPhotoChange(event) {
-  const input = event.target;
-  if (!(input instanceof HTMLInputElement) || !input.hasAttribute('data-photo-input')) return;
-  const file = input.files?.[0];
-  input.value = '';
-  if (file) void addProgressPhoto(file);
+/**
+ * Restore photos from an exported archive. Kept beside the export because the
+ * two are one contract: a backup nobody can restore is not a backup. Idempotent
+ * by date through `importPhotosZip`.
+ */
+function pickPhotoArchive() {
+  if (typeof document === 'undefined') return;
+  let input = /** @type {HTMLInputElement|null} */ (document.getElementById('photoImportInput'));
+  if (!input) {
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.zip,application/zip';
+    input.id = 'photoImportInput';
+    // Hidden: the Import button is the control, and a 1x1 visible input would
+    // be measured as an unreachable target.
+    input.hidden = true;
+    input.addEventListener('change', () => {
+      const file = input?.files?.[0] || null;
+      if (input) input.value = '';
+      if (file) void importProgressPhotos(file);
+    });
+    document.body.append(input);
+  }
+  input.click();
+}
+
+/** @param {File} file */
+async function importProgressPhotos(file) {
+  const state = _getState?.();
+  if (!state) return;
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { importPhotosZip } = await import('./photos/library.js');
+    const imported = await importPhotosZip(state, bytes, { save: () => saveStateToLocalStorage(true) });
+    showToast(imported
+      ? `Restored ${imported} photo${imported === 1 ? '' : 's'}`
+      : 'That archive had no photos to restore');
+    renderAnalytics();
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'That archive could not be read.', true);
+  }
 }
 
 /**
@@ -196,13 +357,19 @@ function onProgressPhotoChange(event) {
  * and Delete photo — none of which carries a data-pg-* attribute.
  *
  * @param {any} el
- * @returns {'delete-photo'|'export-photos'|'share-progress'|'grouping'|'focus'|'range'|null}
+ * @returns {'photo-view'|'delete-photo'|'export-photos'|'import-photos'|'share-progress'|'measures-mode'|'measures-delete'|'grouping'|'focus'|'range'|null}
  */
 export function progressControlTarget(el) {
   if (!el || typeof el.closest !== 'function') return null;
+  if (el.closest('[data-photo-view]')) return 'photo-view';
   if (el.closest('[data-photo-delete]')) return 'delete-photo';
   if (el.closest('[data-action="export-photos"]')) return 'export-photos';
+  if (el.closest('[data-action="import-photos"]')) return 'import-photos';
   if (el.closest('[data-action="share-progress"]')) return 'share-progress';
+  // Measures has no data-pg-* marker either, so it must be resolved BEFORE the
+  // range/focus/grouping controls for the same reason as Share and Export.
+  if (el.closest('[data-measures-mode]')) return 'measures-mode';
+  if (el.closest('[data-measure-delete]')) return 'measures-delete';
   if (el.closest('[data-pg-grouping]')) return 'grouping';
   if (el.closest('[data-pg-focus]')) return 'focus';
   if (el.closest('[data-pg-range]')) return 'range';
@@ -225,12 +392,33 @@ function onProgressControlClick(event) {
   const action = progressControlTarget(el);
   if (!action) return;
 
+  if (action === 'photo-view') {
+    const date = el.closest('[data-photo-view]')?.getAttribute('data-photo-view') || '';
+    void openProgressPhoto(date);
+    return;
+  }
   if (action === 'delete-photo') {
     void deleteProgressPhoto(el.closest('[data-photo-delete]')?.getAttribute('data-photo-delete') || '');
     return;
   }
   if (action === 'export-photos') { void exportProgressPhotos(); return; }
+  if (action === 'import-photos') { pickPhotoArchive(); return; }
   if (action === 'share-progress') { void shareProgressSummary(); return; }
+  if (action === 'measures-mode') {
+    const next = el.closest('[data-measures-mode]')?.getAttribute('data-measures-mode');
+    const mode = next === 'library' ? 'library' : 'list';
+    if (mode === _measuresMode) return;
+    _measuresMode = mode;
+    renderAnalytics();
+    // The render replaced the whole subtree, so a keyboard user would otherwise
+    // be dropped back to <body>. The toggle is the control that just moved.
+    document.querySelector('#analytics-measures [data-measures-mode]')?.focus?.();
+    return;
+  }
+  if (action === 'measures-delete') {
+    void deleteMeasureEntryAction(el.closest('[data-measure-delete]')?.getAttribute('data-measure-delete') || '');
+    return;
+  }
 
   const target = el.closest('[data-pg-range], [data-pg-focus], [data-pg-grouping]');
   if (!target) return;
@@ -257,7 +445,6 @@ export function initAnalytics(getStateFn, getDaysFn) {
   initWeekNav(_getState, renderAnalytics);
   if (typeof document !== 'undefined') {
     document.addEventListener('click', onProgressControlClick);
-    document.addEventListener('change', onProgressPhotoChange);
   }
 }
 
@@ -765,6 +952,25 @@ export function renderAnalytics() {
       document.getElementById('analytics-bodyweight').classList.add('active');
       renderBodyWeightAnalytics(analyticsData(), _getState);
       break;
+    // Body's date-level record: weight, body fat, tape and photos, one row per
+    // day. The photo strip and the viewer are the SAME records the Body band
+    // reads; this screen never re-derives them.
+    case 'measures': {
+      document.getElementById('analytics-measures').classList.add('active');
+      // A throwing model renders its error instead of blanking the screen.
+      try {
+        // The `bodyPhotos` privacy switch hides photos on the Body card; a deep
+        // link must not reopen them here, or the switch promises something it
+        // cannot keep.
+        renderMeasures(buildMeasuresModel(_getState()), {
+          mode: _measuresMode,
+          hidden: _getState()?.settings?.ui?.progress?.hidden || [],
+        });
+      } catch (error) {
+        renderMeasures(null, { mode: _measuresMode, error: error instanceof Error ? error.message : String(error) });
+      }
+      break;
+    }
     case 'muscle-load':
       document.getElementById('analytics-muscle-load').classList.add('active');
       renderMuscleLoad(_getState());

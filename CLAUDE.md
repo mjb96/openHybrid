@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 45 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 48 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -251,6 +251,46 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   (`#155e75`) measured in the bodyweight browser check. Known limitation: a
   combined weigh-in + body-fat CSV belongs to the bodyweight reader, so body fat
   from that file is not imported; the weigh-in confirm now names that omission.
+- Measures (the Hevy-style dated entry): `js/metrics/measures.js` composes ONE
+  record per date from the three stores that already own the pieces —
+  `bodyWeightLog`, `bodyMeasurements` (sites + `bodyFat`) and `progressPhotos` —
+  into `{ date, weight, bodyFat, sites, photo, hasAnything }`, newest first.
+  Every field is optional; a photo-only entry and a weigh-in with no tape are
+  both real, and nothing is re-derived. `saveMeasureEntry` upserts all three
+  coherently: an absent field REMOVES that part of the date, an implausible
+  value changes NOTHING (the whole call is rejected, so a typo in `waist` cannot
+  half-save a weight), and legacy Arm/Thigh readings are carried across an edit.
+  It writes/removes EVERY row for a date, because the readers keep the LAST of a
+  duplicate (`normalizeWeighIns`/`normalizeMeasurements`) and a JSON restore can
+  create one — writing only the first silently discarded the correction.
+  **Saving never touches photo bytes** — the sheet stages the picture and writes
+  it on Save, so Cancel cannot orphan a blob — and `deleteMeasureEntry` deletes
+  the blob through an INJECTED remover, BYTES FIRST, so a failed delete throws
+  with nothing mutated rather than half-deleting an entry (`removePhoto` throws
+  for the same reason: `deletePhotoBlob` resolves false and never rejects).
+  The screen is `js/analytics/views/view-measures.js`: `+`, See All ⇄ Entries,
+  entry rows, a photo library. It is the RECORD; the Body band's strip is a
+  preview — and its add tile opens the same dated entry, so there is no second
+  capture path that skips the numbers.
+  It needs a route that does NOT depend on body data existing: the Body band is
+  range-scoped and only renders with something to say, so the Progress footer
+  also links to Measures — a fresh athlete must be able to log a first entry.
+  `js/ui/photo-viewer.js` is the one viewer for both: compare two photos side
+  by side, replace, edit the entry, delete (confirmed; a photo has no Undo).
+  Replace = same id, new bytes (one photo per date). The visible control is
+  always a BUTTON and the file input is `hidden` — a 1×1 `sr-only` input is measured as a
+  1×1 unreachable control — and Delete must NOT close the viewer before the
+  confirm opens: closing pops a history marker while the confirm pushes one, and
+  the later pops land past the app entry and blank the page (a real bug). Edit
+  entry must HAND OVER with `replaceManagedModal` for the same reason. **Export
+  and Import live beside the photo library** (one owner), not on a band that can
+  be absent: the zip is the only backup path for bytes, and an export nobody can
+  restore is not a backup. `listPhotos` and the JSON import reject a record
+  whose id disagrees with its date; the `bodyPhotos` privacy switch is honoured
+  here too.
+  `scripts/measures-browser-check.mjs` and `scripts/photo-browser-check.mjs`
+  drive the real file chooser and the real confirm at 390/320 with the clock
+  pinned.
 - Warm-up ramp: `js/workout/warmup-ramp.js` builds editable warm-up rows above
   the working weight. Barbells ramp 40/60/80% above the bar, rounded to the
   active profile's plates and pair counts; dumbbells have no bar, so each rung

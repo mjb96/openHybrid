@@ -59,3 +59,18 @@ test('every volume context shares one Back label after the merge', () => {
     );
   }
 });
+
+// Measures is a leaf of the Body band (weight/tape/photos), not a top-level
+// destination of its own, so its return path follows the band's origin.
+test('Measures returns to the hub — or Home when that is where it was opened from', () => {
+  assert.deepEqual(analyticsBackDestination('measures', 'insights'), {
+    action: 'open-analytics', context: 'hub', label: '← Back to Progress',
+  });
+  assert.deepEqual(analyticsBackDestination('measures', 'home'), {
+    action: 'switch-tab', target: 'home', label: '← Back to Home',
+  });
+});
+
+test('a child of Measures returns to Body', () => {
+  assert.equal(analyticsBackDestination('measures-photo', 'insights', 'measures').label, '← Back to Body');
+});

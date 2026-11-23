@@ -775,26 +775,36 @@ Follows the roadmap rule already written down: *"Progress photos never enter `ap
 
 ```
 appState.progressPhotos: [{            // schema v15 → v16, additive
-  id, date, note?, width, height, bytes, mime, updatedAt
+  id, date, note?, width, height, bytes, updatedAt
 }]
 
 IndexedDB HybridTrainingDB v3         // additive upgrade, existing stores untouched
-  store 'photos' keyPath 'id'         // { id, blob }
-  store 'rollupMeta' → photoMeta      // count, bytes, lastPurge
+  store 'photos' (no keyPath)         // value = the Blob, key = 'photo:<date>'
 ```
 
 - v15→v16 is a default-empty array, validated like every other additive  step.
-- IDB v2→v3 follows `js/db.js` discipline: create stores inside `onupgradeneeded`, never delete `runMaps` or `routes`, write the meta row last, and reject (don't hang) when an upgrade is blocked by another connection.
+- IDB v2→v3 follows `js/db.js` discipline: create stores inside `onupgradeneeded`, never delete `runMaps` or `routes`, and reject (don't hang) when an upgrade is blocked by another connection.
 - Deleting all app data deletes the `photos` store too (`clearRouteDatabase` precedent).
 
 ### 9.2 Capture and display
 
 - Input: `<input type="file" accept="image/*" capture="environment">` — works in the PWA and the Android WebView; camera permission is the OS's.
 - Downscale to ≤1200 px longest edge via canvas, encode JPEG q≈0.82 (~150–250 KB each) **before** storing. Never store the original camera file.
-- One entry per date, optional — "as much or as little as necessary". Multiple photos per date allowed.
-- Grid: newest first, date chips, tap → full-screen; select two → side-by-side compare; share via `shareImageCanvas`.
+- One entry per date, optional — "as much or as little as necessary". **One photo per
+  date** (execution decision D2): the id *is* the date, so saving a second photo for
+  the same day REPLACES the first in one step (the viewer's Replace button is the
+  explicit action; there is no second confirmation on top of it). Multi-photo-per-date
+  is deferred, not forbidden — the key is unchanged, so it is a later additive change.
+- The date entry, not a bare strip, is the record: a photo is saved together with that
+  day's weight, entered body fat and tape sites on **Measures**, and the Body band's
+  strip is a preview into it. Measures is reached from the Body band **and** from a
+  quiet Progress footer link, because the band only renders when it has data.
+- Grid: newest first, date chips, tap → full-screen; pick a second date → side-by-side
+  compare. There is no photo SHARE card: the app's share path draws a summary from
+  band models, and a photo share would need its own canvas path.
 - Delete: explicit confirm naming it **permanent** (blob and metadata go together). Photos are the one thing in this app with no Undo — say so.
-- Quota: show `navigator.storage.estimate()` usage in Settings → Data; warn above 80%.
+- Quota: **not implemented.** No `navigator.storage.estimate()` read exists in the app;
+  the upload downscales instead, and the export archive is the backup.
 
 ### 9.3 Export and backup — the part that must not be hand-waved
 
@@ -879,7 +889,7 @@ Never weaken an existing test or browser check to make a phase pass.
 | **Run/walk separation changes existing numbers** | Method disclosure + release note; additive `runDist`/`walkDist` keep `dist` working; a fixture proves a mixed day's run totals exclude the walk |
 | **Photo blobs with no backup** | ZIP export/import in P5; explicit copy in Settings; metadata still in JSON export |
 | Photo blobs leaking into localStorage/export | metadata-only in state; blob deletion tested |
-| Quota exhaustion | downscale before store; usage display; warn at 80% |
+| Quota exhaustion | downscale before store (no usage display — not implemented) |
 | Customize sheet churn hiding wrong cards | `normalizeUi` drops unknown ids; retain legacy ids |
 | Hub browser check breaking | extend, don't replace; keep every `data-action`/`data-context` |
 | Scope creep into visual imitation | clean-room: our geometry, tokens and copy |
