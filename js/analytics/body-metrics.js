@@ -47,6 +47,7 @@ export function buildBodyMetricsModel(state, options = /** @type {any} */ ({})) 
       legacy: !!site.legacy,
       latestCm: site.latest?.cm ?? null,
       latestDate: site.latest?.date ?? null,
+      previousDate: site.previous?.date ?? null,
       deltaCm: site.delta ?? null,
     }))
     .sort((a, b) => {
@@ -66,6 +67,7 @@ export function buildBodyMetricsModel(state, options = /** @type {any} */ ({})) 
       latestPct: measurements.bodyFat.latest.value,
       date: measurements.bodyFat.latest.date,
       deltaPp: measurements.bodyFat.delta ?? null,
+      deltaDate: measurements.bodyFat.previous?.date ?? null,
     }
     : null;
 

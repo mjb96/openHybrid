@@ -510,12 +510,13 @@ export function renderBodyWeightWithMA(container, bwLog, options = {}) {
  * two readings there is no trend to draw, so say what is missing rather than
  * stretch one dot across the card.
  *
- * @param {HTMLElement|null} container
+ * Pure string output so the same chart can be embedded in a band, a sheet or a
+ * rendered screen without a container. `renderSiteTrend` is the DOM wrapper.
+ *
  * @param {Array<{ date: string, value: number }>} points
  * @param {{ unit?: string, label?: string, percent?: boolean }} [options]
  */
-export function renderSiteTrend(container, points, options = {}) {
-  if (!container) return;
+export function siteTrendHTML(points, options = {}) {
   const label = options.label || 'Measurement';
   const percent = Boolean(options.percent);
   const unit = percent ? '%' : (options.unit || 'cm');
@@ -527,10 +528,9 @@ export function renderSiteTrend(container, points, options = {}) {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   if (readings.length < 2) {
-    container.innerHTML = `<p class="bw-ms-trend-note">${readings.length === 1
+    return `<p class="bw-ms-trend-note">${readings.length === 1
       ? `One ${label} reading logged (${formatValue(readings[0].value)}). Log another to see the trend.`
       : `Log ${label} twice to see the trend.`}</p>`;
-    return;
   }
 
   const W = 400, H = 170;
@@ -565,11 +565,24 @@ export function renderSiteTrend(container, points, options = {}) {
     + `${formatValue(latest.value)} on ${formatDayMonth(latest.date)}, `
     + `${change > 0 ? '+' : ''}${formatValue(change)}`;
 
-  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="${ariaLabel}">`
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" role="img" aria-label="${ariaLabel}">`
     + grid
     + `<path class="bw-site-line" d="${line}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`
     + dots + dateLabels
     + `</svg>`;
+}
+
+/**
+ * Paint one site's trend into a container. Kept as the DOM-facing name because
+ * the Bodyweight card's click handler and its browser checks already use it.
+ *
+ * @param {HTMLElement|null} container
+ * @param {Array<{ date: string, value: number }>} points
+ * @param {{ unit?: string, label?: string, percent?: boolean }} [options]
+ */
+export function renderSiteTrend(container, points, options = {}) {
+  if (!container) return;
+  container.innerHTML = siteTrendHTML(points, options);
 }
 
 export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {

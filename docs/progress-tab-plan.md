@@ -508,11 +508,11 @@ Each band is one `.pg-band` card. Header pattern is identical everywhere, so the
 | 3 Muscles | header → grouping chips → stacked chart → legend → body diagram (`‹ week ›`) → **distribution bars vs previous period + delta chips** → ranked rows (top 5 + “Show all 19”) | stacked vertical + body map + 100 % horizontal + rows | chips 44 px; each bar 18 px wide but its *column* is tappable (≥44 px via gap); rows 44 px |
 | 4 Main exercises | header → up to 5 rows (name · sessions · delta · spark · next) | sparkline 56×18 | whole row 56 px → drilldown |
 | 5 Endurance | header → distance bars → stat row (runs · time · avg pace · longest) → consistency strip → “All 30 running metrics” | vertical bars + dot strip | link rows 44 px; strip cells tappable |
-| 6 Body | header → weight value + delta → weight chart → 4 key sites + “All 14” → photo strip | existing line chart | site chips 44 px; photo thumb 72×72 |
+| 6 Body | header → weight value + delta → weight chart → 4 key sites + “All 14” → photo strip | existing line chart | site buttons 44 px; photo thumb 72×72 |
 | 7 Fasting | header → 14 fast-duration bars against the goal → stat row (avg · streak · longest) → “Fasting analytics” | horizontal bars + goal line | rows 44 px |
 | 8 Reports | two full-width rows | none | 44 px |
 
-Band 6 does **not** render all 14 sites expanded. It shows the four the athlete measures most (waist, chest, arm, thigh) plus "All 14 sites →" to the existing measurements card. That is how "all this data" fits without a nine-screen scroll.
+Band 6 does **not** render all 14 sites expanded. It shows the four the athlete measures most (waist, chest, arm, thigh) plus "All 14 sites →". Each of those four cells opens **Measures** on that site; the screen's Trends block is the single-site explorer (site select, 30D/3M/1Y/All, shared SVG chart, exact readings table). That is how "all this data" fits without a nine-screen scroll.
 
 ### 4.5 Chart geometry
 
@@ -799,6 +799,8 @@ IndexedDB HybridTrainingDB v3         // additive upgrade, existing stores untou
   day's weight, entered body fat and tape sites on **Measures**, and the Body band's
   strip is a preview into it. Measures is reached from the Body band **and** from a
   quiet Progress footer link, because the band only renders when it has data.
+  Measures' Trends block charts ONE site (or entered body fat) over 30D/3M/1Y/All;
+  its range is leaf-local, and the Body band's four site cells deep-link to it.
 - Grid: newest first, date chips, tap → full-screen; pick a second date → side-by-side
   compare. There is no photo SHARE card: the app's share path draws a summary from
   band models, and a photo share would need its own canvas path.

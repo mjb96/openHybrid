@@ -131,6 +131,18 @@ test('an implausible reading is refused and nothing is written', async (t) => {
   assert.deepEqual(appState.bodyMeasurements, []);
 });
 
+test('editing at inches keeps untouched stored centimetres exact', async (t) => {
+  t.after(cleanupGlobals);
+  resetState();
+  appState.settings = { weightUnit: 'lbs', measurementUnit: 'in' };
+  // 76.0 cm is 29.9 in to one decimal; saving that display value back through
+  // displayToCm used to store 75.9 cm even though the waist was never touched.
+  appState.bodyMeasurements = [{ date: DATE, waist: 76.0 }];
+  installDom({ waist: '29.9', bodyFat: '18.4' });
+  await saveMeasurementsSheet();
+  assert.deepEqual(appState.bodyMeasurements, [{ date: DATE, waist: 76, bodyFat: 18.4 }]);
+});
+
 test('a future date is refused before anything is written', async (t) => {
   t.after(cleanupGlobals);
   resetState();

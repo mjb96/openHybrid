@@ -24,6 +24,7 @@
 import {
   MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, buildMeasurementRecord,
   measurementUnit, normalizeMeasurements, preserveLegacySites,
+  MIN_MEASUREMENT_CM, MAX_MEASUREMENT_CM,
 } from './measurements.js';
 import { normalizeWeighIns, weightUnitLabel } from './bodyweight.js';
 import { listPhotos, photoIdFor } from '../photos/library.js';
@@ -138,7 +139,14 @@ export function measureEntryFor(state, date) {
  * @param {any} state
  * @param {string} date
  * @param {{ weight?: number|string|null, bodyFat?: number|string|null,
- *   sites?: Record<string, number|string|null> }} [values]
+ *   sites?: Record<string, number|string|null>,
+ *   unchangedSites?: Record<string, number|string|null> }} [values]
+ *   `unchangedSites` carries the canonical CENTIMETRES of fields whose displayed
+ *   value was not edited. The sheet is the only caller that can decide this: an
+ *   existing 76.0 cm waist reads as 29.9 in, and converting that display value
+ *   back would silently store 75.9 cm. The sheet passes the original cm for
+ *   untouched fields, so Save can never rewrite a reading the athlete did not
+ *   change.
  * @param {{ unit?: 'cm'|'in'|string }} [options]
  * @returns {{ ok: boolean, invalid: string[], hasValues: boolean }}
  */
@@ -150,6 +158,19 @@ export function saveMeasureEntry(state, date, values = {}, options = {}) {
   const rawForRecord = { ...rawSites };
   if ('bodyFat' in values) rawForRecord.bodyFat = values.bodyFat;
   const { record, invalid } = buildMeasurementRecord(date, rawForRecord, unit);
+
+  // Untouched fields keep their EXACT stored centimetres. This is deliberately
+  // an override after conversion, not a second conversion path: the value came
+  // from the record the sheet was editing, so there is nothing left to parse.
+  const unchangedSites = values.unchangedSites && typeof values.unchangedSites === 'object'
+    ? values.unchangedSites
+    : {};
+  for (const site of MEASUREMENT_SITES) {
+    const cm = Number(unchangedSites[site.key]);
+    if (Number.isFinite(cm) && cm >= MIN_MEASUREMENT_CM && cm <= MAX_MEASUREMENT_CM) {
+      record[site.key] = Math.round(cm * 10) / 10;
+    }
+  }
 
   let weight = null;
   const rawWeight = values.weight;

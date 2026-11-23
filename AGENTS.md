@@ -223,13 +223,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   only be removed by deleting the whole date; the sheet hint says so. Every
   measured cell is a 44px button: `showMeasurementTrend` opens one site at a time
   in `#bwMsTrend` from the last rendered model (a second tap collapses it) and
-  `renderSiteTrend` draws a dependency-free SVG line oldest → newest,
-  min/mid/max and date labels, body fat on a percentage scale, and a note rather
-  than a line under two readings. The view converts stored centimetres to the
-  display unit before calling the chart (site points and deltas); `renderSiteTrend`
-  never converts, and its `role="img"` label carries the unit, first/latest
-  readings, dates and change. A cm/in toggle repaints the open trend in the new
-  unit. Light mode overrides the line/dot to `#155e75` (5.76:1 measured).
+  `siteTrendHTML` (a pure string builder; `renderSiteTrend` is its DOM wrapper)
+  draws a dependency-free SVG line oldest → newest, min/mid/max and date labels,
+  body fat on a percentage scale, and a note rather than a line under two
+  readings. The view converts stored centimetres to the display unit before
+  calling the chart (site points and deltas); the chart never converts, and its
+  `role="img"` label carries the unit, first/latest readings, dates and change.
+  A cm/in toggle repaints the open trend in the new unit. Light mode overrides
+  the line/dot to `#155e75` (5.76:1 measured).
   `buildMeasurementsCsv` exports the raw centimetres (14 canonical columns, then
   Arm/Thigh, then body fat) from Settings → Data, and
   `js/portability/import-measurements-csv.js` reads that shape back
@@ -269,9 +270,20 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   with nothing mutated rather than half-deleting an entry (`removePhoto` throws
   for the same reason: `deletePhotoBlob` resolves false and never rejects).
   The screen is `js/analytics/views/view-measures.js`: `+`, See All ⇄ Entries,
-  entry rows, a photo library. It is the RECORD; the Body band's strip is a
-  preview — and its add tile opens the same dated entry, so there is no second
-  capture path that skips the numbers.
+  entry rows, a photo library, and a **Trends** block above the list. It is the
+  RECORD; the Body band's strip is a preview — and its add tile opens the same
+  dated entry, so there is no second capture path that skips the numbers.
+  `js/analytics/measurement-explorer.js` is the pure read model behind Trends:
+  choose ONE measured site (or body fat), filter its points through the shared
+  `ranges.js` vocabulary, and keep the headline's "since previous reading"
+  baseline even when the chart is narrowed. Its range is LEAF-LOCAL
+  (`data-ms-range`, default `all`), never the hub's `_progressRangeId`, and it
+  resets on entry. The Body band's key-site cells are buttons carrying
+  `data-entity`; the app router passes that through `_analyticsEntity` and the
+  explorer opens on that site. `saveMeasureEntry` accepts `unchangedSites`
+  (canonical cm for fields the sheet prefilled but the athlete did not edit):
+  without it, 76.0 cm shown as 29.9 in saved back as 75.9 cm on every edit
+  (audit AUD-R6-1).
   It needs a route that does NOT depend on body data existing: the Body band is
   range-scoped and only renders with something to say, so the Progress footer
   also links to Measures — a fresh athlete must be able to log a first entry.

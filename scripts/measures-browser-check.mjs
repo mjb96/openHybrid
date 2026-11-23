@@ -276,6 +276,7 @@ try {
       return Boolean(preview) && (preview.tagName === 'CANVAS' ? preview.width > 0 : Boolean(preview.getAttribute('src')));
     }, { timeout: 8000 }).catch(() => {});
     await page.fill('#msSheet_weight', '79.1');
+    await page.fill('#msSheet_waist', '84');
     await page.click('[data-action="save-measurements-sheet"]');
     await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'), { timeout: 8000 });
     const twoEntries = await page.waitForFunction(
@@ -284,6 +285,71 @@ try {
     ).then(() => true).catch(() => false);
     ok(twoEntries, `${width}px: the second entry did not appear`);
     ok(await countPhotos(page) === 2, `${width}px: expected two photo records`);
+
+    // ---- the explorer: one site, one range, one chart ------------------
+    const trend = await page.evaluate(() => {
+      const root = document.getElementById('analytics-measures');
+      const select = root.querySelector('[data-ms-site]');
+      const range = root.querySelector('[data-ms-range][aria-pressed="true"]');
+      return {
+        hasTrend: Boolean(root.querySelector('.ms-trend')),
+        site: select?.value || '',
+        options: [...(select?.options || [])].map((option) => option.value),
+        chart: Boolean(root.querySelector('.ms-trend .bw-ms-trend svg')),
+        range: range?.getAttribute('data-ms-range') || '',
+        chips: root.querySelectorAll('.ms-trend [data-ms-range]').length,
+        value: root.querySelector('.ms-trend__value')?.textContent?.trim() || '',
+        delta: root.querySelector('.ms-trend__delta')?.textContent?.trim() || '',
+      };
+    });
+    ok(trend.hasTrend, `${width}px: Measures has no measurement explorer`);
+    ok(trend.site === 'waist', `${width}px: the explorer defaulted to ${trend.site}, not waist`);
+    ok(trend.options.includes('waist') && trend.options.includes('bodyFat'), `${width}px: explorer sites are incomplete (${trend.options.join(',')})`);
+    ok(trend.chart, `${width}px: the explorer has no chart with two waist readings`);
+    ok(trend.range === 'all', `${width}px: the explorer did not default to All (${trend.range})`);
+    ok(trend.chips === 4, `${width}px: expected four explorer range chips (${trend.chips})`);
+    ok(/82\.0/.test(trend.value), `${width}px: explorer latest is ${trend.value}`);
+    ok(/-2\.0 cm since 12 Nov 2026/.test(trend.delta), `${width}px: explorer delta is ${trend.delta}`);
+
+    const trendSizes = await page.evaluate(() => {
+      const root = document.getElementById('analytics-measures');
+      const size = (selector) => {
+        const el = root.querySelector(selector);
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return [Math.round(rect.width), Math.round(rect.height)];
+      };
+      return {
+        select: size('[data-ms-site]'),
+        range: size('.ms-trend [data-ms-range]'),
+      };
+    });
+    ok(trendSizes.select && trendSizes.select[1] >= 44, `${width}px: explorer select is ${trendSizes.select}`);
+    ok(trendSizes.range && trendSizes.range[1] >= 44, `${width}px: explorer range chip is ${trendSizes.range}`);
+    const trendsOverflow = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      by: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    ok(!trendsOverflow.overflow, `${width}px: the measurement explorer overflows horizontally by ${trendsOverflow.by}px`);
+
+    await page.click('.ms-trend [data-ms-range="30d"]');
+    await page.waitForTimeout(250);
+    const narrowed = await page.$eval('.ms-trend [data-ms-range][aria-pressed="true"]', (el) => el.getAttribute('data-ms-range')).catch(() => '');
+    ok(narrowed === '30d', `${width}px: the explorer range did not switch (${narrowed})`);
+    ok(await page.$('.ms-trend .bw-ms-trend svg') !== null, `${width}px: narrowing the range dropped a chart that still has two readings`);
+
+    await page.selectOption('#analytics-measures [data-ms-site]', 'bodyFat');
+    await page.waitForTimeout(250);
+    const bodyFatTrend = await page.$eval('#analytics-measures .ms-trend', (el) => ({
+      value: el.querySelector('.ms-trend__value')?.textContent?.trim() || '',
+      note: el.querySelector('.bw-ms-trend-note')?.textContent?.trim() || '',
+      chart: Boolean(el.querySelector('svg')),
+    })).catch(() => ({ value: '', note: '', chart: false }));
+    ok(/18\.5%/.test(bodyFatTrend.value), `${width}px: body-fat explorer value is ${bodyFatTrend.value}`);
+    ok(/One Body fat reading logged/.test(bodyFatTrend.note), `${width}px: a single body-fat reading did not stay honest (${bodyFatTrend.note})`);
+    ok(!bodyFatTrend.chart, `${width}px: one body-fat reading drew a line`);
+    await page.selectOption('#analytics-measures [data-ms-site]', 'waist');
+    await page.waitForTimeout(200);
 
     // ---- library + side-by-side compare ----------------------------------
     const seeAll = await page.$('#analytics-measures .ms-screen__seeall');

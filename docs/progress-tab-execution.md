@@ -306,12 +306,13 @@ being split between a photo strip, a measurements card and a weigh-in sheet.
 | ID | Deliverable | Files | Acceptance |
 | --- | --- | --- | --- |
 | T9.1 | Compose one dated entry from three stores | **new** `js/metrics/measures.js` | `{ date, weight, bodyFat, sites, photo, hasAnything }`, newest first, every field optional, nothing derived |
-| T9.2 | Coherent upsert + whole-entry delete | `measures.js` | A cleared field removes that part of the date; an implausible value changes NOTHING; legacy Arm/Thigh survive an edit; the photo blob is deleted through an injected deleter (the model stays DOM/IDB-free) |
+| T9.2 | Coherent upsert + whole-entry delete | `measures.js` | A cleared field removes that part of the date; an implausible value changes NOTHING; legacy Arm/Thigh survive an edit; an untouched site keeps its EXACT stored centimetres on a cm/in round trip (`unchangedSites`); the photo blob is deleted through an injected deleter (the model stays DOM/IDB-free) |
 | T9.3 | Measures screen | **new** `js/analytics/views/view-measures.js` | `+`, See All ⇄ Entries, entry rows with a photo thumb, a photo library; units from the model |
 | T9.4 | Sheet: Add picture at the TOP, weight, Save | `js/measurements-sheet.js`, `index.html` | The picture is STAGED until Save, so Cancel cannot orphan a blob; every field optional |
 | T9.5 | Viewer: compare, replace, edit, delete | `js/ui/photo-viewer.js` | Two photos side by side from a picker that hides itself when there is nothing to compare with; Delete asks first |
 | T9.6 | Band becomes a preview, not a second editor | `js/analytics/views/view-body.js` | The strip opens the viewer; the add tile opens the SAME dated entry (no camera shortcut that skips the numbers); the bodyweight graph stays reachable |
 | T9.7 | Browser contract | **new** `scripts/measures-browser-check.mjs` | empty profile → add → save → entry → abandoned pick leaves nothing → second date → See All → compare → Edit entry (one history marker) → replace (blob HASH changes) → delete, asserting records AND blobs at 390/320 |
+| T9.8 | Single-site explorer | **new** `js/analytics/measurement-explorer.js`, `view-measures.js` | One measured site or body fat; 30D / 3M / 1Y / All; latest + change since the previous reading; the shared `siteTrendHTML`; exact readings table; leaf-local range; a range with no readings offers Show all. The Body band's four site cells open it on that site |
 
 **P9 gate:** the entry, not the model, is what must be proven. Unit tests cannot
 see a covered tile or a history marker that blanks the page; `measures-browser-check`

@@ -667,11 +667,20 @@ html[data-theme="light"] .pg-statrow span { color: #475569; }
 /* --------------------------------------------------------- 15. BODY BAND */
 .pg-body__chart { margin-top: 12px; }
 .pg-sites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin: 14px 0 0; padding: 0; list-style: none; }
-.pg-site { display: flex; align-items: baseline; gap: 4px; }
+.pg-site { display: flex; min-width: 0; }
+.pg-site__btn {
+  display: flex; align-items: baseline; gap: 4px; width: 100%; min-height: var(--touch-target);
+  padding: 4px 6px; border: 0; border-radius: 10px; background: transparent;
+  color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pg-site__btn:hover { background: var(--overlay-sm, rgba(255,255,255,0.04)); }
+.pg-site__btn:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
 .pg-site__label { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
 .pg-site__value { font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .pg-site small { font-size: 0.52rem; color: var(--text-secondary); }
 .pg-site__delta { margin-left: auto; font-size: 0.56rem; font-weight: 700; color: var(--text-secondary); }
+.pg-sites__note { margin: 6px 6px 0; font-size: 0.58rem; line-height: 1.4; color: var(--text-muted); }
+html[data-theme="light"] .pg-sites__note { color: #64748b; }
 .pg-body__fat { margin: 12px 0 0; font-size: 0.68rem; color: var(--text-secondary); }
 .pg-body__fat b { color: var(--text-primary); }
 .pg-body__fat small { font-size: 0.54rem; }
@@ -848,6 +857,42 @@ html[data-theme="light"] .ms-screen__tool { color: #0f172a; }
 .ms-screen__seeall:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
 html[data-theme="light"] .ms-screen__add,
 html[data-theme="light"] .ms-screen__seeall { color: #0f172a; }
+
+/* One measured site over time: the read path behind the dated entry list. */
+.ms-trend {
+  margin: 0 0 14px; padding: 12px;
+  border: 1px solid var(--border-subtle); border-radius: 14px;
+  background: var(--overlay-md, rgba(255,255,255,0.04));
+}
+.ms-trend__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.ms-trend__headline { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ms-trend__label { font-size: 0.60rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-secondary); }
+.ms-trend__value { font-size: 1.35rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ms-trend__delta { margin: 4px 0 0; font-size: 0.66rem; line-height: 1.4; color: var(--text-secondary); text-align: right; }
+.ms-trend__outside { margin: 6px 0 0; font-size: 0.60rem; line-height: 1.4; color: var(--text-muted); }
+.ms-trend__pick { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.ms-trend__pick > span { flex: 0 0 auto; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); }
+.ms-trend__select {
+  flex: 1; min-width: 0; min-height: var(--touch-target);
+  padding: 0 10px; border-radius: 12px;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--bg-input); color: var(--text-primary);
+  font: inherit; font-size: 0.78rem; font-weight: 700;
+}
+.ms-trend__select:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+.ms-trend__range { margin-top: 10px; }
+.ms-trend__chart { margin: 10px 0 0; }
+.ms-trend__empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  margin-top: 10px; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--border-subtle); color: var(--text-secondary);
+  font-size: 0.74rem; line-height: 1.5;
+}
+.ms-trend__empty p { margin: 0; }
+html[data-theme="light"] .ms-trend__select { color: #0f172a; }
+html[data-theme="light"] .ms-trend__delta,
+html[data-theme="light"] .ms-trend__pick > span { color: #475569; }
+html[data-theme="light"] .ms-trend__outside { color: #64748b; }
 
 .ms-entries { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .ms-entry {

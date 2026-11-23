@@ -224,11 +224,15 @@ export function collapsedBandRow({ id, eyebrow, value, delta, action }) {
  *
  * @param {ReadonlyArray<{ id: string, label: string }>} presets
  * @param {string} activeId
+ * @param {{ attribute?: string, label?: string }} [options] `attribute` lets a
+ *   leaf screen own its range without pretending to be the hub's control.
  */
-export function rangeBar(presets, activeId) {
-  return `<div class="pg-range" role="group" aria-label="Time range">${presets.map((preset) => `
+export function rangeBar(presets, activeId, options = {}) {
+  const attribute = options.attribute || 'data-pg-range';
+  const label = options.label || 'Time range';
+  return `<div class="pg-range" role="group" aria-label="${esc(label)}">${presets.map((preset) => `
     <button type="button" class="pg-range__chip${preset.id === activeId ? ' is-selected' : ''}"
-      data-pg-range="${esc(preset.id)}" aria-pressed="${preset.id === activeId ? 'true' : 'false'}">${esc(preset.label)}</button>`).join('')}</div>`;
+      ${attribute}="${esc(preset.id)}" aria-pressed="${preset.id === activeId ? 'true' : 'false'}">${esc(preset.label)}</button>`).join('')}</div>`;
 }
 
 /**

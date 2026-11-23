@@ -20,7 +20,7 @@ function state(overrides = {}) {
       { date: '2026-11-20', weight: 78.4 },
     ],
     bodyMeasurements: [
-      { date: '2026-11-01', waist: 84, chest: 104, arm_l: 38 },
+      { date: '2026-11-01', waist: 84, chest: 104, arm_l: 38, bodyFat: 19.4 },
       { date: '2026-11-20', waist: 82, chest: 104, bodyFat: 18.5 },
     ],
     ...overrides,
@@ -45,9 +45,25 @@ test('a single weigh-in produces no change claim', () => {
 test('body fat is an entered reading and is shown with its own unit', () => {
   const model = buildBodyMetricsModel(state(), { range });
   assert.equal(model.bodyFat.latestPct, 18.5);
+  assert.equal(model.bodyFat.deltaDate, '2026-11-01');
   const html = renderBody(model);
   assert.match(html, /18\.5%/);
+  assert.match(html, /since 1 Nov/);
   assert.match(html, /entered, never estimated/);
+});
+
+test('the tape delta states its baseline and each site opens its trend', () => {
+  const model = buildBodyMetricsModel(state(), { range });
+  const waist = model.keySites.find((site) => site.key === 'waist');
+  assert.equal(waist.previousDate, '2026-11-01');
+  assert.equal(waist.deltaCm, -2);
+
+  const html = renderBody(model);
+  assert.match(html, /Tape changes are since each site's previous reading\./);
+  assert.match(html, /Change since previous/);
+  assert.match(html, /Previous reading/);
+  assert.match(html, /data-action="open-analytics"[^>]*data-context="measures"[^>]*data-entity="waist"/);
+  assert.match(html, /class="pg-site__btn"/);
 });
 
 test('no body fat reads as nothing, not as zero', () => {

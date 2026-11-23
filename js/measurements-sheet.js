@@ -412,19 +412,35 @@ export async function saveMeasurementsSheet() {
     return;
   }
   const unit = measurementUnit(appState);
+  const existing = measureEntryFor(appState, date);
   /** @type {Record<string, string>} */
   const sites = {};
-  for (const site of MEASUREMENT_SITES) sites[site.key] = inputFor(site.key)?.value ?? '';
+  /** @type {Record<string, number>} */
+  const unchangedSites = {};
+  const existingSites = new Map((existing?.sites || []).map((site) => [site.key, site.cm]));
+  for (const site of MEASUREMENT_SITES) {
+    const raw = inputFor(site.key)?.value ?? '';
+    const own = existingSites.get(site.key);
+    // The sheet prefills an existing reading in the athlete's display unit. If
+    // the field still shows that rounded value, keep the ORIGINAL centimetres:
+    // 76.0 cm prefilled as 29.9 in must not save back as 75.9 cm. Only an
+    // actually edited field goes through unit conversion.
+    if (own != null && String(raw).trim() !== '' && Number(raw) === roundDisplay(cmToDisplay(own, unit))) {
+      unchangedSites[site.key] = own;
+      continue;
+    }
+    sites[site.key] = raw;
+  }
   const values = {
     weight: inputFor('weight')?.value ?? '',
     bodyFat: inputFor('bodyFat')?.value ?? '',
     sites,
+    unchangedSites,
   };
 
   // An entry with nothing in it and nothing previously recorded is not worth a
   // row. An EXISTING entry is different: clearing every field is a correction,
   // and `saveMeasureEntry` removes the parts that no longer exist.
-  const existing = measureEntryFor(appState, date);
   const existingHasValues = Boolean(existing && (existing.weight != null || existing.bodyFat != null || existing.sites.length));
   const photoKept = Boolean(existing?.photo) && !_removePhoto;
   const typed = String(values.weight).trim() !== ''

@@ -49,10 +49,13 @@ function multi(selectors) {
 test('Measures actions resolve before the range/focus/grouping controls', () => {
   assert.equal(progressControlTarget(el('[data-measures-mode]')), 'measures-mode');
   assert.equal(progressControlTarget(el('[data-measure-delete]')), 'measures-delete');
+  // The leaf's own range must not be mistaken for the hub control.
+  assert.equal(progressControlTarget(el('[data-ms-range]')), 'measure-range');
   // The order lock: neither carries a data-pg-* marker, but if one ever did the
   // Measures action still wins — the same failure that disabled Share/Export.
   assert.equal(progressControlTarget(multi(['[data-measures-mode]', '[data-pg-range]'])), 'measures-mode');
   assert.equal(progressControlTarget(multi(['[data-measure-delete]', '[data-pg-focus]'])), 'measures-delete');
+  assert.equal(progressControlTarget(multi(['[data-ms-range]', '[data-pg-range]'])), 'measure-range');
 });
 
 test('an unrelated element is not an action', () => {
