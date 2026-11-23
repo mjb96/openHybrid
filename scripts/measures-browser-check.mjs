@@ -188,8 +188,10 @@ try {
 
     await pickInto(page, '#msSheetPhoto [data-ms-photo-pick="library"]', 'a.png', photoA);
     const staged = await page.waitForFunction(() => {
-      const img = document.querySelector('#msSheetPhotoPreview img');
-      return img && img.getAttribute('src') ? true : false;
+      // The staged preview is the decoded CANVAS (no URL sink), so wait for it
+      // to be attached with real pixels rather than for an <img src>.
+      const preview = document.querySelector('#msSheetPhotoPreview canvas, #msSheetPhotoPreview img');
+      return Boolean(preview) && (preview.tagName === 'CANVAS' ? preview.width > 0 : Boolean(preview.getAttribute('src')));
     }, { timeout: 8000 }).then(() => true).catch(() => false);
     ok(staged, `${width}px: picking a picture did not stage a preview`);
 
@@ -268,8 +270,10 @@ try {
     await page.dispatchEvent('#msSheetDate', 'change');
     await pickInto(page, '#msSheetPhoto [data-ms-photo-pick="library"]', 'b.png', photoB);
     await page.waitForFunction(() => {
-      const img = document.querySelector('#msSheetPhotoPreview img');
-      return img && img.getAttribute('src') ? true : false;
+      // The staged preview is the decoded CANVAS (no URL sink), so wait for it
+      // to be attached with real pixels rather than for an <img src>.
+      const preview = document.querySelector('#msSheetPhotoPreview canvas, #msSheetPhotoPreview img');
+      return Boolean(preview) && (preview.tagName === 'CANVAS' ? preview.width > 0 : Boolean(preview.getAttribute('src')));
     }, { timeout: 8000 }).catch(() => {});
     await page.fill('#msSheet_weight', '79.1');
     await page.click('[data-action="save-measurements-sheet"]');

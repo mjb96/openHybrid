@@ -31,19 +31,22 @@ import {
 import { normalizeWeighIns, weightUnitLabel } from './metrics/bodyweight.js';
 import { measureEntryFor, saveMeasureEntry } from './metrics/measures.js';
 import { addPhoto, listPhotos, photoObjectUrl, removePhoto } from './photos/library.js';
+import { preparePhoto } from './photos/capture.js';
 
 let _render = () => {};
-/** A picked picture, written only when the entry is saved. */
-/** @type {File|Blob|null} */
-let _pendingPhoto = null;
+/** A picked picture, already downscaled once; written only when the entry is saved. */
+/** @type {{ blob: Blob, width: number, height: number }|null} */
+let _pendingPrepared = null;
+/** The canvas the staged picture was decoded onto, shown as the preview. */
+/** @type {HTMLCanvasElement|null} */
+let _previewCanvas = null;
 /** The existing picture was asked to be removed when the entry is saved. */
 let _removePhoto = false;
 /** The date the photo slot currently describes. */
 let _photoDate = '';
 /** A token so a slow thumbnail never paints over a newer choice. */
 let _photoToken = 0;
-/** Object URL currently shown for a STAGED picture. */
-let _previewUrl = null;
+
 
 
 /** The eight sites inside the disclosure; used for the auto-open count. */
@@ -72,7 +75,8 @@ export function initMeasurementsSheet(render) {
       return;
     }
     if (!target?.closest('[data-action="ms-sheet-photo-remove"]')) return;
-    _pendingPhoto = null;
+    _pendingPrepared = null;
+    _previewCanvas = null;
     // Only a SAVED picture can be removed; clearing a staged pick is just a
     // cancel and must not claim it will delete something on Save.
     _removePhoto = listPhotos(appState).some((photo) => photo.date === _photoDate);
@@ -85,7 +89,7 @@ export function initMeasurementsSheet(render) {
  * cannot leave a blob behind.
  * @param {Event} event
  */
-function onPhotoInputChange(event) {
+async function onPhotoInputChange(event) {
   const input = event.target;
   if (!(input instanceof HTMLInputElement) || !input.hasAttribute('data-ms-photo')) return;
   const file = input.files?.[0] || null;
@@ -95,9 +99,17 @@ function onPhotoInputChange(event) {
     showToast('That file is not an image.', true);
     return;
   }
-  _pendingPhoto = file;
-  _removePhoto = false;
-  paintPhotoSlot();
+  try {
+    // Decode + downscale NOW, once: the preview then shows exactly what will be
+    // stored, and Save does not encode the same picture a second time.
+    const prepared = await preparePhoto(file);
+    _pendingPrepared = { blob: prepared.blob, width: prepared.width, height: prepared.height };
+    _previewCanvas = prepared.canvas;
+    _removePhoto = false;
+    paintPhotoSlot();
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'That picture could not be read.', true);
+  }
 }
 
 
@@ -117,13 +129,10 @@ function inputFor(key) {
 
 /** Revoke the staged preview URL and forget the staged picture. */
 function resetPhotoStage() {
-  _pendingPhoto = null;
+  _pendingPrepared = null;
+  _previewCanvas = null;
   _removePhoto = false;
   _photoToken += 1;
-  if (_previewUrl) {
-    try { URL.revokeObjectURL(_previewUrl); } catch { /* gone */ }
-    _previewUrl = null;
-  }
 }
 
 /**
@@ -139,17 +148,13 @@ function paintPhotoSlot() {
   _photoToken += 1;
   const token = _photoToken;
 
-  if (_previewUrl) {
-    try { URL.revokeObjectURL(_previewUrl); } catch { /* gone */ }
-    _previewUrl = null;
-  }
-
-  if (_pendingPhoto) {
-    const img = document.createElement('img');
-    img.alt = 'New picture to save';
-    _previewUrl = URL.createObjectURL(_pendingPhoto);
-    img.src = _previewUrl;
-    host.append(img);
+  if (_pendingPrepared && _previewCanvas) {
+    // The decoded canvas IS the preview: no URL, and it shows the stored pixels.
+    const canvas = _previewCanvas;
+    canvas.className = 'ms-sheet-photo__img';
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', 'New picture to save');
+    host.append(canvas);
     if (remove) remove.hidden = false;
     return;
   }
@@ -425,7 +430,7 @@ export async function saveMeasurementsSheet() {
   const typed = String(values.weight).trim() !== ''
     || String(values.bodyFat).trim() !== ''
     || MEASUREMENT_SITES.some((site) => String(sites[site.key] ?? '').trim() !== '');
-  if (!typed && !existingHasValues && !_pendingPhoto && !photoKept && !_removePhoto) {
+  if (!typed && !existingHasValues && !_pendingPrepared && !photoKept && !_removePhoto) {
     showToast('Add a measurement or a picture');
     return;
   }
@@ -439,8 +444,10 @@ export async function saveMeasurementsSheet() {
   // Photos last: if the picture cannot be stored, the numbers still are, and
   // the toast says exactly which part failed.
   try {
-    if (_pendingPhoto) {
-      await addPhoto({ state: appState, dateISO: date, file: _pendingPhoto });
+    if (_pendingPrepared) {
+      // Already downscaled at pick time: hand the prepared blob over rather than
+      // encoding it again.
+      await addPhoto({ state: appState, dateISO: date, prepared: _pendingPrepared });
     } else if (_removePhoto && existing?.photo) {
       await removePhoto({ state: appState, id: existing.photo.id });
     }
