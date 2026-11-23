@@ -713,6 +713,21 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress finished: photos, customization, share.**
+  - **Photos** ship with their backup path: metadata in `appState` (v16), bytes in
+    IndexedDB (DB v3), one photo per date, downscaled before storage, exported as a
+    hand-written store-only zip and re-imported idempotently.
+  - **Customization** gained per-band detail switches (`bodyPhotos` for privacy,
+    `musclesBody` for preference) and keyboard reorder — up/down buttons rather than
+    a drag-only gesture, because a pointer-only control would have excluded the
+    users the switch row already served.
+  - **Share** draws one canvas summary from the same band models the screen renders,
+    so the image cannot disagree with the page.
+  - `npm run verify` green (2,555 tests); all 46 browser checks pass.
+  - The Progress programme is complete: eight bands, one dashboard, one range
+    control, no paywall possible (guard test), and every surface answering one of
+    the three product questions.
+
 - **2026-11-23 — Progress P6b: progress photos, with their backup path.**
   - Photos are the only user data here with no platform backup (Android sets
     `allowBackup="false"`, so IndexedDB is device-local). They ship **with** their

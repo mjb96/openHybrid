@@ -537,6 +537,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   and an archive without a manifest is refused rather than half-imported. Deleting a
   photo deletes its blob and asks first (no Undo). This matters because Android sets
   `allowBackup="false"`: the zip is the only backup path for photo bytes.
+- Progress is complete (P8b): **customization** has per-band detail switches
+  (`PROGRESS_SUB_CARDS`: `bodyPhotos` = privacy, `musclesBody` = preference), which
+  are sub-cards — never in the render order, never counted by the one-band minimum
+  — and **keyboard reorder** (up/down buttons in the sheet, 44 px) rather than a
+  drag-only gesture. **Share** (`js/analytics/share-card.js`) draws ONE canvas
+  summary from the same band models the screen renders, via the existing
+  `shareImageCanvas`; it deliberately does not re-implement each chart for an image.
+  The roadmap session log records the whole programme.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside
