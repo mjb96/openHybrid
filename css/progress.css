@@ -750,7 +750,12 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
 #analytics-hub { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }
 
 /* Pulse: rail + heat map side by side (see view-pulse.js). */
-.pg-pulse__top { display: grid; grid-template-columns: 1fr 124px; gap: 10px; align-items: start; }
+.pg-pulse__top { display: grid; grid-template-columns: minmax(0, 1fr) 124px; gap: 10px; align-items: start; }
+/* Grid children default to min-width:auto, so the rail's content and the map's
+   intrinsic width could push the track past the band by a couple of pixels at
+   390px — intermittently, because it depended on rounding. */
+.pg-pulse__top > * { min-width: 0; }
+.pg-pulse__top .session-map { max-width: 124px; }
 .pg-pulse__top .pg-rail { margin-top: 14px; }
 .pg-pulse__top .session-map { margin-top: 10px; }
 .pg-pulse__top .session-map__views { max-width: 124px; gap: 6px; }

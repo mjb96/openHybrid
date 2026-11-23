@@ -241,7 +241,22 @@ try {
         weekScale: section.querySelector('.ph-weeks__scale')?.textContent?.trim() || '',
         // The week label must name the real Monday–Sunday range, not a program week.
         sub: section.querySelector('.hub-sub')?.textContent?.trim() || '',
+        // Name the offender: a bare "horizontal overflow" costs a whole run to
+        // diagnose, and the culprit is usually one wide element.
         overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        overflowBy: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        overflowers: (() => {
+          const vw = document.documentElement.clientWidth;
+          const out = [];
+          for (const el of document.querySelectorAll('#view-analytics *')) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) continue;
+            if (rect.right <= vw + 1) continue;
+            out.push(`${el.tagName.toLowerCase()}.${String(el.className || '').split(' ').join('.')}|${Math.round(rect.left)}→${Math.round(rect.right)}`);
+            if (out.length >= 5) break;
+          }
+          return out;
+        })(),
         smallControls: [...section.querySelectorAll('button')].filter((button) => {
           const box = button.getBoundingClientRect(); return box.width > 0 && box.height > 0 && box.height < 43;
         }).length,
@@ -273,7 +288,7 @@ try {
     }
     // The hero eyebrow is the selected range; the navigator owns "This week".
     if (seen.heroEyebrow !== navDates) failures.push(`${width}px: overview eyebrow does not name the selected range (${seen.heroEyebrow} vs ${navDates})`);
-    if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow`);
+    if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow by ${seen.overflowBy}px — ${seen.overflowers.join(' ; ')}`);
     if (seen.smallControls) failures.push(`${width}px: ${seen.smallControls} controls below the 44px target`);
 
     // The hub has ONE time control: the range bar. A week navigator here would be
@@ -343,7 +358,22 @@ try {
         points: el.querySelectorAll('[data-exercise-point]').length,
         rows: el.querySelectorAll('.an-evidence-row').length,
         chartTitle: el.querySelector('.an-ex-chart-panel h3')?.textContent?.trim() || '',
+        // Name the offender: a bare "horizontal overflow" costs a whole run to
+        // diagnose, and the culprit is usually one wide element.
         overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        overflowBy: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        overflowers: (() => {
+          const vw = document.documentElement.clientWidth;
+          const out = [];
+          for (const el of document.querySelectorAll('#view-analytics *')) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) continue;
+            if (rect.right <= vw + 1) continue;
+            out.push(`${el.tagName.toLowerCase()}.${String(el.className || '').split(' ').join('.')}|${Math.round(rect.left)}→${Math.round(rect.right)}`);
+            if (out.length >= 5) break;
+          }
+          return out;
+        })(),
       }));
       if (!detail.hero) failures.push(`${width}px: exercise detail has no latest-set hero`);
       if (detail.stats < 4) failures.push(`${width}px: exercise detail is missing summary cards`);
