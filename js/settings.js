@@ -15,6 +15,7 @@ import {
   clearRestTimerPersistence,
 } from './timers.js';
 import { todayKey, startOfProgramWeek } from './dates.js';
+import { releaseWorkoutWakeLock } from './workout/keep-awake.js';
 import { parseWorkoutCsv, applyWorkoutCsvImport, CSV_IMPORT_LIMITS, decodeCsvBytes } from './portability/import-workout-csv.js';
 import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingEnabled, setHybridTraining } from './modules.js';
 import * as equipmentProfiles from './equipment-profiles.js';
@@ -382,6 +383,10 @@ function _syncSettingsUI() {
   if (rVolumeValue) rVolumeValue.textContent = `${Math.round(volume * 100)}%`;
   const autoWarmup = document.getElementById('settingsAutoWarmup');
   if (autoWarmup) autoWarmup.checked = s.autoWarmupRamp === true;
+  const keepAwake = document.getElementById('settingsKeepAwake');
+  if (keepAwake) keepAwake.checked = s.keepAwake !== false;
+  const livePR = document.getElementById('settingsLivePR');
+  if (livePR) livePR.checked = s.livePR !== false;
 
   // Notification toggles
   const notifCheckbox = document.getElementById('settingsNotifications');
@@ -1009,6 +1014,23 @@ export function setShowPlateHints(enabled) {
   appState.settings.showPlateHints = !!enabled;
   saveStateToLocalStorage(true);
   showToast(enabled ? 'Plate hints on' : 'Plate hints off');
+}
+
+export function setKeepAwake(enabled) {
+  const appState = _ensureSettings();
+  appState.settings.keepAwake = !!enabled;
+  saveStateToLocalStorage(true);
+  // The preference is immediate: turning it off must let a running workout's
+  // screen sleep without waiting for the next cockpit render.
+  if (!enabled) releaseWorkoutWakeLock();
+  showToast(enabled ? 'Keep screen awake during workouts' : 'Keep-awake off');
+}
+
+export function setLivePR(enabled) {
+  const appState = _ensureSettings();
+  appState.settings.livePR = !!enabled;
+  saveStateToLocalStorage(true);
+  showToast(enabled ? 'Live PR banners on' : 'Live PR banners off');
 }
 
 export function resetPlateSetup() {

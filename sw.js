@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-h40f2f5c11b18';
+const CACHE_NAME = 'openhybrid-v122-h2d3f6c850b9b';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -320,6 +320,7 @@ const REQUIRED_ASSETS = [
   "./js/workout/exercise-history.js",
   "./js/workout/exercise-options.js",
   "./js/workout/exercise-picker.js",
+  "./js/workout/keep-awake.js",
   "./js/workout/load-basis.js",
   "./js/workout/load-mode.js",
   "./js/workout/one-off-session.js",
