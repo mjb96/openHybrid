@@ -93,7 +93,7 @@ function stackHTML(model, series) {
 
 /**
  * @param {ReturnType<import('../muscles.js').buildMuscleModel>|null} model
- * @param {{ error?: string|null, unit?: string, limit?: number }} [options]
+ * @param {{ error?: string|null, unit?: string, limit?: number, hidden?: string[] }} [options]
  */
 export function renderMuscles(model, options = {}) {
   if (options.error) {
@@ -147,7 +147,7 @@ export function renderMuscles(model, options = {}) {
     ${legend(series.map((entry) => ({ label: entry.label, color: entry.color, muted: entry.muted })))}
     ${rows}
     ${extra > 0 ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
-    ${model.bodyMap?.hasData
+    ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData
       ? muscleHeatmapHTML(model.bodyMap, { label: 'Muscles trained in this period' })
       : ''}
     ${dataTableDisclosure(

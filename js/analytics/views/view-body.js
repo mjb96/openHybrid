@@ -15,7 +15,7 @@ import { photoObjectUrl } from '../../photos/library.js';
 
 /**
  * @param {ReturnType<import('../body-metrics.js').buildBodyMetricsModel>|null} model
- * @param {{ error?: string|null }} [options]
+ * @param {{ error?: string|null, hidden?: string[] }} [options]
  */
 export function renderBody(model, options = {}) {
   if (options.error) {
@@ -78,7 +78,10 @@ export function renderBody(model, options = {}) {
     ? `<p class="pg-body__fat">Body fat <b>${esc(String(model.bodyFat.latestPct))}%</b>${model.bodyFat.deltaPp == null ? '' : ` · ${esc(`${model.bodyFat.deltaPp > 0 ? '+' : ''}${model.bodyFat.deltaPp} pp`)}`} <small>entered, never estimated</small></p>`
     : '';
 
-  const photos = (model.photos || []).slice(0, 12);
+  // A privacy switch, not a layout one: some athletes do not want photos on
+  // screen when handing the phone over.
+  const photosHidden = Array.isArray(options.hidden) && options.hidden.includes('bodyPhotos');
+  const photos = photosHidden ? [] : (model.photos || []).slice(0, 12);
   const photoStrip = `<ul class="pg-photos" aria-label="Progress photos">
       ${photos.map((photo) => `<li class="pg-photo">
         <img class="pg-photo__img" data-photo-thumb="${esc(photo.id)}" alt="${esc(`Progress photo, ${formatDayMonthShort(photo.date)}`)}" />
@@ -98,11 +101,11 @@ export function renderBody(model, options = {}) {
     ${chart}
     ${model.keySites.length ? `<ul class="pg-sites">${sites}</ul>` : ''}
     ${bodyFat}
-    ${photoStrip}
+    ${photosHidden ? '' : photoStrip}
     <div class="pg-band__actions">
       <button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measurements →'}</button>
       <button type="button" class="pg-band__action" data-action="open-bw-sheet">Log weigh-in</button>
-      ${photos.length ? '<button type="button" class="pg-band__action" data-action="export-photos">Export photos</button>' : ''}
+      ${!photosHidden && (model.photos || []).length ? '<button type="button" class="pg-band__action" data-action="export-photos">Export photos</button>' : ''}
     </div>
     ${dataTableDisclosure(
       ['Site', `Latest (${model.measurementUnit})`, 'Change'],

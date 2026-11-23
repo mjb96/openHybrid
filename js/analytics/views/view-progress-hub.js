@@ -41,6 +41,7 @@ function bandsHTML(extras) {
         weightUnit: extras.weightUnit,
         distanceUnit: extras.distanceUnit,
         error: entry.error || null,
+        hidden: Array.isArray(extras.hidden) ? extras.hidden : [],
       });
     }).join('');
   }
@@ -228,6 +229,7 @@ function recentWeeksStrip(model) {
  *   focusAvailable?: { strength: boolean, endurance: boolean },
  *   visibleCount?: number,
  *   showRunning?: boolean,
+ *   hidden?: string[],
  *   weightUnit?: string,
  *   distanceUnit?: string,
  * }} [extras]

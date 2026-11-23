@@ -40,7 +40,18 @@ export const PROGRESS_CARDS = Object.freeze([
 ]);
 
 /**
- * Old card id → the band(s) that inherited its content. An empty array means
+ * Detail inside a band. These are switches too, but they are not bands: they do
+ * not enter the render order and they cannot be the last visible card.
+ *
+ * @type {ReadonlyArray<{ id: string, label: string, note: string, parent: string }>}
+ */
+export const PROGRESS_SUB_CARDS = Object.freeze([
+  { id: 'bodyPhotos', label: 'Progress photos', note: 'Hidden when the phone is passed around', parent: 'body' },
+  { id: 'musclesBody', label: 'Body diagram', note: 'The ranked rows carry the same numbers', parent: 'muscles' },
+]);
+
+/**
+ * Old card id → the band(s) that inherited their content. An empty array means
  * the card became a footer leaf: the preference is consumed and dropped, which
  * is correct because there is nothing left to hide.
  *
@@ -55,16 +66,27 @@ export const PROGRESS_CARD_ALIASES = Object.freeze({
   projections: [],
 });
 
-/** Progress must keep at least one card so the destination never renders bare. */
+/** Progress must keep at least one BAND so the destination never renders bare. */
 export const MIN_VISIBLE_PROGRESS_CARDS = 1;
 
 const CARDS = Object.freeze({ home: HOME_CARDS, progress: PROGRESS_CARDS });
 /** @type {Array<'home'|'progress'>} */
 const SURFACES = ['home', 'progress'];
 
-/** @param {'home'|'progress'} surface */
+/** Every id a preference may name, including band detail. */
 function idsFor(surface) {
-  return new Set((CARDS[surface] || []).map((card) => card.id));
+  const ids = (CARDS[surface] || []).map((card) => card.id);
+  return new Set(surface === 'progress' ? [...ids, ...PROGRESS_SUB_CARDS.map((card) => card.id)] : ids);
+}
+
+/** The band ids only, in catalogue order — what `order` and the minimum rule use. */
+function bandIds() {
+  return PROGRESS_CARDS.map((card) => card.id);
+}
+
+/** Detail cards belonging to one band. @param {string} bandId */
+export function subCardsFor(bandId) {
+  return PROGRESS_SUB_CARDS.filter((card) => card.parent === bandId);
 }
 
 /** @param {'home'|'progress'} surface */
@@ -101,7 +123,8 @@ export function normalizeUi(value) {
   out.progress.hidden = dedupe(expanded.filter((id) => progressIds.has(id)));
 
   const rawOrder = Array.isArray(input?.progress?.order) ? input.progress.order : [];
-  const order = dedupe(rawOrder.filter((id) => progressIds.has(id)));
+  const bands = new Set(bandIds());
+  const order = dedupe(rawOrder.filter((id) => bands.has(id)));
   // A band added in a later release appears without editing anyone's array.
   for (const id of PROGRESS_CARDS.map((card) => card.id)) {
     if (!order.includes(id)) order.push(id);
@@ -127,6 +150,9 @@ export function isCardVisible(settings, surface, id) {
 export function canHideCard(settings, surface, id) {
   if (surface !== 'progress') return true;
   const ui = normalizeUi(settings?.ui);
+  // Detail switches never count toward the minimum: turning off the body diagram
+  // leaves the band, so it cannot be "the last card".
+  if (PROGRESS_SUB_CARDS.some((card) => card.id === id)) return true;
   const hidden = new Set(ui.progress.hidden);
   hidden.add(id);
   const remaining = PROGRESS_CARDS.filter((card) => !hidden.has(card.id)).length;
