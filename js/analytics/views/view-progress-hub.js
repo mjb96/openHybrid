@@ -226,6 +226,7 @@ function recentWeeksStrip(model) {
  *   rangeId?: string,
  *   focus?: string,
  *   focusAvailable?: { strength: boolean, endurance: boolean },
+ *   visibleCount?: number,
  *   weightUnit?: string,
  *   distanceUnit?: string,
  * }} [extras]
@@ -233,8 +234,14 @@ function recentWeeksStrip(model) {
 export function renderProgressHub(container, model, hidden = [], extras = {}) {
   if (!container || !model) return;
   const hiddenSet = new Set(Array.isArray(hidden) ? hidden : []);
-  const domains = model.domains.filter((domain) => !hiddenSet.has(domain.id));
+  // The four legacy domain cards are retired: the bands ARE Progress now, and
+  // two dashboards on one tab was the duplication this redesign existed to
+  // remove. `secondary` survives as the quieter footer destinations.
   const secondary = model.secondary.filter((entry) => !hiddenSet.has(SECONDARY_CARD_ID[entry.id]));
+  const bands = bandsHTML(extras);
+  const visibleCount = Number.isFinite(Number(extras.visibleCount))
+    ? Number(extras.visibleCount)
+    : Number(extras.bands?.length || 0);
 
   const intro = model.allEmpty
     ? `<div class="ph-empty">
@@ -256,12 +263,21 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
       ${focusHTML(extras)}
     </div>
     ${intro}
-    ${model.allEmpty ? '' : (bandsHTML(extras) || (extras.pulse ? '' : weekHero(model)))}
-    ${recentWeeksStrip(model)}
-    ${!domains.length && !secondary.length ? '<p class="ph-empty">All Progress cards are hidden. Use Customize to bring them back.</p>' : ''}
-    <div class="ph-grid">${domains.map(domainCard).join('')}</div>
+    ${visibleCount === 0
+      ? `<div class="ph-empty">
+          <p>All Progress cards are hidden. Your data is still here — bring a card back to see it.</p>
+          <button type="button" class="ph-empty__cta" data-action="open-customize" data-surface="progress">Show a card</button>
+        </div>`
+      : bands}
     ${secondary.length ? `<h3 class="section-header mt-4">More detail</h3>
     <div class="hub-group">${secondary.map(secondaryRow).join('')}</div>` : ''}
+    <button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="weekly-review" data-parent-context="hub" data-preserve-week="true">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Week in Review</span>
+        <span class="hub-link__desc">This week's story, consistency log and training report</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>
     <button type="button" class="hub-link hub-link--quiet" data-action="open-activities">
       <span class="hub-link__label">
         <span class="hub-link__title">History</span>

@@ -497,6 +497,7 @@ export function renderAnalytics() {
         rangeId: progressDashboard.range?.id || _progressRangeId,
         focus: progressDashboard.focus,
         focusAvailable: progressDashboard.focusAvailable,
+        visibleCount: progressDashboard.visibleCount,
         weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
         distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
       });

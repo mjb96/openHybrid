@@ -162,8 +162,8 @@ async function openYearReview(browser, { todayISO, width, theme = 'dark', weight
   });
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await openHub(page);
-  await page.waitForSelector('#analytics-hub.active .ph-card');
-  await page.click('.ph-card[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review card did not open`));
+  await page.waitForSelector('#analytics-hub.active .pg-band');
+  await page.click('.hub-link--quiet[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review card did not open`));
   await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => failures.push(`${label}: Review did not open`));
   await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Stats tab did not open`));
   await page.waitForFunction(() => {
@@ -217,15 +217,16 @@ try {
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await openHub(page);
-    await page.waitForSelector('#analytics-hub.active .ph-card');
+    await page.waitForSelector('#analytics-hub.active .pg-band');
 
     const seen = await page.$eval('#analytics-hub', (section) => {
-      const cards = [...section.querySelectorAll('.ph-card')];
+      const bands = [...section.querySelectorAll('.pg-band')];
       return {
-        contexts: cards.map((card) => card.getAttribute('data-context')),
-        // Every card must show a real headline and a plain-language sentence.
-        values: cards.map((card) => card.querySelector('.ph-card__value')?.textContent?.trim() || ''),
-        says: cards.map((card) => card.querySelector('.ph-card__say')?.textContent?.trim() || ''),
+        bands: bands.map((band) => band.getAttribute('data-band')),
+        // Every band must carry a headline value and no empty chart shell.
+        values: bands.map((band) => band.querySelector('.pg-band__value')?.textContent?.trim() || ''),
+        rangeChips: section.querySelectorAll('[data-pg-range]').length,
+        selectedRange: section.querySelector('[data-pg-range][aria-pressed="true"]')?.getAttribute('data-pg-range') || '',
         secondary: [...section.querySelectorAll('.hub-link--quiet')].map((link) => link.getAttribute('data-context')),
         hasMethod: !!section.querySelector('.an-method'),
         // The Pulse band replaced the old week hero: same contract, same
@@ -234,11 +235,6 @@ try {
         hasWeekHero: !!section.querySelector('[data-band="pulse"]'),
         weekHeroText: section.querySelector('[data-band="pulse"]')?.textContent?.trim() || '',
         heroEyebrow: section.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
-        weekBars: section.querySelectorAll('.ph-weeks__bar').length,
-        weekBarsHidden: [...section.querySelectorAll('.ph-weeks__bar')].every((bar) => bar.getAttribute('aria-hidden') === 'true'),
-        weekHead: section.querySelector('.ph-weeks__head')?.textContent?.trim() || '',
-        weekStripLabel: section.querySelector('.ph-weeks')?.getAttribute('aria-label') || '',
-        weekSummary: section.querySelector('.ph-weeks .sr-only')?.textContent?.trim() || '',
         weekScale: section.querySelector('.ph-weeks__scale')?.textContent?.trim() || '',
         // The week label must name the real Monday–Sunday range, not a program week.
         sub: section.querySelector('.hub-sub')?.textContent?.trim() || '',
@@ -250,26 +246,22 @@ try {
     });
     console.log(`Progress hub ${width}px/${theme}:`, JSON.stringify(seen, null, 0));
 
-    const expected = ['weekly-review', 'strength', 'running', 'recovery'];
-    if (seen.contexts.join(',') !== expected.join(',')) {
-      failures.push(`${width}px: expected domains ${expected.join(',')} but got ${seen.contexts.join(',')}`);
+    // The bands ARE Progress now. Pulse and Balance lead, and nothing renders
+    // without something to say except Pulse (whose empty state is the answer).
+    if (seen.bands[0] !== 'pulse') failures.push(`${width}px: Progress does not open on Pulse (${seen.bands.join(',')})`);
+    if (!seen.bands.includes('muscles')) failures.push(`${width}px: no Muscles band despite logged working sets`);
+    if (seen.bands.length > 8) failures.push(`${width}px: more bands than the catalogue allows`);
+    if (seen.values.some((value) => !value)) failures.push(`${width}px: a band rendered without a headline value`);
+    if (seen.rangeChips !== 4) failures.push(`${width}px: expected four range chips (got ${seen.rangeChips})`);
+    if (seen.selectedRange !== '30d') failures.push(`${width}px: expected 30d selected (got ${seen.selectedRange})`);
+    if (!seen.bands.includes('balance') && seen.bands.includes('endurance')) {
+      // Informational only: a single-modality fixture has no mix to show.
     }
-    if (seen.values.some((value) => !value)) failures.push(`${width}px: a domain card rendered without a headline value`);
-    if (seen.says.some((say) => say.length < 10)) failures.push(`${width}px: a domain card rendered without an interpretation`);
-    // Strength should show a real same-exercise gain from the fixture, not a dash.
-    if (seen.values[1] === '—') failures.push(`${width}px: strength headline is empty despite logged sets`);
     if (seen.secondary.includes('hybrid-score')) failures.push(`${width}px: Hybrid Score must not appear as a secondary destination`);
     if (seen.secondary.includes('fasting')) failures.push(`${width}px: Fasting must not appear for a profile with no fasting history`);
     if (!seen.hasMethod) failures.push(`${width}px: missing "how this is calculated" disclosure`);
     if (!seen.hasWeekHero) failures.push(`${width}px: missing the this-week overview`);
     if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: week overview does not name sessions`);
-    if (seen.weekBars !== 12) failures.push(`${width}px: recent-weeks strip should have 12 bars (got ${seen.weekBars})`);
-    if (!seen.weekBarsHidden) failures.push(`${width}px: recent-weeks bars are unlabelled images instead of a hidden chart with one summary`);
-    if (!/12 weeks ending this week/i.test(seen.weekHead)) failures.push(`${width}px: strip head does not name the window ending at the selection (${seen.weekHead})`);
-    if (!/12 weeks ending this week/i.test(seen.weekStripLabel)) failures.push(`${width}px: strip aria-label does not name the window ending at the selection (${seen.weekStripLabel})`);
-    if (!/session/i.test(seen.weekSummary) || !/12 weeks ending this week/i.test(seen.weekSummary)) {
-      failures.push(`${width}px: strip has no accessible summary of its 12-week window (${seen.weekSummary})`);
-    }
     if (!seen.sub) failures.push(`${width}px: hub has no subtitle`);
     if (/\d{4}-\d{2}-\d{2}/.test(seen.sub)) failures.push(`${width}px: hub subtitle leaks an ISO date (${seen.sub})`);
     const navDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
@@ -278,7 +270,6 @@ try {
     }
     // The hero eyebrow is the selected range; the navigator owns "This week".
     if (seen.heroEyebrow !== navDates) failures.push(`${width}px: overview eyebrow does not name the selected range (${seen.heroEyebrow} vs ${navDates})`);
-    if (!seen.weekScale.endsWith(navDates)) failures.push(`${width}px: strip scale does not end on the selected range (${seen.weekScale} vs ${navDates})`);
     if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow`);
     if (seen.smallControls) failures.push(`${width}px: ${seen.smallControls} controls below the 44px target`);
 
@@ -296,22 +287,17 @@ try {
       const previous = await page.$eval('#analytics-hub', (el) => ({
         heroEyebrow: el.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
         heroLabel: el.querySelector('[data-band="pulse"]')?.getAttribute('aria-label') || '',
-        weekHead: el.querySelector('.ph-weeks__head')?.textContent?.trim() || '',
-        weekScale: el.querySelector('.ph-weeks__scale')?.textContent?.trim() || '',
-        runningValue: el.querySelector('.ph-card[data-context="running"] .ph-card__value')?.textContent?.trim() || '',
-        runningSay: el.querySelector('.ph-card[data-context="running"] .ph-card__say')?.textContent?.trim() || '',
+        enduranceText: el.querySelector('[data-band="endurance"]')?.textContent?.trim() || '',
         hasHero: !!el.querySelector('[data-band="pulse"]'),
       }));
       const previousDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
       if (previous.heroEyebrow !== previousDates) failures.push(`${width}px: the overview eyebrow did not follow the navigator (${previous.heroEyebrow} vs ${previousDates})`);
       // The accessible name is the visible range, not the relative period.
       if (previous.heroLabel !== `${previousDates} overview`) failures.push(`${width}px: the overview aria-label does not name the selected range (${previous.heroLabel} vs ${previousDates})`);
-      // The Running card must show the SELECTED week's distance (5.0 km), not
-      // the live week's (6.0 km) — the engine is anchored by the through-date.
-      if (!/^5\.0/.test(previous.runningValue)) failures.push(`${width}px: Running card ignored the selected week (${previous.runningValue})`);
-      if (!/that week/.test(previous.runningSay)) failures.push(`${width}px: Running prose still speaks about the live week (${previous.runningSay})`);
-      if (!/12 weeks ending previous week/i.test(previous.weekHead)) failures.push(`${width}px: the strip head did not follow the navigator (${previous.weekHead})`);
-      if (!previous.weekScale.endsWith(previousDates)) failures.push(`${width}px: the strip did not follow the navigator (${previous.weekScale})`);
+      // The Endurance band must describe the SELECTED week, not the live one.
+      if (!/5\.00 km/.test(previous.enduranceText)) {
+        failures.push(`${width}px: Endurance band ignored the selected week (${previous.enduranceText.slice(0, 80)})`);
+      }
       if (!previous.hasHero) failures.push(`${width}px: previous week lost its overview`);
 
       // A second step back (the fixture logs a week two weeks ago), then a
@@ -323,11 +309,9 @@ try {
         if (!(await waitForNavLabel(page, '2 weeks ago'))) failures.push(`${width}px: second step back did not reach two weeks ago`);
         const twoBack = await page.$eval('#analytics-hub', (el) => ({
           heroEyebrow: el.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
-          weekHead: el.querySelector('.ph-weeks__head')?.textContent?.trim() || '',
         }));
         const twoBackDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
         if (twoBack.heroEyebrow !== twoBackDates) failures.push(`${width}px: two weeks back eyebrow is stale (${twoBack.heroEyebrow} vs ${twoBackDates})`);
-        if (!/12 weeks ending 2 weeks ago/i.test(twoBack.weekHead)) failures.push(`${width}px: two weeks back strip head is stale (${twoBack.weekHead})`);
 
         await page.click('#weekNavNext:not([disabled])', { timeout: 2000 });
         if (!(await waitForNavLabel(page, 'Previous week'))) failures.push(`${width}px: stepping forward did not return to the previous week`);
@@ -339,7 +323,7 @@ try {
       // Overview must describe THAT week — never the active programme's plan —
       // and its Stats tab (monthly report, streak, goals, consistency log) is
       // not week-scoped, so the navigator must disappear there.
-      const reviewCard = await page.$('.ph-card[data-context="weekly-review"]');
+      const reviewCard = await page.$('.hub-link--quiet[data-context="weekly-review"]');
       if (!reviewCard) {
         failures.push(`${width}px: the hub lost its Review card while stepped back`);
       } else {
@@ -423,13 +407,20 @@ try {
       }
     }
 
-    // Tapping a domain must reach its detail screen.
-    await page.click('.ph-card[data-context="strength"]');
-    await page.waitForSelector('#analytics-strength.active', { timeout: 4000 }).catch(() => {
-      failures.push(`${width}px: Strength domain card did not open the Strength screen`);
+    // A band row must reach a detail screen. Muscles rows open Muscle load; the
+    // Strength screen itself is then reached from its own drilldown link.
+    await page.click('#analytics-hub [data-band="muscles"] .pg-row__hit');
+    await page.waitForSelector('#analytics-muscle-load.active', { timeout: 4000 }).catch(() => {
+      failures.push(`${width}px: a Muscles row did not open a detail screen`);
     });
+    await page.click('#weekNavToday:not([hidden])').catch(() => {});
+    await page.evaluate(() => { location.hash = ''; });
 
-    // An exercise drilldown carries a real chart, stat cards and session evidence.
+    // The exercise drilldown still carries a real chart, stat cards and evidence.
+    await page.evaluate(() => document.querySelector('[data-action="open-analytics"][data-context="strength"]')?.click());
+    await page.waitForSelector('#analytics-strength.active', { timeout: 4000 }).catch(() => {
+      failures.push(`${width}px: the Strength screen could not be opened`);
+    });
     await page.click('#analytics-strength [data-an-tab="stats"]');
     await page.waitForTimeout(250);
     const exerciseLink = await page.$('#analytics-strength [data-action="open-analytics"][data-context="exercise"]');
@@ -463,7 +454,7 @@ try {
     // Review → Stats must show a twelve-week calendar log, not a program-week
     // grid that hides imported/archived sessions.
     await openHub(page);
-    await page.click('.ph-card[data-context="weekly-review"]');
+    await page.click('.hub-link--quiet[data-context="weekly-review"]');
     await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => {
       failures.push(`${width}px: Review domain card did not open the Review screen`);
     });
@@ -510,18 +501,19 @@ try {
     const page = await context.newPage();
     await page.goto(BASE, { waitUntil: 'networkidle' });
     await openHub(page);
-    await page.waitForSelector('#analytics-hub.active .ph-card');
+    await page.waitForSelector('#analytics-hub.active .pg-band');
     const empty = await page.$eval('#analytics-hub', (section) => ({
       hasEmptyLead: !!section.querySelector('.ph-empty'),
       hasWeekHero: !!section.querySelector('.ph-week'),
-      cards: section.querySelectorAll('.ph-card').length,
+      bands: section.querySelectorAll('.pg-band').length,
       // No fabricated comparison may survive an empty week.
-      deltas: section.querySelectorAll('.ph-card__delta').length,
+      deltas: section.querySelectorAll('.pg-pulse__delta').length,
     }));
     console.log('Progress hub empty profile:', JSON.stringify(empty));
     if (!empty.hasEmptyLead) failures.push('empty profile: missing the single leading empty state');
-    if (empty.hasWeekHero) failures.push('empty profile: rendered a this-week hero with no data');
-    if (empty.cards !== 4) failures.push('empty profile: expected all four domains to still render');
+    // On an empty profile the leading empty state is the answer, and no band
+    // may invent data. Pulse's empty state plus the intro is two at most.
+    if (empty.bands > 2) failures.push(`empty profile: expected an empty lead, got ${empty.bands} bands`);
     if (empty.deltas !== 0) failures.push('empty profile: rendered a comparison with nothing to compare');
     await context.close();
   }
