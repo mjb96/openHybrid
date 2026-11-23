@@ -273,138 +273,41 @@ try {
     if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow`);
     if (seen.smallControls) failures.push(`${width}px: ${seen.smallControls} controls below the 44px target`);
 
-    // The hub is week-steppable: the shared navigator must be visible and the
-    // header + cards must follow it. This is the one period control.
-    const navVisible = await page.$eval('#analyticsWeekNav', (el) => getComputedStyle(el).display !== 'none');
-    if (!navVisible) failures.push(`${width}px: hub does not expose the calendar-week navigator`);
-    // Skip a disabled back button rather than clicking it: at the earliest
-    // logged week it is disabled and an unconditional click would hang.
-    if (!(await page.$('#weekNavPrev:not([disabled])'))) {
-      failures.push(`${width}px: the week navigator cannot step back into logged history`);
+    // The hub has ONE time control: the range bar. A week navigator here would be
+    // a second, contradictory answer to "which period am I looking at" — and it
+    // only ever governed one band.
+    const navVisible = await page.$eval('#analyticsWeekNav', (el) => getComputedStyle(el).display !== 'none')
+      .catch(() => false);
+    if (navVisible) failures.push(`${width}px: the hub still shows a week navigator beside the range bar`);
+
+    // Changing the range must change what the bands report.
+    const beforeRange = await page.$eval('#analytics-hub [data-band="endurance"]', (el) => el.textContent.trim())
+      .catch(() => '');
+    await page.click('[data-pg-range="1y"]', { timeout: 2000 });
+    await page.waitForTimeout(350);
+    const afterRange = await page.$eval('#analytics-hub [data-band="endurance"]', (el) => el.textContent.trim())
+      .catch(() => '');
+    if (beforeRange && afterRange && beforeRange === afterRange) {
+      failures.push(`${width}px: changing the range did not change the Endurance band`);
+    }
+    const selectedRange = await page.$eval('[data-pg-range][aria-pressed="true"]', (el) => el.getAttribute('data-pg-range'));
+    if (selectedRange !== '1y') failures.push(`${width}px: the range control did not mark 1y as pressed (${selectedRange})`);
+    await page.click('[data-pg-range="30d"]', { timeout: 2000 });
+    await page.waitForTimeout(250);
+
+    // Week in Review still opens from the hub footer.
+    const reviewLink = await page.$('.hub-link--quiet[data-context="weekly-review"]');
+    if (!reviewLink) {
+      failures.push(`${width}px: Week in Review has no entry point`);
     } else {
-      await page.click('#weekNavPrev:not([disabled])', { timeout: 2000 });
-      if (!(await waitForNavLabel(page, 'Previous week'))) failures.push(`${width}px: stepping back did not label the previous week`);
-      const previous = await page.$eval('#analytics-hub', (el) => ({
-        heroEyebrow: el.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
-        heroLabel: el.querySelector('[data-band="pulse"]')?.getAttribute('aria-label') || '',
-        enduranceText: el.querySelector('[data-band="endurance"]')?.textContent?.trim() || '',
-        hasHero: !!el.querySelector('[data-band="pulse"]'),
-      }));
-      const previousDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-      if (previous.heroEyebrow !== previousDates) failures.push(`${width}px: the overview eyebrow did not follow the navigator (${previous.heroEyebrow} vs ${previousDates})`);
-      // The accessible name is the visible range, not the relative period.
-      if (previous.heroLabel !== `${previousDates} overview`) failures.push(`${width}px: the overview aria-label does not name the selected range (${previous.heroLabel} vs ${previousDates})`);
-      // The Endurance band must describe the SELECTED week, not the live one.
-      if (!/5\.00 km/.test(previous.enduranceText)) {
-        failures.push(`${width}px: Endurance band ignored the selected week (${previous.enduranceText.slice(0, 80)})`);
-      }
-      if (!previous.hasHero) failures.push(`${width}px: previous week lost its overview`);
-
-      // A second step back (the fixture logs a week two weeks ago), then a
-      // return through Next and Today. Each step has a short timeout.
-      if (!(await page.$('#weekNavPrev:not([disabled])'))) {
-        failures.push(`${width}px: the fixture should allow a second step back`);
-      } else {
-        await page.click('#weekNavPrev:not([disabled])', { timeout: 2000 });
-        if (!(await waitForNavLabel(page, '2 weeks ago'))) failures.push(`${width}px: second step back did not reach two weeks ago`);
-        const twoBack = await page.$eval('#analytics-hub', (el) => ({
-          heroEyebrow: el.querySelector('[data-band="pulse"] .pg-band__sub')?.textContent?.trim() || '',
-        }));
-        const twoBackDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-        if (twoBack.heroEyebrow !== twoBackDates) failures.push(`${width}px: two weeks back eyebrow is stale (${twoBack.heroEyebrow} vs ${twoBackDates})`);
-
-        await page.click('#weekNavNext:not([disabled])', { timeout: 2000 });
-        if (!(await waitForNavLabel(page, 'Previous week'))) failures.push(`${width}px: stepping forward did not return to the previous week`);
-        const forwardDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-        if (forwardDates !== previousDates) failures.push(`${width}px: stepping forward did not restore the previous week (${forwardDates} vs ${previousDates})`);
-      }
-
-      // Review follows the SAME navigator. Opened from the previous week its
-      // Overview must describe THAT week — never the active programme's plan —
-      // and its Stats tab (monthly report, streak, goals, consistency log) is
-      // not week-scoped, so the navigator must disappear there.
-      const reviewCard = await page.$('.hub-link--quiet[data-context="weekly-review"]');
-      if (!reviewCard) {
-        failures.push(`${width}px: the hub lost its Review card while stepped back`);
-      } else {
-        await reviewCard.click({ timeout: 2000 }).catch(() => {
-          failures.push(`${width}px: the Review card did not open from a stepped-back week`);
-        });
-        const reviewOpen = await page.waitForSelector('#analytics-weekly-review.active', { timeout: 3000 })
-          .then(() => true).catch(() => false);
-        if (!reviewOpen) {
-          failures.push(`${width}px: Review did not open from the previous week`);
-        } else {
-          const onOverview = await page.$eval('#analytics-weekly-review',
-            (section) => section.querySelector('[data-an-tab="overview"].an-tab--active') !== null);
-          if (!onOverview) {
-            failures.push(`${width}px: Review did not open on its Overview tab`);
-            await page.click('#analytics-weekly-review [data-an-tab="overview"]', { timeout: 2000 }).catch(() => {});
-          }
-          const pastReview = await page.$eval('#analytics-weekly-review', (section) => ({
-            heroRange: section.querySelector('.an-hero__k')?.textContent?.trim() || '',
-            text: section.textContent || '',
-            navVisible: getComputedStyle(document.getElementById('analyticsWeekNav')).display !== 'none',
-          }));
-          if (!pastReview.navVisible) failures.push(`${width}px: Review Overview does not expose the calendar-week navigator`);
-          if ((await page.$eval('#weekNavLabel', (el) => el.textContent.trim())) !== 'Previous week') {
-            failures.push(`${width}px: Review Overview did not keep the previous-week navigator label`);
-          }
-          // The header names the real Mon–Sun span, never "This week".
-          if (pastReview.heroRange !== previousDates) {
-            failures.push(`${width}px: Review Overview did not name the selected week (${pastReview.heroRange} vs ${previousDates})`);
-          }
-          // A historical week has no plan to score and no week to advise.
-          if (/planned|adherence/i.test(pastReview.text)) {
-            failures.push(`${width}px: Review scored a historical week against the active plan`);
-          }
-          if (/Next week's focus/i.test(pastReview.text)) {
-            failures.push(`${width}px: Review promised next-week advice for a completed week`);
-          }
-
-          // Stats is not week-scoped: the shared navigator must hide there.
-          await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => {
-            failures.push(`${width}px: Review Stats tab did not open`);
-          });
-          const statsNavHidden = await page.waitForFunction(
-            () => getComputedStyle(document.getElementById('analyticsWeekNav')).display === 'none',
-            null,
-            { timeout: 2000 },
-          ).then(() => true).catch(() => false);
-          if (!statsNavHidden) failures.push(`${width}px: Review Stats kept the calendar-week navigator visible`);
-          const statsReview = await page.$eval('#weeklyReviewContainer', (el) => ({
-            text: el.textContent || '',
-            bars: el.querySelectorAll('.wrev-bar').length,
-          })).catch(() => ({ text: '', bars: 0 }));
-          if (statsReview.bars > 0 || /planned/i.test(statsReview.text)) {
-            failures.push(`${width}px: Review Stats scored a historical week against the active plan`);
-          }
-          if (/Next week's focus/i.test(statsReview.text)) {
-            failures.push(`${width}px: Review Stats promised next-week advice for a completed week`);
-          }
-
-          // The back link preserves the selected week, so the existing
-          // return-to-this-week step below still runs from the hub.
-          await page.click('#view-analytics .subview-back-btn', { timeout: 2000 }).catch(() => {
-            failures.push(`${width}px: Review did not offer a route back to the hub`);
-          });
-          const backToHub = await page.waitForSelector('#analytics-hub.active', { timeout: 3000 })
-            .then(() => true).catch(() => false);
-          if (!backToHub) failures.push(`${width}px: Review back did not return to the hub`);
-          if (!(await waitForNavLabel(page, 'Previous week'))) {
-            failures.push(`${width}px: Review lost the selected week on the way back to the hub`);
-          }
-        }
-      }
-
-      if (!(await page.$('#weekNavToday:not([hidden])'))) {
-        failures.push(`${width}px: could not return to this week after the Review detour`);
-      } else {
-        await page.click('#weekNavToday:not([hidden])', { timeout: 2000 });
-        if (!(await waitForNavLabel(page, 'This week'))) failures.push(`${width}px: return-to-this-week did not restore the live week`);
-        const returnedDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-        if (returnedDates !== navDates) failures.push(`${width}px: return-to-this-week restored the wrong week (${returnedDates} vs ${navDates})`);
-      }
+      await reviewLink.click({ timeout: 2000 }).catch(() => {
+        failures.push(`${width}px: Week in Review did not open`);
+      });
+      const reviewOpen = await page.waitForSelector('#analytics-weekly-review.active', { timeout: 3000 })
+        .then(() => true).catch(() => false);
+      if (!reviewOpen) failures.push(`${width}px: Week in Review did not open`);
+      await page.evaluate(() => document.querySelector('.bottom-nav [data-target="analytics"]')?.click());
+      await page.waitForSelector('#analytics-hub.active .pg-band', { timeout: 4000 }).catch(() => {});
     }
 
     // A band row must reach a detail screen. Muscles rows open Muscle load; the

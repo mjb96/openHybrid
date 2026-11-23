@@ -545,6 +545,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   summary from the same band models the screen renders, via the existing
   `shareImageCanvas`; it deliberately does not re-implement each chart for an image.
   The roadmap session log records the whole programme.
+- Progress has ONE time control (the range bar). `hub` is **not** in
+  `WEEK_SCOPED_CONTEXTS`: the shared week navigator is hidden on Progress because
+  the surface is range-driven (30D/3M/1Y/All), and showing a week stepper beside it
+  was a second, contradictory answer to "which period am I looking at" — one that
+  only ever governed Pulse. Pulse is therefore always the CURRENT calendar week
+  (`weekStartISO` is no longer passed from the hub); the week navigator remains on
+  the screens that really are one calendar week (Strength/Running/Volume/Review
+  Overview). The hub browser check asserts the navigator is ABSENT there and that
+  switching the range changes what the Endurance band reports.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

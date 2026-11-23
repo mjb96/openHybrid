@@ -713,6 +713,20 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress: one time control, and the defects a real screenshot found.**
+  - The shared **week navigator is gone from Progress**. It was a leftover from the
+    week-scoped hub: a second, contradictory answer to "which period am I looking
+    at" beside the range bar, and it only ever governed Pulse. Pulse is now always
+    the current calendar week; the navigator stays on the screens that really are
+    one calendar week. The browser check now asserts it is ABSENT on the hub and
+    that changing the range changes the Endurance band.
+  - Three defects only a rendered screenshot could show: the shared body map is
+    sized for Home's day recap and rendered ~800px tall inside a band; the band
+    action row sat between the headline and the chart; and the fixed bottom nav
+    covered the last band's footer. The map is capped at 156px, actions render
+    after the evidence, and the hub carries its own bottom breathing room.
+  - Evidence: `docs/mockups/live-progress-*.png` are screenshots of the real app.
+
 - **2026-11-23 — Progress finished: photos, customization, share.**
   - **Photos** ship with their backup path: metadata in `appState` (v16), bytes in
     IndexedDB (DB v3), one photo per date, downscaled before storage, exported as a

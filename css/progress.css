@@ -734,3 +734,31 @@ html[data-theme="light"] .pg-fast b, html[data-theme="light"] .pg-fast small { c
 .customize-order__btn:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
 html[data-theme="light"] .customize-order__btn { color: #475569; }
 .hub-head__actions { display: flex; gap: 6px; flex: 0 0 auto; }
+
+/* ------------------------------------------- 19. LIVE-APP CORRECTIONS
+   Found by looking at the rendered tab, not at the mockup:
+   - the shared body map is sized for Home's day recap and was ~800px tall inside
+     a band, pushing every other card below the fold;
+   - the fixed bottom nav covered the last band's footer.                        */
+.pg-band .session-map { margin-top: 14px; }
+.pg-band .session-map__views { max-width: 190px; margin-inline: auto; gap: 10px; }
+.pg-band .session-map__view svg { width: auto; height: 156px; max-height: 156px; }
+.pg-band .session-map__label { font-size: 0.52rem; }
+.pg-band .session-map__credit { font-size: 0.5rem; opacity: 0.7; }
+
+/* The hub owns its own bottom breathing room so the last band clears the nav. */
+#analytics-hub { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }
+
+/* Pulse: rail + heat map side by side (see view-pulse.js). */
+.pg-pulse__top { display: grid; grid-template-columns: 1fr 124px; gap: 10px; align-items: start; }
+.pg-pulse__top .pg-rail { margin-top: 14px; }
+.pg-pulse__top .session-map { margin-top: 10px; }
+.pg-pulse__top .session-map__views { max-width: 124px; gap: 6px; }
+.pg-pulse__top .session-map__view svg { height: 104px; max-height: 104px; }
+.pg-pulse__top .session-map__legend,
+.pg-pulse__top .session-map__credit { display: none; }
+@media (max-width: 360px) {
+  .pg-pulse__top { grid-template-columns: 1fr; }
+  .pg-pulse__top .session-map__views { max-width: 170px; }
+}
+.pg-pulse__credit { margin: 8px 0 0; font-size: 0.5rem; color: var(--text-secondary); opacity: 0.75; }

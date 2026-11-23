@@ -497,7 +497,10 @@ function collectAnalyticsData() {
 // and the consistency log, none of which are one calendar week — so the tab is
 // consulted too (the router sets it in the switch below).
 const WEEK_SCOPED_CONTEXTS = [
-  'hub', 'strength', 'strength_pr', 'weekly-volume', 'strength-volume',
+  // NOT 'hub': Progress is range-driven (30D/3M/1Y/All), so a week navigator on
+  // that surface was a second, contradictory time control — and it only ever
+  // governed Pulse. It stays for the screens that really are one calendar week.
+  'strength', 'strength_pr', 'weekly-volume', 'strength-volume',
   'strength-volume-trends', 'running', 'muscle',
 ];
 
@@ -575,7 +578,6 @@ export function renderAnalytics() {
       // throwing band into an error band instead of blanking the tab.
       const progressDashboard = buildProgressDashboard(st, {
         todayISO: today,
-        weekStartISO: weekStart,
         rangeId: _progressRangeId,
         focus: _progressFocus,
         grouping: _progressGrouping,

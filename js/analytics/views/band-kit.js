@@ -64,8 +64,8 @@ export function band({ id, eyebrow, value, valueUnit, title, sub, chip, actions,
       ${chipHTML}
     </div>
     ${subHTML}
-    ${actionsHTML}
     ${body || ''}
+    ${actionsHTML}
   </section>`;
 }
 

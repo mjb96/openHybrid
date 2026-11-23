@@ -126,11 +126,16 @@ export function renderPulse(model, options = {}) {
     walk > 0 ? `${formatRunDistance(walk, distanceUnit)} walked` : '',
   ].filter(Boolean).join(' · ');
 
+  // The rail and the heat map sit side by side: the map is a glance, not the
+  // band's subject, and stacking them cost most of the first screen.
   const body = `
-    ${railHTML(model.week.days, distanceUnit)}
-    ${model.muscles?.hasData ? muscleHeatmapHTML(model.muscles, { label: 'Muscles trained this week' }) : ''}
+    <div class="pg-pulse__top">
+      ${railHTML(model.week.days, distanceUnit)}
+      ${model.muscles?.hasData ? muscleHeatmapHTML(model.muscles, { label: 'Muscles trained this week' }) : ''}
+    </div>
     <p class="pg-pulse__summary">${esc(summary)}</p>
     <p class="pg-pulse__delta pg-pulse__delta--${esc(model.delta.tone)}">${esc(model.delta.text)}</p>
+    ${model.muscles?.hasData ? '<p class="pg-pulse__credit">Body map © Ivan Vulović · Apache-2.0</p>' : ''}
     ${dataTableDisclosure(
       ['Day', 'Sessions', 'Sets', `Run (${distanceUnit})`, `Walk (${distanceUnit})`],
       tableRows(model, distanceUnit),
