@@ -113,6 +113,44 @@ function exerciseStatCards(model) {
 }
 
 /** @param {any} state @param {{id?:string,name?:string}} entity */
+/**
+ * "Heaviest working set at or above each rep target" — the definition is printed,
+ * because a records table without its rule is a rumour.
+ */
+function setRecordsHTML(model) {
+  const records = model.setRecords;
+  if (!records?.hasData) return '';
+  const rows = [];
+
+  if (records.shape === 'time' && records.bestTimeSec) {
+    rows.push([formatDuration(records.bestTimeSec.seconds), records.bestTimeSec.date, 'longest hold']);
+  } else if (records.shape === 'distance' && records.bestDistanceM) {
+    rows.push([`${formatDistance(records.bestDistanceM.metres)}m`, records.bestDistanceM.date, 'longest carry']);
+  } else {
+    if (records.bestRepsInSet) {
+      rows.push([`${records.bestRepsInSet.reps} reps`, records.bestRepsInSet.date, 'most reps in a set']);
+    }
+    for (const record of records.repTargets || []) {
+      // Unit comes from the model: an analytics view must never hardcode kg.
+      rows.push([`${record.weight} ${model.unit}`, record.date, `${record.reps} reps · target ${record.target}`]);
+    }
+  }
+  if (!rows.length) return '';
+
+  return `<section class="an-volume-panel" aria-label="Set records">
+    <div class="an-volume-panel__head"><h3>Set records</h3><span>Heaviest working set at or above each rep target</span></div>
+    <div class="an-evidence-list">${rows.map(([value, date, note]) => `
+      <div class="an-evidence-row">
+        <span class="an-evidence-row__date">${esc(String(date))}</span>
+        <span class="an-evidence-row__body">
+          <span class="an-evidence-row__title">${esc(String(value))}</span>
+          <span class="an-evidence-row__meta">${esc(String(note))}</span>
+        </span>
+      </div>`).join('')}</div>
+    <p class="text-sm text-muted" style="margin:8px 0 0">Warm-up sets never count.</p>
+  </section>`;
+}
+
 export function renderExerciseDetail(state, entity = {}) {
   const root = document.getElementById('strengthEntityDetail');
   if (!root) return;
@@ -135,6 +173,7 @@ export function renderExerciseDetail(state, entity = {}) {
         ${cards.map(([label, value]) => `<article><span>${esc(label)}</span><strong>${esc(value)}</strong></article>`).join('')}
       </section>
       ${exerciseChartHTML(model)}
+      ${setRecordsHTML(model)}
       <section class="an-volume-panel"><div class="an-volume-panel__head"><h3>Session history</h3><span>Tap a session for exact evidence</span></div>
         <div class="an-evidence-list">${model.sessions.map((row) => `<button class="an-evidence-row" data-action="open-activity-detail" data-activity-id="${esc(row.activityId)}">
           <span class="an-evidence-row__date">${esc(row.dateLabel)}</span>

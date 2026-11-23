@@ -132,7 +132,11 @@ test('v12 seeds Home/Progress card preferences without hiding anything', () => {
   const state = { schemaVersion: 11, settings: {}, weekStartedAt: '2026-11-16' };
   migrateState(state);
   assert.equal(state.schemaVersion, CURRENT_SCHEMA_VERSION);
-  assert.deepEqual(state.settings.ui, { home: { hidden: [] }, progress: { hidden: [] } });
+  // `order` is additive and defaulted: the migration seeds the catalogue order
+  // without hiding anything, and a band added later is appended by normalizeUi.
+  assert.deepEqual(state.settings.ui.home, { hidden: [] });
+  assert.deepEqual(state.settings.ui.progress.hidden, []);
+  assert.equal(new Set(state.settings.ui.progress.order).size, state.settings.ui.progress.order.length);
 });
 
 test('v13 seeds an empty measurement log and a unit from the weight choice', () => {

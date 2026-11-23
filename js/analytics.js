@@ -35,6 +35,10 @@ import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progres
 import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
 import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
+import { buildProgressDashboard } from './analytics/progress-dashboard.js';
+import { isRangeId } from './analytics/ranges.js';
+import { confirmModal } from './ui/confirm-modal.js';
+import { formatRunDistance } from './workout/run-units.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
 let _getState;
@@ -46,6 +50,11 @@ let _analyticsParentContext = null;
 let _analyticsParentOrigin = 'insights';
 let _analyticsGrandparentContext = null;
 let _lastScoreResult = null;   // most recent Score-detail result, for the Share card
+// Progress controls. Ephemeral on purpose: remembering "you were in Endurance
+// mode last week" silently hides half the dashboard, which reads as a bug.
+let _progressRangeId = '30d';
+let _progressFocus = 'all';
+let _progressGrouping = 'week';
 
 // V2-5 — share the Hybrid Score card. Uses the result last rendered into the
 // Score detail (falls back to a fresh compute so the button always works).
@@ -78,10 +87,192 @@ export function setAnalyticsContext(ctx, options = {}) {
   if (!options.preserveWeek) resetWeekNav();
 }
 
+/**
+ * Progress photos. Adding downscales before storing (a camera photo is several
+ * megabytes and IndexedDB has a quota); deleting asks first, because a photo is
+ * the one thing in this app with no Undo.
+ */
+async function addProgressPhoto(file) {
+  const state = _getState?.();
+  if (!state || !file) return;
+  const { addPhoto } = await import('./photos/library.js');
+  const dateISO = localDayKey(new Date());
+  try {
+    await addPhoto({ state, dateISO, file, save: () => saveStateToLocalStorage(true) });
+    showToast('Progress photo saved');
+    renderAnalytics();
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'That photo could not be saved.');
+  }
+}
+
+async function deleteProgressPhoto(dateISO) {
+  const state = _getState?.();
+  if (!state || !dateISO) return;
+  const confirmed = await confirmModal({
+    title: 'Delete this photo?',
+    message: 'The photo and its file are removed from this device. This cannot be undone.',
+    confirmLabel: 'Delete', danger: true,
+  });
+  if (!confirmed) return;
+  const { removePhoto } = await import('./photos/library.js');
+  await removePhoto({ state, id: `photo:${dateISO}`, save: () => saveStateToLocalStorage(true) });
+  showToast('Photo deleted');
+  renderAnalytics();
+}
+
+/**
+ * Share a summary of the visible bands. The rows come from the SAME models the
+ * bands render, so the image cannot disagree with the screen.
+ */
+async function shareProgressSummary() {
+  const state = _getState?.();
+  if (!state) return;
+  const today = localDayKey(new Date());
+  const program = getProgramById(state.activeProgramId);
+  const progressDashboard = buildProgressDashboard(state, {
+    todayISO: today,
+    // NO weekStartISO: the share card must describe the same period the hub
+    // renders. The hub does not pass it (Pulse is the current week), so a share
+    // triggered after stepping the navigator on some other screen would have
+    // disagreed with the page it was launched from.
+    rangeId: _progressRangeId,
+    focus: _progressFocus,
+    grouping: _progressGrouping,
+    program,
+    days: _getDays?.(),
+  });
+
+  const rows = [];
+  for (const band of progressDashboard.bands) {
+    const model = band.model || {};
+    if (band.id === 'pulse') rows.push({ bandId: 'pulse', value: `${model.sessions || 0} sessions`, note: `${model.streakWeeks || 0}-week streak` });
+    if (band.id === 'balance') rows.push({ bandId: 'balance', value: `${model.strengthSharePct}% strength`, note: `${model.enduranceSharePct}% endurance` });
+    if (band.id === 'muscles') rows.push({ bandId: 'muscles', value: `${model.totalSets} sets`, note: `${model.muscles?.length || 0} muscles` });
+    if (band.id === 'exercises') rows.push({ bandId: 'exercises', value: `${model.rows?.length || 0} exercises`, note: model.rows?.[0]?.lift || '' });
+    if (band.id === 'endurance') rows.push({ bandId: 'endurance', value: `${formatRunDistance(model.runKm, state.settings?.distanceUnit === 'mi' ? 'mi' : 'km')} run`, note: `${model.runs} runs` });
+    if (band.id === 'body') rows.push({ bandId: 'body', value: model.weight?.latest ? `${model.weight.latest} ${model.unit}` : '—', note: model.weight?.change == null ? '' : `${model.weight.change > 0 ? '+' : ''}${model.weight.change} ${model.unit}` });
+    if (band.id === 'fasting') rows.push({ bandId: 'fasting', value: `${model.averageHours} h average`, note: `${model.adherencePct}% met goal` });
+  }
+
+  const { shareProgressCard } = await import('./analytics/share-card.js');
+  await shareProgressCard(rows, {
+    title: 'Training progress',
+    subtitle: progressDashboard.range?.spanLabel || '',
+    toast: showToast,
+  });
+}
+
+async function exportProgressPhotos() {
+  const state = _getState?.();
+  if (!state) return;
+  const { exportPhotosZip } = await import('./photos/library.js');
+  const { saveBinaryExport, exportResultMessage } = await import('./portability/export-service.js');
+  try {
+    const archive = await exportPhotosZip(state);
+    const result = await saveBinaryExport({
+      filename: archive.filename,
+      bytes: archive.bytes,
+      mime: 'application/zip',
+    });
+    showToast(exportResultMessage(result, 'Photos'));
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'The photo export failed.');
+  }
+}
+
+function onProgressPhotoChange(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.hasAttribute('data-photo-input')) return;
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) void addProgressPhoto(file);
+}
+
+/**
+ * Which Progress action does this element mean? Extracted as a pure decision so
+ * the ORDER can be tested: the previous inline version resolved a control first
+ * and returned when it found none, which silently disabled Share, Export photos
+ * and Delete photo — none of which carries a data-pg-* attribute.
+ *
+ * @param {any} el
+ * @returns {'delete-photo'|'export-photos'|'share-progress'|'grouping'|'focus'|'range'|null}
+ */
+export function progressControlTarget(el) {
+  if (!el || typeof el.closest !== 'function') return null;
+  if (el.closest('[data-photo-delete]')) return 'delete-photo';
+  if (el.closest('[data-action="export-photos"]')) return 'export-photos';
+  if (el.closest('[data-action="share-progress"]')) return 'share-progress';
+  if (el.closest('[data-pg-grouping]')) return 'grouping';
+  if (el.closest('[data-pg-focus]')) return 'focus';
+  if (el.closest('[data-pg-range]')) return 'range';
+  return null;
+}
+
+/**
+ * Progress's delegated listener. One listener rather than per-render handlers,
+ * so re-rendering the hub cannot leak listeners.
+ */
+function onProgressControlClick(event) {
+  const el = event.target instanceof Element ? event.target : null;
+  if (!el) return;
+
+  // RESOLVE THE TARGET FIRST, then dispatch. Resolving only a control and
+  // returning early made Share, Export photos and Delete photo dead buttons:
+  // none of them carries a data-pg-* attribute, so the handler bailed before
+  // reaching them. That also made the only backup path for photo bytes
+  // unreachable.
+  const action = progressControlTarget(el);
+  if (!action) return;
+
+  if (action === 'delete-photo') {
+    void deleteProgressPhoto(el.closest('[data-photo-delete]')?.getAttribute('data-photo-delete') || '');
+    return;
+  }
+  if (action === 'export-photos') { void exportProgressPhotos(); return; }
+  if (action === 'share-progress') { void shareProgressSummary(); return; }
+
+  const target = el.closest('[data-pg-range], [data-pg-focus], [data-pg-grouping]');
+  if (!target) return;
+  const range = target.getAttribute('data-pg-range');
+  const focus = target.getAttribute('data-pg-focus');
+  const grouping = target.getAttribute('data-pg-grouping');
+  if (grouping) {
+    const next = grouping === 'month' || grouping === 'year' ? grouping : 'week';
+    if (next === _progressGrouping) return;
+    _progressGrouping = next;
+  } else if (range) {
+    if (!isRangeId(range) || range === _progressRangeId) return;
+    _progressRangeId = range;
+  } else if (focus) {
+    if (focus === _progressFocus) return;
+    _progressFocus = focus === 'strength' || focus === 'endurance' ? focus : 'all';
+  } else return;
+  renderAnalytics();
+}
+
 export function initAnalytics(getStateFn, getDaysFn) {
   _getState = getStateFn;
   _getDays  = getDaysFn;
   initWeekNav(_getState, renderAnalytics);
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', onProgressControlClick);
+    document.addEventListener('change', onProgressPhotoChange);
+  }
+}
+
+/** Tests and deep links can set the Progress range without a click. */
+export function setProgressRange(rangeId) {
+  if (!isRangeId(rangeId)) return;
+  _progressRangeId = rangeId;
+}
+
+export function setProgressFocus(focus) {
+  _progressFocus = focus === 'strength' || focus === 'endurance' ? focus : 'all';
+}
+
+export function setProgressGrouping(grouping) {
+  _progressGrouping = grouping === 'month' || grouping === 'year' ? grouping : 'week';
 }
 
 // ==========================================
@@ -341,7 +532,10 @@ function collectAnalyticsData() {
 // and the consistency log, none of which are one calendar week — so the tab is
 // consulted too (the router sets it in the switch below).
 const WEEK_SCOPED_CONTEXTS = [
-  'hub', 'strength', 'strength_pr', 'weekly-volume', 'strength-volume',
+  // NOT 'hub': Progress is range-driven (30D/3M/1Y/All), so a week navigator on
+  // that surface was a second, contradictory time control — and it only ever
+  // governed Pulse. It stays for the screens that really are one calendar week.
+  'strength', 'strength_pr', 'weekly-volume', 'strength-volume',
   'strength-volume-trends', 'running', 'muscle',
 ];
 
@@ -415,6 +609,16 @@ export function renderAnalytics() {
       const isCurrentWeek = weekStart === weekStartOf(today);
       const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
       const dashboard = computeDashboardModel(st, days, program, days[0] || 'mon');
+      // The composer keeps hidden / module-off / no-data distinct and turns a
+      // throwing band into an error band instead of blanking the tab.
+      const progressDashboard = buildProgressDashboard(st, {
+        todayISO: today,
+        rangeId: _progressRangeId,
+        focus: _progressFocus,
+        grouping: _progressGrouping,
+        program,
+        days,
+      });
       renderProgressHub(hubEl, buildProgressLanding(st, {
         days,
         program,
@@ -431,7 +635,18 @@ export function renderAnalytics() {
           range: '12w',
           today: isCurrentWeek ? today : weekEnd,
         }),
-      }), st.settings?.ui?.progress?.hidden || []);
+      }), st.settings?.ui?.progress?.hidden || [], {
+        bands: progressDashboard.bands,
+        rangeId: progressDashboard.range?.id || _progressRangeId,
+        focus: progressDashboard.focus,
+        focusAvailable: progressDashboard.focusAvailable,
+        visibleCount: progressDashboard.visibleCount,
+        renderableCount: progressDashboard.renderableCount,
+        showRunning: !progressDashboard.availability?.endurance?.moduleOff,
+        hidden: st.settings?.ui?.progress?.hidden || [],
+        weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
+        distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
+      });
       break;
     }
     // V2 (S2): the Review screen — weekly-review (Overview) + weekly-summary and

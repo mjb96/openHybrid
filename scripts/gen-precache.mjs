@@ -39,6 +39,7 @@ const CORE = [
   './css/brand-consistency.css',
   './css/hybrid-score.css',
   './css/programs.css',
+  './css/progress.css',
   './css/styles.css',
   './js/vendor/leaflet/leaflet.js',
   './js/vendor/leaflet/leaflet.css',

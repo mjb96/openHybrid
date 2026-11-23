@@ -412,9 +412,17 @@ const MIGRATIONS = [
     }
     if (state.settings.hybridTraining == null) state.settings.hybridTraining = true;
   },
+
+  // v15 → v16: progress-photo METADATA. The image bytes live in IndexedDB
+  // (`photos` store) and never in this blob — a base64 photo in localStorage
+  // would blow the quota and slow every save. This step only guarantees the
+  // array exists, so a render can never crash on a missing list.
+  (state) => {
+    if (!Array.isArray(state.progressPhotos)) state.progressPhotos = [];
+  },
 ];
 
-export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 15
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 16
 
 /** Error raised when a state upgrade cannot safely commit. */
 export class StateMigrationError extends Error {
@@ -531,6 +539,10 @@ function validateStep(state, version) {
     if (!bands || bands.L !== 10 || bands.M !== 20 || bands.H !== 30) {
       throw new Error('Resistance-band weights are not canonical');
     }
+  }
+
+  if (version === 16) {
+    if (!Array.isArray(state.progressPhotos)) throw new Error('Progress photos must be an array');
   }
 
   if (version === 14) {

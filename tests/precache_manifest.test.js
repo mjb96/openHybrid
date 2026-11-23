@@ -54,6 +54,29 @@ test('classic <script> entry points are precache roots too', () => {
     `index.html loads these but they are not precached (offline 404):\n${missing.join('\n')}`);
 });
 
+/**
+ * Every local stylesheet index.html loads.
+ *
+ * The module graph cannot see CSS: stylesheets are hand-listed in
+ * `gen-precache.mjs`'s CORE array. Without this test, adding a <link> and
+ * forgetting the CORE entry passes every check and only breaks OFFLINE, where
+ * the page loads unstyled — the exact defect class the script-entry test above
+ * was written for, one file type over.
+ */
+function styleRoots() {
+  const html = readFileSync(resolve(ROOT, 'index.html'), 'utf8');
+  return [...html.matchAll(/<link[^>]+href="\.\/(css\/[^"]+\.css)"/g)].map((m) => './' + m[1]);
+}
+
+test('stylesheet links are precache roots too', () => {
+  const roots = styleRoots();
+  assert.ok(roots.length >= 4, 'the stylesheet scan found the app sheets');
+  const cached = new Set(requiredAssetsInSw());
+  const missing = roots.filter((path) => !cached.has(path));
+  assert.deepEqual(missing, [],
+    `index.html links these stylesheets but they are not precached (offline renders unstyled):\n${missing.join('\n')}`);
+});
+
 test('previously-uncached feature modules are now covered', () => {
   const cached = new Set(requiredAssetsInSw());
   // Regression list — the concrete modules the audit found missing.

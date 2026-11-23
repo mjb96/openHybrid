@@ -116,7 +116,11 @@ export function programWeekLoadBalance(state, days, currentWeek, maxWeek, window
  *
  * @param {any} state
  * @param {{throughDate?:string|Date, tz?:string, index?:any}} [options]
- * @returns {Array<{date:string, strength:number, endurance:number, total:number, strengthMin:number, enduranceMin:number}>}
+ * @returns {Array<{date:string, strength:number, endurance:number, total:number,
+ *   strengthMin:number, enduranceMin:number, walkLoad:number, walkMin:number}>}
+ *   `endurance`/`enduranceMin` include walks; `walkLoad`/`walkMin` say how much
+ *   of that was walking, so a consumer can exclude it (the hybrid balance split
+ *   does — an unrated dog walk must not outvote a hard session).
  */
 export function dailyLoadBreakdownTimeline(state, options = {}) {
   const throughDate = localDayKey(options.throughDate || todayKey(options.tz), options.tz);
@@ -126,7 +130,9 @@ export function dailyLoadBreakdownTimeline(state, options = {}) {
 
   for (const [date, slots] of index.allByDate.entries()) {
     if (date > throughDate) continue;
-    const entry = byDate.get(date) || { strength: 0, endurance: 0, strengthMin: 0, enduranceMin: 0 };
+    const entry = byDate.get(date) || {
+      strength: 0, endurance: 0, strengthMin: 0, enduranceMin: 0, walkLoad: 0, walkMin: 0,
+    };
     for (const slot of slots) {
       const week = state?.weeks?.[slot.weekKey];
       const load = dayTrainingLoad(week, slot.day);
@@ -135,6 +141,15 @@ export function dailyLoadBreakdownTimeline(state, options = {}) {
       entry.endurance += load.endurance;
       entry.strengthMin += minutes.strength;
       entry.enduranceMin += minutes.endurance;
+      // Walking is measured separately: it is real time on feet, but it must
+      // never be presented as running or silently folded into a training split.
+      for (const run of runSessionsForDay(week, slot.day)) {
+        if (run?.type !== 'walk') continue;
+        const walkMinutes = parseDurationSeconds(run?.time) / 60;
+        if (!(walkMinutes > 0)) continue;
+        entry.walkMin += walkMinutes;
+        entry.walkLoad += (parseFloat(run?.rpe) || 0) * walkMinutes;
+      }
     }
     byDate.set(date, entry);
   }
@@ -143,7 +158,9 @@ export function dailyLoadBreakdownTimeline(state, options = {}) {
   if (!dates.length) return [];
   const rows = [];
   for (let date = dates[0]; date && date <= throughDate; date = addDaysISO(date, 1)) {
-    const entry = byDate.get(date) || { strength: 0, endurance: 0, strengthMin: 0, enduranceMin: 0 };
+    const entry = byDate.get(date) || {
+      strength: 0, endurance: 0, strengthMin: 0, enduranceMin: 0, walkLoad: 0, walkMin: 0,
+    };
     rows.push({
       date,
       strength: entry.strength,
@@ -151,6 +168,8 @@ export function dailyLoadBreakdownTimeline(state, options = {}) {
       total: entry.strength + entry.endurance,
       strengthMin: entry.strengthMin,
       enduranceMin: entry.enduranceMin,
+      walkLoad: entry.walkLoad,
+      walkMin: entry.walkMin,
     });
   }
   return rows;

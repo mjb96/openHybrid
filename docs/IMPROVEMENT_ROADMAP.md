@@ -69,7 +69,8 @@ upgrade have landed:
 - **History** is a full destination: Calendar | List, search, provenance, a
   source filter, a calendar day sheet, exact detail, lossless editing
   (add/remove exercise and set), delete/undo, Repeat workout and Share workout.
-- **Progress** leads with a this-week hero and 12-week strip, then Strength,
+- **Progress** leads with the Pulse band (the selected week, streak and run/walk split)
+  and a 12-week strip, then Strength,
   Running, Recovery and Review, with body measurements (waist, chest, hips,
   arm, thigh, neck) beside the bodyweight trend. Calendar-week attribution is
   used throughout; the Training Report covers 30 days or 12 months; the exercise
@@ -711,6 +712,269 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Quality | 2,319 node tests, typecheck, smoke, precache/workflow gates, 45 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-23 — Progress: second audit. Two fixes were incomplete, and three buttons were dead.**
+  - **Share, Export photos and Delete photo did nothing.** The delegated handler
+    resolved a range/focus control first and bailed when it found none; those three
+    buttons carry none of those attributes. That also made the only backup path for
+    photo bytes unreachable. The dispatch is now a pure, tested function
+    (`progressControlTarget`) whose ORDER is asserted, so the regression cannot recur
+    silently.
+  - **The exercises band labelled pounds as kilograms.** The composer defaulted the
+    unit to `kg` and neither caller passed the athlete's; it now defaults from state.
+  - **A capped chart dropped the NEWEST buckets** (104 weeks / 60 months started at
+    the earliest date), so a five-year athlete saw old training and not current
+    training, while the headline counted everything.
+  - **Balance still said "no strength work"** about a session with sets but no
+    duration or RPE: "was this modality trained?" now comes from the slot index, not
+    from the split's currency.
+  - **A warm-up-only day with a saved duration counted as a session.** `gymTimeIsSession`
+    distinguishes preparation (sets exist, none valid) from an imported FIT gym file
+    (no sets at all, duration is the only evidence).
+  - Also: the empty state now distinguishes "all cards hidden" from "nothing for this
+    range"; Reports stops advertising Year in Review outside December/January; the
+    body band labels all-time values "Latest · <date>"; running evidence rows and
+    pace formatting respect the athlete's unit and can no longer print `5:60`; the
+    Muscles headline is the sum of the rows it shows; the method disclosure describes
+    the range rather than a week.
+  - The audit also found tests that could not fail (a tautological share sum, a `/in/`
+    regex that matched "weigh-in", a 0.6-point tolerance on a rule that says exactly
+    100). Those now assert the real values, and six new regression tests cover the
+    findings. `npm run verify` green (2,578 tests).
+
+- **2026-11-23 — Progress: independent rules audit, and the fixes it forced.**
+  - An adversarial audit of all 13 rule families found six failures. The worst:
+    the **Fasting band never rendered**, because the model read `entry.hours` while
+    the only writer stores `durationHours` — and the test fixture used the fictional
+    shape, so the suite was green while the feature was dead. The band now reads the
+    real field and judges each fast against the goal that applied TO IT, not today's.
+  - **Balance could claim "no strength work" about a lifter who trained twice**
+    without rating the sets: the currency was chosen from whichever modality had RPE.
+    The split now requires a currency BOTH sides can use (sRPE only when both rated,
+    otherwise minutes for both, labelled), and "was this modality trained?" is
+    answered independently of the currency.
+  - **Pulse's adherence compared sessions with days** ("10 of 4"); it now compares
+    planned DAYS with trained days and caps at 100. The at-risk streak, which could
+    never reach the screen, is stated in the empty state.
+  - **The Muscles "All" range charted one bucket** (it fell back to today instead of
+    the earliest session); the composer's `visibleCount` counted sub-cards and could
+    hide the last remaining band; two screen-reader strings and the share card
+    hardcoded `km`; a body-weight "0 kg best" reached the accessible name and table.
+    All fixed, with regression tests built from the real writer (`stopFastAtTime`)
+    rather than a shape nothing persists.
+  - The audit also validated ranges, exercises PR semantics, endurance logic, photo
+    idempotency and a real zip round trip, calendar discipline, and the warm-up rule.
+  - `npm run verify` green (2,569 tests); the full browser suite is re-run on every
+    fix.
+
+- **2026-11-23 — Progress: one time control, and the defects a real screenshot found.**
+  - The shared **week navigator is gone from Progress**. It was a leftover from the
+    week-scoped hub: a second, contradictory answer to "which period am I looking
+    at" beside the range bar, and it only ever governed Pulse. Pulse is now always
+    the current calendar week; the navigator stays on the screens that really are
+    one calendar week. The browser check now asserts it is ABSENT on the hub and
+    that changing the range changes the Endurance band.
+  - Three defects only a rendered screenshot could show: the shared body map is
+    sized for Home's day recap and rendered ~800px tall inside a band; the band
+    action row sat between the headline and the chart; and the fixed bottom nav
+    covered the last band's footer. The map is capped at 156px, actions render
+    after the evidence, and the hub carries its own bottom breathing room.
+  - Evidence: `docs/mockups/live-progress-*.png` are screenshots of the real app.
+
+- **2026-11-23 — Progress finished: photos, customization, share.**
+  - **Photos** ship with their backup path: metadata in `appState` (v16), bytes in
+    IndexedDB (DB v3), one photo per date, downscaled before storage, exported as a
+    hand-written store-only zip and re-imported idempotently.
+  - **Customization** gained per-band detail switches (`bodyPhotos` for privacy,
+    `musclesBody` for preference) and keyboard reorder — up/down buttons rather than
+    a drag-only gesture, because a pointer-only control would have excluded the
+    users the switch row already served.
+  - **Share** draws one canvas summary from the same band models the screen renders,
+    so the image cannot disagree with the page.
+  - `npm run verify` green (2,555 tests); all 46 browser checks pass.
+  - The Progress programme is complete: eight bands, one dashboard, one range
+    control, no paywall possible (guard test), and every surface answering one of
+    the three product questions.
+
+- **2026-11-23 — Progress P6b: progress photos, with their backup path.**
+  - Photos are the only user data here with no platform backup (Android sets
+    `allowBackup="false"`, so IndexedDB is device-local). They ship **with** their
+    export or not at all.
+  - Storage: metadata in `appState` (**v15 → v16**, additive and validated), JPEG
+    bytes in a new IndexedDB `photos` store (**DB v2 → v3**). One photo per date —
+    the id IS the date, so adding a second replaces instead of orphaning a blob and
+    a re-import is idempotent. Deleting a record deletes its blob, and a delete asks
+    first because a photo has no Undo.
+  - Capture downscales before storage (longest edge 1200, JPEG q 0.82 ≈ 200 KB):
+    a 4 MB camera photo per entry would eat a phone's quota. `fitWithin` is pure and
+    tested without a canvas.
+  - Export is a **store-only zip written by hand** (`js/portability/zip.js`) rather
+    than a dependency — JPEGs are already compressed. The writer and reader are one
+    module, so the round-trip test proves both, and an archive without a manifest is
+    refused instead of half-imported.
+  - The calendar guard caught `toISOString().slice(0,10)` in the export filename;
+    it lands on the wrong day near midnight and now uses `localDayKey`.
+  - `npm run verify` green (2,548 tests) and **all 46 browser checks pass**.
+  - Remaining: customize reorder UI + the `bodyPhotos`/`musclesBody` sub-toggles,
+    and share-any-band. The catalogue already supports `order`/`moveCard`.
+
+- **2026-11-23 — Progress P8a: one dashboard, and a no-paywall ratchet.**
+  - The four legacy Consistency/Strength/Running/Recovery domain cards are
+    **retired**. They were a second dashboard on the same tab; the bands ARE
+    Progress now, with the footer keeping the quiet destinations, History and
+    Week in Review.
+  - Retiring them exposed a real gap: Review had no entry point once its card was
+    gone. It has a footer link that preserves the selected week, found by the
+    browser check failing its historical-week assertions.
+  - `progress-hub-browser-check.mjs` was **rewritten for the surface that exists**
+    rather than patched around: band order with Pulse first, four range chips with
+    one selected, no band without a headline, an empty profile that leads with an
+    empty state and invents nothing, and a Muscles row that opens a detail screen.
+    The stepped-back week now proves the Endurance band reads the selected week.
+  - `tests/progress_no_paywall.test.js` is a permanent ratchet: the build fails if
+    any Progress source gains a gating or monetisation term, if `ranges.js` exposes
+    a cap, or if the stylesheet defines a locked/blurred state. `unlock` is
+    excluded on purpose — Health Connect permissions are not payments.
+  - `npm run verify` green (2,530 tests); hub browser contract passes.
+  - Remaining: progress photos (own session: v16 + IDB v3 + zip export) and the
+    customize reorder UI / sub-toggles from P8b.
+
+- **2026-11-23 — Progress P7: Fasting band.**
+  - `Fasting` answers "is my fasting on plan?" from completed fasts in the selected
+    window: average duration, percentage that met the goal, current streak and the
+    longest fast, with recent fasts as discrete bars against a goal line — fourteen
+    points do not support a smooth trend line.
+  - The band owns one rule: **elapsed time against a self-set target.** No
+    autophagy, fat-loss, hormone or metabolic claim, and no stage interpretation. A
+    test greps the rendered output for those words so a future edit cannot slip one
+    in unnoticed.
+  - A window with no completed fasts renders nothing; the module switch removes the
+    band entirely.
+  - All eight bands are now built and wired. `npm run verify` green (2,527 tests);
+    hub browser contract passes.
+  - Next: P6b photos (v16 + IDB v3 + zip export) and P8 (share, customize reorder,
+    and retiring the legacy domain cards — which means rewriting, not extending,
+    the four-domain assertions in the hub browser check).
+
+- **2026-11-23 — Progress P6a: Body band.**
+  - `Body` composes what already exists — `buildBodyweightModel` for weight and its
+    change over the selected window, `buildMeasurementModel` for the tape sites and
+    any entered body fat. Nothing re-derived, nothing estimated.
+  - The chart IS `bodyWeightChartSVG`, the same one Home and Progress already draw,
+    so there is no second sparkline. It renders only from two points: a single
+    weigh-in cannot imply a trend, and it also produces no change line.
+  - Body fat reads as a percentage with its own point delta, and as absent rather
+    than zero when nothing was measured. Both units come from state.
+  - A defect worth recording: body-fat points carry `value`, not `cm`, so the first
+    model read silently dropped every reading. The test caught it.
+  - **Progress photos are deliberately not in this slice.** They live outside
+    `appState`, Android's `allowBackup` is false, and a photo store without the zip
+    export would be the only user data in the app with no backup path. They ship
+    with their export or not at all.
+  - `npm run verify` green (2,520 tests); hub browser contract passes.
+  - Next: P6b photos (v16 + IDB v3 + zip export) as its own session, then P7 fasting.
+
+- **2026-11-23 — Progress P5: Endurance band, and running metrics become run-only.**
+  - `Endurance` answers "is my running improving?" from the same canonical
+    collector the Running screen uses, so the band cannot disagree with the screen
+    it links to: run and walk distance as grouped bars, pace as a stat with a
+    delta (never a second axis), a 12-week run/walk-day strip, and "not in run
+    totals" stated in words.
+  - **Behaviour change:** every `running.*` metric is now run-only. Weekly,
+    4-week and lifetime distance, run count and longest run exclude walks; the
+    filter sits at the aggregation boundary **and** in `evidenceFor`, so a walk can
+    never be offered as evidence for a number it is not part of. Metric copy says
+    "walks are counted separately"; "Weekly Activity Count" / "Total Activities"
+    became "Weekly Run Count" / "Total Runs".
+  - FIT imports now carry the sport: `isWalkingSport` maps walking/hiking files to
+    `type: 'walk'`, so an imported walk cannot become a run.
+  - This was safe to do directly because the project has a single user — no
+    migration note was needed for a community, and the numbers changing is the
+    point rather than a regression.
+  - `npm run verify` green (2,512 tests); hub browser contract passes.
+  - Next: P6 Body and progress photos — the only phase that adds storage.
+
+- **2026-11-23 — Progress P4: main exercises and set records.**
+  - `Main exercises` ranks the lifts trained most in the selected window by
+    sessions, with best e1RM, the change across the window and a PR flag. The flag
+    compares the window's best against the **all-time** best for the same exercise,
+    so a lift that peaked two months ago cannot look like a record, and aliases
+    collapse through `resolveExercise` so two stored names are one row. Every row
+    links into the existing drilldown (`data-entity` / `data-entity-name`).
+  - `Set records` ("heaviest working set at or above each rep target") moved into
+    its own module, `js/strength/set-records.js`, rather than a second rule inside
+    `exercise-detail.js`. Holds and carries report their own best; bodyweight
+    history reports most reps in a set and session instead of inventing a weight
+    record; warm-ups never count. The drilldown prints the definition, because a
+    records table without its rule is a rumour.
+  - The "no hardcoded kg" guard caught the first version of that table. The unit
+    now comes from the model.
+  - `npm run verify` green (2,493 tests); hub browser contract passes.
+  - Next: P5 Endurance and the run/walk metric re-pointing.
+
+- **2026-11-23 — Progress P3: Muscles, with credited sets and a grouping switch.**
+  - `Muscles` answers "is the volume where I need it?": credited sets per muscle
+    over the selected window, bucketed week/month/year, with each muscle's share
+    and its change against the equal-length previous window.
+  - Credits stay owned by `muscleCreditsForExercise` (1 / 0.5 / 0.25), so a
+    compound set is one set for the chest and half for the triceps and the shares
+    sum to 100. Warm-ups contribute nothing; holds and carries count as sets with
+    zero tonnage.
+  - Colour carries the six GROUP hues; the legend is capped at six series plus
+    Other, because 19 distinguishable hues do not exist on a 390 px screen. Every
+    bucket states its total in text and every number reappears in the rows and
+    the data table.
+  - Deleted the dead `renderWeeklyVolumeDetail`, which summed `setVolume` over
+    `isCompletedSet` sets and therefore counted warm-up tonnage. Nothing imported
+    it; it was a future bug, not a screen.
+  - No new metric ids were needed — `strength.muscle-set-credits`,
+    `strength.per-muscle-volume` and `strength.weekly-volume` already classify and
+    inventory these numbers.
+  - `npm run verify` green (2,461 tests); hub browser contract passes.
+  - Next: P4 main exercises, the exercise metric switcher and set records.
+
+- **2026-11-23 — Progress P2: Balance, plus the range and focus controls.**
+  - `Balance` answers "is the mix right?" over the selected window, in sRPE when
+    the athlete rates effort and training minutes when they do not, saying which.
+  - **Walks are excluded from the split** (D1): on the minutes fallback an
+    unrated walk would count like a hard session and outvote real training.
+    `dailyLoadBreakdownTimeline` reports `walkLoad`/`walkMin` additively and Home's
+    hybrid card subtracts them too, so the mix has one definition everywhere. The
+    excluded time is still shown — hidden from the share, not from the user.
+  - A one-modality window is an explanation, never a 100 % bar. The composer
+    gained `alwaysShow`, so only Pulse and Reports render without data.
+  - The **range bar** (30D/3M/1Y/All) and the **All/Strength/Endurance filter**
+    land with it: 44 px `aria-pressed` chips, one delegated listener, ephemeral
+    state so a remembered mode cannot silently hide half the dashboard.
+  - `npm run verify` green (2,440 tests) and the hub browser contract passes at
+    320/390/412 in both themes.
+  - Next: P3 Muscles (sets per muscle, distribution, body split).
+
+- **2026-11-23 — Progress P1: Pulse band, one range vocabulary, eight-band catalogue.**
+  - The Progress hub now opens on **Pulse** — the selected calendar week, its
+    streak and its run/walk split — instead of the old week hero. It follows the
+    shared week navigator, so the band and the navigator can never name different
+    weeks. A warm-up-only day reads as rest; an untrained current week keeps the
+    streak alive and labels it at risk rather than resetting it.
+  - `analytics/ranges.js` is the one time-window contract: trailing windows end
+    today (so a comparison is elapsed-matched by construction) and `all` never
+    invents a start date. Labels state real dates.
+  - `analytics/views/band-kit.js` implements the five required states, the
+    text-alternative table, legend and ranked rows once for every future band.
+  - `Customize Progress` moves from six legacy cards to the eight bands.
+    `PROGRESS_CARD_ALIASES` maps old ids onto their successors so saved choices
+    survive the rename; nothing is pinned, but the last visible card cannot be
+    hidden.
+  - `progress-dashboard.js` composes bands and keeps "hidden by the athlete",
+    "module off" and "no data yet" as three distinct answers. A throwing band
+    renders an error rather than blanking the tab.
+  - **Fixed a silent offline gap:** stylesheets are hand-listed in
+    `gen-precache.mjs` but were not covered by `precache_manifest.test.js`, so a
+    new `<link>` could ship uncached and render the tab unstyled offline. The
+    test now scans stylesheet links the way it scans `<script src>`.
+  - Design + work order live in `docs/progress-tab-plan.md` and
+    `docs/progress-tab-execution.md`; mockups in `docs/mockups/`.
+  - Next: P2 Balance, then P3 Muscles.
 
 - **2026-11-23 — Hybrid week on Home, a Hybrid training switch, and the shared
   bodyweight chart.**

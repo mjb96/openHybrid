@@ -54,6 +54,25 @@ export function weekKeyOf(dateISO) {
   return weekStartOf(dateISO);
 }
 
+/**
+ * Does a slot's saved gym duration represent a session ON ITS OWN?
+ *
+ * Only when the day has no logged sets at all — an imported FIT gym file keeps
+ * time/HR and no exercise names. A day whose only sets are warm-ups is
+ * preparation, and a duration saved by the cockpit must not turn it into
+ * training evidence.
+ *
+ * @param {{ gymStats?: any, lifts?: any, stats?: { workingSets?: number } }} slot
+ */
+export function gymTimeIsSession(slot) {
+  if (!String(slot?.gymStats?.time || '').trim()) return false;
+  const lifts = slot?.lifts;
+  const hasAnySets = lifts && typeof lifts === 'object'
+    && Object.values(lifts).some((sets) => Array.isArray(sets) && sets.length > 0);
+  if (!hasAnySets) return true;                      // imported: duration is the only evidence
+  return (slot?.stats?.workingSets || 0) > 0;        // sets exist → only working sets count
+}
+
 // ---- per-day strength stats --------------------------------------------------
 
 /**
@@ -135,8 +154,8 @@ export function indexSlotsByDate(state, opts = {}) {
       const runDist = parseFloat(run?.dist) || 0;
       const runTime = run && run.time ? String(run.time) : '';
       const gymTime = gymStats && gymStats.time ? String(gymStats.time) : '';
-      const hasActivity =
-        stats.workingSets > 0 || runDist > 0 || runTime !== '' || gymTime !== '';
+      const hasActivity = stats.workingSets > 0 || runDist > 0 || runTime !== ''
+        || gymTimeIsSession({ gymStats, lifts, stats });
       if (!hasActivity) return; // scaffolding / rest day — nothing to attribute
 
       const slot = {
@@ -207,8 +226,7 @@ export function loggedSessionsByDate(state, opts = {}) {
     // Counting slots reported a strength+run day as one session (the hub showed
     // "2 of 6" while the this-week tile correctly showed 3).
     const sessions = slots.reduce((total, slot) => {
-      const strength = ((slot.stats?.workingSets || 0) > 0
-        || String(slot.gymStats?.time || '').trim() !== '') ? 1 : 0;
+      const strength = ((slot.stats?.workingSets || 0) > 0 || gymTimeIsSession(slot)) ? 1 : 0;
       const runs = Array.isArray(slot.runSessions)
         ? slot.runSessions.length
         : (slot.run && ((parseFloat(slot.run.dist) || 0) > 0 || String(slot.run.time || '').trim()) ? 1 : 0);

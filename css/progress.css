@@ -1,0 +1,784 @@
+/* ==========================================================================
+   PROGRESS TAB — band system (css/progress.css)
+   --------------------------------------------------------------------------
+   Deliberately a separate sheet from analytics.css (2,122 lines, and the
+   roadmap already flags its specificity as a risk). Every selector here is
+   `pg-*`, so the new surface and the old hub can coexist while the redesign
+   rolls out, and reverting a phase cannot collide with the legacy chrome.
+
+   Rules:
+   - tokens only (css/styles.css), no hard-coded colours except documented
+     light-mode overrides
+   - dark first; light overrides live together at the bottom
+   - 44px minimum on anything tappable
+   - no hover-only affordances
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- 1. BAND */
+.pg-band {
+  background: var(--bg-card);
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.07));
+  border-radius: 14px;
+  padding: 14px 13px;
+  margin-bottom: 12px;
+}
+
+.pg-band__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pg-band__headline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pg-band__eyebrow {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pg-band__value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-band__unit {
+  margin-left: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pg-band__chip {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--overlay-md, rgba(255, 255, 255, 0.06));
+  color: var(--text-secondary);
+  font-size: 0.56rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.pg-band__sub {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.pg-band__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.pg-band__action {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-cyan, #22d3ee);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pg-band__action:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; border-radius: 8px; }
+
+/* --------------------------------------------------------------- 2. STATES */
+.pg-state {
+  margin-top: 12px;
+}
+
+.pg-state--loading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Reserved geometry: the skeleton must occupy the space its data will, or
+     every visit jumps when the real chart lands. */
+  min-height: var(--pg-state-h, 180px);
+}
+
+.pg-skeleton {
+  display: block;
+  border-radius: 8px;
+  background: linear-gradient(90deg,
+    var(--overlay-sm, rgba(255, 255, 255, 0.03)),
+    var(--overlay-md, rgba(255, 255, 255, 0.06)),
+    var(--overlay-sm, rgba(255, 255, 255, 0.03)));
+  background-size: 200% 100%;
+  animation: pg-sheen 1.4s ease-in-out infinite;
+}
+
+.pg-skeleton--title { width: 45%; height: 14px; }
+.pg-skeleton--chart { width: 100%; height: calc(var(--pg-state-h, 180px) - 76px); }
+.pg-skeleton--row { width: 70%; height: 12px; }
+
+@keyframes pg-sheen {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.pg-state__message {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.pg-state--empty { padding: 10px 0 4px; }
+.pg-state--empty .pg-band__action { padding: 0 12px; }
+
+.pg-state--error {
+  border: 1px solid var(--color-red, #ef4444);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--red-alpha, rgba(239, 68, 68, 0.12));
+}
+
+.pg-state--error .pg-state__message { color: var(--text-primary); }
+
+.pg-state__detail {
+  margin-top: 6px;
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+}
+
+.pg-state--offline .pg-state__message,
+.pg-state--stale { font-size: 0.62rem; color: var(--text-secondary); }
+
+.pg-state--stale {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-skeleton { animation: none; }
+}
+
+/* ------------------------------------------------------------- 3. DATA TABLE */
+.pg-data {
+  margin-top: 10px;
+  border-top: 1px solid var(--overlay-sm, rgba(255, 255, 255, 0.03));
+  padding-top: 8px;
+}
+
+.pg-data > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.pg-data__wrap { overflow-x: auto; }
+
+.pg-data__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-data__table th,
+.pg-data__table td {
+  padding: 5px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--overlay-sm, rgba(255, 255, 255, 0.03));
+  white-space: nowrap;
+}
+
+.pg-data__table th { color: var(--text-secondary); font-weight: 800; }
+
+/* ----------------------------------------------------------------- 4. LEGEND */
+.pg-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pg-legend__item.is-muted { opacity: 0.7; }
+
+.pg-legend__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--overlay-xl, rgba(255, 255, 255, 0.12));
+  flex: 0 0 8px;
+}
+
+/* ------------------------------------------------------------------ 5. ROWS */
+.pg-rows {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-row { margin: 0; }
+
+.pg-row__hit {
+  display: grid;
+  grid-template-columns: 78px 1fr 30px 54px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.pg-row__hit { cursor: pointer; min-height: 44px; }
+button.pg-row__hit:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; border-radius: 8px; }
+
+.pg-row__name {
+  font-size: 0.64rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pg-row__track {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--overlay-md, rgba(255, 255, 255, 0.06));
+  overflow: hidden;
+}
+
+.pg-row__bar {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--color-cyan, #22d3ee);
+}
+
+.pg-row__value {
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-row__status {
+  font-size: 0.55rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text-secondary);
+}
+
+/* ------------------------------------------------------- 6. PULSE SPECIFICS */
+.pg-rail {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pg-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.pg-day__mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--overlay-md, rgba(255, 255, 255, 0.06));
+  display: block;
+}
+
+.pg-day.is-trained .pg-day__mark { background: var(--color-cyan, #22d3ee); }
+
+.pg-day.is-today .pg-day__mark {
+  box-shadow: inset 0 0 0 2px var(--color-cyan, #22d3ee);
+  background: rgba(34, 211, 238, 0.18);
+}
+
+.pg-day.is-trained.is-today .pg-day__mark {
+  background: var(--color-cyan, #22d3ee);
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35);
+}
+
+.pg-day.is-future .pg-day__mark { opacity: 0.45; }
+
+.pg-day__label {
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.pg-pulse__summary {
+  margin: 12px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.pg-pulse__delta {
+  margin: 6px 0 0;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.pg-pulse__delta--up { color: var(--color-green, #10b981); }
+.pg-pulse__delta--down { color: var(--color-amber, #f59e0b); }
+.pg-pulse__delta--flat { color: var(--text-secondary); }
+
+/* --------------------------------------------------- 7. COLLAPSED BAND ROW */
+.pg-band--collapsed { padding: 0; }
+
+.pg-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 50px;
+  padding: 0 13px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pg-collapsed:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -2px; border-radius: 14px; }
+
+.pg-collapsed__value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-collapsed__delta {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--color-green, #10b981);
+}
+
+.pg-collapsed__cue {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--color-cyan, #22d3ee);
+}
+
+/* --------------------------------------------------------- 8. WIDE LAYOUT */
+@media (min-width: 600px) {
+  .pg-band { padding: 16px 16px 14px; }
+  /* Two columns inside a band, never a wider chart. */
+  .pg-band--wide .pg-band__body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+}
+
+/* ------------------------------------------------------- 9. LIGHT OVERRIDES */
+html[data-theme="light"] .pg-band {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .pg-band__eyebrow,
+html[data-theme="light"] .pg-band__sub,
+html[data-theme="light"] .pg-pulse__summary,
+html[data-theme="light"] .pg-state__message,
+html[data-theme="light"] .pg-row__status,
+html[data-theme="light"] .pg-legend__item,
+html[data-theme="light"] .pg-day__label {
+  /* 5.35:1 on white — measured, same precedent as the bodyweight chart. */
+  color: #475569;
+}
+
+html[data-theme="light"] .pg-band__value,
+html[data-theme="light"] .pg-row__name,
+html[data-theme="light"] .pg-collapsed__value { color: #0f172a; }
+
+html[data-theme="light"] .pg-band__action,
+html[data-theme="light"] .pg-collapsed__cue { color: #0e7490; }
+
+html[data-theme="light"] .pg-day__mark { background: rgba(15, 23, 42, 0.08); }
+html[data-theme="light"] .pg-day.is-trained .pg-day__mark { background: #0e7490; }
+html[data-theme="light"] .pg-day.is-today .pg-day__mark { box-shadow: inset 0 0 0 2px #0e7490; }
+html[data-theme="light"] .pg-row__track { background: rgba(15, 23, 42, 0.08); }
+html[data-theme="light"] .pg-state--error { background: rgba(239, 68, 68, 0.06); }
+
+/* ------------------------------------------------- 10. RANGE + FOCUS CHIPS */
+.pg-controls { margin: 0 0 14px; }
+
+.pg-range {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.07));
+  border-radius: 999px;
+  background: var(--overlay-sm, rgba(255, 255, 255, 0.03));
+}
+
+.pg-range__chip {
+  flex: 1;
+  /* 44px, not a 36px pill: the range is a primary control and the browser
+     check measures it. */
+  min-height: 44px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pg-range__chip.is-selected {
+  background: rgba(34, 211, 238, 0.14);
+  color: var(--color-cyan, #22d3ee);
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
+}
+
+.pg-range__chip:focus-visible,
+.pg-focus__chip:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+
+/* Deliberately lighter than the range bar: two equal segmented rows stacked on
+   a 390px screen read as two competing navigations. */
+.pg-focus {
+  display: flex;
+  gap: 18px;
+  margin: 12px 4px 0;
+}
+
+.pg-focus__chip {
+  min-height: 44px;
+  padding: 0 0 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pg-focus__chip.is-selected {
+  color: var(--text-primary);
+  border-bottom-color: var(--color-cyan, #22d3ee);
+}
+
+/* ------------------------------------------------------- 11. BALANCE BAND */
+.pg-split {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+  margin-top: 14px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.pg-split__seg { display: block; height: 100%; }
+.pg-split__seg--strength { background: var(--color-violet, #8b5cf6); }
+.pg-split__seg--endurance { background: var(--color-cyan, #22d3ee); }
+
+.pg-balance__delta {
+  margin: 10px 0 0;
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.pg-balance__excluded {
+  margin: 5px 0 0;
+  font-size: 0.62rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+html[data-theme="light"] .pg-range { background: rgba(15, 23, 42, 0.04); }
+html[data-theme="light"] .pg-range__chip { color: #475569; }
+html[data-theme="light"] .pg-range__chip.is-selected { color: #0e7490; }
+html[data-theme="light"] .pg-focus__chip { color: #475569; }
+html[data-theme="light"] .pg-focus__chip.is-selected { color: #0f172a; border-bottom-color: #0e7490; }
+
+/* ------------------------------------------------- 12. MUSCLES: GROUP + STACK */
+.pg-segment { display: flex; gap: 6px; margin-top: 12px; }
+
+.pg-segment__chip {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default, rgba(255, 255, 255, 0.07));
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.pg-segment__chip.is-selected {
+  border-color: rgba(34, 211, 238, 0.5);
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--color-cyan, #22d3ee);
+}
+
+.pg-segment__chip:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+
+.pg-stack {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: 14px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.pg-stack__bucket {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  min-width: 30px;
+}
+
+.pg-stack__bar {
+  display: flex;
+  /* column-reverse puts the first series at the BOTTOM of the stack, which is
+     how a time-series bar reads. */
+  flex-direction: column-reverse;
+  width: 20px;
+  height: 132px;
+}
+
+.pg-stack__seg { display: block; width: 100%; }
+
+.pg-stack__label {
+  font-size: 0.54rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+html[data-theme="light"] .pg-segment__chip { color: #475569; border-color: rgba(15, 23, 42, 0.12); }
+html[data-theme="light"] .pg-segment__chip.is-selected { color: #0e7490; }
+
+/* ---------------------------------------------------- 13. MAIN EXERCISE ROWS */
+.pg-ex-list { list-style: none; margin: 12px 0 0; padding: 0; }
+
+.pg-ex { border-top: 1px solid var(--overlay-sm, rgba(255, 255, 255, 0.03)); }
+.pg-ex:first-child { border-top: 0; }
+
+.pg-ex__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pg-ex__hit:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; border-radius: 8px; }
+
+.pg-ex__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pg-ex__name { font-size: 0.74rem; font-weight: 800; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pg-ex__pr { margin-left: 4px; padding: 1px 5px; border-radius: 999px; background: rgba(16, 185, 129, 0.16); color: var(--color-green, #10b981); font-size: 0.5rem; font-weight: 800; }
+.pg-ex__delta { font-size: 0.64rem; font-weight: 800; white-space: nowrap; }
+.pg-ex__meta { font-size: 0.6rem; color: var(--text-secondary); }
+.pg-ex__spark { width: 100%; max-width: 120px; }
+.pg-ex__spark .an-spark { height: 18px; }
+
+html[data-theme="light"] .pg-ex__name { color: #0f172a; }
+html[data-theme="light"] .pg-ex__meta { color: #475569; }
+
+/* ---------------------------------------------------- 14. ENDURANCE BAND */
+.pg-stack__pair { display: flex; align-items: flex-end; gap: 3px; height: 132px; }
+.pg-stack__col { display: block; width: 11px; border-radius: 2px 2px 0 0; }
+.pg-stack__col--walk { width: 6px; }
+
+.pg-statrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 8px;
+  margin-top: 14px;
+}
+
+.pg-statrow div { display: flex; flex-direction: column; gap: 2px; }
+.pg-statrow b { font-size: 0.86rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pg-statrow span { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-secondary); }
+
+.pg-days { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; margin-top: 14px; }
+.pg-days__week { display: grid; grid-template-rows: repeat(7, 7px); gap: 2px; }
+.pg-daycell { display: block; border-radius: 2px; background: var(--overlay-md, rgba(255, 255, 255, 0.06)); }
+.pg-daycell.is-run { background: var(--color-blue, #3b82f6); }
+.pg-daycell.is-walk { background: transparent; box-shadow: inset 0 0 0 1.5px rgba(148, 163, 184, 0.5); }
+
+html[data-theme="light"] .pg-daycell { background: rgba(15, 23, 42, 0.08); }
+html[data-theme="light"] .pg-daycell.is-run { background: #1d4ed8; }
+html[data-theme="light"] .pg-statrow b { color: #0f172a; }
+html[data-theme="light"] .pg-statrow span { color: #475569; }
+
+/* --------------------------------------------------------- 15. BODY BAND */
+.pg-body__chart { margin-top: 12px; }
+.pg-sites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+.pg-site { display: flex; align-items: baseline; gap: 4px; }
+.pg-site__label { font-size: 0.58rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.pg-site__value { font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pg-site small { font-size: 0.52rem; color: var(--text-secondary); }
+.pg-site__delta { margin-left: auto; font-size: 0.56rem; font-weight: 700; color: var(--text-secondary); }
+.pg-body__fat { margin: 12px 0 0; font-size: 0.68rem; color: var(--text-secondary); }
+.pg-body__fat b { color: var(--text-primary); }
+.pg-body__fat small { font-size: 0.54rem; }
+
+html[data-theme="light"] .pg-site__value { color: #0f172a; }
+
+/* ------------------------------------------------------- 16. FASTING BAND */
+.pg-fast-chart { position: relative; margin-top: 14px; }
+.pg-fast__goal {
+  position: absolute;
+  top: 0; bottom: 4px;
+  left: calc(var(--pg-goal) * 1);
+  border-left: 1px dashed rgba(34, 211, 238, 0.55);
+}
+.pg-fast { display: grid; grid-template-columns: 52px 1fr 44px; align-items: center; gap: 8px; height: 20px; }
+.pg-fast small { font-size: 0.54rem; font-weight: 700; color: var(--text-secondary); }
+.pg-fast__track { height: 8px; border-radius: 99px; background: var(--overlay-md, rgba(255, 255, 255, 0.06)); overflow: hidden; }
+.pg-fast__track i { display: block; height: 100%; border-radius: 99px; background: var(--color-violet, #8b5cf6); }
+.pg-fast.is-short .pg-fast__track i { background: rgba(245, 158, 11, 0.75); }
+.pg-fast b { font-size: 0.56rem; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
+
+html[data-theme="light"] .pg-fast b, html[data-theme="light"] .pg-fast small { color: #475569; }
+
+/* The vendored body-map credit is a real link and the browser check measures
+   it on this surface; it is a lone footer line, so a 44px hit area is safe. */
+.pg-band .session-map__credit a {
+  display: inline-flex;
+  align-items: center;
+  /* Height AND width: the visible text is ~35px wide, and a lone footer link
+     has no neighbouring control to collide with. */
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding-inline: 6px;
+  margin-inline: -6px;
+}
+
+/* ------------------------------------------------------ 17. PHOTO STRIP */
+.pg-photos { display: flex; gap: 7px; margin: 14px 0 0; padding: 0 0 2px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+.pg-photo { position: relative; flex: 0 0 auto; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: var(--overlay-md, rgba(255,255,255,0.06)); }
+.pg-photo__img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pg-photo__remove { position: absolute; top: 0; right: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #fff; font-size: 1rem; line-height: 1; text-shadow: 0 1px 3px rgba(0,0,0,.8); cursor: pointer; }
+.pg-photo__remove:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -4px; }
+.pg-photo--add { border: 1px dashed var(--border-strong, rgba(255,255,255,0.18)); background: transparent; }
+.pg-photo__add { display: grid; place-items: center; width: 100%; height: 100%; min-height: 44px; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
+.pg-photo__add:focus-within { outline: 2px solid var(--color-blue); outline-offset: -4px; border-radius: 10px; }
+
+/* ------------------------------------------- 18. CUSTOMIZE SHEET EXTRAS */
+.customize-row--sub { padding-left: 18px; }
+.customize-row--sub .customize-row__label { font-size: 0.72rem; font-weight: 700; opacity: 0.9; }
+.customize-order { display: flex; gap: 2px; }
+.customize-order__btn {
+  width: 44px; height: 44px;
+  border: 0; border-radius: 10px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.customize-order__btn:disabled { opacity: 0.3; cursor: default; }
+.customize-order__btn:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+html[data-theme="light"] .customize-order__btn { color: #475569; }
+.hub-head__actions { display: flex; gap: 6px; flex: 0 0 auto; }
+
+/* ------------------------------------------- 19. LIVE-APP CORRECTIONS
+   Found by looking at the rendered tab, not at the mockup:
+   - the shared body map is sized for Home's day recap and was ~800px tall inside
+     a band, pushing every other card below the fold;
+   - the fixed bottom nav covered the last band's footer.                        */
+.pg-band .session-map { margin-top: 14px; }
+.pg-band .session-map__views { max-width: 190px; margin-inline: auto; gap: 10px; }
+.pg-band .session-map__view svg { width: auto; height: 156px; max-height: 156px; }
+.pg-band .session-map__label { font-size: 0.52rem; }
+.pg-band .session-map__credit { font-size: 0.5rem; opacity: 0.7; }
+
+/* The hub owns its own bottom breathing room so the last band clears the nav. */
+#analytics-hub { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }
+
+/* Pulse: rail + heat map side by side (see view-pulse.js). */
+.pg-pulse__top { display: grid; grid-template-columns: minmax(0, 1fr) 124px; gap: 10px; align-items: start; }
+/* Grid children default to min-width:auto, so the rail's content and the map's
+   intrinsic width could push the track past the band by a couple of pixels at
+   390px — intermittently, because it depended on rounding. */
+.pg-pulse__top > * { min-width: 0; }
+.pg-pulse__top .session-map { max-width: 124px; }
+.pg-pulse__top .pg-rail { margin-top: 14px; }
+.pg-pulse__top .session-map { margin-top: 10px; }
+.pg-pulse__top .session-map__views { max-width: 124px; gap: 6px; }
+.pg-pulse__top .session-map__view svg { height: 104px; max-height: 104px; }
+.pg-pulse__top .session-map__legend,
+.pg-pulse__top .session-map__credit { display: none; }
+@media (max-width: 360px) {
+  .pg-pulse__top { grid-template-columns: 1fr; }
+  .pg-pulse__top .session-map__views { max-width: 170px; }
+}
+.pg-pulse__credit { margin: 8px 0 0; font-size: 0.5rem; color: var(--text-secondary); opacity: 0.75; }
+
+/* ------------------------------------------------------------ 20. REPORTS */
+.pg-reports { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.pg-reports__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; min-height: 56px; padding: 10px 12px;
+  border: 1px solid var(--border-default, rgba(255,255,255,0.07)); border-radius: 10px;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pg-reports__row:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+.pg-reports__copy { display: flex; flex-direction: column; gap: 2px; }
+.pg-reports__title { font-size: 0.74rem; font-weight: 800; color: var(--text-primary); }
+.pg-reports__desc { font-size: 0.6rem; color: var(--text-secondary); }
+.pg-reports__arrow { color: var(--color-cyan, #22d3ee); font-weight: 800; }
+html[data-theme="light"] .pg-reports__title { color: #0f172a; }

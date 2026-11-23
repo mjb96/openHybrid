@@ -11,6 +11,63 @@
 // =============================================================================
 
 import { esc, spark } from './screen-kit.js';
+import { renderPulse } from './view-pulse.js';
+import { renderBalance } from './view-balance.js';
+import { renderMuscles } from './view-muscles.js';
+import { renderExercises } from './view-exercises.js';
+import { renderEndurance } from './view-endurance.js';
+import { hydratePhotoThumbs, renderBody } from './view-body.js';
+import { renderFastingBand } from './view-fasting-band.js';
+import { renderReports } from './view-reports.js';
+import { focusBar, rangeBar } from './band-kit.js';
+import { RANGE_PRESETS } from '../ranges.js';
+
+const BAND_VIEWS = Object.freeze({
+  pulse: renderPulse, balance: renderBalance, muscles: renderMuscles, exercises: renderExercises,
+  endurance: renderEndurance, body: renderBody, fasting: renderFastingBand, reports: renderReports,
+});
+
+/**
+ * Render the bands the composer produced, in its order. A band with an error
+ * renders that error through its own view, so one broken model cannot blank
+ * the tab.
+ */
+function bandsHTML(extras) {
+  const list = Array.isArray(extras.bands) ? extras.bands : null;
+  if (list) {
+    return list.map((entry) => {
+      const view = BAND_VIEWS[entry.id];
+      if (!view) return '';
+      return view(entry.error ? null : entry.model, {
+        weightUnit: extras.weightUnit,
+        distanceUnit: extras.distanceUnit,
+        error: entry.error || null,
+        hidden: Array.isArray(extras.hidden) ? extras.hidden : [],
+      });
+    }).join('');
+  }
+  // Transitional: a caller that only supplies a Pulse model (or none) keeps the
+  // legacy hero rather than losing the top of the page.
+  if (extras.pulse) {
+    return renderPulse(extras.pulse, {
+      weightUnit: extras.weightUnit,
+      distanceUnit: extras.distanceUnit,
+      error: extras.pulseError || null,
+    });
+  }
+  return '';
+}
+
+/** The modality filter, derived from what is actually visible and measured. */
+function focusHTML(extras) {
+  const available = extras.focusAvailable;
+  if (!available?.strength || !available?.endurance) return '';
+  return focusBar([
+    { id: 'all', label: 'All' },
+    { id: 'strength', label: 'Strength' },
+    { id: 'endurance', label: 'Endurance' },
+  ], extras.focus || 'all');
+}
 import { icon } from '../../ui/icons.js';
 import { formatDist } from '../utils.js';
 import { addDaysISO } from '../weekly-aggregate.js';
@@ -160,11 +217,36 @@ function recentWeeksStrip(model) {
   </section>`;
 }
 
-export function renderProgressHub(container, model, hidden = []) {
+/**
+ * @param {HTMLElement|null} container
+ * @param {ReturnType<import('../progress-landing.js').buildProgressLanding>} model
+ * @param {string[]} [hidden]
+ * @param {{
+ *   bands?: Array<{ id: string, model?: any, error?: string }>,
+ *   pulse?: any,
+ *   pulseError?: string|null,
+ *   rangeId?: string,
+ *   focus?: string,
+ *   focusAvailable?: { strength: boolean, endurance: boolean },
+ *   visibleCount?: number,
+ *   renderableCount?: number,
+ *   showRunning?: boolean,
+ *   hidden?: string[],
+ *   weightUnit?: string,
+ *   distanceUnit?: string,
+ * }} [extras]
+ */
+export function renderProgressHub(container, model, hidden = [], extras = {}) {
   if (!container || !model) return;
   const hiddenSet = new Set(Array.isArray(hidden) ? hidden : []);
-  const domains = model.domains.filter((domain) => !hiddenSet.has(domain.id));
+  // The four legacy domain cards are retired: the bands ARE Progress now, and
+  // two dashboards on one tab was the duplication this redesign existed to
+  // remove. `secondary` survives as the quieter footer destinations.
   const secondary = model.secondary.filter((entry) => !hiddenSet.has(SECONDARY_CARD_ID[entry.id]));
+  const bands = bandsHTML(extras);
+  const visibleCount = Number.isFinite(Number(extras.visibleCount))
+    ? Number(extras.visibleCount)
+    : Number(extras.bands?.length || 0);
 
   const intro = model.allEmpty
     ? `<div class="ph-empty">
@@ -179,15 +261,50 @@ export function renderProgressHub(container, model, hidden = []) {
         <h2 class="hub-title">Progress</h2>
         <p class="hub-sub">What changed, and why.</p>
       </div>
-      <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
+      <div class="hub-head__actions">
+        ${(extras.bands || []).length ? '<button type="button" class="hub-customize-btn" data-action="share-progress" aria-label="Share a summary of this page">Share</button>' : ''}
+        <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
+      </div>
+    </div>
+    <div class="pg-controls">
+      ${rangeBar(RANGE_PRESETS, extras.rangeId || '30d')}
+      ${focusHTML(extras)}
     </div>
     ${intro}
-    ${model.allEmpty ? '' : weekHero(model)}
-    ${recentWeeksStrip(model)}
-    ${!domains.length && !secondary.length ? '<p class="ph-empty">All Progress cards are hidden. Use Customize to bring them back.</p>' : ''}
-    <div class="ph-grid">${domains.map(domainCard).join('')}</div>
+    ${visibleCount === 0
+      ? `<div class="ph-empty">
+          <p>All Progress cards are hidden. Your data is still here — bring a card back to see it.</p>
+          <button type="button" class="ph-empty__cta" data-action="open-customize" data-surface="progress">Show a card</button>
+        </div>`
+      : (Number(extras.renderableCount) === 0
+        ? `<div class="ph-empty">
+            <p>Nothing to show for this range yet. Widen the range, switch a module on, or log a session.</p>
+            <button type="button" class="ph-empty__cta" data-action="open-customize" data-surface="progress">Customize</button>
+          </div>`
+        : bands)}
     ${secondary.length ? `<h3 class="section-header mt-4">More detail</h3>
     <div class="hub-group">${secondary.map(secondaryRow).join('')}</div>` : ''}
+    ${extras.showRunning === false ? '' : `<button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="running">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Running</span>
+        <span class="hub-link__desc">Pace, heart rate, zones, load and personal bests</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>`}
+    <button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="strength">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Strength</span>
+        <span class="hub-link__desc">Every lift, volume detail and per-exercise progression</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>
+    <button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="weekly-review" data-parent-context="hub" data-preserve-week="true">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Week in Review</span>
+        <span class="hub-link__desc">This week's story, consistency log and training report</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>
     <button type="button" class="hub-link hub-link--quiet" data-action="open-activities">
       <span class="hub-link__label">
         <span class="hub-link__title">History</span>
@@ -197,7 +314,10 @@ export function renderProgressHub(container, model, hidden = []) {
     </button>
     <details class="an-method mt-3">
       <summary>How this page is calculated</summary>
-      <p>Every figure here covers one <strong>calendar</strong> week (Monday to Sunday), attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the week they happened in.</p>
-      <p>A part-finished week is only ever compared with the same elapsed days of the previous week, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
+      <p>Every band covers the <strong>range you selected</strong> above, attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the period they happened in. <strong>Pulse</strong> is the one exception: it is always the current calendar week (Monday to Sunday), and it ignores the range on purpose.</p>
+      <p>A part-finished period is compared only with the same elapsed days of the previous one, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
     </details>`;
+
+  // Thumbnails read a blob, which is async; the band must not wait on the disk.
+  hydratePhotoThumbs(container);
 }

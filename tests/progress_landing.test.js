@@ -741,34 +741,14 @@ test('a non-calendar weekStart falls back to the live week instead of "NaN weeks
   assert.equal(future.periodLabel, 'This week');
 });
 
-test('the hub hero names the real range and survives an untrained week', () => {
-  const state = {
-    settings: { distanceUnit: 'km' },
-    weeks: { '1': { dates: { mon: '2026-07-06' }, lifts: { mon: { Bench: [work(100, 5)] } } } },
-  };
+test('the hub renders the empty lead instead of a fabricated week hero', () => {
+  // The legacy week hero was retired with the domain cards: Pulse owns the
+  // week now, and a hub with no bands must say so rather than draw an empty
+  // week. Pulse's own empty state is covered in tests/pulse_view.test.js.
+  const emptyState = { weeks: {} };
   const container = { innerHTML: '' };
-
-  // Untrained live week: the hero stays on screen and says 0 sessions instead
-  // of removing the whole week surface.
-  renderProgressHub(container, buildProgressLanding(state, { days: DAYS, today: '2026-07-16' }));
-  const empty = container.innerHTML;
-  assert.match(empty, /class="ph-week ph-week--empty"/);
-  assert.match(empty, /ph-week__title">0 sessions</);
-  assert.match(empty, /No training logged this week yet/);
-  assert.match(empty, /aria-label="13–19 Jul overview"/);
-  // The accessible name is the visible range, not the relative period.
-  assert.doesNotMatch(empty, /This week overview/);
-  // The History shortcut must not claim a calendar view open-activities ignores.
-  assert.doesNotMatch(empty, /data-view="calendar"/);
-
-  // Trained historical week: the same hero carries real numbers and the range.
-  renderProgressHub(container, buildProgressLanding(state, {
-    days: DAYS, today: '2026-07-16', weekStart: '2026-07-06',
-  }));
-  const trained = container.innerHTML;
-  assert.match(trained, /class="ph-week"/);
-  assert.match(trained, /ph-week__title">1 session</);
-  assert.match(trained, /ph-week__eyebrow">6–12 Jul</);
-  assert.match(trained, /aria-label="6–12 Jul overview"/);
-  assert.doesNotMatch(trained, /No training logged/);
+  renderProgressHub(container, buildProgressLanding(emptyState, { days: DAYS, today: '2026-07-16' }));
+  assert.doesNotMatch(container.innerHTML, /ph-week/);
+  assert.match(container.innerHTML, /All Progress cards are hidden|Nothing is logged yet/);
+  assert.match(container.innerHTML, /open-customize/);
 });

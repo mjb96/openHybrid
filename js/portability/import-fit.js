@@ -54,6 +54,27 @@ function runStats(stats) {
  *   coordinates?:number[][], distanceKm?:number
  * }}
  */
+/**
+ * A FIT session carries the sport it was recorded as. Walking and hiking files
+ * are real activity, but they are not RUNS: importing one as a run would put
+ * walked kilometres into run distance and hand a walk a running pace.
+ *
+ * Defensive on purpose — an unknown shape returns false, which preserves the
+ * previous behaviour rather than guessing.
+ * @param {any} garminData
+ */
+export function isWalkingSport(garminData) {
+  if (!garminData || typeof garminData !== 'object') return false;
+  const sessions = Array.isArray(garminData.sessions) ? garminData.sessions : [];
+  const sport = String(
+    sessions[0]?.sport
+    || garminData.sport
+    || garminData.activity?.sport
+    || '',
+  ).toLowerCase();
+  return /walk|hik/.test(sport);
+}
+
 export function buildFitCandidate(garminData) {
   if (!garminData || typeof garminData !== 'object') return null;
 
@@ -74,6 +95,8 @@ export function buildFitCandidate(garminData) {
       run: {
         dist: run.distanceKm.toFixed(2),
         time: run.time,
+        // Preserved so the import lands as the activity it actually was.
+        type: isWalkingSport(garminData) ? 'walk' : 'run',
         rpe: '',
         ...runStats(run.stats),
       },

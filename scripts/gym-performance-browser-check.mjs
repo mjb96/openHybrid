@@ -77,7 +77,7 @@ try {
     await page.click('.nav-item[data-target="analytics"]');
     await page.waitForSelector('#view-analytics.active');
     await page.waitForSelector('#analytics-hub.active');
-    await page.click('#analytics-hub [data-action="open-analytics"][data-context="strength"]');
+    await page.click('#analytics-hub .hub-link--quiet[data-context="strength"]');
     await page.waitForSelector('#analytics-strength.active');
     await page.click('#analytics-strength [data-action="open-analytics"][data-context="strength-volume"]');
     await page.waitForSelector('#analytics-strength-volume.active');
