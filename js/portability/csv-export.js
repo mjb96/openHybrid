@@ -6,9 +6,16 @@ import { runSessionsForDay } from '../state/run-sessions.js';
 import { normalizeWeighIns } from '../metrics/bodyweight.js';
 import { MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, normalizeMeasurements } from '../metrics/measurements.js';
 
+// A cell that starts with one of these is a live formula in Excel/Sheets once the
+// quotes are stripped by the parser. Text can arrive from an imported CSV, so the
+// export must neutralise it. A genuine number (-5) is left alone.
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+const NUMERIC = /^-?\d+(\.\d+)?$/;
+
 export function csvCell(value) {
   const text = value == null ? '' : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
+  const guarded = FORMULA_LEAD.test(text) && !NUMERIC.test(text) ? `'${text}` : text;
+  return `"${guarded.replace(/"/g, '""')}"`;
 }
 
 function row(values) {

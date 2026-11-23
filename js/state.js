@@ -797,16 +797,9 @@ export async function pullEngineDataFromStorage() {
   // The Android shell's private mirror is the durable copy when WebView
   // storage was cleared, is corrupt, or failed a quota write. It only wins if
   // it is newer than localStorage; the browser path no-ops.
-  let mirrorRestore = null;
-  try {
-    mirrorRestore = await restoreStateMirror({
-      storage: _defaultStorage(),
-      stateKey: STORAGE_KEY,
-      savedAtKey: SAVED_AT_KEY,
-    });
-  } catch (e) {
-    console.warn('State mirror restore failed:', e);
-  }
+  // Read and parse the local blob FIRST. The mirror restore below writes its copy
+  // over localStorage, so parsing afterwards destroyed an unreadable blob before
+  // it could be quarantined (no _corrupt copy, no recovery screen, no signal).
   let corruptRaw = null;
   try {
     rawLocal = localStorage.getItem(STORAGE_KEY);
@@ -817,6 +810,16 @@ export async function pullEngineDataFromStorage() {
     corruptRaw = rawLocal;
     preserveCorruptState(localStorage, STORAGE_KEY, rawLocal);
     console.error('Failed to parse local storage:', e);
+  }
+  let mirrorRestore = null;
+  try {
+    mirrorRestore = await restoreStateMirror({
+      storage: _defaultStorage(),
+      stateKey: STORAGE_KEY,
+      savedAtKey: SAVED_AT_KEY,
+    });
+  } catch (e) {
+    console.warn('State mirror restore failed:', e);
   }
   if (mirrorRestore && mirrorRestore.restored && mirrorRestore.state) {
     localData = mirrorRestore.state;
