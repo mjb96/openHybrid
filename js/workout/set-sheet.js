@@ -100,7 +100,10 @@ function render(liftName, setIndex) {
 
   markActive(document.getElementById('setSheetType'), 'data-type', type);
   markActive(document.getElementById('setSheetMode'), 'data-mode', mode);
-  markActive(document.getElementById('setSheetLoad'), 'data-mode', resolvedLoadMode(set, liftName));
+  // A set carrying a band is "Band" for the purposes of this control, whether the
+  // band assists a bodyweight lift (loadMode 'assisted') or loads an accessory
+  // (loadMode 'banded').
+  markActive(document.getElementById('setSheetLoad'), 'data-mode', set?.band ? 'banded' : resolvedLoadMode(set, liftName));
   markActive(document.getElementById('setSheetBasis'), 'data-basis', basis || '');
   markActive(document.getElementById('setSheetRest'), 'data-rest', (() => {
     const rest = set.restSec != null ? Number(set.restSec) : getExerciseRestOverride(getState(), liftName);
