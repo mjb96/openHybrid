@@ -16,13 +16,18 @@ import { getFastingContext, FASTING_ZONES } from '../fasting.js';
 import { moduleEnabled } from '../modules.js';
 
 // Short, forward-looking one-liners per stage (not the long clinical description).
+// Elapsed time against the athlete's own goal. No autophagy, fat-loss, hormone,
+// metabolic or named-stage claim — those are unproven in a notification, and the
+// same rule is asserted for the Progress band.
 const STAGE_BLURB = {
-  blood_sugar: 'Insulin is falling and glycogen is starting to burn.',
-  glycogen:    'Glycogen stores are draining — fat oxidation is climbing.',
-  fat_adapt:   'Fat is now your main fuel — the metabolic sweet spot.',
-  ketosis:     'Ketones are up and autophagy — cellular clean-up — has begun.',
-  deep_fast:   'Deep fasting: growth hormone up, cellular renewal in earnest.',
+  blood_sugar: 'A few hours in — your fast has started.',
+  glycogen:    'Building up. Keep going if you feel good.',
+  fat_adapt:   'Halfway to a typical goal — still counting.',
+  ketosis:     'Past 16 hours. Stop whenever you choose.',
+  deep_fast:   'A long fast now. Water, and stop when you want to.',
 };
+
+export { STAGE_BLURB };
 
 // Pure decider: given the fasting context and the last-notified marker, return
 // the single nudge to fire, or null. Never fires for the opening Fed state.

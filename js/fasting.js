@@ -18,7 +18,7 @@ export const FASTING_ZONES = [
     hoursEnd: 4,
     color: '#6b7280',
     icon: '🍽️',
-    description: 'Digestion active. Insulin elevated, glucose is the primary fuel source. The body is in an anabolic, nutrient-processing state.',
+    description: 'Fed state — you have eaten recently. Elapsed fasting time: 0 h.',
   },
   {
     id: 'blood_sugar',
@@ -27,7 +27,7 @@ export const FASTING_ZONES = [
     hoursEnd: 12,
     color: '#3b82f6',
     icon: '📉',
-    description: 'Blood glucose stabilising. Insulin falling as liver glycogenolysis begins to maintain blood sugar. Glycogen stores begin depleting.',
+    description: 'Early fast — 4 to 8 hours in. Elapsed fasting time is climbing toward your goal.',
   },
   {
     id: 'glycogen',
@@ -36,7 +36,7 @@ export const FASTING_ZONES = [
     hoursEnd: 16,
     color: '#8b5cf6',
     icon: '⚗️',
-    description: 'Liver glycogen significantly depleted. Fat oxidation rising sharply. The liver begins gluconeogenesis — converting glycerol and amino acids to glucose.',
+    description: 'Mid fast — 8 to 16 hours in. Most of the way to a typical 16-hour goal.',
   },
   {
     id: 'fat_adapt',
@@ -45,7 +45,7 @@ export const FASTING_ZONES = [
     hoursEnd: 24,
     color: '#f59e0b',
     icon: '🔥',
-    description: 'Ketone bodies rising. Fat is now the dominant energy substrate. Insulin at its lowest. This is the metabolic sweet spot for most intermittent fasters.',
+    description: '16 to 24 hours in. Past the most common 16-hour goal; the timer keeps counting.',
   },
   {
     id: 'ketosis',
@@ -54,7 +54,7 @@ export const FASTING_ZONES = [
     hoursEnd: 36,
     color: '#f97316',
     icon: '⚡',
-    description: 'Significant ketone production underway. Autophagy begins in earnest — cellular repair, recycling of damaged proteins and organelles accelerates.',
+    description: '24 to 36 hours in — an extended fast. Drink water and stop whenever you choose.',
   },
   {
     id: 'deep_fast',
@@ -63,7 +63,7 @@ export const FASTING_ZONES = [
     hoursEnd: Infinity,
     color: '#ef4444',
     icon: '🧬',
-    description: 'Extended fast. Deep autophagy and cellular renewal. Growth hormone markedly elevated (Ho et al., 1988). Not recommended without medical supervision.',
+    description: 'Beyond 36 hours — a long fast. openHybrid only counts time; it gives no medical guidance for fasts this long.',
   },
 ];
 

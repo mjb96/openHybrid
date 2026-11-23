@@ -63,8 +63,14 @@ export function fatigueTrend(atlSeries, lookback = 4) {
 // cut-offs overstate the evidence. Zones are unchanged so downstream logic and
 // styling that key on `zone` keep working; only the human-facing `status`
 // strings are neutralised before they reach the load calculation.
-export function trainingLoadStatus(atl, ctl) {
+export function trainingLoadStatus(atl, ctl, daysOfHistory = Infinity) {
   if (!ctl || ctl === 0) return { status: 'Insufficient baseline', tone: 'neutral', zone: 'unknown' };
+  // An EWMA seeded at zero needs ~4 weeks before its acute:chronic ratio means
+  // anything: seven days of perfectly steady load read 2.2, i.e. "substantially
+  // above baseline". Say we are still building instead of alarming a new athlete.
+  if (Number.isFinite(daysOfHistory) && daysOfHistory < 28) {
+    return { status: 'Building your baseline', tone: 'neutral', zone: 'unknown' };
+  }
   const ratio = atl / ctl;
 
   if (ratio < 0.5)                       return { status: 'Well below baseline',        tone: 'neutral',  zone: 'low' };
@@ -188,6 +194,14 @@ export function computeLoadAnalytics(state, days, maxWeek) {
   const today = todayKey();
   const timeline = dailyTrainingLoadTimeline(state, { throughDate: today });
   const hasDatedLoad = timeline.some((row) => (Number(row.load) || 0) > 0);
+  // Elapsed days since the first day that carried load — the EWMA warm-up clock.
+  const firstLoadDate = timeline.find((row) => (Number(row.load) || 0) > 0)?.date || null;
+  const daysOfHistory = (() => {
+    if (!firstLoadDate) return 0;
+    const a = Date.parse(`${firstLoadDate}T12:00:00`);
+    const b = Date.parse(`${today}T12:00:00`);
+    return Number.isFinite(a) && Number.isFinite(b) ? Math.max(0, Math.round((b - a) / 86400000)) : Infinity;
+  })();
   const calendarWeeks = calendarWeeklyLoadTotals(timeline, 12);
 
   let loadStatus, currentATL, currentCTL, currentTSB, currentRatio;
@@ -198,7 +212,7 @@ export function computeLoadAnalytics(state, days, maxWeek) {
     currentCTL = live.ctl || 0;
     currentTSB = currentCTL - currentATL;
     currentRatio = currentCTL > 0 ? Math.round((currentATL / currentCTL) * 100) / 100 : 0;
-    loadStatus = trainingLoadStatus(currentATL, currentCTL);
+    loadStatus = trainingLoadStatus(currentATL, currentCTL, daysOfHistory);
 
     // Compare the two most recent COMPLETED calendar weeks; the current one is
     // partial by definition.
@@ -220,7 +234,8 @@ export function computeLoadAnalytics(state, days, maxWeek) {
     currentCTL = ctlSeries[ci] || 0;
     currentTSB = currentCTL - currentATL;
     currentRatio = currentCTL > 0 ? Math.round((currentATL / currentCTL) * 100) / 100 : 0;
-    loadStatus = trainingLoadStatus(currentATL, currentCTL);
+    // Legacy states have no dates: fall back to elapsed program weeks.
+    loadStatus = trainingLoadStatus(currentATL, currentCTL, Math.max(0, atlSeries.length) * 7);
     loadProgPct = loadProgressionPct(weeklyTotal, ci);
     const currentWeekDaily = weekDailyLoads(state, days, ci + 1);
     monotony = trainingMonotony(currentWeekDaily);

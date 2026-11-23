@@ -8,6 +8,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildFastingBandModel } from '../js/analytics/fasting-band.js';
 import { renderFastingBand } from '../js/analytics/views/view-fasting-band.js';
+import { FASTING_ZONES } from '../js/fasting.js';
+import { STAGE_BLURB } from '../js/fasting/fasting-nudge.js';
+import { readFileSync } from 'node:fs';
 import { resolveRange } from '../js/analytics/ranges.js';
 
 const range = resolveRange('30d', '2026-11-24');
@@ -72,4 +75,32 @@ test('loading and error are explicit', () => {
 
 test('a missing range is refused', () => {
   assert.throws(() => buildFastingBandModel(state([]), {}), /range is required/);
+});
+
+test('the banned health claims are absent from EVERY fasting surface, not just the band', () => {
+  // The band was the only renderer this ratchet used to guard, while notifications,
+  // the analytics view, the empty state and the zone copy all shipped the claims.
+  const banned = ['autophagy', 'fat burn', 'fat loss', 'hormone', 'metabolis', 'detox', 'insulin', 'ketosis', 'fat oxidation'];
+  const assertClean = (label, text) => {
+    const lower = String(text).toLowerCase();
+    for (const word of banned) {
+      assert.equal(lower.includes(word), false, `${label} ships a banned claim: ${word}`);
+    }
+  };
+
+  // 1. the zone descriptions shown by the fasting surface
+  for (const zone of FASTING_ZONES) assertClean(`zone ${zone.id || zone.name}`, zone.description || '');
+
+  // 2. the OS notification copy
+  for (const [stage, blurb] of Object.entries(STAGE_BLURB)) assertClean(`nudge ${stage}`, blurb);
+
+  // 3. the source of every other fasting renderer (comments stripped: describing
+  //    the rule is not breaking it).
+  for (const file of ['js/analytics/views/view-fasting.js', 'js/fasting/fasting-insights.js', 'js/fasting/fasting-achievements.js']) {
+    const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8')
+      .split('\n')
+      .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line))
+      .join('\n');
+    assertClean(file, source);
+  }
 });

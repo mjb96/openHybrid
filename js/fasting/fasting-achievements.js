@@ -23,7 +23,7 @@ export const FASTING_ACHIEVEMENTS = [
   {
     id: 'first_24h',
     label: 'Full Day Fast',
-    description: 'Completed a 24-hour fast — entered ketosis.',
+    description: 'Completed a 24-hour fast.',
     icon: '⚡',
     tier: 'silver',
     check: c => c.longestFast >= 24,

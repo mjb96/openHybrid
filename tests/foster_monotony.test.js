@@ -77,3 +77,19 @@ test('load status wording is descriptive baseline language, never injury predict
   assert.equal(trainingLoadStatus(500, 300).zone, 'danger');
   assert.equal(trainingLoadStatus(500, 0).zone, 'unknown');
 });
+
+test('a fresh EWMA never reads "above baseline" before the model has warmed up', () => {
+  // Seven days of perfectly constant load give ATL 86.7 / CTL 39.4 = ratio 2.2.
+  // Without a warm-up guard every new athlete saw a warning-tone overtraining
+  // signal for ~4 weeks.
+  for (const days of [0, 1, 7, 14, 21, 27]) {
+    const status = trainingLoadStatus(86.7, 39.4, days);
+    assert.equal(status.status, 'Building your baseline', `day ${days}`);
+    assert.equal(status.tone, 'neutral', `day ${days} must not warn`);
+    assert.notEqual(status.zone, 'danger', `day ${days}`);
+  }
+  // From 28 elapsed days the ratio is meaningful again.
+  assert.equal(trainingLoadStatus(86.7, 39.4, 28).status, 'Substantially above baseline');
+  // An unchanged, in-range athlete still reads honestly after warm-up.
+  assert.equal(trainingLoadStatus(100, 100, 40).zone, 'productive');
+});

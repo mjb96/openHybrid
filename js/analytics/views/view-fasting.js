@@ -278,7 +278,7 @@ function _renderAdvancedMetrics(el, calcs) {
     ${longestFast >= 24 ? `
       <div class="fa-edu-tip">
         <span class="fa-edu-tip__icon">⚡</span>
-        <span>Your longest fast of ${_fmt(longestFast)}h reached the Ketosis Progression phase. Autophagy — the cellular recycling process — begins around 24 hours.</span>
+        <span>Your longest fast so far is ${_fmt(longestFast)}h. openHybrid only counts elapsed time — it makes no claim about what your body is doing.</span>
       </div>` : ''
     }
   `;
@@ -315,7 +315,7 @@ function _renderTrends(el, calcs) {
     </article>
     <div class="fa-edu-tip">
       <span class="fa-edu-tip__icon">💡</span>
-      <span>Consistency over intensity. Research shows that regular shorter fasts produce better long-term metabolic outcomes than occasional extended fasts.</span>
+      <span>Consistency over intensity: fasts that fit your week are easier to repeat than occasional long ones.</span>
     </div>
   `;
 
@@ -412,7 +412,7 @@ function _renderCalendar(el, calcs, appState) {
 function _renderDistribution(el, calcs) {
   el.innerHTML = `
     <article class="card-dark p-3 mb-3">
-      <div class="an-chart__title" style="margin-bottom:12px;">Metabolic Zone Distribution</div>
+      <div class="an-chart__title" style="margin-bottom:12px;">Time-in-range Distribution</div>
       <div id="fa-zone-dist"></div>
     </article>
     <div class="grid-2-col gap-2 mb-2">
@@ -421,7 +421,7 @@ function _renderDistribution(el, calcs) {
     </div>
     <div class="fa-edu-tip">
       <span class="fa-edu-tip__icon">🔥</span>
-      <span>The Fat Adaptation phase (16–24h) is reached by most intermittent fasters. Spending more fasting time here may improve insulin sensitivity over time.</span>
+      <span>16–24 hours is the range most athletes use. Your own goal is the target that matters.</span>
     </div>
   `;
   renderZoneDistributionChart(qs('fa-zone-dist'), calcs.zoneDistribution);
@@ -439,7 +439,7 @@ function _renderIntegrations(el, calcs) {
     const dir = bwCorrelation.direction;
     rows.push({
       text: dir === 'decreasing'
-        ? `Body weight averages ${Math.abs(bwCorrelation.diffKg)} kg lower during high-fasting weeks — a positive metabolic signal.`
+        ? `Body weight averages ${Math.abs(bwCorrelation.diffKg)} kg lower during high-fasting weeks.`
         : dir === 'increasing'
           ? `Body weight trends slightly higher on high-fasting weeks. Review nutrient density in your eating window.`
           : `Body weight is consistent across different fasting frequencies.`,
@@ -674,7 +674,7 @@ export function renderFastingAnalytics(getState) {
       <article class="card-dark p-4 mb-3" style="text-align:center;padding:36px 20px;">
         <div style="font-size:2rem;margin-bottom:12px;">⏱️</div>
         <div style="font-size:0.95rem;font-weight:700;color:rgba(255,255,255,0.7);margin-bottom:8px;">No fasting data yet</div>
-        <div style="font-size:0.8rem;color:rgba(255,255,255,0.38);line-height:1.6;margin-bottom:20px;">Track your fast and openHybrid shows your metabolic stages, streaks and how fasting links to your recovery.</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.38);line-height:1.6;margin-bottom:20px;">Track a fast and openHybrid shows your elapsed time, your streak, and how it lines up with your training.</div>
         <button class="btn-action-block btn-blue" data-action="fast-start" style="max-width:280px;margin:0 auto;">Start your first fast</button>
       </article>
     `;
