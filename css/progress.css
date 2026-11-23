@@ -709,14 +709,191 @@ html[data-theme="light"] .pg-fast b, html[data-theme="light"] .pg-fast small { c
 }
 
 /* ------------------------------------------------------ 17. PHOTO STRIP */
-.pg-photos { display: flex; gap: 7px; margin: 14px 0 0; padding: 0 0 2px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
-.pg-photo { position: relative; flex: 0 0 auto; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: var(--overlay-md, rgba(255,255,255,0.06)); }
-.pg-photo__img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.pg-photo__remove { position: absolute; top: 0; right: 0; width: 44px; height: 44px; border: 0; background: transparent; color: #fff; font-size: 1rem; line-height: 1; text-shadow: 0 1px 3px rgba(0,0,0,.8); cursor: pointer; }
-.pg-photo__remove:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -4px; }
-.pg-photo--add { border: 1px dashed var(--border-strong, rgba(255,255,255,0.18)); background: transparent; }
-.pg-photo__add { display: grid; place-items: center; width: 100%; height: 100%; min-height: 44px; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
-.pg-photo__add:focus-within { outline: 2px solid var(--color-blue); outline-offset: -4px; border-radius: 10px; }
+.pg-photos-block { margin-top: 14px; }
+
+.pg-photos__head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 0 0 8px;
+  font-size: 0.56rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.pg-photos { display: flex; gap: 8px; margin: 0; padding: 0 0 2px; list-style: none; overflow-x: auto; scrollbar-width: thin; }
+
+.pg-photo { position: relative; flex: 0 0 auto; width: 72px; height: 84px; }
+
+.pg-photo__open {
+  display: flex; flex-direction: column; gap: 3px;
+  width: 100%; height: 100%; padding: 0;
+  border: 0; border-radius: 10px; background: transparent;
+  color: inherit; font: inherit; cursor: pointer;
+}
+
+.pg-photo__open:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+
+.pg-photo__img {
+  width: 100%; height: 60px; object-fit: cover; display: block;
+  border-radius: 10px; background: var(--overlay-md, rgba(255,255,255,0.06));
+}
+
+.pg-photo__date { font-size: 0.52rem; font-weight: 700; color: var(--text-secondary); }
+
+.pg-photo--add { border: 1px dashed var(--border-strong, rgba(255,255,255,0.18)); border-radius: 10px; }
+.pg-photo__add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 100%; height: 100%; min-height: 44px;
+  color: var(--text-secondary); font-size: 0.52rem; font-weight: 700;
+  text-align: center; cursor: pointer; border-radius: 10px;
+}
+.pg-photo__plus { font-size: 1.05rem; line-height: 1; }
+.pg-photo__addlabel { letter-spacing: 0.03em; }
+.pg-photo__add:focus-within { outline: 2px solid var(--color-blue); outline-offset: -4px; }
+
+/* Full-screen viewer. Delete lives here, not on the tile. */
+.pv {
+  position: fixed; inset: 0; z-index: 320;
+  display: none; padding: calc(var(--safe-top, 0px) + 12px) 12px calc(var(--safe-bottom, 0px) + 12px);
+  background: rgba(2, 4, 8, 0.94);
+}
+.pv.active { display: block; }
+.pv__panel { display: flex; flex-direction: column; gap: 10px; height: 100%; max-width: 620px; margin: 0 auto; }
+.pv__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pv__date { font-size: 0.72rem; font-weight: 800; color: var(--text-primary); }
+.pv__close, .pv__delete {
+  min-height: 44px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--border-default, rgba(255,255,255,0.07));
+  background: var(--overlay-md, rgba(255,255,255,0.06));
+  color: var(--text-primary); font: inherit; font-size: 0.7rem; font-weight: 800; cursor: pointer;
+}
+.pv__delete { border-color: rgba(239, 68, 68, 0.5); color: var(--color-red, #ef4444); }
+.pv__frame { flex: 1; min-height: 0; display: grid; place-items: center; }
+.pv__frame[hidden] { display: none; }
+.pv__img { max-width: 100%; max-height: 100%; border-radius: 12px; object-fit: contain; }
+.pv__missing {
+  margin: 12px; padding: 12px 14px; border-radius: 12px; max-width: 34ch;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--overlay-md, rgba(255,255,255,0.06));
+  color: var(--text-secondary); font-size: 0.72rem; line-height: 1.5; text-align: center;
+}
+.pv__missing[hidden] { display: none; }
+.pv__actions { display: flex; justify-content: flex-end; }
+
+html[data-theme="light"] .pv { background: rgba(248, 250, 252, 0.97); }
+html[data-theme="light"] .pv__close { color: #0f172a; }
+
+/* The Measures screen's Add-picture tile is a BUTTON (it opens the entry sheet)
+   reusing the real file-input label's paint, so the two must not look different. */
+button.pg-photo__add { border: 0; background: transparent; }
+
+/* Compare two photos side by side. The picker is the only control: choosing a
+   date shows both, choosing "Single photo" returns. */
+.pv__compare { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pv__compare[hidden] { display: none; }
+.pv__slot { display: flex; flex-direction: column; gap: 6px; margin: 0; min-width: 0; min-height: 0; }
+.pv__slot .pv__img { flex: 1; min-height: 0; width: 100%; }
+.pv__cap { font-size: 0.6rem; font-weight: 800; color: var(--text-secondary); text-align: center; }
+.pv__picker { display: flex; align-items: center; gap: 10px; }
+.pv__picker[hidden] { display: none; }
+.pv__picklabel { font-size: 0.66rem; font-weight: 800; color: var(--text-secondary); }
+.pv__select {
+  flex: 1; min-height: 44px; border-radius: 10px; padding: 0 10px;
+  border: 1px solid var(--border-default, rgba(255,255,255,0.07));
+  background: var(--bg-input); color: var(--text-primary); font: inherit;
+  font-size: 0.72rem; font-weight: 700;
+}
+.pv__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.pv__edit {
+  min-height: 44px; padding: 0 14px; border-radius: 10px;
+  border: 1px solid var(--border-default, rgba(255,255,255,0.07));
+  background: var(--overlay-md, rgba(255,255,255,0.06));
+  color: var(--text-primary); font: inherit; font-size: 0.7rem; font-weight: 800; cursor: pointer;
+}
+.pv__edit[hidden] { display: none; }
+html[data-theme="light"] .pv__edit { color: #0f172a; }
+
+/* ------------------------------------------------------ 17b. MEASURES */
+.ms-screen__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.ms-screen__intro { min-width: 0; }
+.ms-screen__title { margin: 0; }
+.ms-screen__sub { margin: 2px 0 12px; color: var(--text-secondary); font-size: 0.72rem; line-height: 1.4; }
+.ms-screen__actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.ms-screen__add,
+.ms-screen__seeall {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--touch-target); min-height: var(--touch-target);
+  padding: 0 12px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--overlay-md, rgba(255,255,255,0.06));
+  color: var(--text-primary); font: inherit; font-size: 0.72rem; font-weight: 800;
+}
+.ms-screen__add { font-size: 1.15rem; line-height: 1; }
+/* Export/Import live beside the library, not on a band that can be absent. */
+.ms-screen__tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.ms-screen__tool {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: var(--touch-target); padding: 0 14px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--overlay-md, rgba(255,255,255,0.06));
+  color: var(--text-primary); font: inherit; font-size: 0.72rem; font-weight: 800;
+}
+.ms-screen__tool:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+html[data-theme="light"] .ms-screen__tool { color: #0f172a; }
+.ms-screen__notice {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  padding: 14px; border-radius: 14px; border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  color: var(--text-secondary); font-size: 0.76rem; line-height: 1.5;
+}
+.ms-screen__notice p { margin: 0; }
+.ms-screen__add:focus-visible,
+.ms-screen__seeall:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+html[data-theme="light"] .ms-screen__add,
+html[data-theme="light"] .ms-screen__seeall { color: #0f172a; }
+
+.ms-entries { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ms-entry {
+  display: flex; align-items: stretch; gap: 4px;
+  border: 1px solid var(--border-subtle); border-radius: 14px;
+  background: var(--overlay-md, rgba(255,255,255,0.04)); overflow: hidden;
+}
+.ms-entry__open {
+  flex: 1; min-width: 0; min-height: var(--touch-target);
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ms-entry__open:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -2px; }
+.ms-entry__thumb {
+  flex: 0 0 auto; width: 48px; height: 56px; border-radius: 10px; overflow: hidden;
+  display: grid; place-items: center; background: var(--bg-input);
+}
+.ms-entry__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ms-entry__thumb--none { color: var(--text-muted); font-size: 1rem; font-weight: 700; }
+.ms-entry__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ms-entry__date { font-size: 0.76rem; font-weight: 800; color: var(--text-primary); }
+.ms-entry__stats { font-size: 0.68rem; color: var(--text-secondary); }
+.ms-entry__stats b { color: var(--text-primary); font-size: 0.76rem; }
+.ms-entry__sites { font-size: 0.64rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.ms-entry__delete {
+  flex: 0 0 auto; min-width: var(--touch-target); min-height: var(--touch-target);
+  padding: 0 10px; border: 0; border-left: 1px solid var(--border-subtle);
+  background: transparent; color: var(--color-red, #ef4444);
+  font: inherit; font-size: 0.62rem; font-weight: 800; cursor: pointer;
+}
+.ms-entry__delete:focus-visible { outline: 2px solid var(--color-blue); outline-offset: -2px; }
+
+.ms-library { list-style: none; margin: 10px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ms-library__item { min-width: 0; }
+.ms-library__open {
+  display: flex; flex-direction: column; gap: 4px; width: 100%;
+  min-height: var(--touch-target); padding: 0;
+  border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer;
+}
+.ms-library__open:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+.ms-library__img {
+  width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block;
+  border-radius: 12px; background: var(--overlay-md, rgba(255,255,255,0.06));
+}
+.ms-library__date { font-size: 0.58rem; font-weight: 700; color: var(--text-secondary); text-align: center; }
+html[data-theme="light"] .ms-library__date { color: #475569; }
 
 /* ------------------------------------------- 18. CUSTOMIZE SHEET EXTRAS */
 .customize-row--sub { padding-left: 18px; }

@@ -78,6 +78,29 @@ export function sanitizeImportedState(state) {
     }
     out.settings = s;
   }
+  // Progress-photo METADATA only (the bytes live in IndexedDB and are never in
+  // a JSON backup). The id IS the date, so a record that disagrees with its own
+  // date can neither be viewed nor deleted by the UI — drop it instead of
+  // letting a restore create an unusable row. One record per date.
+  if (out.progressPhotos != null) {
+    /** @type {Map<string, any>} */
+    const byDate = new Map();
+    for (const photo of Array.isArray(out.progressPhotos) ? out.progressPhotos : []) {
+      const date = typeof photo?.date === 'string' ? photo.date : '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      if (photo?.id !== `photo:${date}`) continue;
+      byDate.set(date, {
+        id: photo.id,
+        date,
+        note: typeof photo.note === 'string' ? photo.note.slice(0, 140) : '',
+        width: Number(photo.width) || 0,
+        height: Number(photo.height) || 0,
+        bytes: Number(photo.bytes) || 0,
+        updatedAt: Number(photo.updatedAt) || 0,
+      });
+    }
+    out.progressPhotos = [...byDate.values()];
+  }
   // Routines are reusable session templates. A malformed record is dropped
   // (repaired array) so it cannot reach the cockpit with an absurd set count or
   // a non-array lift list; a non-array collection is emptied, never trusted.

@@ -4,12 +4,20 @@
 // while the visible product vocabulary changes.
 export function analyticsBackDestination(context, origin = 'insights', parentContext = null, returnParentContext, returnOrigin) {
   if (context === 'hub') return null;
+  // Measures is a leaf of the Body band, not a Progress destination of its own.
+  // Its numbers and photos are the ones the Body band summarises, so Back
+  // returns to the hub where that band lives.
+  if (context === 'measures' && !parentContext) {
+    return origin === 'home'
+      ? { action: 'switch-tab', target: 'home', label: '← Back to Home' }
+      : { action: 'open-analytics', context: 'hub', label: '← Back to Progress' };
+  }
   if (parentContext) {
     const labels = {
       'weekly-volume': 'Volume', 'strength-volume': 'Volume', 'strength-volume-trends': 'Volume', 'gym-performance': 'Volume',
       strength: 'Strength', strength_pr: 'Strength', running: 'Running', recovery: 'Recovery',
       review: 'Review', 'weekly-review': 'Review', consistency: 'Review', 'monthly-report': 'Review',
-      bodyweight: 'Progress', 'muscle-load': 'Progress', projections: 'Progress',
+      bodyweight: 'Progress', 'muscle-load': 'Progress', projections: 'Progress', measures: 'Body',
       activity: 'History', history: 'History',
     };
     return {

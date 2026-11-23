@@ -9,20 +9,42 @@
 // prefilled exactly. Pre-14-site single Arm/Thigh readings have no inputs here;
 // `preserveLegacySites` carries them across an edit instead of dropping them.
 //
+// Since Measures, the sheet is one DATED ENTRY rather than tape only: a picture
+// sits at the top (camera or library), then body weight, body fat and the tape.
+// Every field is optional except the date, and Save writes through
+// `saveMeasureEntry` so weight, measurements and photos stay one coherent row.
+// The picture is STAGED here and written on Save: choosing a photo and then
+// cancelling must not leave a blob (or a metadata record) behind.
+//
 // Storage stays canonical centimetres; the sheet writes display-unit values
 // back through the model, so a cm/in toggle never rewrites stored data.
 // =============================================================================
 import { appState, saveStateToLocalStorage } from './state.js';
-import { openManagedModal, closeManagedModal } from './ui/modal-stack.js';
+import { openManagedModal, closeManagedModal, replaceManagedModal } from './ui/modal-stack.js';
 import { confirmModal } from './ui/confirm-modal.js';
-import { formatDayMonth, todayKey } from './dates.js';
+import { formatDayMonth, formatDayMonthShort, todayKey } from './dates.js';
 import { showToast } from './toast.js';
 import {
-  MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, buildMeasurementRecord, cmToDisplay,
-  measurementUnit, normalizeMeasurements, preserveLegacySites, roundDisplay,
+  MEASUREMENT_SITES, LEGACY_MEASUREMENT_SITES, cmToDisplay,
+  measurementUnit, normalizeMeasurements, roundDisplay,
 } from './metrics/measurements.js';
+import { normalizeWeighIns, weightUnitLabel } from './metrics/bodyweight.js';
+import { measureEntryFor, saveMeasureEntry } from './metrics/measures.js';
+import { addPhoto, listPhotos, photoObjectUrl, removePhoto } from './photos/library.js';
 
 let _render = () => {};
+/** A picked picture, written only when the entry is saved. */
+/** @type {File|Blob|null} */
+let _pendingPhoto = null;
+/** The existing picture was asked to be removed when the entry is saved. */
+let _removePhoto = false;
+/** The date the photo slot currently describes. */
+let _photoDate = '';
+/** A token so a slow thumbnail never paints over a newer choice. */
+let _photoToken = 0;
+/** Object URL currently shown for a STAGED picture. */
+let _previewUrl = null;
+
 
 /** The eight sites inside the disclosure; used for the auto-open count. */
 const BILATERAL_SITES = MEASUREMENT_SITES.filter((site) => site.key.endsWith('_l') || site.key.endsWith('_r'));
@@ -34,7 +56,50 @@ export function initMeasurementsSheet(render) {
   dateInput?.addEventListener('change', () => {
     fillSheet(validDate(dateInput.value) ? dateInput.value : todayKey());
   });
+  const sheet = document.getElementById('measurementsSheet');
+  // Delegated on the sheet, not the document: the picture controls only exist
+  // inside this dialog, and the global action router does not own them.
+  sheet?.addEventListener('change', onPhotoInputChange);
+  sheet?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    // The file inputs are hidden (a 1x1 input is not a control and is not
+    // keyboard reachable); these buttons are the real targets.
+    const pick = target?.closest('[data-ms-photo-pick]');
+    if (pick) {
+      const kind = pick.getAttribute('data-ms-photo-pick') === 'camera' ? 'camera' : 'library';
+      const input = sheet.querySelector(`input[data-ms-photo="${kind}"]`);
+      if (input instanceof HTMLInputElement) input.click();
+      return;
+    }
+    if (!target?.closest('[data-action="ms-sheet-photo-remove"]')) return;
+    _pendingPhoto = null;
+    // Only a SAVED picture can be removed; clearing a staged pick is just a
+    // cancel and must not claim it will delete something on Save.
+    _removePhoto = listPhotos(appState).some((photo) => photo.date === _photoDate);
+    paintPhotoSlot();
+  });
 }
+
+/**
+ * Stage a picked picture. Nothing is written until Save, so a cancelled sheet
+ * cannot leave a blob behind.
+ * @param {Event} event
+ */
+function onPhotoInputChange(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.hasAttribute('data-ms-photo')) return;
+  const file = input.files?.[0] || null;
+  input.value = '';
+  if (!file) return;
+  if (!String(file.type || '').startsWith('image/')) {
+    showToast('That file is not an image.', true);
+    return;
+  }
+  _pendingPhoto = file;
+  _removePhoto = false;
+  paintPhotoSlot();
+}
+
 
 function validDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
@@ -50,6 +115,69 @@ function inputFor(key) {
   return /** @type {HTMLInputElement|null} */ (document.getElementById(`msSheet_${key}`));
 }
 
+/** Revoke the staged preview URL and forget the staged picture. */
+function resetPhotoStage() {
+  _pendingPhoto = null;
+  _removePhoto = false;
+  _photoToken += 1;
+  if (_previewUrl) {
+    try { URL.revokeObjectURL(_previewUrl); } catch { /* gone */ }
+    _previewUrl = null;
+  }
+}
+
+/**
+ * Paint the picture slot: the staged pick, the saved picture for this date, or
+ * an honest empty state. The Remove control only exists when there is something
+ * to remove, so it cannot promise a deletion for a date with no picture.
+ */
+function paintPhotoSlot() {
+  const host = document.getElementById('msSheetPhotoPreview');
+  if (!host) return;
+  const remove = document.querySelector('#msSheetPhoto [data-action="ms-sheet-photo-remove"]');
+  host.textContent = '';
+  _photoToken += 1;
+  const token = _photoToken;
+
+  if (_previewUrl) {
+    try { URL.revokeObjectURL(_previewUrl); } catch { /* gone */ }
+    _previewUrl = null;
+  }
+
+  if (_pendingPhoto) {
+    const img = document.createElement('img');
+    img.alt = 'New picture to save';
+    _previewUrl = URL.createObjectURL(_pendingPhoto);
+    img.src = _previewUrl;
+    host.append(img);
+    if (remove) remove.hidden = false;
+    return;
+  }
+
+  const existing = _photoDate && !_removePhoto
+    ? listPhotos(appState).find((photo) => photo.date === _photoDate)
+    : null;
+  if (existing) {
+    const img = document.createElement('img');
+    img.alt = `Picture from ${formatDayMonthShort(existing.date)}`;
+    host.append(img);
+    if (remove) remove.hidden = false;
+    photoObjectUrl(existing.id).then((url) => {
+      // A slow read must not paint over a newer date or a staged replacement.
+      if (!url || token !== _photoToken) { if (url) URL.revokeObjectURL(url); return; }
+      img.src = url;
+      img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+    });
+    return;
+  }
+
+  const empty = document.createElement('span');
+  empty.className = 'ms-sheet-photo__empty';
+  empty.textContent = _removePhoto ? 'Picture will be removed on save' : 'No picture';
+  host.append(empty);
+  if (remove) remove.hidden = true;
+}
+
 /**
  * Fill the sheet for one date WITHOUT opening the modal. Changing the date must
  * reload the fields: leaving today's numbers under yesterday's date would save
@@ -60,13 +188,37 @@ function fillSheet(chosen) {
   const newest = entries();
   const existing = newest.find((entry) => entry.date === chosen);
   const unit = measurementUnit(appState);
+  const weighIns = normalizeWeighIns(appState.bodyWeightLog);
+  const weightUnit = weightUnitLabel(appState);
+
+  // A fresh date starts with nothing staged; the picture slot follows the date.
+  resetPhotoStage();
+  _photoDate = chosen;
 
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('msSheetDate'));
   if (dateInput) { dateInput.value = chosen; dateInput.max = todayKey(); }
   const title = document.getElementById('measurementsSheetTitle');
+  // Title stays keyed to the tape record, as before: the sheet is still opened
+  // from the Measurements card, and its existing browser contract names those
+  // two modes. A weigh-in or photo on the date does not change the wording.
   if (title) title.textContent = existing ? 'Edit measurements' : 'Log measurements';
   const unitLabel = document.getElementById('msSheetUnit');
   if (unitLabel) unitLabel.textContent = unit;
+  const weightUnitEl = document.getElementById('msSheetWeightUnit');
+  if (weightUnitEl) weightUnitEl.textContent = weightUnit;
+
+  // Body weight follows the same rule as the tape: an existing date shows its
+  // own weigh-in; a new date stays blank and only PLACEHOLDERS the last reading,
+  // so a stale number cannot be saved as if it had been measured today.
+  const weightInput = inputFor('weight');
+  if (weightInput) {
+    const ownWeight = weighIns.find((entry) => entry.date === chosen);
+    const lastWeight = [...weighIns].reverse().find((entry) => entry.date <= chosen);
+    weightInput.value = ownWeight ? String(ownWeight.weight) : '';
+    weightInput.placeholder = lastWeight ? String(lastWeight.weight) : weightUnit;
+    weightInput.setAttribute('aria-label', `Body weight (${weightUnit})`);
+  }
+  paintPhotoSlot();
 
   for (const site of MEASUREMENT_SITES) {
     const input = inputFor(site.key);
@@ -118,13 +270,24 @@ function fillSheet(chosen) {
  * leaves the fields blank and puts the last reading in the placeholder.
  * @param {string} [date]
  */
-export function openMeasurementsSheet(date) {
+/**
+ * @param {string} [date]
+ * @param {{ replaceRoot?: HTMLElement|null }} [options] `replaceRoot` hands the
+ *   dialog over from another open managed modal (the photo viewer) and keeps ONE
+ *   browser-history marker, instead of racing history.back() against a new
+ *   pushState().
+ */
+export function openMeasurementsSheet(date, options = {}) {
   const sheet = document.getElementById('measurementsSheet');
   const backdrop = document.getElementById('measurementsSheetBackdrop');
   if (!sheet) return;
   fillSheet(validDate(date) ? date : todayKey());
   sheet.classList.add('active');
   backdrop?.classList.add('active');
+  if (options.replaceRoot) {
+    replaceManagedModal(options.replaceRoot, sheet, { initialFocus: '#msSheet_waist' });
+    return;
+  }
   openManagedModal(sheet, { initialFocus: '#msSheet_waist' });
 }
 
@@ -212,6 +375,8 @@ export function closeMeasurementsSheet() {
   document.getElementById('measurementsSheetBackdrop')?.classList.remove('active');
   sheet?.classList.remove('active');
   if (sheet) closeManagedModal(sheet);
+  // A cancelled entry must not keep a picked picture in memory.
+  resetPhotoStage();
 }
 
 /**
@@ -228,7 +393,13 @@ export function setMeasurementUnit(unit) {
   _render();
 }
 
-export function saveMeasurementsSheet() {
+/**
+ * Save one dated entry: weight, entered body fat, tape sites and a staged
+ * picture, through the one model that knows how the three stores stay coherent.
+ * A field cleared here removes that part of the entry; the entry itself survives
+ * while it still has a picture or any measurement.
+ */
+export async function saveMeasurementsSheet() {
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('msSheetDate'));
   const date = validDate(dateInput?.value) ? dateInput.value : todayKey();
   if (date > todayKey()) {
@@ -237,30 +408,46 @@ export function saveMeasurementsSheet() {
   }
   const unit = measurementUnit(appState);
   /** @type {Record<string, string>} */
-  const values = {};
-  for (const site of MEASUREMENT_SITES) values[site.key] = inputFor(site.key)?.value ?? '';
-  values.bodyFat = inputFor('bodyFat')?.value ?? '';
-  const { record, invalid } = buildMeasurementRecord(date, values, unit);
-  if (invalid.length) {
-    showToast(`Check ${invalid.join(', ')} — that reading is outside a plausible range.`, true);
+  const sites = {};
+  for (const site of MEASUREMENT_SITES) sites[site.key] = inputFor(site.key)?.value ?? '';
+  const values = {
+    weight: inputFor('weight')?.value ?? '',
+    bodyFat: inputFor('bodyFat')?.value ?? '',
+    sites,
+  };
+
+  // An entry with nothing in it and nothing previously recorded is not worth a
+  // row. An EXISTING entry is different: clearing every field is a correction,
+  // and `saveMeasureEntry` removes the parts that no longer exist.
+  const existing = measureEntryFor(appState, date);
+  const existingHasValues = Boolean(existing && (existing.weight != null || existing.bodyFat != null || existing.sites.length));
+  const photoKept = Boolean(existing?.photo) && !_removePhoto;
+  const typed = String(values.weight).trim() !== ''
+    || String(values.bodyFat).trim() !== ''
+    || MEASUREMENT_SITES.some((site) => String(sites[site.key] ?? '').trim() !== '');
+  if (!typed && !existingHasValues && !_pendingPhoto && !photoKept && !_removePhoto) {
+    showToast('Add a measurement or a picture');
     return;
   }
-  const measured = record.bodyFat != null || MEASUREMENT_SITES.some((site) => record[site.key] != null);
-  if (!measured) {
-    showToast('Enter at least one measurement');
+
+  const result = saveMeasureEntry(appState, date, values, { unit });
+  if (!result.ok) {
+    showToast(`Check ${result.invalid.join(', ')} — that reading is outside a plausible range.`, true);
     return;
   }
-  if (!Array.isArray(appState.bodyMeasurements)) appState.bodyMeasurements = [];
-  const index = appState.bodyMeasurements.findIndex((entry) => entry?.date === date);
-  if (index >= 0) {
-    // Replace rather than merge: clearing a field is a correction, not a reason
-    // to keep the old number. The exception is a pre-14-site Arm/Thigh reading:
-    // the sheet has no input for it, so carry it across explicitly.
-    preserveLegacySites(record, appState.bodyMeasurements[index]);
-    appState.bodyMeasurements[index] = record;
-  } else {
-    appState.bodyMeasurements.push(record);
+
+  // Photos last: if the picture cannot be stored, the numbers still are, and
+  // the toast says exactly which part failed.
+  try {
+    if (_pendingPhoto) {
+      await addPhoto({ state: appState, dateISO: date, file: _pendingPhoto });
+    } else if (_removePhoto && existing?.photo) {
+      await removePhoto({ state: appState, id: existing.photo.id });
+    }
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'That picture could not be saved.', true);
   }
+
   saveStateToLocalStorage(true);
   closeMeasurementsSheet();
   _render();
@@ -273,8 +460,11 @@ export async function deleteMeasurementEntry(date) {
   const unit = measurementUnit(appState);
   const summary = summariseEntry(entry, unit);
   const confirmed = await confirmModal({
-    title: 'Delete measurements?',
-    message: `${date}${summary ? ` · ${summary}` : ''}`,
+    title: 'Delete these tape readings?',
+    // The sheet edits a whole dated entry now (weight, body fat, tape, photo),
+    // but this list is the TAPE list: deleting must not silently take the
+    // weigh-in and the photo with it.
+    message: `${formatDayMonthShort(date, { year: true })}${summary ? ` · ${summary}` : ''}. Your weigh-in and any photo for that date stay.`,
     confirmLabel: 'Delete',
     danger: true,
   });

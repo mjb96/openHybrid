@@ -33,7 +33,12 @@ export function photoIdFor(dateISO) {
 export function listPhotos(state) {
   const list = Array.isArray(state?.progressPhotos) ? state.progressPhotos : [];
   return list
-    .filter((photo) => photo && typeof photo.id === 'string' && typeof photo.date === 'string')
+    // The id IS the date. A record whose id disagrees with its date (a foreign
+    // or hand-edited JSON) can be neither viewed (the blob is keyed by id) nor
+    // deleted (the UI filters by date), so it would render a row that does
+    // nothing. Drop it here rather than offer an unusable tile.
+    .filter((photo) => photo && typeof photo.id === 'string' && typeof photo.date === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/.test(photo.date) && photo.id === photoIdFor(photo.date))
     .map((photo) => ({
       id: photo.id,
       date: photo.date,
@@ -90,7 +95,15 @@ export async function addPhoto(input) {
  */
 export async function removePhoto({ state, id, save }) {
   if (!state || !id) return false;
-  await deletePhotoBlob(id);
+  // The BYTES are the part that cannot be recovered, so a failed blob delete
+  // must not report success: `deletePhotoBlob` resolves false on any error and
+  // never rejects, which is how an orphan could sit in quota forever while the
+  // record said it was gone. Keeping BOTH (record + bytes) is retryable and
+  // visible; half-deleting is neither.
+  const removedBlob = await deletePhotoBlob(id);
+  if (typeof indexedDB !== 'undefined' && !removedBlob) {
+    throw new Error('The photo file could not be removed from this device.');
+  }
   state.progressPhotos = (Array.isArray(state.progressPhotos) ? state.progressPhotos : [])
     .filter((photo) => photo?.id !== id);
   save?.();

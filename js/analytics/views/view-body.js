@@ -14,6 +14,21 @@ import { formatDayMonthShort } from '../../dates.js';
 import { photoObjectUrl } from '../../photos/library.js';
 
 /**
+ * One photo tile. Its ONLY job is to open the photo — Delete lives in the
+ * viewer. Shared with the Measures screen so the two strips cannot drift.
+ * @param {{ id: string, date: string }} photo
+ */
+export function photoTileHTML(photo) {
+  return `<li class="pg-photo">
+    <button type="button" class="pg-photo__open" data-photo-view="${esc(photo.date)}"
+      aria-label="${esc(`View the progress photo from ${formatDayMonthShort(photo.date)}`)}">
+      <img class="pg-photo__img" data-photo-thumb="${esc(photo.id)}" alt="" />
+      <span class="pg-photo__date">${esc(formatDayMonthShort(photo.date))}</span>
+    </button>
+  </li>`;
+}
+
+/**
  * @param {ReturnType<import('../body-metrics.js').buildBodyMetricsModel>|null} model
  * @param {{ error?: string|null, hidden?: string[] }} [options]
  */
@@ -43,7 +58,7 @@ export function renderBody(model, options = {}) {
       sub: model.range?.spanLabel,
       body: stateBlock('empty', {
         message: 'No weigh-ins or measurements yet.',
-        action: { label: 'Log a weigh-in', action: 'open-bw-sheet' },
+        action: { label: 'Add a measurement', action: 'open-analytics', context: 'measures' },
       }),
     });
   }
@@ -82,19 +97,25 @@ export function renderBody(model, options = {}) {
   // screen when handing the phone over.
   const photosHidden = Array.isArray(options.hidden) && options.hidden.includes('bodyPhotos');
   const photos = photosHidden ? [] : (model.photos || []).slice(0, 12);
-  const photoStrip = `<ul class="pg-photos" aria-label="Progress photos">
-      ${photos.map((photo) => `<li class="pg-photo">
-        <img class="pg-photo__img" data-photo-thumb="${esc(photo.id)}" alt="${esc(`Progress photo, ${formatDayMonthShort(photo.date)}`)}" />
-        <button type="button" class="pg-photo__remove" data-photo-delete="${esc(photo.date)}"
-          aria-label="${esc(`Delete the photo from ${formatDayMonthShort(photo.date)}`)}">×</button>
-      </li>`).join('')}
-      <li class="pg-photo pg-photo--add">
-        <label class="pg-photo__add" aria-label="Add a progress photo">
-          <span aria-hidden="true">+</span>
-          <input type="file" accept="image/*" capture="environment" data-photo-input hidden />
-        </label>
-      </li>
-    </ul>`;
+  // A tile's ONLY job is to open the photo. Delete lives in the viewer: the old
+  // 44px delete button covered a 64px tile, so a tap asked "delete?" and there
+  // was no way to look at the photo at all.
+  const photoStrip = `<div class="pg-photos-block">
+      <p class="pg-photos__head"><span>Progress photos</span>${photos.length ? `<span>${photos.length}</span>` : ''}</p>
+      <ul class="pg-photos" aria-label="Progress photos">
+        ${photos.map(photoTileHTML).join('')}
+        <li class="pg-photo pg-photo--add">
+          <!-- The SAME tile does the SAME thing here and on Measures: it opens the
+               dated entry, where Add picture is the first control. A camera
+               shortcut that skipped the numbers produced a photo with no
+               context — the exact split this screen exists to close. -->
+          <button type="button" class="pg-photo__add" data-action="open-ms-sheet">
+            <span class="pg-photo__plus" aria-hidden="true">+</span>
+            <span class="pg-photo__addlabel">Add photo</span>
+          </button>
+        </li>
+      </ul>
+    </div>`;
 
   // Weight and tape are the latest RECORDED values; the chart, change and photos
   // are range-scoped. Saying "as of <date>" stops the newest reading being read
@@ -110,9 +131,9 @@ export function renderBody(model, options = {}) {
     ${bodyFat}
     ${photosHidden ? '' : photoStrip}
     <div class="pg-band__actions">
-      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measurements →'}</button>
+      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="measures">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measures →'}</button>
+      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">Weight trend</button>
       <button type="button" class="pg-band__action" data-action="open-bw-sheet">Log weigh-in</button>
-      ${!photosHidden && (model.photos || []).length ? '<button type="button" class="pg-band__action" data-action="export-photos">Export photos</button>' : ''}
     </div>
     ${dataTableDisclosure(
       ['Site', `Latest (${model.measurementUnit})`, 'Change'],

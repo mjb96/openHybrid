@@ -56,6 +56,11 @@ function fixture(theme) {
   return {
     schemaVersion: 5, currentWeek: '2', activeProgramId: 'hybrid_engine', activeActivationId: 'current',
     settings: { name: 'Progress Athlete', theme, weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon', onboardingComplete: true },
+    // Body data INSIDE the selected range, so the Body band renders and its
+    // route into Measures can be exercised. Without it the band is absent by
+    // design (it only appears when it has something true to say).
+    bodyWeightLog: [{ date: addDays(MON, -20), weight: 80 }, { date: addDays(MON, -2), weight: 78.4 }],
+    bodyMeasurements: [{ date: addDays(MON, -2), waist: 82, chest: 104 }],
     weeks: {
       '1': {
         dates: { mon: addDays(MON, -7), tue: addDays(MON, -6), wed: addDays(MON, -5) },
@@ -277,6 +282,14 @@ try {
     }
     if (seen.secondary.includes('hybrid-score')) failures.push(`${width}px: Hybrid Score must not appear as a secondary destination`);
     if (seen.secondary.includes('fasting')) failures.push(`${width}px: Fasting must not appear for a profile with no fasting history`);
+    // Measures is the record behind the Body band, and body data is optional —
+    // so it needs a route that does not depend on a band rendering.
+    const measuresRoutes = await page.evaluate(() => ({
+      band: !!document.querySelector('#analytics-hub [data-band="body"] [data-context="measures"]'),
+      footer: !!document.querySelector('#analytics-hub .hub-link[data-action="open-analytics"][data-context="measures"]'),
+    }));
+    if (!measuresRoutes.band) failures.push(`${width}px: the Body band does not open Measures`);
+    if (!measuresRoutes.footer) failures.push(`${width}px: no quiet footer route to Measures`);
     if (!seen.hasMethod) failures.push(`${width}px: missing "how this is calculated" disclosure`);
     if (!seen.hasWeekHero) failures.push(`${width}px: missing the this-week overview`);
     if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: week overview does not name sessions`);
