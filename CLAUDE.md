@@ -513,6 +513,19 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   stage claim, and a test greps the rendered output for those words. A range with
   no completed fasts renders nothing, and the Fasting module switch removes the
   band entirely. All eight Progress bands are now built.
+- Progress is ONE dashboard (P8a landed): the four legacy domain cards
+  (Consistency/Strength/Running/Recovery) and the 12-week strip are retired. The
+  hub renders `[data-band]` sections from `progress-dashboard.js` in catalogue
+  order, with Pulse first; the footer keeps the quiet destinations, History and
+  **Week in Review** (a `data-preserve-week` link — Review lost its only entry
+  point when its card went, and the browser check caught it). The hub browser
+  check now asserts band order, four range chips with one selected, no band
+  without a headline, an empty profile that invents nothing, a band row that opens
+  a detail screen, and that the Endurance band follows the selected week.
+  `tests/progress_no_paywall.test.js` is a ratchet: no gating/monetisation terms in
+  any Progress source, no cap exported from `ranges.js`, no `.pg-*locked` or blurred
+  style. Progress photos remain unbuilt (they need v16 + IDB v3 + zip export in one
+  change); customize reorder UI and sub-toggles are the rest of P8.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

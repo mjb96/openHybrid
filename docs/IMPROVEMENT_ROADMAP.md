@@ -713,6 +713,27 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress P8a: one dashboard, and a no-paywall ratchet.**
+  - The four legacy Consistency/Strength/Running/Recovery domain cards are
+    **retired**. They were a second dashboard on the same tab; the bands ARE
+    Progress now, with the footer keeping the quiet destinations, History and
+    Week in Review.
+  - Retiring them exposed a real gap: Review had no entry point once its card was
+    gone. It has a footer link that preserves the selected week, found by the
+    browser check failing its historical-week assertions.
+  - `progress-hub-browser-check.mjs` was **rewritten for the surface that exists**
+    rather than patched around: band order with Pulse first, four range chips with
+    one selected, no band without a headline, an empty profile that leads with an
+    empty state and invents nothing, and a Muscles row that opens a detail screen.
+    The stepped-back week now proves the Endurance band reads the selected week.
+  - `tests/progress_no_paywall.test.js` is a permanent ratchet: the build fails if
+    any Progress source gains a gating or monetisation term, if `ranges.js` exposes
+    a cap, or if the stylesheet defines a locked/blurred state. `unlock` is
+    excluded on purpose — Health Connect permissions are not payments.
+  - `npm run verify` green (2,530 tests); hub browser contract passes.
+  - Remaining: progress photos (own session: v16 + IDB v3 + zip export) and the
+    customize reorder UI / sub-toggles from P8b.
+
 - **2026-11-23 — Progress P7: Fasting band.**
   - `Fasting` answers "is my fasting on plan?" from completed fasts in the selected
     window: average duration, percentage that met the goal, current streak and the
