@@ -38,6 +38,7 @@ import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildProgressDashboard } from './analytics/progress-dashboard.js';
 import { renderMeasures } from './analytics/views/view-measures.js';
 import { buildMeasuresModel } from './metrics/measures.js';
+import { buildMeasurementExplorer, DEFAULT_EXPLORER_RANGE_ID } from './analytics/measurement-explorer.js';
 import { isRangeId } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatRunDistance } from './workout/run-units.js';
@@ -60,6 +61,10 @@ let _progressGrouping = 'week';
 // Measures is a two-faced screen (entry list | photo library). Ephemeral like
 // the Progress controls: returning to it from elsewhere starts on the list.
 let _measuresMode = 'list';
+// The measurement explorer's own controls. A leaf, not the hub: its range does
+// not rewrite the Progress range, and a site deep link starts on that site.
+let _measuresSite = null;
+let _measuresRange = DEFAULT_EXPLORER_RANGE_ID;
 
 // V2-5 — share the Hybrid Score card. Uses the result last rendered into the
 // Score detail (falls back to a fresh compute so the button always works).
@@ -79,9 +84,13 @@ export function setAnalyticsContext(ctx, options = {}) {
   const previousOrigin = _analyticsOrigin;
   const previousParentContext = _analyticsParentContext;
   _analyticsContext = ctx || 'weekly-summary';
-  if (_analyticsContext !== 'measures') _measuresMode = 'list';
   if (options.origin) _analyticsOrigin = options.origin === 'home' ? 'home' : 'insights';
   _analyticsEntity = options.entity ? { id: options.entity, name: options.entityName || '' } : null;
+  // Entering the leaf resets its local controls; the site deep link (the Body
+  // band's tap) selects the field it names.
+  _measuresMode = 'list';
+  _measuresSite = _analyticsContext === 'measures' ? (options.entity || null) : null;
+  _measuresRange = DEFAULT_EXPLORER_RANGE_ID;
   _analyticsParentContext = options.parentContext || null;
   if (_analyticsParentContext) {
     _analyticsParentOrigin = previousOrigin;
@@ -357,7 +366,7 @@ async function importProgressPhotos(file) {
  * and Delete photo — none of which carries a data-pg-* attribute.
  *
  * @param {any} el
- * @returns {'photo-view'|'delete-photo'|'export-photos'|'import-photos'|'share-progress'|'measures-mode'|'measures-delete'|'grouping'|'focus'|'range'|null}
+ * @returns {'photo-view'|'delete-photo'|'export-photos'|'import-photos'|'share-progress'|'measures-mode'|'measures-delete'|'measure-range'|'grouping'|'focus'|'range'|null}
  */
 export function progressControlTarget(el) {
   if (!el || typeof el.closest !== 'function') return null;
@@ -370,6 +379,7 @@ export function progressControlTarget(el) {
   // range/focus/grouping controls for the same reason as Share and Export.
   if (el.closest('[data-measures-mode]')) return 'measures-mode';
   if (el.closest('[data-measure-delete]')) return 'measures-delete';
+  if (el.closest('[data-ms-range]')) return 'measure-range';
   if (el.closest('[data-pg-grouping]')) return 'grouping';
   if (el.closest('[data-pg-focus]')) return 'focus';
   if (el.closest('[data-pg-range]')) return 'range';
@@ -419,6 +429,16 @@ function onProgressControlClick(event) {
     void deleteMeasureEntryAction(el.closest('[data-measure-delete]')?.getAttribute('data-measure-delete') || '');
     return;
   }
+  if (action === 'measure-range') {
+    const next = el.closest('[data-ms-range]')?.getAttribute('data-ms-range') || '';
+    if (!isRangeId(next) || next === _measuresRange) return;
+    _measuresRange = next;
+    renderAnalytics();
+    // The render replaced the subtree; keep the keyboard user on the chip that
+    // just moved.
+    document.querySelector(`#analytics-measures [data-ms-range="${next}"]`)?.focus?.();
+    return;
+  }
 
   const target = el.closest('[data-pg-range], [data-pg-focus], [data-pg-grouping]');
   if (!target) return;
@@ -439,12 +459,30 @@ function onProgressControlClick(event) {
   renderAnalytics();
 }
 
+/**
+ * The measurement explorer's site picker is a native select, so its value
+ * arrives on `change`, not on the delegated click. The range chips stay in the
+ * click router above.
+ * @param {Event} event
+ */
+function onProgressControlChange(event) {
+  const el = event.target;
+  if (!el || /** @type {any} */ (el).tagName !== 'SELECT' || typeof (/** @type {any} */ (el).matches) !== 'function') return;
+  if (!(/** @type {any} */ (el).matches('[data-ms-site]'))) return;
+  const next = /** @type {HTMLSelectElement} */ (el).value;
+  if (!next || next === _measuresSite) return;
+  _measuresSite = next;
+  renderAnalytics();
+  document.querySelector('#analytics-measures [data-ms-site]')?.focus?.();
+}
+
 export function initAnalytics(getStateFn, getDaysFn) {
   _getState = getStateFn;
   _getDays  = getDaysFn;
   initWeekNav(_getState, renderAnalytics);
   if (typeof document !== 'undefined') {
     document.addEventListener('click', onProgressControlClick);
+    document.addEventListener('change', onProgressControlChange);
   }
 }
 
@@ -965,6 +1003,10 @@ export function renderAnalytics() {
         renderMeasures(buildMeasuresModel(_getState()), {
           mode: _measuresMode,
           hidden: _getState()?.settings?.ui?.progress?.hidden || [],
+          explorer: buildMeasurementExplorer(_getState(), {
+            siteKey: _measuresSite,
+            rangeId: _measuresRange,
+          }),
         });
       } catch (error) {
         renderMeasures(null, { mode: _measuresMode, error: error instanceof Error ? error.message : String(error) });

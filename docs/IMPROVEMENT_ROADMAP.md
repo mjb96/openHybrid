@@ -69,12 +69,13 @@ upgrade have landed:
 - **History** is a full destination: Calendar | List, search, provenance, a
   source filter, a calendar day sheet, exact detail, lossless editing
   (add/remove exercise and set), delete/undo, Repeat workout and Share workout.
-- **Progress** leads with the Pulse band (the selected week, streak and run/walk split)
-  and a 12-week strip, then Strength,
-  Running, Recovery and Review, with body measurements (waist, chest, hips,
-  arm, thigh, neck) beside the bodyweight trend. Calendar-week attribution is
-  used throughout; the Training Report covers 30 days or 12 months; the exercise
-  drilldown has a real shape-aware trend, all-time bests and PR baseline.
+- **Progress** leads with the Pulse band (the selected week, streak and run/walk
+  split), then the eight bands — Balance, Muscles, Main exercises, Endurance,
+  Body, Fasting, Reports — with body measurements (14 tape sites, entered body
+  fat and per-site trends) and Measures (dated weight/tape/body-fat/photo
+  entries) behind Body. Calendar-week attribution is used throughout; the
+  Training Report covers 30 days or 12 months; the exercise drilldown has a real
+  shape-aware trend, all-time bests and PR baseline.
 - **Logger** supports reps, timed holds and loaded carries; failure, per-set
   rest/note, plate lines, load basis, effort, per-exercise shape/load/basis
   defaults, warm-up rest, a rest timer that survives reload/backgrounding, a
@@ -94,9 +95,9 @@ upgrade have landed:
 - The logging loop is strong for a prescribed lift and thinner for everything
   around it: plate maths is a hint rather than a calculator, and RPE entry is
   not constrained the way the rest of the row is.
-- Body composition stops at bodyweight plus six tape sites. There is no body fat
-  and no visual history, which is the one place a lifter most expects a
-  before/after.
+- Body composition is complete: 14 tape sites, entered body fat, per-site trends
+  and dated progress photos with an export/import backup. The remaining work is
+  interpretation (what a slow tape change means), not missing capture.
 - History can repeat, edit, delete and share a session, and it can save one as a
   reusable routine; routines can be started and filed into folders, but the
   routine library has no categories or filters yet.
@@ -372,35 +373,39 @@ distance; a 5 km + 10 km day reports 15 km; empty weeks are honest.
 
 ### Phase 3 — Body composition
 
-**Status: LATER.** **Goal:** close the two real body-composition gaps without
-risking localStorage.
+**Status: DONE.** **Goal:** close the body-composition gaps without risking
+localStorage. All three items shipped; the tape/fat read path now has a
+single-site explorer in Measures.
 
 Features: P7, P8.
 
-1. **Body fat and the full site set.** Add body fat percentage and expand from
-   six to fourteen circumference sites (neck, shoulders, chest, waist, hips,
-   glutes, bilateral arm, forearm, thigh, calf). Centimetres stay canonical, one
-   record per date, every site optional, and an existing date is never
-   overwritten. A unit toggle changes the reading only.
-2. **Bodyweight from a set.** A bodyweight exercise can update today's weigh-in
-   through the existing bodyweight log, with confirmation — never silently.
-3. **Progress photos.** Blobs in IndexedDB; `appState` holds metadata only
-   (`{ id, date, mime, width, height }`). Timeline, side-by-side compare,
-   edit/replace/delete, and a share image built by the existing share pipeline.
-   A quota failure is visible and recoverable, deleting a record deletes its
-   blob, and an orphan sweep exists.
+1. **Body fat and the full site set.** Landed: body fat percentage and 14
+   circumference sites (neck, shoulders, chest, waist, hips, glutes, bilateral
+   arm, forearm, thigh, calf). Centimetres stay canonical, one record per date,
+   every site optional, and an existing date is never overwritten. A unit toggle
+   changes the reading only; an edit preserves untouched stored centimetres.
+2. **Bodyweight from a set.** Landed: a bodyweight-dependent load mode asks for
+   the athlete's weight and writes today's weigh-in through the existing log,
+   never silently guessing.
+3. **Progress photos.** Landed: blobs in IndexedDB; `appState` holds metadata
+   only. One photo per date, downscaled before storage, compare, edit/replace,
+   delete with confirmation, and a hand-written zip export/import — the only
+   backup path for bytes on Android (`allowBackup="false"`). A quota failure is
+   visible; deleting a record deletes its blob.
 
 **Data rules:** no base64 in `appState` or `localStorage`. A stored-schema change
 needs a migration, a backup path and an `AGENTS.md` note. Export documents that
 photos are device-local and carries metadata only.
 
 **Reuse:** `js/metrics/bodyweight.js`, `js/metrics/measurements.js`,
+`js/metrics/measures.js`, `js/analytics/measurement-explorer.js`,
 `js/bodyweight-sheet.js`, `js/measurements-sheet.js`,
-`js/portability/import-measurements-csv.js`, `js/share/`.
+`js/portability/import-measurements-csv.js`, `js/portability/zip.js`.
 
 **Acceptance:** deleting a record deletes its blob; a restore without photos
 leaves readable metadata rather than broken images; the export is honest about
-what it does not carry.
+what it does not carry; an untouched site never drifts by 0.1 cm on a unit
+round-trip.
 
 ### Phase 4 — Organisation
 
@@ -530,8 +535,8 @@ not rebuild a ✅.
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on a body diagram with a week switcher | ◐ | 2 |
 | P5 | Sets per muscle per week | `analytics/volume-guide.js` | Weekly/monthly/yearly buckets, muscle selection, long ranges | ◐ | 2 |
 | P6 | Muscle distribution | `analytics/muscle-load.js` | Volume share with sessions/time/sets and period comparison | ◐ | 2 |
-| P7 | Body measurements | `metrics/measurements.js` | Weight, body fat, 14 sites, per-site graph | ✅ | 3 |
-| P8 | Progress photos | — | Dated photos, timeline, compare, edit/replace/delete, share | ○ | 3 |
+| P7 | Body measurements | `metrics/measurements.js`, `analytics/measurement-explorer.js` | Weight, body fat, 14 sites, per-site trend, Measures explorer | ✅ | 3 |
+| P8 | Progress photos | `photos/library.js`, `portability/zip.js` | Dated photos, timeline, compare, edit/replace/delete, zip export/import | ✅ | 3 |
 | P9 | Exercise performance | `analytics/exercise-detail.js` | Graph, PR summary, set records by rep target, history | ◐ | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js` | Calendar, consecutive-week streak, rest days, year zoom | ◐ | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, copy, edit, delete | ◐ | 4 |
@@ -540,7 +545,11 @@ not rebuild a ✅.
 P7 is complete: the measurements record carries an entered body fat, 14
 canonical bilateral tape sites (pre-14-site single Arm/Thigh readings preserved
 and exported), and each measured cell toggles its own per-site trend below the
-card — body fat on a percentage scale.
+card — body fat on a percentage scale. **Measures** now also leads with the same
+chart as a single-site explorer: choose any measured site or body fat, pick
+30D / 3M / 1Y / All, and see the latest value, its change since the previous
+reading and the exact readings table. The Body band's four site cells deep-link
+to that site.
 
 ### Workout logging (14)
 
@@ -707,11 +716,42 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | History | Calendar \| List, search, provenance, source filter, day sheet, exact detail, lossless edit, delete/undo, repeat, share, save as routine |
 | Plans | 58-program catalogue, active plan first with one primary action and one search, fit-based recommendations with reasons, compare, details, timeline, editable copies, builder, routine list with Start and folders |
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
-| Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
+| Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,619 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,640 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Body measurements: the read path, and the 0.1 cm edit that made it untrustworthy.**
+  - **Measurements were already captured; they were hard to READ.** The Body band
+    summarised four sites and Measures listed dates, but the only per-site chart
+    lived inside the Bodyweight card — a different destination. Measures now leads
+    with a **single-site explorer**: choose any measured site or body fat, switch
+    30D / 3M / 1Y / All, and see the latest value, its change since the previous
+    reading, the shared SVG trend and the exact readings table. The Body band's four
+    site cells are 44px buttons that open Measures on that site.
+  - **Editing at inches rewrote untouched stored centimetres.** 76.0 cm displayed as
+    29.9 in, and Save converted the display value back to 75.9 cm for every site the
+    athlete never touched (audit AUD-R6-1, previously deferred). `saveMeasureEntry`
+    now accepts `unchangedSites` — the original canonical cm for fields whose
+    prefilled display value was not edited — and the sheet passes them. A regression
+    test and a browser assertion cover the round trip.
+  - **Tape deltas now state their baseline.** They were "since the previous reading"
+    but the band's sublabel named the selected range, so a 30D card could show a
+    change measured months earlier. The card says so in one line, the body-fat line
+    names the previous date, and the data table's columns are "Change since
+    previous" / "Previous reading".
+  - **One chart, two surfaces.** `renderSiteTrend` became a DOM wrapper around the
+    pure `siteTrendHTML`, so the Bodyweight card and Measures cannot draw different
+    trends. The explorer is a leaf: its range is `data-ms-range`, defaults to All,
+    never rewrites the hub's `_progressRangeId`, and a range with no readings says
+    so and offers Show all instead of inventing a point.
+  - Also corrected the roadmap's own stale claims: Body composition was marked
+    `LATER` with six sites and no body fat, and P8 photos was still `○`.
+  - `npm test` green (2,640 tests), typecheck + smoke + precache green, and the
+    Measures and Progress-hub browser checks pass at 390/320. Live captures:
+    `docs/mockups/measures-trend-390.png` and `measures-trend-320.png`.
+  - Next: the gated queue — Phase 0 truth pass then Phase 1 live-PR/keep-awake.
 
 - **2026-11-23 — Measures: adversarial audit, and the eight things green did not mean.**
   - **A duplicated date silently discarded the athlete's correction.** The readers

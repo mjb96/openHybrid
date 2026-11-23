@@ -137,6 +137,19 @@ test('replacing a date rewrites it rather than appending a second row', () => {
   assert.deepEqual(app.bodyMeasurements, [{ date: '2026-11-20', waist: 83 }]);
 });
 
+test('unchanged tape keeps its exact stored centimetres across an edit', () => {
+  const app = state({ bodyMeasurements: [{ date: '2026-11-20', waist: 76.0, chest: 101.6 }] });
+  const result = saveMeasureEntry(app, '2026-11-20', {
+    bodyFat: '18.4',
+    sites: {},
+    // What the sheet passes for fields it prefilled but the athlete did not
+    // edit: the original canonical values, not the rounded inch display.
+    unchangedSites: { waist: 76.0, chest: 101.6 },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(app.bodyMeasurements, [{ date: '2026-11-20', waist: 76, chest: 101.6, bodyFat: 18.4 }]);
+});
+
 test('a typo rejects the WHOLE save and mutates nothing', () => {
   const app = state({ bodyWeightLog: [{ date: '2026-11-19', weight: 79 }] });
   const before = JSON.stringify(app);

@@ -5,7 +5,7 @@
 // =============================================================================
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderSiteTrend } from '../js/analytics/charts.js';
+import { renderSiteTrend, siteTrendHTML } from '../js/analytics/charts.js';
 
 const dotsOf = (html) => [...html.matchAll(/<circle class="bw-site-dot" cx="([\d.]+)"[^>]*><title>([^<]+)<\/title>/g)]
   .map((match) => ({ x: Number(match[1]), title: match[2] }));
@@ -53,6 +53,18 @@ test('body fat renders on a percentage scale, never the tape unit', () => {
   assert.match(html, /19\.0%/);
   assert.match(html, /18\.4%/);
   assert.doesNotMatch(html, / cm/);
+});
+
+test('the pure builder is the same chart the DOM wrapper paints', () => {
+  const points = [
+    { date: '2026-11-10', value: 84 },
+    { date: '2026-11-19', value: 83 },
+  ];
+  const html = siteTrendHTML(points, { unit: 'cm', label: 'Waist' });
+  const container = { innerHTML: '' };
+  renderSiteTrend(container, points, { unit: 'cm', label: 'Waist' });
+  assert.equal(container.innerHTML, html);
+  assert.match(html, /<svg /);
 });
 
 test('the chart labels the supplied display values without converting them', () => {

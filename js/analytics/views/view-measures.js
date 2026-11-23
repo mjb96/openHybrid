@@ -6,14 +6,19 @@
 // DATE-LEVEL record behind it: one row per day, each optionally carrying a
 // weigh-in, an entered body fat, tape sites and a progress photo. Two ways to
 // read it — the entry list (newest first) and the photo library — because a
-// progress photo is only useful if you can find it again.
+// progress photo is only useful if you can find it again. The list also leads
+// with a single-site TREND, so "what is my waist doing?" is answerable here
+// rather than only inside the Bodyweight card.
 //
-// Presentation only: every value comes from `buildMeasuresModel`. Units come
-// from the model, never from a literal in this file.
+// Presentation only: measure values come from `buildMeasuresModel`; the trend
+// comes from `buildMeasurementExplorer`, which reuses the same measurement model.
+// Units come from the models, never from a literal in this file.
 // =============================================================================
-import { stateBlock } from './band-kit.js';
+import { dataTableDisclosure, rangeBar, stateBlock } from './band-kit.js';
 import { esc } from './screen-kit.js';
 import { hydratePhotoThumbs, photoTileHTML } from './view-body.js';
+import { siteTrendHTML } from '../charts.js';
+import { RANGE_PRESETS } from '../ranges.js';
 import { cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
 import { formatDayMonthShort } from '../../dates.js';
 
@@ -121,6 +126,69 @@ function photoStrip(model) {
   </section>`;
 }
 
+/**
+ * One measured site over the selected range. This is the read path the dated
+ * entry list cannot provide: "what is my waist doing?" in one card.
+ * @param {ReturnType<import('../measurement-explorer.js').buildMeasurementExplorer>|null} explorer
+ */
+function trendsHTML(explorer) {
+  if (!explorer?.hasData || !explorer.site) return '';
+  const site = explorer.site;
+  const unit = explorer.unit;
+  const percent = explorer.percent;
+  const latest = explorer.latest;
+  const valueText = latest ? `${latest.value.toFixed(1)}${percent ? '%' : ''}` : '—';
+  const deltaText = explorer.delta == null
+    ? (latest ? 'First reading' : 'No readings yet')
+    : `${explorer.delta > 0 ? '+' : ''}${explorer.delta.toFixed(1)}${percent ? ' pp' : ` ${unit}`}`
+      + (explorer.deltaDate ? ` since ${formatDayMonthShort(explorer.deltaDate, { year: true })}` : ' since the previous reading');
+  const outside = explorer.latestOutsideRange && latest
+    ? `<p class="ms-trend__outside">Latest · ${esc(formatDayMonthShort(latest.date, { year: true }))}, outside this range</p>`
+    : '';
+
+  const options = explorer.sites.map((option) => `<option value="${esc(option.key)}"${option.key === site.key ? ' selected' : ''}>${esc(option.label)}</option>`).join('');
+  const picker = `<label class="ms-trend__pick">
+    <span>Measurement</span>
+    <select class="ms-trend__select" data-ms-site aria-label="Measurement site">${options}</select>
+  </label>`;
+
+  const body = explorer.emptyRange
+    ? `<div class="ms-trend__empty">
+        <p>No ${esc(site.label)} readings in this range.</p>
+        <button type="button" class="ms-screen__tool" data-ms-range="all">Show all</button>
+      </div>`
+    : `<div class="bw-ms-trend ms-trend__chart">${siteTrendHTML(explorer.points, {
+      unit,
+      label: site.label,
+      percent,
+    })}</div>
+    ${dataTableDisclosure(
+      ['Date', percent ? `${site.label} (%)` : `${site.label} (${unit})`],
+      [...explorer.points].reverse().map((point) => [
+        formatDayMonthShort(point.date, { year: true }),
+        String(roundDisplay(point.value)),
+      ]),
+      `${site.label} readings in the selected range`,
+    )}`;
+
+  return `<section class="ms-trend" aria-label="Measurement trend">
+    <div class="ms-trend__head">
+      <div class="ms-trend__headline">
+        <span class="ms-trend__label">${esc(site.label)}</span>
+        <strong class="ms-trend__value">${esc(valueText)}</strong>
+      </div>
+      <p class="ms-trend__delta">${esc(deltaText)}</p>
+    </div>
+    ${outside}
+    ${picker}
+    <div class="ms-trend__range">${rangeBar(RANGE_PRESETS, explorer.range?.id || 'all', {
+      attribute: 'data-ms-range',
+      label: 'Measurement range',
+    })}</div>
+    ${body}
+  </section>`;
+}
+
 /** @param {any} model */
 function libraryHTML(model) {
   const photos = Array.isArray(model.photos) ? model.photos : [];
@@ -143,7 +211,8 @@ function libraryHTML(model) {
 
 /**
  * @param {ReturnType<import('../../metrics/measures.js').buildMeasuresModel>|null} model
- * @param {{ mode?: 'list'|'library', error?: string|null, hidden?: string[] }} [options]
+ * @param {{ mode?: 'list'|'library', error?: string|null, hidden?: string[],
+ *   explorer?: ReturnType<import('../measurement-explorer.js').buildMeasurementExplorer>|null }} [options]
  */
 export function measuresHTML(model, options = {}) {
   const mode = options.mode === 'library' ? 'library' : 'list';
@@ -207,6 +276,7 @@ export function measuresHTML(model, options = {}) {
 
   return `${head}
     <div class="ms-screen__body">
+      ${trendsHTML(options.explorer || null)}
       ${photosHidden ? '' : photoStrip(model)}
       <ul class="ms-entries" aria-label="Measure entries, newest first">
         ${model.entries.map((entry) => entryRow(entry, model)).join('')}
@@ -218,7 +288,8 @@ export function measuresHTML(model, options = {}) {
  * Paint the Measures screen. Blob thumbnails hydrate after the HTML is in the
  * DOM: reading a photo is async and the screen must never wait on the disk.
  * @param {ReturnType<import('../../metrics/measures.js').buildMeasuresModel>|null} model
- * @param {{ mode?: 'list'|'library', error?: string|null }} [options]
+ * @param {{ mode?: 'list'|'library', error?: string|null, hidden?: string[],
+ *   explorer?: ReturnType<import('../measurement-explorer.js').buildMeasurementExplorer>|null }} [options]
  */
 export function renderMeasures(model, options = {}) {
   const host = typeof document !== 'undefined' ? document.getElementById('measuresScreen') : null;

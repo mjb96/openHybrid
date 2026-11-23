@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMeasuresModel } from '../js/metrics/measures.js';
 import { measuresHTML } from '../js/analytics/views/view-measures.js';
+import { buildMeasurementExplorer } from '../js/analytics/measurement-explorer.js';
 
 function photo(date) {
   return {
@@ -31,6 +32,18 @@ function model(overrides = {}) {
     progressPhotos: [photo('2026-11-18')],
     ...overrides,
   });
+}
+
+function explorer(overrides = {}, options = {}) {
+  return buildMeasurementExplorer({
+    settings: { weightUnit: 'kg', measurementUnit: 'cm' },
+    bodyMeasurements: [
+      { date: '2026-09-01', waist: 86, chest: 106 },
+      { date: '2026-10-01', waist: 84, chest: 105, bodyFat: 20.1 },
+      { date: '2026-11-20', waist: 82, chest: 104, bodyFat: 18.5 },
+    ],
+    ...overrides,
+  }, { todayISO: '2026-11-24', ...options });
 }
 
 test('the list leads with the header actions and renders one row per entry', () => {
@@ -111,6 +124,43 @@ test('units come from state, never from a literal in the view', () => {
   assert.doesNotMatch(html, /172\.8 kg/);
   assert.doesNotMatch(html, /82 cm/);
   assert.doesNotMatch(html, /32\.3 cm/);
+});
+
+test('the explorer renders one site, its range and the shared chart', () => {
+  const html = measuresHTML(model(), { explorer: explorer() });
+  assert.match(html, /class="ms-trend"/);
+  assert.match(html, /class="ms-trend__value">82\.0</);
+  assert.match(html, /-2\.0 cm since 1 Oct 2026/);
+  assert.match(html, /data-ms-site/);
+  assert.match(html, /<option value="waist" selected>Waist<\/option>/);
+  assert.match(html, /data-ms-range="all" aria-pressed="true"/);
+  assert.match(html, /class="bw-ms-trend ms-trend__chart"><svg/);
+  assert.match(html, /Show data/);
+  assert.match(html, /1 Oct 2026/);
+});
+
+test('the explorer can chart body fat on its own percentage scale', () => {
+  const html = measuresHTML(model(), { explorer: explorer({}, { siteKey: 'bodyFat' }) });
+  assert.match(html, /class="ms-trend__value">18\.5%/);
+  assert.match(html, /-1\.6 pp since 1 Oct 2026/);
+  assert.match(html, /Body fat trend \(%\)/);
+  assert.doesNotMatch(html, /Body fat \(cm\)/);
+});
+
+test('a range with no readings offers Show all instead of a chart', () => {
+  const noRecent = explorer({
+    bodyMeasurements: [{ date: '2026-08-01', waist: 88 }, { date: '2026-09-01', waist: 86 }],
+  }, { rangeId: '30d' });
+  const html = measuresHTML(model(), { explorer: noRecent });
+  assert.match(html, /No Waist readings in this range\./);
+  assert.match(html, /data-ms-range="all">Show all/);
+  assert.doesNotMatch(html, /<svg/);
+});
+
+test('the photo library keeps its own mode and does not grow a trend block', () => {
+  const html = measuresHTML(model(), { mode: 'library', explorer: explorer() });
+  assert.doesNotMatch(html, /class="ms-trend"/);
+  assert.match(html, /class="ms-library"/);
 });
 
 test('loading and error are explicit states', () => {

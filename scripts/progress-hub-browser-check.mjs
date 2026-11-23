@@ -290,6 +290,30 @@ try {
     }));
     if (!measuresRoutes.band) failures.push(`${width}px: the Body band does not open Measures`);
     if (!measuresRoutes.footer) failures.push(`${width}px: no quiet footer route to Measures`);
+    // A key site is a control, not a static label: it opens Measures on that
+    // site. The old cells were <li>s with no target at all.
+    const bodySites = await page.evaluate(() => {
+      const band = document.querySelector('#analytics-hub [data-band="body"]');
+      const buttons = [...(band?.querySelectorAll('[data-action="open-analytics"][data-context="measures"][data-entity]') || [])];
+      return {
+        count: buttons.length,
+        entities: buttons.map((button) => button.getAttribute('data-entity')),
+        heights: buttons.map((button) => Math.round(button.getBoundingClientRect().height)),
+      };
+    });
+    if (bodySites.count < 2) failures.push(`${width}px: the Body band has no per-site controls (${bodySites.entities.join(',')})`);
+    if (bodySites.heights.some((height) => height < 44)) failures.push(`${width}px: a Body site control is under 44px (${bodySites.heights.join(',')})`);
+    if (bodySites.entities.includes('waist')) {
+      await page.click('#analytics-hub [data-band="body"] [data-context="measures"][data-entity="waist"]');
+      const opened = await page.waitForSelector('#analytics-measures.active', { timeout: 4000 }).then(() => true).catch(() => false);
+      if (!opened) failures.push(`${width}px: a Body site did not open Measures`);
+      else {
+        const selectedSite = await page.$eval('#analytics-measures [data-ms-site]', (el) => el.value).catch(() => '');
+        if (selectedSite !== 'waist') failures.push(`${width}px: Measures opened on "${selectedSite}", not waist`);
+      }
+      await openHub(page);
+      await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {});
+    }
     if (!seen.hasMethod) failures.push(`${width}px: missing "how this is calculated" disclosure`);
     if (!seen.hasWeekHero) failures.push(`${width}px: missing the this-week overview`);
     if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: week overview does not name sessions`);
