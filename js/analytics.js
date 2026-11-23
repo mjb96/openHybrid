@@ -120,6 +120,45 @@ async function deleteProgressPhoto(dateISO) {
   renderAnalytics();
 }
 
+/**
+ * Share a summary of the visible bands. The rows come from the SAME models the
+ * bands render, so the image cannot disagree with the screen.
+ */
+async function shareProgressSummary() {
+  const state = _getState?.();
+  if (!state) return;
+  const today = localDayKey(new Date());
+  const program = getProgramById(state.activeProgramId);
+  const progressDashboard = buildProgressDashboard(state, {
+    todayISO: today,
+    weekStartISO: getSelectedWeekStart(today),
+    rangeId: _progressRangeId,
+    focus: _progressFocus,
+    grouping: _progressGrouping,
+    program,
+    days: _getDays?.(),
+  });
+
+  const rows = [];
+  for (const band of progressDashboard.bands) {
+    const model = band.model || {};
+    if (band.id === 'pulse') rows.push({ bandId: 'pulse', value: `${model.sessions || 0} sessions`, note: `${model.streakWeeks || 0}-week streak` });
+    if (band.id === 'balance') rows.push({ bandId: 'balance', value: `${model.strengthSharePct}% strength`, note: `${model.enduranceSharePct}% endurance` });
+    if (band.id === 'muscles') rows.push({ bandId: 'muscles', value: `${model.totalSets} sets`, note: `${model.muscles?.length || 0} muscles` });
+    if (band.id === 'exercises') rows.push({ bandId: 'exercises', value: `${model.rows?.length || 0} exercises`, note: model.rows?.[0]?.lift || '' });
+    if (band.id === 'endurance') rows.push({ bandId: 'endurance', value: `${model.runKm} km run`, note: `${model.runs} runs` });
+    if (band.id === 'body') rows.push({ bandId: 'body', value: model.weight?.latest ? `${model.weight.latest} ${model.unit}` : '—', note: model.weight?.change == null ? '' : `${model.weight.change > 0 ? '+' : ''}${model.weight.change} ${model.unit}` });
+    if (band.id === 'fasting') rows.push({ bandId: 'fasting', value: `${model.averageHours} h average`, note: `${model.adherencePct}% met goal` });
+  }
+
+  const { shareProgressCard } = await import('./analytics/share-card.js');
+  await shareProgressCard(rows, {
+    title: 'Training progress',
+    subtitle: progressDashboard.range?.spanLabel || '',
+    toast: showToast,
+  });
+}
+
 async function exportProgressPhotos() {
   const state = _getState?.();
   if (!state) return;
@@ -160,6 +199,7 @@ function onProgressControlClick(event) {
   const photoDelete = target.closest('[data-photo-delete]');
   if (photoDelete) { void deleteProgressPhoto(photoDelete.getAttribute('data-photo-delete') || ''); return; }
   if (target.closest('[data-action="export-photos"]')) { void exportProgressPhotos(); return; }
+  if (target.closest('[data-action="share-progress"]')) { void shareProgressSummary(); return; }
 
   const grouping = target.getAttribute('data-pg-grouping');
   if (grouping) {

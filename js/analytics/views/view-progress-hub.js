@@ -259,7 +259,10 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
         <h2 class="hub-title">Progress</h2>
         <p class="hub-sub">What changed, and why.</p>
       </div>
-      <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
+      <div class="hub-head__actions">
+        ${(extras.bands || []).length ? '<button type="button" class="hub-customize-btn" data-action="share-progress" aria-label="Share a summary of this page">Share</button>' : ''}
+        <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
+      </div>
     </div>
     <div class="pg-controls">
       ${rangeBar(RANGE_PRESETS, extras.rangeId || '30d')}
