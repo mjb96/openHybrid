@@ -123,7 +123,7 @@ function powerUserState() {
 
 async function openRunningStats(page) {
   await page.click('.nav-item[data-target="analytics"]');
-  await page.click('#analytics-hub [data-context="running"]');
+  await page.click('#analytics-hub .hub-link--quiet[data-context="running"]');
   await page.waitForSelector('#analytics-running.active [data-an-tab="stats"]');
   await page.click('#analytics-running [data-an-tab="stats"]');
   await page.waitForSelector('#analytics-running.active [data-metric-id="running.personal-bests"]');

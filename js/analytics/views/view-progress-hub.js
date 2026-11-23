@@ -227,6 +227,7 @@ function recentWeeksStrip(model) {
  *   focus?: string,
  *   focusAvailable?: { strength: boolean, endurance: boolean },
  *   visibleCount?: number,
+ *   showRunning?: boolean,
  *   weightUnit?: string,
  *   distanceUnit?: string,
  * }} [extras]
@@ -271,6 +272,20 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
       : bands}
     ${secondary.length ? `<h3 class="section-header mt-4">More detail</h3>
     <div class="hub-group">${secondary.map(secondaryRow).join('')}</div>` : ''}
+    ${extras.showRunning === false ? '' : `<button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="running">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Running</span>
+        <span class="hub-link__desc">Pace, heart rate, zones, load and personal bests</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>`}
+    <button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="strength">
+      <span class="hub-link__label">
+        <span class="hub-link__title">Strength</span>
+        <span class="hub-link__desc">Every lift, volume detail and per-exercise progression</span>
+      </span>
+      <span class="hub-link__arrow" aria-hidden="true">→</span>
+    </button>
     <button type="button" class="hub-link hub-link--quiet" data-action="open-analytics" data-context="weekly-review" data-parent-context="hub" data-preserve-week="true">
       <span class="hub-link__label">
         <span class="hub-link__title">Week in Review</span>

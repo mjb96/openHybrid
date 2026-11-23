@@ -498,6 +498,7 @@ export function renderAnalytics() {
         focus: progressDashboard.focus,
         focusAvailable: progressDashboard.focusAvailable,
         visibleCount: progressDashboard.visibleCount,
+        showRunning: !progressDashboard.availability?.endurance?.moduleOff,
         weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
         distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
       });

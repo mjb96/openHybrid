@@ -694,3 +694,16 @@ html[data-theme="light"] .pg-site__value { color: #0f172a; }
 .pg-fast b { font-size: 0.56rem; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-secondary); }
 
 html[data-theme="light"] .pg-fast b, html[data-theme="light"] .pg-fast small { color: #475569; }
+
+/* The vendored body-map credit is a real link and the browser check measures
+   it on this surface; it is a lone footer line, so a 44px hit area is safe. */
+.pg-band .session-map__credit a {
+  display: inline-flex;
+  align-items: center;
+  /* Height AND width: the visible text is ~35px wide, and a lone footer link
+     has no neighbouring control to collide with. */
+  min-height: var(--touch-target);
+  min-width: var(--touch-target);
+  padding-inline: 6px;
+  margin-inline: -6px;
+}

@@ -86,12 +86,12 @@ try {
 
   await page.click('.nav-item[data-target="analytics"]');
   await page.waitForSelector('#analytics-hub.active');
-  ok(await page.locator('#analytics-hub [data-context="running"]').count() === 1, 'Progress Running card starts visible');
+  ok(await page.locator('#analytics-hub [data-band="pulse"]').count() === 1, 'Progress Pulse card starts visible');
   await page.click('#analytics-hub [data-action="open-customize"][data-surface="progress"]');
   await page.waitForSelector('#customizeSheet.active');
-  await page.evaluate(() => document.querySelector('#customizeSheet input[data-customize-card="running"]')?.click());
-  await page.waitForFunction(() => !document.querySelector('#analytics-hub [data-context="running"]'));
-  ok(true, 'turning the Progress Running card off removes it');
+  await page.evaluate(() => document.querySelector('#customizeSheet input[data-customize-card="pulse"]')?.click());
+  await page.waitForFunction(() => !document.querySelector('#analytics-hub [data-band="pulse"]'));
+  ok(true, 'turning the Progress Pulse card off removes it');
   await page.click('#customizeSheet [data-action="reset-customize"]');
   await page.waitForSelector('#analytics-hub [data-context="running"]');
   ok(true, 'Reset restores the Progress card');
