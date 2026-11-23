@@ -10613,7 +10613,10 @@ html[data-theme="light"] .bw-ms-trend .bw-site-dot { fill: #155e75; }
 }
 .ms-sheet-more summary {
   display: flex; align-items: center; gap: 8px;
-  min-height: var(--touch-target); cursor: pointer;
+  /* +1px: a text-driven flex row can measure 43.4px at a fractional device
+     pixel ratio even with min-height:44px, which put the only control that
+     reveals the bilateral fields just under the tap target. */
+  min-height: calc(var(--touch-target) + 1px); cursor: pointer;
   color: var(--text-secondary); font-size: .7rem; font-weight: 800;
   letter-spacing: .04em; text-transform: uppercase;
   list-style: none;
