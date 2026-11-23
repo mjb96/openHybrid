@@ -32,6 +32,15 @@ test('exercises are ranked by sessions and carry an e1RM change', () => {
   assert.ok(squat.series.length >= 2, 'a series for the sparkline');
 });
 
+test('one session is not a comparison', () => {
+  const model = buildExerciseSummaryModel(stateWith([
+    day('2026-11-20', { 'Back Squat': [done(140)], 'Bench Press': [done(100)], 'Barbell Row': [done(80)] }),
+  ]), { range });
+  for (const row of model.rows) {
+    assert.equal(row.deltaPct, null, `${row.lift} cannot compare with itself`);
+  }
+});
+
 test('an exercise trained once in the window is listed but does not qualify as data', () => {
   const model = buildExerciseSummaryModel(stateWith([
     day('2026-11-20', { 'Back Squat': [done(140)], 'Bench Press': [done(100)], 'Barbell Row': [done(80)] }),
@@ -80,6 +89,33 @@ test('the PR flag compares against the all-time best, not just this window', () 
   ]), { range });
   const top = recordNow.rows.find((row) => row.lift === 'Back Squat');
   assert.equal(top.prFlag, true, 'the best ever is a PR');
+});
+
+test('a record set OUTSIDE the window does not badge the window', () => {
+  // June 150 -> August 170 is a record, but August is outside the 30-day window.
+  // The window's own sessions (140, 145) beat nothing, so no badge.
+  const model = buildExerciseSummaryModel(stateWith([
+    day('2026-06-01', { 'Back Squat': [done(150)] }),
+    day('2026-08-01', { 'Back Squat': [done(170)] }),
+    day('2026-11-10', { 'Back Squat': [done(140)] }),
+    day('2026-11-17', { 'Back Squat': [done(145)] }),
+    day('2026-11-20', { 'Bench Press': [done(100)] }),
+    day('2026-11-21', { 'Barbell Row': [done(80)] }),
+  ]), { range });
+  const squat = model.rows.find((row) => row.lift === 'Back Squat');
+  assert.equal(squat.prFlag, false, 'the record was set in August, not this window');
+});
+
+test('a record set INSIDE the window badges it', () => {
+  const model = buildExerciseSummaryModel(stateWith([
+    day('2026-06-01', { 'Back Squat': [done(150)] }),
+    day('2026-11-10', { 'Back Squat': [done(140)] }),
+    day('2026-11-17', { 'Back Squat': [done(165)] }),
+    day('2026-11-20', { 'Bench Press': [done(100)] }),
+    day('2026-11-21', { 'Barbell Row': [done(80)] }),
+  ]), { range });
+  const squat = model.rows.find((row) => row.lift === 'Back Squat');
+  assert.equal(squat.prFlag, true, '165 beat the 150 set in June');
 });
 
 test('stored aliases collapse to one canonical exercise row', () => {

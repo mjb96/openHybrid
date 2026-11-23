@@ -35,7 +35,10 @@ export function buildExerciseSummaryModel(state, options = /** @type {any} */ ({
   /** @type {Map<string, any>} */
   const stats = new Map();
 
-  for (const [dateISO, slots] of index.allByDate) {
+  // CHRONOLOGICAL, not insertion order: the PR flag asks whether a session beat
+  // everything BEFORE it, which is meaningless unless dates are sorted.
+  for (const dateISO of [...index.allByDate.keys()].sort()) {
+    const slots = index.allByDate.get(dateISO) || [];
     for (const slot of slots) {
       for (const [liftName, sets] of Object.entries(slot.lifts || {})) {
         if (!Array.isArray(sets)) continue;
@@ -52,6 +55,8 @@ export function buildExerciseSummaryModel(state, options = /** @type {any} */ ({
             liftId: id,
             lift: name,
             allTimeBest: 0,
+            runningBest: 0,
+            hadRecordInWindow: false,
             sessionDates: new Set(),
             sets: 0,
             best: 0,
@@ -69,10 +74,20 @@ export function buildExerciseSummaryModel(state, options = /** @type {any} */ ({
           const estimate = estimatedE1rmForSet(liftName, set);
           if (estimate > sessionBest) sessionBest = estimate;
         }
+        // A PR is "a session that beats every earlier comparable session", so it
+        // needs a NON-EMPTY prior best to beat:
+        //   · the first session ever is not a record (nothing came before it),
+        //   · a session that merely ties the best is not a record.
+        // `runningBest` is the high-water mark so far, in date order.
+        const beatsPrior = entry.runningBest > 0 && sessionBest > entry.runningBest + 0.01;
+        if (sessionBest > entry.runningBest) entry.runningBest = sessionBest;
         if (sessionBest > entry.allTimeBest) entry.allTimeBest = sessionBest;
 
         // Everything below is window-scoped; the all-time best above is not.
         if (!inRange(dateISO, range)) continue;
+        // A record set OUTSIDE the window must not badge the window, so the flag
+        // is only raised by a session that is actually inside it.
+        if (beatsPrior) entry.hadRecordInWindow = true;
         entry.sessionDates.add(dateISO);
         entry.sets += working.length;
         if (sessionBest > entry.best) entry.best = sessionBest;
@@ -93,7 +108,10 @@ export function buildExerciseSummaryModel(state, options = /** @type {any} */ ({
   const rows = [...stats.values()]
     .filter((entry) => entry.sessionDates.size > 0)
     .map((entry) => {
-      const deltaPct = entry.first > 0
+      // A single session is not a comparison. `first` and `best` are the same
+      // session there, which produced a "+0% / matched earlier sessions" claim
+      // about history that does not exist.
+      const deltaPct = entry.sessionDates.size >= 2 && entry.first > 0
         ? Math.round(((entry.best - entry.first) / entry.first) * 1000) / 10
         : null;
       const series = [...entry.series.entries()]
@@ -108,8 +126,8 @@ export function buildExerciseSummaryModel(state, options = /** @type {any} */ ({
         latestE1rm: Math.round(entry.latest * 10) / 10,
         deltaPct,
         lastPerformedISO: entry.lastDate,
-        // A PR only when the window's best IS the all-time best for this lift.
-        prFlag: entry.best > 0 && entry.allTimeBest > 0 && entry.best >= entry.allTimeBest - 0.01,
+        // A PR only when some session in the window BEAT everything before it.
+        prFlag: entry.hadRecordInWindow && entry.best > 0,
         series,
       };
     })

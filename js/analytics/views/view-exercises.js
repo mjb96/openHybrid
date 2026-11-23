@@ -7,7 +7,7 @@
 // drilldown carries the full series — so the chart is never the only evidence.
 // =============================================================================
 import { band, dataTableDisclosure, stateBlock } from './band-kit.js';
-import { esc, spark } from './screen-kit.js';
+import { esc } from './screen-kit.js';
 import { formatDayMonthShort } from '../../dates.js';
 
 const COLORS = Object.freeze({
@@ -15,6 +15,18 @@ const COLORS = Object.freeze({
   down: 'var(--color-amber, #f59e0b)',
   flat: 'var(--text-secondary)',
 });
+
+/**
+ * Session count, best mark and last date — with no invented weight. A
+ * bodyweight lift has no e1RM, and "0 kg best" is worse than saying nothing.
+ * @param {any} row @param {string} unit
+ */
+function metaFor(row, unit) {
+  const parts = [`${row.sessions} session${row.sessions === 1 ? '' : 's'}`];
+  if (row.bestE1rm > 0) parts.push(`${row.bestE1rm} ${unit} best`);
+  if (row.lastPerformedISO) parts.push(`last ${formatDayMonthShort(row.lastPerformedISO)}`);
+  return parts.join(' · ');
+}
 
 /** @param {number|null} deltaPct */
 function deltaText(deltaPct) {
@@ -72,9 +84,6 @@ export function renderExercises(model, options = {}) {
 
   const rows = shown.map((row) => {
     const delta = deltaText(row.deltaPct);
-    const sparkSVG = row.series.length >= 2
-      ? spark(row.series.map((point) => point.e1rm), COLORS[/** @type {'up'|'down'|'flat'} */ (delta.tone)])
-      : '';
     return `<li class="pg-ex">
       <button type="button" class="pg-ex__hit"
         data-action="open-analytics" data-context="exercise"
@@ -84,11 +93,7 @@ export function renderExercises(model, options = {}) {
           <span class="pg-ex__name">${esc(row.lift)}${row.prFlag ? ' <span class="pg-ex__pr">PR</span>' : ''}</span>
           <span class="pg-ex__delta" style="color:${COLORS[/** @type {'up'|'down'|'flat'} */ (delta.tone)]}">${esc(delta.text)}</span>
         </span>
-        <span class="pg-ex__meta">
-          ${esc(`${row.sessions} session${row.sessions === 1 ? '' : 's'} · ${row.bestE1rm} ${model.unit} best`)}
-          ${row.lastPerformedISO ? esc(` · last ${formatDayMonthShort(row.lastPerformedISO)}`) : ''}
-        </span>
-        ${sparkSVG ? `<span class="pg-ex__spark" aria-hidden="true">${sparkSVG}</span>` : ''}
+        <span class="pg-ex__meta">${esc(metaFor(row, model.unit))}</span>
       </button>
     </li>`;
   }).join('');
