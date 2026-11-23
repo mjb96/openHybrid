@@ -269,3 +269,14 @@
 @media (prefers-reduced-motion: reduce) {
   .hs-hero, .hs-gauge__arc, .hs-confidence__fill, .mbrief__mission { transition: none !important; }
 }
+
+
+/* Light theme: this sheet was written for dark surfaces only, so its white-alpha
+   fills and borders vanish on the light background. */
+html[data-theme="light"] .wrev-stat,
+html[data-theme="light"] .hs-underhood__summary,
+html[data-theme="light"] .hs-action {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.10);
+}
+html[data-theme="light"] .hs-levelbar__track { background: rgba(15, 23, 42, 0.08); }

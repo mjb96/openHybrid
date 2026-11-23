@@ -37,10 +37,19 @@ function ensureStyles() {
   .cmodal__title { font-size: 1.05rem; font-weight: 800; color: var(--text-inverse,#f8fafc); margin-bottom: 8px; }
   .cmodal__msg { font-size: .82rem; line-height: 1.5; color: var(--text-muted,#94a3b8); white-space: pre-line; margin-bottom: 20px; }
   .cmodal__row { display: flex; gap: 10px; }
-  .cmodal__btn { flex: 1; padding: 12px; border-radius: 12px; font-weight: 700; font-size: .86rem; cursor: pointer; border: 1px solid transparent; }
+  .cmodal__btn { flex: 1; padding: 12px; min-height: var(--touch-target, 44px); border-radius: 12px; font-weight: 700; font-size: .86rem; cursor: pointer; border: 1px solid transparent; }
   .cmodal__btn--cancel { background: rgba(255,255,255,0.06); color: var(--text-secondary,#cbd5e1); border-color: rgba(255,255,255,0.12); }
   .cmodal__btn--ok { background: var(--color-blue,#3b82f6); color: #fff; }
   .cmodal__btn--danger { background: var(--color-red,#ef4444); color: #fff; }
+  /* This component paints its own surfaces, so it must carry its own light
+     theme: --text-inverse aliases --text-primary, which is near-black in light
+     mode, and the dark panel would make every destructive question ~1.15:1. */
+  html[data-theme="light"] .cmodal { background: linear-gradient(180deg, #ffffff, #f4f7fb); border-color: rgba(15,23,42,0.10); box-shadow: 0 24px 70px rgba(15,23,42,0.18); }
+  html[data-theme="light"] .cmodal__title { color: #0f172a; }
+  html[data-theme="light"] .cmodal__msg { color: #526176; }
+  html[data-theme="light"] .cmodal__label { color: #526176; }
+  html[data-theme="light"] .cmodal__btn--cancel { background: rgba(15,23,42,0.05); color: #334155; border-color: rgba(15,23,42,0.14); }
+  html[data-theme="light"] .cmodal__input { background: #ffffff; border-color: rgba(15,23,42,0.16); color: #0f172a; }
   .cmodal__field { display: block; margin-bottom: 18px; }
   .cmodal__label { display: block; font-size: .72rem; font-weight: 700; color: var(--text-muted,#94a3b8); margin-bottom: 6px; }
   .cmodal__inputwrap { display: flex; align-items: center; gap: 8px; }
