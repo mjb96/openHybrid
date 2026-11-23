@@ -13,6 +13,10 @@ import { confirmModal } from './ui/confirm-modal.js';
 import { formatDayMonth, todayKey } from './dates.js';
 import { showToast } from './toast.js';
 
+// Matches MAX_MEASURE_WEIGHT in js/metrics/measures.js: one mistyped 9999 would
+// rescale every chart, mean and rate.
+const MAX_WEIGHT = 500;
+
 let _render = () => {};
 
 /** @param {() => void} render */
@@ -132,7 +136,12 @@ export function saveBodyweightSheet() {
   const weightInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'));
   const date = validDate(dateInput?.value) ? dateInput.value : todayKey();
   const weight = parseFloat(weightInput?.value || '');
-  if (!Number.isFinite(weight) || weight <= 0) return;
+  // Same bound the Measures entry uses: one mistyped 9999 permanently rescales
+  // every chart, mean and rate.
+  if (!Number.isFinite(weight) || weight <= 0 || weight > MAX_WEIGHT) {
+    showToast(`Enter a weight between 1 and ${MAX_WEIGHT}`, true);
+    return;
+  }
   if (date > todayKey()) {
     showToast('Choose today or an earlier date');
     return;

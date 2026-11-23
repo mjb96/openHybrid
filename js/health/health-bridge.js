@@ -167,6 +167,9 @@ export function applyHealthDays(state, buckets, fields = HEALTH_FIELD_IDS.slice(
 
   for (const id of selected) {
     const sk = fieldById(id).seriesKey;
+    // An imported/corrupt series can contain a record with no date; sorting it
+    // used to throw, and every later sync failed with it.
+    hc[sk] = hc[sk].filter((row) => row && typeof row.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.date));
     hc[sk].sort((a, b) => a.date.localeCompare(b.date));
     if (hc[sk].length > MAX_HISTORY_DAYS) hc[sk] = hc[sk].slice(-MAX_HISTORY_DAYS);
   }

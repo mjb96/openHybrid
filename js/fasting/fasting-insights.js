@@ -141,7 +141,7 @@ export function generateFastingInsights(calcs) {
   // ── Longest fast milestone
   if (calcs.longestFast >= 24) {
     insights.push({
-      text: `Longest fast: ${calcs.longestFast.toFixed(1)}h — reached the Ketosis Progression phase.`,
+      text: `Longest fast: ${calcs.longestFast.toFixed(1)}h.`,
       priority: 'good',
       category: 'fasting',
     });
@@ -157,7 +157,7 @@ export function generateFastingInsights(calcs) {
       });
     } else if (calcs.routineStabilityScore < 35 && calcs.totalFasts >= 5) {
       insights.push({
-        text: `Routine stability is ${calcs.routineStabilityScore.toFixed(0)}%. Starting fasts at a consistent time each day may strengthen metabolic signalling.`,
+        text: `Routine stability is ${calcs.routineStabilityScore.toFixed(0)}%. Starting fasts at a consistent time each day makes them easier to keep.`,
         priority: 'info',
         category: 'fasting',
       });
@@ -208,7 +208,7 @@ export function generateFastingInsights(calcs) {
   // ── Fasting score tier change
   if (calcs.fastingScore !== null && calcs.fastingScore >= 85) {
     insights.push({
-      text: `Fasting Score: ${calcs.fastingScore} — Excellent. Maintaining this consistency builds long-term metabolic health.`,
+      text: `Fasting Score: ${calcs.fastingScore} — Excellent. Maintaining this consistency is what makes the habit stick.`,
       priority: 'good',
       category: 'fasting',
     });

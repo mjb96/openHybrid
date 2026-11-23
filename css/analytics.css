@@ -536,7 +536,7 @@
 .an-stat--action { color:inherit; cursor:pointer; font:inherit; min-height:110px; padding:12px; position:relative; text-align:left; width:100%; }
 .an-stat--action:focus-visible,.an-ranked-row:focus-visible,.an-evidence-row:focus-visible,.an-volume-bar:focus-visible,.an-segment__button:focus-visible { outline:2px solid var(--color-blue); outline-offset:2px; }
 .an-stat__drill { color:var(--color-blue); font-size:.62rem; font-weight:750; margin-top:auto; padding-top:7px; }
-.an-entity-link { align-items:center; background:transparent; border:0; color:var(--text-primary); display:inline-flex; gap:5px; min-height:38px; padding:4px 0; text-align:left; }.an-entity-link > span:last-child { color:var(--color-blue); }
+.an-entity-link { align-items:center; background:transparent; border:0; color:var(--text-primary); display:inline-flex; gap:5px; min-height:44px; padding:4px 0; text-align:left; }.an-entity-link > span:last-child { color:var(--color-blue); }
 .an-exercise-trend { align-items:end; background:linear-gradient(180deg,transparent,var(--overlay-xs)); border-bottom:1px solid var(--border-default); display:flex; gap:4px; height:110px; margin-bottom:12px; overflow-x:auto; padding:8px 2px 0; }
 .an-exercise-trend span { background:linear-gradient(180deg,#60a5fa,#2563eb); border-radius:4px 4px 0 0; flex:1 0 8px; max-width:22px; min-height:4px; }
 .an-muscle-trend { align-items:end; display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; height:130px; }

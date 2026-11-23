@@ -158,6 +158,25 @@ export async function saveBinaryExport(file, providedRuntime = {}) {
   const Url = runtime.URL || (typeof URL !== 'undefined' ? URL : undefined);
   const doc = runtime.document || (typeof document !== 'undefined' ? document : undefined);
   const BlobCtor = runtime.Blob || (typeof Blob !== 'undefined' ? Blob : undefined);
+  const win = runtime.window || (typeof window !== 'undefined' ? window : undefined);
+
+  // Android: the photo archive is the only copy of those bytes, so it MUST go
+  // through the native binary bridge. A shell that exposes the text-only bridge
+  // cannot write a zip at all — an anchor into a blob: URL reaches a download
+  // listener that has no blob: branch, so nothing lands. Say so instead of
+  // claiming success (this used to report "saved" while writing nothing).
+  const bridge = win?.HybridFileExportBridge;
+  if (bridge && typeof bridge.saveBinaryFile === 'function') {
+    return await saveBinaryNative(file, win, bridge, runtime);
+  }
+  if (bridge) {
+    return {
+      status: 'error',
+      adapter: 'android',
+      message: 'Photo export needs a newer app version. Update openHybrid and try again.',
+    };
+  }
+
   if (!doc || !Url?.createObjectURL || !BlobCtor) return { status: 'unavailable' };
   try {
     const blob = new BlobCtor([new Uint8Array(file.bytes)], { type: file.mime || 'application/octet-stream' });
@@ -170,8 +189,61 @@ export async function saveBinaryExport(file, providedRuntime = {}) {
     anchor.click();
     anchor.remove();
     setTimeout(() => { try { Url.revokeObjectURL(url); } catch { /* already gone */ } }, 4000);
-    return { status: 'saved', filename: file.filename };
+    // A browser download is a hand-off, not a confirmed write. Same honesty rule
+    // the text path already follows.
+    return { status: 'started', adapter: 'browser-download', filename: file.filename };
   } catch {
     return { status: 'error' };
   }
+}
+
+/**
+ * Send binary bytes through the Android bridge and wait for its confirmation.
+ * At most one export runs at a time (the native side enforces that too).
+ */
+function saveBinaryNative(file, win, bridge, runtime) {
+  return new Promise((resolve) => {
+    const id = `bin_${++callbackSeq}_${Date.now()}`;
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      cancelTimeout(runtime, timer);
+      try { delete win.__fileExportCB[id]; } catch { /* ignore */ }
+      resolve({ ...value, adapter: 'android' });
+    };
+    const timer = scheduleTimeout(runtime, () => {
+      finish({ status: 'error', message: 'Android save timed out.' });
+    }, 120000);
+    if (!win.__fileExportCB) win.__fileExportCB = {};
+    win.__fileExportCB[id] = (json) => {
+      try {
+        const result = JSON.parse(json || '{}');
+        const status = ['saved', 'cancelled', 'error'].includes(result.status) ? result.status : 'error';
+        finish({ status, message: result.message || null, filename: result.filename || file.filename });
+      } catch {
+        finish({ status: 'error', message: 'Android returned an invalid save result.' });
+      }
+    };
+    try {
+      bridge.saveBinaryFile(file.filename, base64FromBytes(file.bytes), file.mime, id);
+    } catch (error) {
+      finish({ status: 'error', message: error instanceof Error ? error.message : 'Android save failed.' });
+    }
+  });
+}
+
+/** Chunked base64 so a multi-MB archive cannot blow the argument stack. */
+function base64FromBytes(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  let binary = '';
+  const CHUNK = 0x8000;
+  for (let i = 0; i < data.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, data.subarray(i, i + CHUNK));
+  }
+  if (typeof btoa === 'function') return btoa(binary);
+  // No btoa (old WebView / odd shell): fall back to the URL-safe-free base64 of
+  // an ArrayBuffer via a temporary binary string. Reports an honest failure
+  // rather than throwing an undefined reference.
+  throw new Error('This device cannot encode the photo archive.');
 }

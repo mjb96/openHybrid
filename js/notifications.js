@@ -13,7 +13,7 @@
 // delivery needs native AlarmManager/WorkManager scheduling (follow-up).
 // ==========================================
 
-import { computeDashboardModel } from './home/dashboard-model.js';
+import { computeDashboardModel, computeStreak } from './home/dashboard-model.js';
 import { computeHybridScore } from './brain/hybrid-score/hybrid-score.js';
 import { projectScore } from './brain/hybrid-score/project.js';
 import { buildMorningBriefing, briefingToText } from './brain/morning-briefing.js';
@@ -344,7 +344,11 @@ function _fireStreakAlert() {
   if (!notificationsGranted()) return;
   if (_hasLoggedToday(localDayKey(new Date()))) return; // already trained — no nag
 
-  const streak = _getState?.()?.streakData?.current || 0;
+  // state.streakData was never written by anything; the live streak is computed
+  // from logged weeks. Reading the dead field meant a 40-day athlete was told
+  // "no activity yet today".
+  const st = _getState?.();
+  const streak = st?.weeks ? computeStreak(st.weeks, WEEK_DAYS, st).current : 0;
   const body   = streak > 0
     ? `Don't break your ${streak}-day streak! Log something today to keep it alive. 🔥`
     : "No activity yet today — even a short session counts. Let's go! ⚡";

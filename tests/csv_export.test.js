@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildBodyweightCsv, buildTrainingCsv } from '../js/portability/csv-export.js';
+import { buildBodyweightCsv, buildTrainingCsv, csvCell } from '../js/portability/csv-export.js';
 
 function parseCsv(text) {
   const rows = [];
@@ -79,4 +79,18 @@ test('exports bodyweight history as its own CSV, sorted and deduped', () => {
   const rows = parseCsv(csv);
   assert.deepEqual(rows[0], ['Date', 'Weight']);
   assert.deepEqual(rows.slice(1), [['2026-11-01', '85'], ['2026-11-19', '83.4']]);
+});
+
+
+test('a cell that would execute as a spreadsheet formula is neutralised', () => {
+  // Imported notes/names reach this function, so exports must not become code.
+  assert.equal(csvCell('=HYPERLINK("http://evil.example","click")'), `"'=HYPERLINK(""http://evil.example"",""click"")"`);
+  assert.equal(csvCell('+44 7700 900000'), `"'+44 7700 900000"`);
+  assert.equal(csvCell('@SUM(A1)'), `"'@SUM(A1)"`);
+  assert.equal(csvCell('-2+3'), `"'-2+3"`);
+  assert.equal(csvCell('\tleading tab'), `"'\tleading tab"`);
+  // A real number keeps its sign: the guard must not corrupt numeric columns.
+  assert.equal(csvCell('-5'), '"-5"');
+  assert.equal(csvCell('-12.5'), '"-12.5"');
+  assert.equal(csvCell('normal text'), '"normal text"');
 });

@@ -12,6 +12,7 @@
 // are separate seams rather than simple row mutations.
 // =============================================================================
 import { setRowNumberLabel } from './set-entry.js';
+import { setRestOverrides } from '../timers.js';
 import { showToast } from '../state.js';
 import { dateKey } from '../dates.js';
 import { numberPromptModal, textPromptModal } from '../ui/confirm-modal.js';
@@ -365,7 +366,7 @@ async function _ensureBodyweight(appState) {
 }
 
 export async function setSetLoadMode(liftName, setIndex, mode) {
-  if (!['bodyweight', 'weighted', 'assisted'].includes(mode)) return;
+  if (!['bodyweight', 'weighted', 'assisted', 'banded'].includes(mode)) return;
   const appState = _getState();
   if ((mode === 'bodyweight' || mode === 'assisted') && await _ensureBodyweight(appState) == null) return;
 
@@ -373,10 +374,20 @@ export async function setSetLoadMode(liftName, setIndex, mode) {
   const weekKey = activeWorkoutWeekKey(appState);
   const sets = appState.weeks?.[weekKey]?.lifts?.[selectedDay]?.[liftName];
   if (!sets || setIndex < 0 || setIndex >= sets.length) return;
-  const next = applyLoadMode(sets[setIndex], mode, {
-    bodyweight: currentBodyweight(appState),
-    bandWeights: appState.settings?.bandWeights,
-  });
+  // Re-tapping the cell the set is ALREADY stored as is a no-op: re-applying
+  // would blank a logged load. An inferred-but-unstored mode still applies, so a
+  // blank bodyweight row gets its `bw` stamp on the first tap.
+  if (sets[setIndex]?.loadMode === mode) return;
+  const next = mode === 'banded'
+    ? applyBandLoad(sets[setIndex], sets[setIndex]?.band || 'M', {
+      exercise: liftName,
+      bodyweight: currentBodyweight(appState),
+      bandWeights: appState.settings?.bandWeights,
+    })
+    : applyLoadMode(sets[setIndex], mode, {
+      bodyweight: currentBodyweight(appState),
+      bandWeights: appState.settings?.bandWeights,
+    });
   _replaceSet(sets, setIndex, next);
   _syncLoadModeRow(liftName, setIndex, next);
   _saveState(true);
@@ -546,6 +557,10 @@ export function setSetRest(liftName, setIndex, seconds) {
   // ANOTHER set still outranks the override — logged/legacy rows are not
   // rewritten.
   setExerciseRestOverride(_getState(), liftName, seconds == null ? null : seconds);
+  // The timer engine keeps its own copy of the override map, refreshed at boot and
+  // by the exercise-options sheet. Without this push, the very next set of this
+  // lift resolves from the movement tier instead of the rest just chosen.
+  setRestOverrides(_getState().settings?.restOverrides || {});
   if ('restSec' in sets[setIndex]) delete sets[setIndex].restSec;
   _saveState(true);
   _syncSetMetaRow(liftName, setIndex);

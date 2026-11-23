@@ -36,6 +36,22 @@ class FileExportBridge(
         enqueue(request)
     }
 
+    /**
+     * Binary export (the photo archive). The photo bytes are the ONLY dataset with
+     * no other copy on Android, so this must write a real file or fail honestly.
+     */
+    @JavascriptInterface
+    fun saveBinaryFile(filename: String, base64: String, mime: String, callbackId: String) {
+        val safeCallback = BridgeSafe.callbackId(callbackId) ?: return
+        val bytes = runCatching { android.util.Base64.decode(base64, android.util.Base64.DEFAULT) }.getOrNull()
+        val request = ExportSafe.requestBytes(filename, bytes, mime, safeCallback)
+        if (request == null) {
+            resolve(safeCallback, "error", null, "Invalid export request.")
+            return
+        }
+        enqueue(request)
+    }
+
     /** Compatibility path for old data: download links handled by MainActivity. */
     fun saveFromDownload(filename: String, content: String, mime: String) {
         val request = ExportSafe.request(filename, content, mime, null)
@@ -69,8 +85,9 @@ class FileExportBridge(
         }
         scope.launch {
             val error = runCatching {
+                val payload = request.bytes ?: request.content.toByteArray(Charsets.UTF_8)
                 context.contentResolver.openOutputStream(uri, "wt")?.use {
-                    it.write(request.content.toByteArray(Charsets.UTF_8))
+                    it.write(payload)
                 } ?: error("Output stream unavailable")
             }.exceptionOrNull()
             if (error == null) complete(request, "saved", null)

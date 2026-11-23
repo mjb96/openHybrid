@@ -71,9 +71,12 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // The adherence baseline: the same value the placeholder used to carry before
   // it started following the previous set. Kept on the row so true-adherence
   // still measures against the prescription, not against the athlete's last set.
+  // The coach's target, and ONLY the target. Falling back to ghostDefault here
+  // recorded the athlete's own previous set as the prescription, so adherence
+  // measured them against themselves.
   const prescribedPlaceholder = (hasRole && roleTag.backoffSuggest != null)
     ? String(roleTag.backoffSuggest)
-    : ghostDefault;
+    : (prescribed?.w != null ? String(prescribed.w) : '');
   const backoffHint = hasRole && roleTag.backoffHint ? String(roleTag.backoffHint) : '';
   const boAttrs = boSrc
     ? ` data-bo-src="${escapeHtml(boSrc)}" data-bo-pct="${escapeHtml(String(roleTag.boPct ?? ''))}"`
