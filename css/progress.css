@@ -762,3 +762,18 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
   .pg-pulse__top .session-map__views { max-width: 170px; }
 }
 .pg-pulse__credit { margin: 8px 0 0; font-size: 0.5rem; color: var(--text-secondary); opacity: 0.75; }
+
+/* ------------------------------------------------------------ 20. REPORTS */
+.pg-reports { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.pg-reports__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; min-height: 56px; padding: 10px 12px;
+  border: 1px solid var(--border-default, rgba(255,255,255,0.07)); border-radius: 10px;
+  background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pg-reports__row:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+.pg-reports__copy { display: flex; flex-direction: column; gap: 2px; }
+.pg-reports__title { font-size: 0.74rem; font-weight: 800; color: var(--text-primary); }
+.pg-reports__desc { font-size: 0.6rem; color: var(--text-secondary); }
+.pg-reports__arrow { color: var(--color-cyan, #22d3ee); font-weight: 800; }
+html[data-theme="light"] .pg-reports__title { color: #0f172a; }

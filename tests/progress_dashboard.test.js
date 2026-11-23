@@ -30,7 +30,7 @@ const ctx = { todayISO: TODAY };
 
 test('a trained athlete gets Pulse and Muscles, each with a real model', () => {
   const model = buildProgressDashboard(trainedState(), ctx);
-  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'muscles']);
+  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'muscles', 'reports']);
   const pulse = model.bands.find((band) => band.id === 'pulse');
   assert.equal(pulse.model.sessions, 1);
   assert.equal(model.availability.pulse.hasData, true);
@@ -74,7 +74,8 @@ test('a module switch removes the band and says so', () => {
 
 test('an empty athlete still gets Pulse, which reports no data', () => {
   const model = buildProgressDashboard({ settings: {}, weeks: {} }, ctx);
-  assert.equal(model.bands.length, 1);
+  // Pulse keeps its empty state; Reports is static links and always renders.
+  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'reports']);
   assert.equal(model.availability.pulse.hasData, false);
   assert.equal(model.availability.pulse.hidden, false);
 });
@@ -167,9 +168,9 @@ test('the saved order is honoured, with unknown ids ignored', () => {
     settings: { ui: { progress: { order: ['reports', 'pulse', 'nope'] } } },
   });
   const model = buildProgressDashboard(state, ctx);
-  // Only pulse has a builder today, so it is the only rendered band — the point
-  // is that traversal followed the saved order instead of the catalogue.
-  assert.equal(model.bands[0].id, 'pulse');
+  // The saved order decides traversal: reports was asked for first, so it is
+  // first even though the catalogue puts it last.
+  assert.deepEqual(model.bands.map((band) => band.id).slice(0, 2), ['reports', 'pulse']);
   assert.equal(model.totalCount, 8);
 });
 
@@ -184,4 +185,31 @@ test('an unknown focus falls back to All rather than hiding anything', () => {
 
 test('an invalid reference day is refused, not guessed', () => {
   assert.throws(() => buildProgressDashboard(trainedState(), { todayISO: 'nope' }), /invalid todayISO/);
+});
+
+test('a hidden detail switch does not hide the last visible band', () => {
+  // `hidden` carries sub-card ids too. Counting its size made the only
+  // remaining band look hidden and replaced it with "all cards are hidden".
+  const hidden = ['pulse', 'balance', 'muscles', 'exercises', 'endurance', 'fasting', 'reports', 'bodyPhotos'];
+  const state = {
+    settings: { ui: { progress: { hidden } } },
+    weeks: { '1': { dates: { mon: '2026-11-23' }, lifts: { mon: { 'Bench Press': [done(100)] } } } },
+    bodyWeightLog: [{ date: '2026-11-20', weight: 78.4 }],
+  };
+  const model = buildProgressDashboard(state, ctx);
+  assert.equal(model.visibleCount, 1, 'Body is still visible');
+  assert.deepEqual(model.bands.map((band) => band.id), ['body']);
+});
+
+test('a module switch cannot leave a silently empty page', () => {
+  // Every band hidden except Endurance, with Running switched off.
+  const state = {
+    settings: {
+      modules: { running: false },
+      ui: { progress: { hidden: ['pulse', 'balance', 'muscles', 'exercises', 'body', 'fasting', 'reports'] } },
+    },
+    weeks: {},
+  };
+  const model = buildProgressDashboard(state, ctx);
+  assert.equal(model.visibleCount, 0, 'nothing can render');
 });

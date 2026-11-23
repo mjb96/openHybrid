@@ -713,6 +713,31 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 
 ## 13. Session log
 
+- **2026-11-23 — Progress: independent rules audit, and the fixes it forced.**
+  - An adversarial audit of all 13 rule families found six failures. The worst:
+    the **Fasting band never rendered**, because the model read `entry.hours` while
+    the only writer stores `durationHours` — and the test fixture used the fictional
+    shape, so the suite was green while the feature was dead. The band now reads the
+    real field and judges each fast against the goal that applied TO IT, not today's.
+  - **Balance could claim "no strength work" about a lifter who trained twice**
+    without rating the sets: the currency was chosen from whichever modality had RPE.
+    The split now requires a currency BOTH sides can use (sRPE only when both rated,
+    otherwise minutes for both, labelled), and "was this modality trained?" is
+    answered independently of the currency.
+  - **Pulse's adherence compared sessions with days** ("10 of 4"); it now compares
+    planned DAYS with trained days and caps at 100. The at-risk streak, which could
+    never reach the screen, is stated in the empty state.
+  - **The Muscles "All" range charted one bucket** (it fell back to today instead of
+    the earliest session); the composer's `visibleCount` counted sub-cards and could
+    hide the last remaining band; two screen-reader strings and the share card
+    hardcoded `km`; a body-weight "0 kg best" reached the accessible name and table.
+    All fixed, with regression tests built from the real writer (`stopFastAtTime`)
+    rather than a shape nothing persists.
+  - The audit also validated ranges, exercises PR semantics, endurance logic, photo
+    idempotency and a real zip round trip, calendar discipline, and the warm-up rule.
+  - `npm run verify` green (2,569 tests); the full browser suite is re-run on every
+    fix.
+
 - **2026-11-23 — Progress: one time control, and the defects a real screenshot found.**
   - The shared **week navigator is gone from Progress**. It was a leftover from the
     week-scoped hub: a second, contradictory answer to "which period am I looking

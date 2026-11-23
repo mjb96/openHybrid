@@ -36,27 +36,38 @@ export function buildBalanceModel(state, options = /** @type {any} */ ({})) {
     ? timeline.filter((row) => inRange(row.date, options.previous))
     : [];
 
-  // Same two-currency decision as buildHybridBalance: sRPE first (physiological),
-  // minutes as the honest fallback, 'none' when neither exists.
-  const hasLoad = rows.some((row) => row.strength + row.endurance > 0);
-  const hasMinutes = rows.some((row) => row.strengthMin + row.enduranceMin > 0);
-  const basis = hasLoad ? 'srpe' : hasMinutes ? 'minutes' : 'none';
+  // Walk-excluded per-modality measures, defined ONCE. The timeline reports
+  // endurance INCLUDING walks (real time on feet); the split never sees them.
+  const strengthLoadOf = (row) => row.strength || 0;
+  const strengthMinutesOf = (row) => row.strengthMin || 0;
+  const enduranceLoadOf = (row) => Math.max(0, (row.endurance || 0) - (row.walkLoad || 0));
+  const enduranceMinutesOf = (row) => Math.max(0, (row.enduranceMin || 0) - (row.walkMin || 0));
 
-  const strengthOf = (row) => (basis === 'minutes' ? row.strengthMin : row.strength);
-  // The timeline reports endurance INCLUDING walks (they are real time on
-  // feet); the split subtracts them, so a walk can never move a training share.
-  const enduranceOf = (row) => {
-    const measured = basis === 'minutes' ? row.enduranceMin : row.endurance;
-    const walked = basis === 'minutes' ? (row.walkMin || 0) : (row.walkLoad || 0);
-    return Math.max(0, measured - walked);
-  };
+  // One currency has to describe BOTH sides, or the split compares two things
+  // measured differently. sRPE only when both modalities were rated; otherwise
+  // training minutes for both, and the band says so. Choosing sRPE from a rated
+  // run alone made a lifter who never rates SETS read as "no strength work in
+  // this period" — a false statement about real training.
+  const strengthHasLoad = rows.some((row) => strengthLoadOf(row) > 0);
+  const enduranceHasLoad = rows.some((row) => enduranceLoadOf(row) > 0);
+  const strengthHasMinutes = rows.some((row) => strengthMinutesOf(row) > 0);
+  const enduranceHasMinutes = rows.some((row) => enduranceMinutesOf(row) > 0);
+
+  const basis = strengthHasLoad && enduranceHasLoad
+    ? 'srpe'
+    : strengthHasMinutes && enduranceHasMinutes
+      ? 'minutes'
+      : 'none';
+
+  const strengthOf = (row) => (basis === 'minutes' ? strengthMinutesOf(row) : strengthLoadOf(row));
+  const enduranceOf = (row) => (basis === 'minutes' ? enduranceMinutesOf(row) : enduranceLoadOf(row));
   const sumOf = (list, pick) => list.reduce((total, row) => total + (pick(row) || 0), 0);
 
   const strength = sumOf(rows, strengthOf);
   const endurance = sumOf(rows, enduranceOf);
   const total = strength + endurance;
   const strengthSharePct = total > 0 ? round1((strength / total) * 100) : null;
-  const enduranceSharePct = total > 0 ? round1(100 - /** @type {number} */ (strengthSharePct)) : null;
+  const enduranceSharePct = strengthSharePct == null ? null : round1(100 - strengthSharePct);
 
   const previousStrength = sumOf(previousRows, strengthOf);
   const previousEndurance = sumOf(previousRows, enduranceOf);
@@ -69,8 +80,11 @@ export function buildBalanceModel(state, options = /** @type {any} */ ({})) {
     : null;
 
   const walkMinutes = Math.round(sumOf(rows, (row) => row.walkMin));
-  const hasStrength = rows.some((row) => strengthOf(row) > 0);
-  const hasEndurance = rows.some((row) => enduranceOf(row) > 0);
+  // Whether a modality was TRAINED is independent of the currency the split
+  // settled on: a strength-only window has no common basis, but it certainly has
+  // strength work, and the copy must say "no runs" rather than "no strength".
+  const hasStrength = strengthHasLoad || strengthHasMinutes;
+  const hasEndurance = enduranceHasLoad || enduranceHasMinutes;
 
   return {
     range,

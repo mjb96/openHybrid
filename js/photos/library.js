@@ -163,6 +163,8 @@ export async function importPhotosZip(state, bytes, options = {}) {
     const ok = await putPhotoBlob(photoIdFor(photo.date), blob);
     if (!ok) continue;
 
+    // The id is derived from the date, never trusted from the file: a foreign id
+    // produced a tile the UI could not delete (delete filters by id).
     const id = photoIdFor(photo.date);
     const record = {
       id,

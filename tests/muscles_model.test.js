@@ -160,3 +160,21 @@ test('weeksInRange scales a window for reference comparisons', () => {
   assert.equal(weeksInRange({ days: 30 }), 30 / 7);
   assert.equal(weeksInRange({ startISO: '2026-11-01', endISO: '2026-11-14' }), 2);
 });
+
+test('the unbounded range charts its whole history, not one bucket', () => {
+  const all = resolveRange('all', '2026-11-24'); // no earliestISO: startISO is null
+  const model = buildMuscleModel(stateWith([
+    day('2026-08-03', { 'Barbell Bench Press': [done(100)] }),
+    day('2026-11-16', { 'Back Squat': [done(140)] }),
+    day('2026-11-23', { 'Back Squat': [done(145)] }),
+  ]), { range: all, grouping: 'week' });
+
+  assert.ok(model.buckets.length > 1, `one bucket for a whole history: ${model.buckets.length}`);
+  const charted = model.buckets.reduce((total, bucket) =>
+    total + Object.values(bucket.setsByMuscle).reduce((sum, value) => sum + value, 0), 0);
+  // The headline is rounded to one decimal and the buckets are raw credits, so
+  // they agree to within a rounding step — the old bug differed by every session
+  // outside the single bucket.
+  assert.ok(Math.abs(charted - model.totalSets) < 0.1,
+    `the chart (${charted}) must account for the headline (${model.totalSets})`);
+});

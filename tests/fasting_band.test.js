@@ -15,7 +15,8 @@ const range = resolveRange('30d', '2026-11-24');
 function state(history, goal = 16) {
   return { fastingSession: { active: false, startTime: null, goal, history } };
 }
-const fast = (endTime, hours) => ({ startTime: 'x', endTime, hours, goal: 16, completed: true });
+// durationHours + goalHours: the shape js/fasting.js actually writes.
+const fast = (endTime, hours) => ({ startTime: 'x', endTime, durationHours: hours, goalHours: 16 });
 
 test('average, adherence and longest come from completed fasts in the window', () => {
   const model = buildFastingBandModel(state([

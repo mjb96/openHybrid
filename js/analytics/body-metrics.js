@@ -12,6 +12,7 @@
 // =============================================================================
 import { buildBodyweightModel } from '../metrics/bodyweight.js';
 import { buildMeasurementModel } from '../metrics/measurements.js';
+import { inRange } from './ranges.js';
 import { listPhotos } from '../photos/library.js';
 
 const KEY_SITES = ['waist', 'chest', 'arm_l', 'thigh_l'];
@@ -56,6 +57,8 @@ export function buildBodyMetricsModel(state, options = /** @type {any} */ ({})) 
       return a.label.localeCompare(b.label);
     });
 
+  const photosInWindow = listPhotos(state).filter((photo) => inRange(photo.date, range));
+
   const bodyFat = measurements.bodyFat?.latest
     ? {
       // Body-fat points carry `value` (a percentage), not `cm` — the tape
@@ -81,7 +84,9 @@ export function buildBodyMetricsModel(state, options = /** @type {any} */ ({})) 
     sites,
     siteCount: sites.length,
     bodyFat,
-    photos: listPhotos(state),
-    hasData: latestWeight != null || sites.length > 0 || bodyFat != null || listPhotos(state).length > 0,
+    // Scoped like every other number in this band: a photo from 2024 must not
+    // appear under a heading that names the last 30 days.
+    photos: photosInWindow,
+    hasData: latestWeight != null || sites.length > 0 || bodyFat != null || photosInWindow.length > 0,
   };
 }

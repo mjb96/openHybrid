@@ -8,6 +8,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildPulseModel } from '../js/analytics/pulse.js';
+import { renderPulse } from '../js/analytics/views/view-pulse.js';
+
+/** @param {any} model */
+const renderPulseFor = (model) => renderPulse(model);
 
 const done = (w, r = 5) => ({ c: true, w: String(w), r: String(r) });
 const warmup = (w) => ({ c: true, w: String(w), r: '10', type: 'W' });
@@ -207,4 +211,46 @@ test('a selected week snaps to its Monday even if a mid-week date is passed', ()
 
 test('an invalid reference day is refused rather than guessed', () => {
   assert.throws(() => buildPulseModel({ weeks: {} }, { todayISO: 'nope' }), /invalid todayISO/);
+});
+
+test('adherence compares planned DAYS with trained days, never sessions with days', () => {
+  // Mon and Thu are planned. The athlete lifts Mon, runs Tue/Wed/Fri.
+  // Sessions (4) outnumber planned days (2): the old ratio said 200 %.
+  const program = {
+    days: {
+      mon: { lifts: ['Bench Press'] }, thu: { lifts: ['Back Squat'] },
+      tue: {}, wed: {}, fri: {}, sat: {}, sun: {},
+    },
+  };
+  const state = {
+    weeks: {
+      '1': {
+        dates: {
+          mon: '2026-11-23', tue: '2026-11-24', wed: '2026-11-25', fri: '2026-11-27',
+        },
+        lifts: { mon: { 'Bench Press': [done(100)] } },
+        runSessions: {
+          tue: [{ dist: '5', time: '25:00', type: 'run' }],
+          wed: [{ dist: '5', time: '25:00', type: 'run' }],
+          fri: [{ dist: '5', time: '25:00', type: 'run' }],
+        },
+      },
+    },
+  };
+  const model = buildPulseModel(state, { todayISO: '2026-11-28', program });
+  assert.equal(model.sessions, 4, 'four sessions were logged');
+  assert.equal(model.sessionsPlanned, 2, 'the plan asks for two days');
+  assert.equal(model.plannedDaysElapsed, 2, 'both planned days have passed');
+  assert.equal(model.completedPlannedDays, 1, 'only Monday was trained');
+  assert.equal(model.adherencePct, 50, 'and the ratio cannot exceed 100');
+});
+
+test('an untrained week keeps the streak visible at the surface', () => {
+  const model = buildPulseModel(fixture(), { todayISO: '2026-12-01', });
+  // Two trained weeks before, none this week.
+  assert.equal(model.streakWeeks >= 1, true);
+  assert.equal(model.streakAtRisk, true);
+  const html = renderPulseFor(model);
+  assert.match(html, /streak is still alive/);
+  assert.match(html, /One session keeps it|one session keeps it/i);
 });

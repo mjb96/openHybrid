@@ -170,9 +170,13 @@ export function rateStatus(rate, goal) {
  * @param {{ now?: number, rangeDays?: number }} [options]
  */
 export function buildBodyweightModel(state, { now = Date.now(), rangeDays = 90 } = {}) {
-  const log = normalizeWeighIns(state?.bodyWeightLog);
+  const today = dateKey(new Date(now));
+  // A weigh-in dated in the future is a data-entry or import artefact; it must
+  // never become "latest" or drive the change for a window that ends today.
+  const log = normalizeWeighIns(state?.bodyWeightLog).filter((entry) => entry.date <= today);
   const unit = state?.settings?.weightUnit === 'lbs' ? 'lb' : 'kg';
-  const from = rangeDays > 0 ? dateKey(new Date(now - rangeDays * 86400000)) : '';
+  // Inclusive window: 30 days ENDING today is today-29 … today, not 31 days.
+  const from = rangeDays > 0 ? dateKey(new Date(now - (rangeDays - 1) * 86400000)) : '';
   const points = from ? log.filter((entry) => entry.date >= from) : log;
   const latest = log.length ? log[log.length - 1] : null;
   const rate = weightRate(log, { now });

@@ -88,7 +88,7 @@ export function renderExercises(model, options = {}) {
       <button type="button" class="pg-ex__hit"
         data-action="open-analytics" data-context="exercise"
         data-entity="${esc(row.liftId)}" data-entity-name="${esc(row.lift)}"
-        aria-label="${esc(`${row.lift}: best ${row.bestE1rm} ${model.unit} estimated 1RM, ${delta.text}, ${row.sessions} sessions. Open exercise detail.`)}">
+        aria-label="${esc(`${row.lift}: ${row.bestE1rm > 0 ? `best ${row.bestE1rm} ${model.unit} estimated 1RM, ` : ''}${delta.text}, ${row.sessions} sessions. Open exercise detail.`)}">
         <span class="pg-ex__head">
           <span class="pg-ex__name">${esc(row.lift)}${row.prFlag ? ' <span class="pg-ex__pr">PR</span>' : ''}</span>
           <span class="pg-ex__delta" style="color:${COLORS[/** @type {'up'|'down'|'flat'} */ (delta.tone)]}">${esc(delta.text)}</span>

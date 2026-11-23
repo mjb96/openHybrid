@@ -23,7 +23,7 @@ function paceText(secondsPerKm, unit) {
 /**
  * @param {any} model
  */
-function stackHTML(model) {
+function stackHTML(model, distanceUnit) {
   if (!model.buckets.length) return '';
   const max = Math.max(...model.buckets.map((bucket) => bucket.runKm), 0);
   if (!(max > 0)) return '';
@@ -36,10 +36,10 @@ function stackHTML(model) {
         ${walkHeight ? `<span class="pg-stack__col pg-stack__col--walk" style="height:${walkHeight.toFixed(2)}%"></span>` : ''}
       </div>
       <span class="pg-stack__label">${esc(bucket.label)}</span>
-      <span class="sr-only">${esc(`${bucket.label}: ${bucket.runKm} km run${bucket.walkKm ? `, ${bucket.walkKm} km walk` : ''}`)}</span>
+      <span class="sr-only">${esc(`${bucket.label}: ${formatRunDistance(bucket.runKm, distanceUnit)} run${bucket.walkKm ? `, ${formatRunDistance(bucket.walkKm, distanceUnit)} walk` : ''}`)}</span>
     </div>`;
   }).join('');
-  return `<div class="pg-stack" role="img" aria-label="${esc(`Run distance per ${model.monthly ? 'month' : 'week'}, peak ${max} km`)}">${columns}</div>`;
+  return `<div class="pg-stack" role="img" aria-label="${esc(`Run distance per ${model.monthly ? 'month' : 'week'}, peak ${formatRunDistance(max, distanceUnit)}`)}">${columns}</div>`;
 }
 
 /**
@@ -109,7 +109,7 @@ export function renderEndurance(model, options = {}) {
     : '';
 
   const body = `
-    ${stackHTML(model)}
+    ${stackHTML(model, distanceUnit)}
     ${legend([
       { label: 'Run', color: RUN_COLOR },
       { label: 'Walk', color: WALK_COLOR, muted: true },

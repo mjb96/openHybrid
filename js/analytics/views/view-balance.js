@@ -31,12 +31,16 @@ export function renderBalance(model, options = {}) {
   }
 
   if (!model.hasData) {
-    // One-modality windows are not a 100 % bar. Say what would make it appear.
-    const message = model.basis === 'none'
+    // One-modality windows are not a 100 % bar. The sentence follows what was
+    // actually TRAINED, never the chosen currency: a strength-only window used
+    // to say "no strength work" because no common currency existed.
+    const message = !model.hasStrength && !model.hasEndurance
       ? 'No measured training in this period yet.'
       : !model.hasStrength
         ? 'No strength work in this period, so there is no mix to split.'
-        : 'No runs in this period, so there is no mix to split.';
+        : !model.hasEndurance
+          ? 'No runs in this period, so there is no mix to split.'
+          : 'Both were trained, but neither was measured long enough to compare.';
     return band({
       id: 'balance',
       eyebrow: 'Balance',

@@ -31,9 +31,17 @@ export function buildFastingBandModel(state, options = /** @type {any} */ ({})) 
   const inWindow = history
     .map((entry) => {
       const dateISO = localDayKey(entry?.endTime || entry?.startTime || '');
-      const hours = Number(entry?.hours);
+      // `js/fasting.js` stores `durationHours`; the `hours` fallback keeps any
+      // older record readable. Reading only `hours` made EVERY fast invalid, so
+      // the band never rendered anywhere — the fixture in the test used a shape
+      // nothing in the app writes.
+      const hours = Number(entry?.durationHours ?? entry?.hours);
       if (!dateISO || !Number.isFinite(hours) || hours <= 0) return null;
-      return { dateISO, hours: round1(hours), metGoal: hours >= goalHours };
+      // The goal is judged against the goal that applied TO THAT FAST, not
+      // today's setting: moving 16 h to 18 h must not retroactively relabel
+      // every historical 17 h fast as missed.
+      const goalForFast = Number(entry?.goalHours) > 0 ? Number(entry.goalHours) : goalHours;
+      return { dateISO, hours: round1(hours), metGoal: hours >= goalForFast };
     })
     .filter(Boolean)
     .filter((entry) => inRange(entry.dateISO, range))

@@ -95,25 +95,35 @@ export function renderPulse(model, options = {}) {
   }
 
   if (!model.hasData) {
+    // An untrained week is exactly when the streak matters most: it is still
+    // alive until the week closes. The old empty state dropped it entirely, so
+    // `streakAtRisk` could never reach the screen.
+    const streakNote = model.streakWeeks > 0
+      ? ` Your ${model.streakWeeks}-week streak is still alive — one session keeps it.`
+      : '';
     return band({
       id: 'pulse',
       eyebrow: 'Pulse',
       title: 'Pulse',
       sub: model.spanLabel,
       body: stateBlock('empty', {
-        message: 'No training logged this week yet. One session starts the comparison.',
+        message: `No training logged this week yet.${streakNote}`,
         action: { label: 'Start a workout', action: 'switch-tab', target: 'workout' },
       }),
     });
   }
 
   const value = String(model.sessions);
-  const unit = model.sessionsPlanned ? `of ${model.sessionsPlanned}` : 'sessions';
+  // Sessions are the headline; "of N planned" is a DAY ratio and lives in the
+  // summary, where its unit is unambiguous.
+  const unit = model.sessions === 1 ? 'session' : 'sessions';
 
   const streak = model.streakWeeks > 0
     ? `${model.streakWeeks}-week streak${model.streakAtRisk ? ' (not trained yet this week)' : ''}`
     : 'No streak yet';
-  const adherence = model.adherencePct != null ? ` · ${model.adherencePct}% of planned` : '';
+  const adherence = model.adherencePct != null
+    ? ` · ${model.completedPlannedDays} of ${model.plannedDaysElapsed} planned days`
+    : '';
 
   const volume = model.week.days.reduce((total, day) => total + day.volumeKg, 0);
   const distance = model.week.days.reduce((total, day) => total + day.runKm, 0);

@@ -15,9 +15,9 @@
 // =============================================================================
 import { addDaysISO, formatWeekRange, localDayKey } from '../dates.js';
 import { DAY_KEYS, indexSlotsByDate, loggedSessionsByDate, weekStartOf } from './weekly-aggregate.js';
-// One definition of "how many sessions does this program ask for". Re-deriving
-// it here would let the hub and Pulse disagree about the same plan.
-import { plannedTrainingDays } from './progress-landing.js';
+// The classifier the Today card, coach and cockpit use: one reading of "is this
+// a planned training day", so Pulse cannot disagree with them.
+import { classifyPlannedSession } from '../workout/completion-policy.js';
 // The same credit model Home's day recap uses. Pulse is the week version of it.
 import { buildSessionMuscles } from '../home/session-muscles.js';
 
@@ -168,8 +168,25 @@ export function buildPulseModel(state, options = {}) {
   const previousSessions = sessionsIn(counts, previousStart, elapsedDays);
   const change = elapsedSessions - previousSessions;
 
-  const planned = plannedTrainingDays(options.program);
-  const adherencePct = planned ? Math.min(100, Math.round((sessions / planned) * 100)) : null;
+  // Adherence compares like with like: PLANNED DAYS with days that got a
+  // session. Comparing total sessions (strength + every run) against planned
+  // DAYS produced "10 of 4" and labelled 100 % adherence for a week where the
+  // planned lifts were skipped but runs were logged.
+  const programDays = options.program?.days && typeof options.program.days === 'object'
+    ? options.program.days
+    : null;
+  const isPlanned = (dayKey) => {
+    const blueprint = programDays?.[dayKey];
+    if (!blueprint || typeof blueprint !== 'object') return false;
+    return !classifyPlannedSession(blueprint).isRest;
+  };
+
+  const plannedDays = days.filter((entry) => isPlanned(entry.day));
+  const plannedElapsed = plannedDays.filter((entry) => !entry.isFuture);
+  const completedPlanned = plannedElapsed.filter((entry) => entry.sessions > 0);
+  const adherencePct = plannedElapsed.length
+    ? Math.round((completedPlanned.length / plannedElapsed.length) * 100)
+    : null;
   const streak = streakWeeks(dates, weekStart);
 
   return {
@@ -178,7 +195,10 @@ export function buildPulseModel(state, options = {}) {
     sessions,
     elapsedSessions,
     workingSets,
-    sessionsPlanned: planned,
+    // Planned DAYS, and how many of the elapsed ones were trained.
+    sessionsPlanned: plannedDays.length || null,
+    plannedDaysElapsed: plannedElapsed.length,
+    completedPlannedDays: completedPlanned.length,
     adherencePct,
     muscles: buildSessionMuscles(weekLifts),
     streakWeeks: streak.weeks,

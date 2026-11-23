@@ -38,6 +38,7 @@ import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildProgressDashboard } from './analytics/progress-dashboard.js';
 import { isRangeId } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
+import { formatRunDistance } from './workout/run-units.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
 let _getState;
@@ -131,7 +132,10 @@ async function shareProgressSummary() {
   const program = getProgramById(state.activeProgramId);
   const progressDashboard = buildProgressDashboard(state, {
     todayISO: today,
-    weekStartISO: getSelectedWeekStart(today),
+    // NO weekStartISO: the share card must describe the same period the hub
+    // renders. The hub does not pass it (Pulse is the current week), so a share
+    // triggered after stepping the navigator on some other screen would have
+    // disagreed with the page it was launched from.
     rangeId: _progressRangeId,
     focus: _progressFocus,
     grouping: _progressGrouping,
@@ -146,7 +150,7 @@ async function shareProgressSummary() {
     if (band.id === 'balance') rows.push({ bandId: 'balance', value: `${model.strengthSharePct}% strength`, note: `${model.enduranceSharePct}% endurance` });
     if (band.id === 'muscles') rows.push({ bandId: 'muscles', value: `${model.totalSets} sets`, note: `${model.muscles?.length || 0} muscles` });
     if (band.id === 'exercises') rows.push({ bandId: 'exercises', value: `${model.rows?.length || 0} exercises`, note: model.rows?.[0]?.lift || '' });
-    if (band.id === 'endurance') rows.push({ bandId: 'endurance', value: `${model.runKm} km run`, note: `${model.runs} runs` });
+    if (band.id === 'endurance') rows.push({ bandId: 'endurance', value: `${formatRunDistance(model.runKm, state.settings?.distanceUnit === 'mi' ? 'mi' : 'km')} run`, note: `${model.runs} runs` });
     if (band.id === 'body') rows.push({ bandId: 'body', value: model.weight?.latest ? `${model.weight.latest} ${model.unit}` : '—', note: model.weight?.change == null ? '' : `${model.weight.change > 0 ? '+' : ''}${model.weight.change} ${model.unit}` });
     if (band.id === 'fasting') rows.push({ bandId: 'fasting', value: `${model.averageHours} h average`, note: `${model.adherencePct}% met goal` });
   }

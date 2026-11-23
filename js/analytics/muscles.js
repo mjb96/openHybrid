@@ -106,9 +106,15 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
   /** @type {Record<string, any[]>} muscle → merged sets, for the body map only */
   const liftsForMap = {};
   let totalSets = 0;
+  // The earliest kept date, so an unbounded range can chart its whole history.
+  // Falling back to `range.endISO` here charted ONE bucket while the headline
+  // counted every session ever.
+  /** @type {string|null} */
+  let earliestISO = null;
 
   for (const [dateISO, dayLifts] of byDate) {
     if (!inRange(dateISO, range)) continue;
+    if (!earliestISO || dateISO < earliestISO) earliestISO = dateISO;
     const key = bucketKeyOf(dateISO, grouping);
     const bucket = bucketsByMuscle[key] || (bucketsByMuscle[key] = {});
 
@@ -142,9 +148,13 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
 
   const previousShares = options.previous ? sharesFor(state, options.previous) : null;
 
+  // Rounding each share independently summed to 99.9 for three equal muscles.
+  // Largest-remainder keeps the column honest: the parts add up to the whole.
+  const shareOf = allocatePercentages(totals, totalSets);
+
   const muscles = Object.entries(totals)
     .map(([key, sets]) => {
-      const sharePct = totalSets > 0 ? round1((sets / totalSets) * 100) : 0;
+      const sharePct = shareOf[key] || 0;
       // A muscle with training this window and none last window has a REAL
       // delta (+share), not an unknown one. `null` is reserved for "the
       // previous window had no training at all", where a comparison would be
@@ -166,7 +176,7 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
     })
     .sort((a, b) => b.sets - a.sets || a.label.localeCompare(b.label));
 
-  const startISO = range.startISO || (muscles.length ? range.endISO : null);
+  const startISO = range.startISO || earliestISO;
   const keys = startISO ? bucketKeysIn(startISO, range.endISO, grouping) : [];
   const buckets = keys.map((key) => ({
     key,
@@ -191,6 +201,26 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
     // A window with no working sets has nothing to say; the band does not render.
     hasData: muscles.length > 0,
   };
+}
+
+/**
+ * Percentages that sum to exactly 100 (largest remainder), one decimal.
+ * @param {Record<string, number>} values @param {number} total
+ */
+function allocatePercentages(values, total) {
+  /** @type {Record<string, number>} */
+  const out = {};
+  if (!(total > 0)) return out;
+  const entries = Object.entries(values).map(([key, value]) => {
+    const exact = (value / total) * 1000; // tenths of a percent
+    return { key, floor: Math.floor(exact), remainder: exact - Math.floor(exact) };
+  });
+  let assigned = entries.reduce((sum, entry) => sum + entry.floor, 0);
+  const target = 1000;
+  entries.sort((a, b) => b.remainder - a.remainder);
+  for (let i = 0; assigned < target && i < entries.length; i++, assigned++) entries[i].floor += 1;
+  for (const entry of entries) out[entry.key] = entry.floor / 10;
+  return out;
 }
 
 /** Every dated day's lifts, deduplicated by the shared slot index. */

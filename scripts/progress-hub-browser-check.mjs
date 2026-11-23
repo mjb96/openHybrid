@@ -224,7 +224,10 @@ try {
       return {
         bands: bands.map((band) => band.getAttribute('data-band')),
         // Every band must carry a headline value and no empty chart shell.
-        values: bands.map((band) => band.querySelector('.pg-band__value')?.textContent?.trim() || ''),
+        // Reports is a link list, not a measurement: it has no headline to show.
+        values: bands
+          .filter((band) => band.getAttribute('data-band') !== 'reports')
+          .map((band) => band.querySelector('.pg-band__value')?.textContent?.trim() || ''),
         rangeChips: section.querySelectorAll('[data-pg-range]').length,
         selectedRange: section.querySelector('[data-pg-range][aria-pressed="true"]')?.getAttribute('data-pg-range') || '',
         secondary: [...section.querySelectorAll('.hub-link--quiet')].map((link) => link.getAttribute('data-context')),

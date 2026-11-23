@@ -79,6 +79,8 @@ export const BAND_BUILDERS = Object.freeze({
   }),
   body: (state, ctx) => buildBodyMetricsModel(state, { range: ctx.range }),
   fasting: (state, ctx) => buildFastingBandModel(state, { range: ctx.range }),
+  // Reports is static links: no range, no data, always available.
+  reports: () => ({ hasData: true }),
 });
 
 /** @param {unknown} value */
@@ -187,7 +189,11 @@ export function buildProgressDashboard(state, options = {}) {
     bands,
     availability,
     totalCount: BAND_DEFINITIONS.length,
-    visibleCount: BAND_DEFINITIONS.length - hidden.size,
+    // Count BANDS the athlete can actually see. `hidden` also carries sub-cards
+    // (`bodyPhotos`, `musclesBody`), so subtracting its size made the last
+    // remaining band look hidden; a module-off band is not visible either.
+    visibleCount: BAND_DEFINITIONS.filter((band) => !hidden.has(band.id)
+      && !(band.module && !moduleEnabled(state, band.module))).length,
     // The filter is derived from visibility AND data: one modality means no
     // filter at all, because a one-choice control is noise.
     focusAvailable: {

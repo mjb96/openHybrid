@@ -11,6 +11,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildBalanceModel } from '../js/analytics/balance.js';
 import { previousRange, resolveRange } from '../js/analytics/ranges.js';
+import { renderBalance } from '../js/analytics/views/view-balance.js';
+
+/** @param {any} model */
+const renderBalanceFor = (model) => renderBalance(model);
 
 const range30 = resolveRange('30d', '2026-11-24');
 const prev30 = previousRange(range30);
@@ -30,7 +34,9 @@ test('a strength-only window has no mix and renders nothing', () => {
   assert.equal(model.hasStrength, true);
   assert.equal(model.hasEndurance, false);
   assert.equal(model.hasData, false);
-  assert.equal(model.strengthSharePct, 100);
+  // No common currency for one modality, so no share is claimed — the band does
+  // not render, and a percentage here would be a number with nothing behind it.
+  assert.equal(model.strengthSharePct, null);
 });
 
 test('a run-only window has no mix either', () => {
@@ -115,4 +121,22 @@ test('days outside the window are ignored', () => {
 
 test('a missing range is refused rather than silently defaulted', () => {
   assert.throws(() => buildBalanceModel({ weeks: {} }, {}), /range is required/);
+});
+
+test('a rated run does not make an unrated lifter look like a non-lifter', () => {
+  // Two measured lifts with no RPE + one run with RPE. The split cannot use
+  // sRPE for both sides, so it uses minutes for both and says so.
+  const state = stateWith([
+    strengthDay('2026-11-20', 60),
+    strengthDay('2026-11-21', 60),
+    runDay('2026-11-22', { time: '50:00', rpe: '5' }),
+  ]);
+  const model = buildBalanceModel(state, { range: range30, previous: prev30 });
+
+  assert.equal(model.basis, 'minutes', 'one common currency');
+  assert.equal(model.hasStrength, true, 'the athlete lifted twice');
+  assert.equal(model.hasEndurance, true);
+  assert.equal(model.hasData, true, 'so the band renders');
+  assert.match(renderBalanceFor(model), /by training time/);
+  assert.doesNotMatch(renderBalanceFor(model), /No strength work/);
 });
