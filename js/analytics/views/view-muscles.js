@@ -14,14 +14,43 @@ import { band, dataTableDisclosure, legend, rankedRows, stateBlock } from './ban
 import { esc } from './screen-kit.js';
 import { muscleHeatmapHTML } from '../../home/body-heatmap.js';
 
-const GROUP_COLOR = Object.freeze({
-  chest: 'var(--color-cyan, #22d3ee)',
-  back: 'var(--color-blue, #3b82f6)',
-  shoulders: 'var(--color-violet, #8b5cf6)',
-  arms: 'var(--color-green, #10b981)',
-  legs: 'var(--color-amber, #f59e0b)',
-  core: 'var(--color-orange, #ff6b00)',
+/**
+ * Colour carries the GROUP; a SHADE within it carries the muscle.
+ *
+ * A single hue per group made Quads, Hamstrings and Glutes identical — in the
+ * chart their segments were indistinguishable, and in the legend three rows
+ * showed the same swatch and read like duplicated entries. The shades are
+ * explicit hex rather than `color-mix`, so they render identically on every
+ * Android WebView this app supports.
+ */
+const GROUP_SHADES = Object.freeze({
+  chest: ['#22d3ee', '#67e8f9', '#0e7490'],
+  back: ['#3b82f6', '#60a5fa', '#93c5fd', '#1d4ed8'],
+  shoulders: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#6d28d9'],
+  arms: ['#10b981', '#34d399', '#6ee7b7', '#047857'],
+  legs: ['#f59e0b', '#fbbf24', '#fcd34d', '#d97706', '#b45309'],
+  core: ['#ff6b00', '#fb923c'],
 });
+const OTHER_COLOR = 'rgba(148,163,184,0.45)';
+
+/**
+ * Stable colour per muscle: its group hue, shaded by its rank within that group
+ * so two muscles are never drawn in the same colour.
+ * @param {Array<{ key: string, group: string }>} muscles ordered by sets
+ */
+function colourMapFor(muscles) {
+  /** @type {Map<string, string>} */
+  const colours = new Map();
+  /** @type {Record<string, number>} */
+  const seen = {};
+  for (const muscle of muscles) {
+    const shades = GROUP_SHADES[muscle.group] || ['var(--text-secondary)'];
+    const index = seen[muscle.group] || 0;
+    colours.set(muscle.key, shades[index % shades.length]);
+    seen[muscle.group] = index + 1;
+  }
+  return colours;
+}
 
 const MAX_SERIES = 6;
 
@@ -42,15 +71,15 @@ function groupingBar(active) {
  * aggregated into one muted "Other" so the legend can never exceed six entries.
  * @param {any[]} muscles
  */
-function seriesFor(muscles) {
+function seriesFor(muscles, colours) {
   const top = muscles.slice(0, MAX_SERIES).map((muscle) => ({
     key: muscle.key,
     label: muscle.label,
-    color: GROUP_COLOR[muscle.group] || 'var(--text-secondary)',
+    color: colours.get(muscle.key) || 'var(--text-secondary)',
     muted: false,
   }));
   const rest = muscles.slice(MAX_SERIES);
-  if (rest.length) top.push({ key: '__other', label: 'Other', color: 'rgba(148,163,184,0.45)', muted: true });
+  if (rest.length) top.push({ key: '__other', label: 'Other', color: OTHER_COLOR, muted: true });
   return top;
 }
 
@@ -126,7 +155,8 @@ export function renderMuscles(model, options = {}) {
     });
   }
 
-  const series = seriesFor(model.muscles);
+  const colours = colourMapFor(model.muscles);
+  const series = seriesFor(model.muscles, colours);
   const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 5;
   const shown = model.muscles.slice(0, limit);
   const extra = model.muscles.length - shown.length;
@@ -136,7 +166,7 @@ export function renderMuscles(model, options = {}) {
     value: muscle.sets,
     // Bar length is relative to the biggest muscle, not to 100 % of the window.
     pct: model.muscles[0]?.sets > 0 ? (muscle.sets / model.muscles[0].sets) * 100 : 0,
-    color: GROUP_COLOR[muscle.group] || 'var(--text-secondary)',
+    color: colours.get(muscle.key) || 'var(--text-secondary)',
     status: muscle.deltaPct == null ? '' : `${muscle.deltaPct > 0 ? '+' : ''}${muscle.deltaPct} pts`,
     action: { action: 'open-analytics', context: 'muscle-load' },
   })));

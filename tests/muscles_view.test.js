@@ -48,6 +48,16 @@ test('the legend never exceeds six series plus Other', () => {
   if (items === 7) assert.match(html, /Other/);
 });
 
+test('no two muscles are drawn in the same colour', () => {
+  // Colour carries the group and a SHADE carries the muscle. Giving a whole
+  // group one hue made Quads/Hamstrings/Glutes identical in the chart and made
+  // the legend look like duplicated rows.
+  const html = renderMuscles(fullModel());
+  const colours = [...html.matchAll(/pg-legend__swatch" style="background:([^"]+)"/g)].map((match) => match[1]);
+  assert.ok(colours.length >= 5, 'the legend lists several muscles');
+  assert.equal(new Set(colours).size, colours.length, `duplicate colours: ${colours.join(', ')}`);
+});
+
 test('every charted bucket states its total in text', () => {
   const html = renderMuscles(fullModel());
   assert.match(html, /credited sets<\/span>/, 'sr-only bucket totals');
