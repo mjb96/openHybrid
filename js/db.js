@@ -21,10 +21,13 @@ import {
 } from './state/route-identity.js';
 
 const DB_NAME = 'HybridTrainingDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'runMaps';   // legacy v1 store — retained
 const ROUTES_STORE = 'routes';  // v2 rich-record store
 const SLOT_INDEX = 'by_slot';
+// v3: progress-photo blobs. Blobs never enter appState/localStorage; state holds
+// metadata only (AGENTS.md), and deleting a record deletes its blob.
+export const PHOTOS_STORE = 'photos';
 
 // Surfaced so callers/diagnostics can tell a genuine failure from an empty DB.
 export const MIGRATION_META_KEY = '__migration_v2__';
@@ -129,6 +132,9 @@ function openDB() {
       if (!db.objectStoreNames.contains(ROUTES_STORE)) {
         const store = db.createObjectStore(ROUTES_STORE, { keyPath: 'id' });
         store.createIndex(SLOT_INDEX, 'slotKey', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(PHOTOS_STORE)) {
+        db.createObjectStore(PHOTOS_STORE);
       }
       if (e.oldVersion < 2) migrateV1toV2(tx);
     };
@@ -381,5 +387,85 @@ export async function deleteMapFromDB(week, day, ctx = {}) {
       tx.oncomplete = () => done();
       tx.onerror = () => done();
     } catch { done(); }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// PROGRESS PHOTO BLOBS (v3)
+//
+// Keyed by the photo id (`photo:<YYYY-MM-DD>`), so re-saving the same date
+// replaces its blob instead of accumulating orphans. Every call resolves rather
+// than rejecting: a photo failure must never break a save or a render.
+// ---------------------------------------------------------------------------
+
+/**
+ * @param {string} id
+ * @param {Blob} blob
+ * @returns {Promise<boolean>}
+ */
+export async function putPhotoBlob(id, blob) {
+  if (typeof indexedDB === 'undefined' || !id || !blob) return false;
+  let db;
+  try { db = await openDB(); } catch { return false; }
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(PHOTOS_STORE, 'readwrite');
+      tx.objectStore(PHOTOS_STORE).put(blob, id);
+      tx.oncomplete = () => { closeQuietly(db); resolve(true); };
+      tx.onerror = () => { closeQuietly(db); resolve(false); };
+    } catch { closeQuietly(db); resolve(false); }
+  });
+}
+
+/** @param {string} id @returns {Promise<Blob|null>} */
+export async function getPhotoBlob(id) {
+  if (typeof indexedDB === 'undefined' || !id) return null;
+  let db;
+  try { db = await openDB(); } catch { return null; }
+  return new Promise((resolve) => {
+    const done = (value) => { closeQuietly(db); resolve(value || null); };
+    try {
+      const tx = db.transaction(PHOTOS_STORE, 'readonly');
+      const req = tx.objectStore(PHOTOS_STORE).get(id);
+      req.onsuccess = () => done(req.result);
+      req.onerror = () => done(null);
+    } catch { done(null); }
+  });
+}
+
+/** @param {string} id @returns {Promise<boolean>} */
+export async function deletePhotoBlob(id) {
+  if (typeof indexedDB === 'undefined' || !id) return false;
+  let db;
+  try { db = await openDB(); } catch { return false; }
+  return new Promise((resolve) => {
+    try {
+      const tx = db.transaction(PHOTOS_STORE, 'readwrite');
+      tx.objectStore(PHOTOS_STORE).delete(id);
+      tx.oncomplete = () => { closeQuietly(db); resolve(true); };
+      tx.onerror = () => { closeQuietly(db); resolve(false); };
+    } catch { closeQuietly(db); resolve(false); }
+  });
+}
+
+/** Every stored blob, for the export archive. @returns {Promise<Array<{id:string, blob:Blob}>>} */
+export async function getAllPhotoBlobs() {
+  if (typeof indexedDB === 'undefined') return [];
+  let db;
+  try { db = await openDB(); } catch { return []; }
+  return new Promise((resolve) => {
+    const out = [];
+    try {
+      const tx = db.transaction(PHOTOS_STORE, 'readonly');
+      const req = tx.objectStore(PHOTOS_STORE).openCursor();
+      req.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          if (cursor.value) out.push({ id: String(cursor.key), blob: cursor.value });
+          cursor.continue();
+        } else { closeQuietly(db); resolve(out); }
+      };
+      req.onerror = () => { closeQuietly(db); resolve(out); };
+    } catch { closeQuietly(db); resolve(out); }
   });
 }

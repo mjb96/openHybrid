@@ -141,3 +141,37 @@ export function exportResultMessage(result, label = 'Data') {
   if (result?.status === 'cancelled') return { message: 'Export cancelled.', error: false };
   return { message: result?.message || 'Export failed. Please try again.', error: true };
 }
+
+
+/**
+ * Save binary bytes (a zip) the same way `saveTextExport` saves text.
+ *
+ * Text exports go through the Android storage bridge; binary has no bridge
+ * method yet, so this uses the platform download path and reports honestly when
+ * it cannot (the caller shows the message).
+ *
+ * @param {{ filename: string, bytes: Uint8Array, mime: string }} file
+ * @param {any} [providedRuntime]
+ */
+export async function saveBinaryExport(file, providedRuntime = {}) {
+  const runtime = providedRuntime;
+  const Url = runtime.URL || (typeof URL !== 'undefined' ? URL : undefined);
+  const doc = runtime.document || (typeof document !== 'undefined' ? document : undefined);
+  const BlobCtor = runtime.Blob || (typeof Blob !== 'undefined' ? Blob : undefined);
+  if (!doc || !Url?.createObjectURL || !BlobCtor) return { status: 'unavailable' };
+  try {
+    const blob = new BlobCtor([new Uint8Array(file.bytes)], { type: file.mime || 'application/octet-stream' });
+    const url = Url.createObjectURL(blob);
+    const anchor = doc.createElement('a');
+    anchor.href = url;
+    anchor.download = file.filename;
+    anchor.rel = 'noopener';
+    doc.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => { try { Url.revokeObjectURL(url); } catch { /* already gone */ } }, 4000);
+    return { status: 'saved', filename: file.filename };
+  } catch {
+    return { status: 'error' };
+  }
+}

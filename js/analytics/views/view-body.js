@@ -10,6 +10,8 @@ import { band, dataTableDisclosure, stateBlock } from './band-kit.js';
 import { esc } from './screen-kit.js';
 import { bodyWeightChartSVG } from '../charts.js';
 import { cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
+import { formatDayMonthShort } from '../../dates.js';
+import { photoObjectUrl } from '../../photos/library.js';
 
 /**
  * @param {ReturnType<import('../body-metrics.js').buildBodyMetricsModel>|null} model
@@ -76,14 +78,31 @@ export function renderBody(model, options = {}) {
     ? `<p class="pg-body__fat">Body fat <b>${esc(String(model.bodyFat.latestPct))}%</b>${model.bodyFat.deltaPp == null ? '' : ` · ${esc(`${model.bodyFat.deltaPp > 0 ? '+' : ''}${model.bodyFat.deltaPp} pp`)}`} <small>entered, never estimated</small></p>`
     : '';
 
+  const photos = (model.photos || []).slice(0, 12);
+  const photoStrip = `<ul class="pg-photos" aria-label="Progress photos">
+      ${photos.map((photo) => `<li class="pg-photo">
+        <img class="pg-photo__img" data-photo-thumb="${esc(photo.id)}" alt="${esc(`Progress photo, ${formatDayMonthShort(photo.date)}`)}" />
+        <button type="button" class="pg-photo__remove" data-photo-delete="${esc(photo.date)}"
+          aria-label="${esc(`Delete the photo from ${formatDayMonthShort(photo.date)}`)}">×</button>
+      </li>`).join('')}
+      <li class="pg-photo pg-photo--add">
+        <label class="pg-photo__add" aria-label="Add a progress photo">
+          <span aria-hidden="true">+</span>
+          <input type="file" accept="image/*" capture="environment" data-photo-input hidden />
+        </label>
+      </li>
+    </ul>`;
+
   const body = `
     ${changeLine}
     ${chart}
     ${model.keySites.length ? `<ul class="pg-sites">${sites}</ul>` : ''}
     ${bodyFat}
+    ${photoStrip}
     <div class="pg-band__actions">
       <button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measurements →'}</button>
       <button type="button" class="pg-band__action" data-action="open-bw-sheet">Log weigh-in</button>
+      ${photos.length ? '<button type="button" class="pg-band__action" data-action="export-photos">Export photos</button>' : ''}
     </div>
     ${dataTableDisclosure(
       ['Site', `Latest (${model.measurementUnit})`, 'Change'],
@@ -103,5 +122,25 @@ export function renderBody(model, options = {}) {
     sub: model.range?.spanLabel,
     ariaLabel: `${model.range?.spanLabel || 'Selected period'} body: ${weightText}${model.weight.change == null ? '' : `, ${model.weight.change > 0 ? 'up' : 'down'} ${Math.abs(model.weight.change)} ${model.unit}`}`,
     body,
+  });
+}
+
+
+/**
+ * Load thumbnails after the band is in the DOM. Kept separate from render because
+ * reading a blob is async and a band must never wait on the disk.
+ * @param {HTMLElement|null} container
+ */
+export function hydratePhotoThumbs(container) {
+  if (!container?.querySelectorAll) return;
+  container.querySelectorAll('[data-photo-thumb]').forEach(async (img) => {
+    const id = img.getAttribute('data-photo-thumb');
+    if (!id || img.getAttribute('src')) return;
+    const url = await photoObjectUrl(id);
+    if (url) {
+      img.setAttribute('src', url);
+      // The strip can be re-rendered at any time; revoke when it leaves.
+      img.addEventListener('load', () => URL.revokeObjectURL(url), { once: true });
+    }
   });
 }

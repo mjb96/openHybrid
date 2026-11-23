@@ -37,6 +37,7 @@ import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggrega
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildProgressDashboard } from './analytics/progress-dashboard.js';
 import { isRangeId } from './analytics/ranges.js';
+import { confirmModal } from './ui/confirm-modal.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
 
 let _getState;
@@ -86,6 +87,66 @@ export function setAnalyticsContext(ctx, options = {}) {
 }
 
 /**
+ * Progress photos. Adding downscales before storing (a camera photo is several
+ * megabytes and IndexedDB has a quota); deleting asks first, because a photo is
+ * the one thing in this app with no Undo.
+ */
+async function addProgressPhoto(file) {
+  const state = _getState?.();
+  if (!state || !file) return;
+  const { addPhoto } = await import('./photos/library.js');
+  const dateISO = localDayKey(new Date());
+  try {
+    await addPhoto({ state, dateISO, file, save: () => saveStateToLocalStorage(true) });
+    showToast('Progress photo saved');
+    renderAnalytics();
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'That photo could not be saved.');
+  }
+}
+
+async function deleteProgressPhoto(dateISO) {
+  const state = _getState?.();
+  if (!state || !dateISO) return;
+  const confirmed = await confirmModal({
+    title: 'Delete this photo?',
+    message: 'The photo and its file are removed from this device. This cannot be undone.',
+    confirmLabel: 'Delete', danger: true,
+  });
+  if (!confirmed) return;
+  const { removePhoto } = await import('./photos/library.js');
+  await removePhoto({ state, id: `photo:${dateISO}`, save: () => saveStateToLocalStorage(true) });
+  showToast('Photo deleted');
+  renderAnalytics();
+}
+
+async function exportProgressPhotos() {
+  const state = _getState?.();
+  if (!state) return;
+  const { exportPhotosZip } = await import('./photos/library.js');
+  const { saveBinaryExport, exportResultMessage } = await import('./portability/export-service.js');
+  try {
+    const archive = await exportPhotosZip(state);
+    const result = await saveBinaryExport({
+      filename: archive.filename,
+      bytes: archive.bytes,
+      mime: 'application/zip',
+    });
+    showToast(exportResultMessage(result, 'Photos'));
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : 'The photo export failed.');
+  }
+}
+
+function onProgressPhotoChange(event) {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement) || !input.hasAttribute('data-photo-input')) return;
+  const file = input.files?.[0];
+  input.value = '';
+  if (file) void addProgressPhoto(file);
+}
+
+/**
  * Progress's two controls. One delegated listener rather than per-render
  * handlers, so re-rendering the hub cannot leak listeners.
  */
@@ -96,6 +157,10 @@ function onProgressControlClick(event) {
   if (!target) return;
   const range = target.getAttribute('data-pg-range');
   const focus = target.getAttribute('data-pg-focus');
+  const photoDelete = target.closest('[data-photo-delete]');
+  if (photoDelete) { void deleteProgressPhoto(photoDelete.getAttribute('data-photo-delete') || ''); return; }
+  if (target.closest('[data-action="export-photos"]')) { void exportProgressPhotos(); return; }
+
   const grouping = target.getAttribute('data-pg-grouping');
   if (grouping) {
     const next = grouping === 'month' || grouping === 'year' ? grouping : 'week';
@@ -117,6 +182,7 @@ export function initAnalytics(getStateFn, getDaysFn) {
   initWeekNav(_getState, renderAnalytics);
   if (typeof document !== 'undefined') {
     document.addEventListener('click', onProgressControlClick);
+    document.addEventListener('change', onProgressPhotoChange);
   }
 }
 

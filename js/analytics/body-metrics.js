@@ -12,6 +12,7 @@
 // =============================================================================
 import { buildBodyweightModel } from '../metrics/bodyweight.js';
 import { buildMeasurementModel } from '../metrics/measurements.js';
+import { listPhotos } from '../photos/library.js';
 
 const KEY_SITES = ['waist', 'chest', 'arm_l', 'thigh_l'];
 
@@ -80,6 +81,7 @@ export function buildBodyMetricsModel(state, options = /** @type {any} */ ({})) 
     sites,
     siteCount: sites.length,
     bodyFat,
-    hasData: latestWeight != null || sites.length > 0 || bodyFat != null,
+    photos: listPhotos(state),
+    hasData: latestWeight != null || sites.length > 0 || bodyFat != null || listPhotos(state).length > 0,
   };
 }

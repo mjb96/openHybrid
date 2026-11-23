@@ -16,7 +16,7 @@ import { renderBalance } from './view-balance.js';
 import { renderMuscles } from './view-muscles.js';
 import { renderExercises } from './view-exercises.js';
 import { renderEndurance } from './view-endurance.js';
-import { renderBody } from './view-body.js';
+import { hydratePhotoThumbs, renderBody } from './view-body.js';
 import { renderFastingBand } from './view-fasting-band.js';
 import { focusBar, rangeBar } from './band-kit.js';
 import { RANGE_PRESETS } from '../ranges.js';
@@ -305,4 +305,7 @@ export function renderProgressHub(container, model, hidden = [], extras = {}) {
       <p>Every figure here covers one <strong>calendar</strong> week (Monday to Sunday), attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the week they happened in.</p>
       <p>A part-finished week is only ever compared with the same elapsed days of the previous week, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
     </details>`;
+
+  // Thumbnails read a blob, which is async; the band must not wait on the disk.
+  hydratePhotoThumbs(container);
 }
