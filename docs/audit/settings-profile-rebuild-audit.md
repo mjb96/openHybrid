@@ -184,6 +184,7 @@ That is **13 rows** plus the profile card and search, within the 14-row cap.
 | D12 | Home/Progress layout is edited by two mechanisms (`ui.customize.js` sheet and the dead `dashboardTiles` drag-drop). | `ui/customize.js`, `dragdrop.js` | One owner: `settings.ui`; the sliders shortcut opens the same control under Look & Home. |
 | D13 | `fastingDefault`, `targetWeight`, `rateGoal`, `musclePriorities`, `exercisePrefs`, `prGoals` are editable outside Settings; the new IA must link to those editors or absorb them, not create a second copy. | `analytics.js`, `view-strength.js`, `athlete-profile.js`, cockpit sheets | Decide per field in Phase 4/5; single value owner stays. |
 | D14 | The Settings screen is a modal overlay with a five-filter tab row, not a pushed route; Profile is a `view-container` with no history state. | `settings.js`, `app.js`, `modal-stack.js` | Phase 1 must introduce `/settings` routing before any UI. |
+| D15 | The requested module vocabulary (strength / running / analytics / wellness) does not match the stored modules (`running`, `fasting`, `health`, `recovery`); strength is core and cannot be disabled, and fasting is a module the brief does not name. | `modules.js MODULES`, `AGENTS.md` | Map the four stored switches to the new labels; decide whether “analytics” and “wellness” are new gates or renames. No stored key changes. |
 
 No stored data is proposed for deletion in Phase 0. D1–D4 are the only true dead stores; each needs an explicit keep/migrate/remove decision.
 

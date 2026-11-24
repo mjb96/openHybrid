@@ -1088,7 +1088,9 @@ dead/duplicate/conflicting list live in
   onboarding and read nowhere.
 - **Duplicates/conflicts:** `defaultBodyWeight` vs `bodyWeightLog`;
   `fastingDefault` vs `fastingSession.goal`; `equipmentTier` not re-derived;
-  `equipment`/`bandWeights` projections; theme+palette will migrate in Part B.
+  `equipment`/`bandWeights` projections; theme+palette will migrate in Part B;
+  the requested module vocabulary (strength/running/analytics/wellness) does
+  not match the stored `running`/`fasting`/`health`/`recovery` switch ids.
 - **Missing for the requested IA:** height/DOB/sex/training-start fields,
   date/time/number/pace formats, last-backup timestamp, Watches, AI Coach and
   Strava. No current calculation uses height/sex/DOB, so storing them would be
