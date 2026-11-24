@@ -510,7 +510,8 @@ partial year; the card downloads as a real PNG when Web Share is unavailable.
 
 ### Phase 6 — Platform and intelligence
 
-**Status: LATER.** **Goal:** native-feeling surfaces and assistance without a
+**Status: ACTIVE — S3/S4 context export landed 2026-11-24; L14, S10 and S2
+remain.** **Goal:** native-feeling surfaces and assistance without a
 backend.
 
 Features: L14, S10, S2, S3/S4 (reframed).
@@ -523,8 +524,11 @@ Features: L14, S10, S2, S3/S4 (reframed).
 3. **Adaptive trainer** — onboarding inputs (level, goal, equipment, frequency,
    session length, focus) produce a plan whose working weights adjust from
    logged performance, with deloads, short tips, and Undo.
-4. **AI, reframed** — export a compact training-context file and import a plan
-   JSON. No OAuth, connector or hosted service without a new product decision.
+4. **AI, reframed.** Landed: Settings → Data exports a compact
+   `openhybrid-training-context` JSON (goals/settings, active plan, last eight
+   weeks of sets/runs and weekly totals) with no name, notes, routes, photos or
+   health records. Plans → Import plan (.json) is the return path. No OAuth,
+   connector or hosted service exists.
 
 **Data rules:** no backend, no account, no new network surface. Native code
 changes require the Android device checklist and must not fork state ownership.
@@ -605,8 +609,8 @@ to that site.
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | Workout settings | `settings.js` + `settings/nav.js` | One Logging card: rest tiers/presets/sound, previous values, progression, warm-up, plate hints, keep-awake and live-PR switches | ✅ | — | 1 |
 | S2 | Adaptive trainer | `programs/progression.js` | Onboarding → plan, performance-adjusted loads, deloads | ◐ | No automatic plan adaptation; per-lift suggestions and deload templates only | 6 |
-| S3 | AI plan generation | — | Export context, import a plan; no account linking | ○ | No generation surface; plan import only | 6 |
-| S4 | AI analysis | — | Same surface as S3 | ○ | No analysis surface; coach Q&A is deterministic | 6 |
+| S3 | AI plan generation | `portability/training-context.js`, `programs/program-json.js` | Export compact training context; import a returned plan JSON; no account linking | ✅ | — | 6 |
+| S4 | AI analysis | `portability/training-context.js` | Same external context; deterministic in-app coach Q&A remains the offline path | ✅ | — | 6 |
 | S5 | Folders and routines | `programs/library.js`, `routines/` | Create, folder, reorder, start | ✅ | — | 4 |
 | S6 | Routine library | `programs/library.js` | Optional category, category filter, folders, save a programme or a single routine | ✅ | — | 4 |
 | S7 | Exercise library | `exercises/` | 5,700+ entries, filters, instructions | ✅ | — | — |
@@ -747,9 +751,28 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,656 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,661 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Phase 6 starts: a compact training context, not a connector.**
+  - **Settings → Data → Export Training Context (JSON).** The file carries the
+    athlete's stated goals/settings, the active plan at its current week (using
+    the same `liftTarget` as the cockpit), the last eight weeks of weekly totals
+    and up to 24 dated training days with exact completed sets/runs. It has a
+    format and version, and is deliberately not a backup.
+  - **Privacy is the shape of the file.** No name, session/exercise notes,
+    links, GPS routes, photos, body tape/body fat or Health Connect records are
+    read into it. The unit is labelled; a bodyweight read is included only as
+    the latest weigh-in.
+  - **The return path already exists.** Plans → Import plan (.json) accepts a
+    plan produced externally; no OAuth, hosted service, connector or new network
+    surface was added. S3/S4 are DONE.
+  - Tests: goals/plan week, exact sets/runs, notes/routes/photos/health absent,
+    24-session cap with an honest omission count, undated/out-of-window sessions
+    excluded, filename date.
+  - **Phase 6 remains ACTIVE for L14 (Android live activity), S10 (widgets) and
+    S2 (adaptive trainer).**
 
 - **2026-11-24 — Phase 5 finished: the month and year share the same evidence.**
   - **Training Report → PNG card.** The existing Share action now draws the

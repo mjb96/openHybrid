@@ -236,6 +236,27 @@ try {
     await context.close();
   }
 
+  // The compact AI/coach context is a real download, not a toast over an empty
+  // file. Exercise the Settings → Data button through the browser path.
+  {
+    const { context, page } = await appPage(390);
+    await page.click('.home-avatar');
+    await page.waitForSelector('#view-profile.active');
+    await page.click('#view-profile [data-action="open-settings"]');
+    await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
+    await page.click('#settingsTabs [data-settings-tab="data"]');
+    await page.evaluate(() => {
+      try { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); } catch (_) {}
+    });
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 8000 }).catch(() => null),
+      page.click('#settingsOverlay [data-action="export-training-context"]'),
+    ]);
+    check(Boolean(download && /^openhybrid-training-context-\d{4}-\d{2}-\d{2}\.json$/.test(download.suggestedFilename())),
+      `training context did not download (${download?.suggestedFilename?.() || 'none'})`);
+    await context.close();
+  }
+
   const { context, page } = await appPage(360, true);
   await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-avatar', '.btn-history-link']);
   await page.click('.home-avatar');

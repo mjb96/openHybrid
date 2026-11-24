@@ -3,13 +3,14 @@
 // ==========================================
 import {
   saveStateToLocalStorage, setAppState, cancelPendingLocalSave,
-  setPersistenceSuspended, STORAGE_KEY, SAVED_AT_KEY,
+  setPersistenceSuspended, STORAGE_KEY, SAVED_AT_KEY, getProgramById,
 } from './state.js';
 import { writeMirror, clearMirror } from './state/mirror.js';
 import { putRouteRecords, putRoutes, clearRouteDatabase, saveMapToDB } from './db.js';
 import { parseImport } from './state/route-portability.js';
 import { CURRENT_SCHEMA_VERSION, isStateMigrationError, migrateState } from './state/migrations.js';
 import { APP_VERSION } from './constants.js';
+import { buildTrainingContext, trainingContextFilename } from './portability/training-context.js';
 import {
   setRestTiers, setRestTimerEnabled, setRestOverrides, initRestPersistence, setRestAlertConfig,
   clearRestTimerPersistence,
@@ -1085,6 +1086,27 @@ export async function exportData() {
   });
   const n = backup.routeCount;
   const copy = exportResultMessage(result, n ? `Data (${n} route${n === 1 ? '' : 's'})` : 'Data');
+  showToast(copy.message, copy.error);
+}
+
+/**
+ * Export a compact context for an external coach/AI: goals, active plan and the
+ * last eight weeks. Deliberately not a backup — no name, notes, routes, photos
+ * or health records.
+ */
+export async function exportTrainingContext() {
+  const appState = _getState();
+  const context = buildTrainingContext(appState, {
+    program: getProgramById(appState.activeProgramId),
+    todayISO: todayKey(),
+    recentWeeks: 8,
+  });
+  const result = await saveTextExport({
+    filename: trainingContextFilename(todayKey()),
+    content: JSON.stringify(context, null, 2),
+    mime: 'application/json',
+  });
+  const copy = exportResultMessage(result, 'Training context');
   showToast(copy.message, copy.error);
 }
 
