@@ -91,6 +91,25 @@ test('warm-ups never reach the chart', () => {
   assert.equal(setsOf(withWarmups), setsOf(without));
 });
 
+test('one muscle can be focused without hiding the rest of the band', () => {
+  const html = renderMuscles(fullModel(), { selected: 'chest' });
+  assert.match(html, /class="pg-muscle-pick"/);
+  assert.match(html, /<option value="chest" selected>Chest<\/option>/);
+  assert.match(html, /class="pg-muscle-meta">Rank \d+ of \d+ · [\d.]+% of credited sets</);
+  assert.match(html, /aria-label="Chest credited sets/);
+  assert.match(html, /Chest \(credited sets\)/);
+  // The focused chart is one series, not the six-group stack.
+  assert.equal((html.match(/pg-legend__item/g) || []).length, 1);
+  assert.match(html, /class="pg-band__value">([\d.]+)<span class="pg-band__unit">credited sets/);
+});
+
+test('an unknown muscle focus falls back to All muscles', () => {
+  const html = renderMuscles(fullModel(), { selected: 'not-a-muscle' });
+  assert.match(html, /<option value="all" selected>All muscles<\/option>/);
+  assert.doesNotMatch(html, /class="pg-muscle-meta"/);
+  assert.match(html, /Credited sets per muscle/);
+});
+
 test('an empty window offers one action and no axes', () => {
   const empty = buildMuscleModel({ weeks: {} }, { range });
   const html = renderMuscles(empty);

@@ -531,7 +531,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   legend at six series plus `Other` — colour carries the six GROUP hues, never 19
   individual ones — and every bucket states its total in text. `renderMuscles`
   lives in `views/view-muscles.js`; the grouping chips are ephemeral
-  `data-pg-grouping` state alongside the range and focus controls. No new metric
+  `data-pg-grouping` state alongside the range and focus controls. The band has
+  a native one-muscle select (`data-pg-muscle`, 44px): a selected muscle becomes
+  the whole chart/headline/legend/table, with its rank and share of credited
+  sets; All muscles restores the six-group + Other stack. The selection is
+  ephemeral and resets on hub entry. No new metric
   ids were needed: `strength.muscle-set-credits`, `strength.per-muscle-volume` and
   `strength.weekly-volume` already classify and inventory these numbers.
 - Progress exercises (P4 landed): `js/analytics/exercises-summary.js` ranks the
