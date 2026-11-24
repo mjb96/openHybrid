@@ -23,7 +23,7 @@ import {
 const IDS = PROGRESS_CARDS.map((card) => card.id);
 
 test('the catalogue is the eight bands, in default order, with no duplicates', () => {
-  assert.deepEqual(IDS, ['pulse', 'balance', 'muscles', 'exercises', 'endurance', 'body', 'fasting', 'reports']);
+  assert.deepEqual(IDS, ['pulse', 'exercises', 'muscles', 'body', 'reviews', 'balance', 'endurance', 'fasting']);
   assert.equal(new Set(IDS).size, IDS.length);
   for (const card of PROGRESS_CARDS) {
     assert.ok(card.label, `${card.id} has a label`);
@@ -38,6 +38,15 @@ test('legacy ids map onto the bands that inherited their content', () => {
   assert.equal(isCardVisible({ ui }, 'progress', 'pulse'), true, 'untouched cards stay visible');
 });
 
+test('the old Reports band is Reviews, in both hidden and order preferences', () => {
+  const hidden = normalizeUi({ progress: { hidden: ['reports'] } });
+  assert.deepEqual(hidden.progress.hidden, ['reviews']);
+
+  // An existing order keeps the athlete's exact position for the renamed band.
+  const order = normalizeUi({ progress: { order: ['pulse', 'reports', 'exercises'] } });
+  assert.deepEqual(order.progress.order.slice(0, 3), ['pulse', 'reviews', 'exercises']);
+});
+
 test('a footer-leaf card consumes its preference rather than hiding something else', () => {
   const ui = normalizeUi({ progress: { hidden: ['recovery', 'projections'] } });
   assert.deepEqual(ui.progress.hidden, [], 'nothing left to hide, and no error');
@@ -50,7 +59,8 @@ test('an unknown id is still dropped, so a stale name cannot hide a future card'
 
 test('order keeps the athlete sequence, drops junk, and appends new bands', () => {
   const ui = normalizeUi({ progress: { order: ['reports', 'pulse', 'nope'] } });
-  assert.deepEqual(ui.progress.order.slice(0, 2), ['reports', 'pulse']);
+  // The old `reports` id is a renamed band, so its saved POSITION survives.
+  assert.deepEqual(ui.progress.order.slice(0, 2), ['reviews', 'pulse']);
   assert.equal(ui.progress.order.length, IDS.length, 'every band appears exactly once');
   assert.deepEqual([...ui.progress.order].sort(), [...IDS].sort());
 });
@@ -64,15 +74,15 @@ test('orderedCards follows the saved order and survives a shorter array', () => 
 
 test('moveCard swaps neighbours and refuses to run off either end', () => {
   const settings = {};
-  // Start from the default order: pulse, balance, muscles, ...
+  // Start from the default order: pulse, exercises, muscles, ...
   moveCard(settings, 'muscles', -1);
-  assert.deepEqual(settings.ui.progress.order.slice(0, 3), ['pulse', 'muscles', 'balance']);
+  assert.deepEqual(settings.ui.progress.order.slice(0, 3), ['pulse', 'muscles', 'exercises']);
 
   moveCard(settings, 'pulse', -1); // already first
-  assert.deepEqual(settings.ui.progress.order.slice(0, 3), ['pulse', 'muscles', 'balance']);
+  assert.deepEqual(settings.ui.progress.order.slice(0, 3), ['pulse', 'muscles', 'exercises']);
 
-  moveCard(settings, 'reports', 1); // already last
-  assert.equal(settings.ui.progress.order.at(-1), 'reports');
+  moveCard(settings, 'fasting', 1); // already last
+  assert.equal(settings.ui.progress.order.at(-1), 'fasting');
 
   moveCard(settings, 'nope', 1); // unknown id is a no-op
   assert.equal(settings.ui.progress.order.length, IDS.length);
@@ -101,7 +111,7 @@ test('Hiding Pulse and Balance is allowed — they are not pinned', () => {
 test('reset restores visibility and the default order without touching Home', () => {
   const settings = {};
   setCardVisible(settings, 'progress', 'pulse', false);
-  moveCard(settings, 'reports', -1);
+  moveCard(settings, 'reviews', -1);
   setCardVisible(settings, 'home', 'insight', false);
 
   resetSurface(settings, 'progress');

@@ -7,6 +7,7 @@
 // have, so this is deliberately discrete.
 // =============================================================================
 import { band, dataTableDisclosure, stateBlock } from './band-kit.js';
+import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { formatDayMonthShort } from '../../dates.js';
 
@@ -18,6 +19,7 @@ export function renderFastingBand(model, options = {}) {
   if (options.error) {
     return band({
       id: 'fasting',
+      detail: progressDetailFor('fasting'),
       eyebrow: 'Fasting',
       title: 'Fasting',
       body: stateBlock('error', {
@@ -29,12 +31,13 @@ export function renderFastingBand(model, options = {}) {
   }
 
   if (!model) {
-    return band({ id: 'fasting', eyebrow: 'Fasting', title: 'Fasting', body: stateBlock('loading', { height: 190 }) });
+    return band({ id: 'fasting', detail: progressDetailFor('fasting'), eyebrow: 'Fasting', title: 'Fasting', body: stateBlock('loading', { height: 190 }) });
   }
 
   if (!model.hasData) {
     return band({
       id: 'fasting',
+      detail: progressDetailFor('fasting'),
       eyebrow: 'Fasting',
       title: 'Fasting',
       sub: model.range?.spanLabel,
@@ -71,9 +74,6 @@ export function renderFastingBand(model, options = {}) {
       <div><b>${esc(String(model.streak))}</b><span>Day streak</span></div>
       <div><b>${esc(`${model.longestHours} h`)}</b><span>Longest</span></div>
     </div>
-    <div class="pg-band__actions">
-      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="fasting">Fasting analytics →</button>
-    </div>
     <p class="pg-balance__excluded">Elapsed time against your own goal. Not a health measure.</p>
     ${dataTableDisclosure(
       ['Date', 'Hours', 'Met goal'],
@@ -83,6 +83,7 @@ export function renderFastingBand(model, options = {}) {
 
   return band({
     id: 'fasting',
+    detail: progressDetailFor('fasting'),
     eyebrow: 'Fasting',
     title: 'Fasting',
     value: `${model.averageHours} h`,

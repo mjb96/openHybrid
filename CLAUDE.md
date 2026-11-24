@@ -621,16 +621,28 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - Progress is ONE dashboard (P8a landed): the four legacy domain cards
   (Consistency/Strength/Running/Recovery) and the 12-week strip are retired. The
   hub renders `[data-band]` sections from `progress-dashboard.js` in catalogue
-  order, with Pulse first; the footer keeps the quiet destinations, History and
-  **Week in Review** (a `data-preserve-week` link — Review lost its only entry
-  point when its card went, and the browser check caught it). The hub browser
-  check now asserts band order, four range chips with one selected, no band
-  without a headline, an empty profile that invents nothing, a band row that opens
-  a detail screen, and that the Endurance band follows the selected week.
+  order, with Pulse first.
+- Progress navigation (§16, PG2/PG3/PG7): `js/analytics/progress-sections.js` is
+  the ONE registry of top-level sections and their detail switches (label,
+  subtitle, module gate, default order/visibility, route id, children). The
+  composer, Customize sheet, band headers and
+  `tests/progress_registry_guard.test.js` all read it; a destination rendered
+  outside it fails the suite. There is **no “More detail” section and no footer
+  list**: History is a header icon, “How this page is calculated” is a header
+  info disclosure, and the recaps are ONE Reviews row (Week | Month | Year,
+  legacy ids `weekly-review`/`monthly-report`/`year-review`). A band with a
+  route renders its whole header as a 44px “Details ›” control; the detail shows
+  the inherited `Progress · <range>` chip and Back scrolls to the originating
+  band (`data-band-origin`). Default customize order is strength-first: Pulse,
+  Main exercises, Muscles, Body, Reviews, then Balance/Endurance/Fasting; child
+  switches are indented, the reorder column is one fixed x, and module-off rows
+  are disabled with “module off”. `reports` aliases to `reviews` in both hidden
+  and order preferences, so saved choices keep their positions. The hub browser
+  check covers 320/390/412, light/dark, 200% text and a hidden-section case.
   `tests/progress_no_paywall.test.js` is a ratchet: no gating/monetisation terms in
   any Progress source, no cap exported from `ranges.js`, no `.pg-*locked` or blurred
-  style. Progress photos remain unbuilt (they need v16 + IDB v3 + zip export in one
-  change); customize reorder UI and sub-toggles are the rest of P8.
+  style. Progress photos still need their own backup story; PG9’s remaining
+  overview concision and PG5/PG6 (all-lifts index, Records table) stay open.
 - Progress photos (P6b landed): metadata in `appState.progressPhotos` (schema
   **v16**), JPEG bytes in the IndexedDB `photos` store (**DB v3**) — never base64 in
   state. `js/photos/library.js` owns add/replace/delete/export/import; the id IS the

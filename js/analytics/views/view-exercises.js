@@ -7,6 +7,7 @@
 // drilldown carries the full series — so the chart is never the only evidence.
 // =============================================================================
 import { band, dataTableDisclosure, stateBlock } from './band-kit.js';
+import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { formatDayMonthShort } from '../../dates.js';
 
@@ -40,12 +41,13 @@ function deltaText(deltaPct) {
 
 /**
  * @param {ReturnType<import('../exercises-summary.js').buildExerciseSummaryModel>|null} model
- * @param {{ error?: string|null, limit?: number }} [options]
+ * @param {{ error?: string|null, limit?: number, hidden?: string[] }} [options]
  */
 export function renderExercises(model, options = {}) {
   if (options.error) {
     return band({
       id: 'exercises',
+      detail: progressDetailFor('exercises'),
       eyebrow: 'Main exercises',
       title: 'Main exercises',
       body: stateBlock('error', {
@@ -59,6 +61,7 @@ export function renderExercises(model, options = {}) {
   if (!model) {
     return band({
       id: 'exercises',
+      detail: progressDetailFor('exercises'),
       eyebrow: 'Main exercises',
       title: 'Main exercises',
       body: stateBlock('loading', { height: 200 }),
@@ -68,6 +71,7 @@ export function renderExercises(model, options = {}) {
   if (!model.hasData) {
     return band({
       id: 'exercises',
+      detail: progressDetailFor('exercises'),
       eyebrow: 'Main exercises',
       title: 'Main exercises',
       sub: model.range?.spanLabel,
@@ -98,11 +102,16 @@ export function renderExercises(model, options = {}) {
     </li>`;
   }).join('');
 
+  const hidden = Array.isArray(options.hidden) ? options.hidden : [];
+  const actions = `
+    <div class="pg-band__actions">
+      ${hidden.includes('allLifts') ? '' : `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="strength">${extra > 0 ? `All ${model.rows.length} lifts` : 'All lifts'} →</button>`}
+      ${hidden.includes('liftRecords') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="strength_pr">Records →</button>'}
+    </div>`;
+
   const body = `
     <ul class="pg-ex-list">${rows}</ul>
-    ${extra > 0
-      ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="strength">Show all ${model.rows.length} exercises →</button>`
-      : ''}
+    ${actions}
     ${dataTableDisclosure(
       ['Exercise', 'Sessions', `Best e1RM (${model.unit})`, 'Change'],
       shown.map((row) => [
@@ -116,6 +125,7 @@ export function renderExercises(model, options = {}) {
 
   return band({
     id: 'exercises',
+    detail: progressDetailFor('exercises'),
     eyebrow: 'Main exercises',
     title: 'Main exercises',
     value: String(model.rows.length),

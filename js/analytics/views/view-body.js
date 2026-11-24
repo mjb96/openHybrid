@@ -7,6 +7,7 @@
 // Progress already draw, so there is never a second sparkline implementation.
 // =============================================================================
 import { band, dataTableDisclosure, stateBlock } from './band-kit.js';
+import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { bodyWeightChartSVG } from '../charts.js';
 import { cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
@@ -36,6 +37,7 @@ export function renderBody(model, options = {}) {
   if (options.error) {
     return band({
       id: 'body',
+      detail: progressDetailFor('body'),
       eyebrow: 'Body',
       title: 'Body',
       body: stateBlock('error', {
@@ -47,12 +49,13 @@ export function renderBody(model, options = {}) {
   }
 
   if (!model) {
-    return band({ id: 'body', eyebrow: 'Body', title: 'Body', body: stateBlock('loading', { height: 220 }) });
+    return band({ id: 'body', detail: progressDetailFor('body'), eyebrow: 'Body', title: 'Body', body: stateBlock('loading', { height: 220 }) });
   }
 
   if (!model.hasData) {
     return band({
       id: 'body',
+      detail: progressDetailFor('body'),
       eyebrow: 'Body',
       title: 'Body',
       sub: model.range?.spanLabel,
@@ -153,8 +156,8 @@ export function renderBody(model, options = {}) {
     ${bodyFat}
     ${photosHidden ? '' : photoStrip}
     <div class="pg-band__actions">
-      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="measures">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measures →'}</button>
-      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">Weight trend</button>
+      ${Array.isArray(options.hidden) && options.hidden.includes('bodyMeasures') ? '' : `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="measures">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measures →'}</button>`}
+      ${Array.isArray(options.hidden) && options.hidden.includes('bodyWeight') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">Weight trend</button>'}
       <button type="button" class="pg-band__action" data-action="open-bw-sheet">Log weigh-in</button>
     </div>
     ${dataTableDisclosure(
@@ -170,6 +173,7 @@ export function renderBody(model, options = {}) {
 
   return band({
     id: 'body',
+    detail: progressDetailFor('body'),
     eyebrow: 'Body',
     title: 'Body',
     value: weightText,

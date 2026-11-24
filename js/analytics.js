@@ -39,7 +39,7 @@ import { buildProgressDashboard } from './analytics/progress-dashboard.js';
 import { renderMeasures } from './analytics/views/view-measures.js';
 import { buildMeasuresModel } from './metrics/measures.js';
 import { buildMeasurementExplorer, DEFAULT_EXPLORER_RANGE_ID } from './analytics/measurement-explorer.js';
-import { isRangeId } from './analytics/ranges.js';
+import { isRangeId, resolveRange } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatRunDistance } from './workout/run-units.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
@@ -52,6 +52,9 @@ let _analyticsEntity = null;
 let _analyticsParentContext = null;
 let _analyticsParentOrigin = 'insights';
 let _analyticsGrandparentContext = null;
+// Where a band detail was opened from, so Back can scroll to that band.
+let _analyticsBandOrigin = null;
+let _pendingBandReturn = null;
 let _lastScoreResult = null;   // most recent Score-detail result, for the Share card
 // Progress controls. Ephemeral on purpose: remembering "you were in Endurance
 // mode last week" silently hides half the dashboard, which reads as a bug.
@@ -87,7 +90,13 @@ export function setAnalyticsContext(ctx, options = {}) {
   const previousOrigin = _analyticsOrigin;
   const previousParentContext = _analyticsParentContext;
   _analyticsContext = ctx || 'weekly-summary';
-  if (_analyticsContext === 'hub') _progressMuscle = 'all';
+  if (_analyticsContext === 'hub') {
+    _progressMuscle = 'all';
+    if (options.bandOrigin) _pendingBandReturn = options.bandOrigin;
+    _analyticsBandOrigin = null;
+  } else {
+    _analyticsBandOrigin = options.bandOrigin || null;
+  }
   if (options.origin) _analyticsOrigin = options.origin === 'home' ? 'home' : 'insights';
   _analyticsEntity = options.entity ? { id: options.entity, name: options.entityName || '' } : null;
   // Entering the leaf resets its local controls; the site deep link (the Body
@@ -785,12 +794,33 @@ function applyWeekNavVisibility(context) {
   weekNav.style.display = visible ? '' : 'none';
 }
 
+/**
+ * The band-detail context line. A drilldown inherits the hub's range and says
+ * which range that is, so the numbers on the leaf are not mistaken for a
+ * different window.
+ */
+function renderRangeChip() {
+  const chip = document.getElementById('analyticsRangeChip');
+  if (!chip) return;
+  const onHub = _analyticsContext === 'hub';
+  const fromProgress = !onHub && (_analyticsParentContext === 'hub' || !!_analyticsBandOrigin || _analyticsOrigin === 'insights');
+  if (!fromProgress) {
+    chip.hidden = true;
+    chip.textContent = '';
+    return;
+  }
+  const range = resolveRange(_progressRangeId, localDayKey(new Date()));
+  chip.hidden = false;
+  chip.textContent = `Progress · ${range.label}${range.spanLabel ? ` · ${range.spanLabel}` : ''}`;
+}
+
 export function renderAnalytics() {
   if (!_getState || !_getDays) return;
 
   updateWeekNavDisplay(_getState);
 
   const context = _analyticsContext;
+  renderRangeChip();
 
   // Review's Overview is week-scoped and its Stats tab is not. The tab bar
   // reports every in-screen switch so the navigator is never left stale. Legacy
@@ -811,6 +841,7 @@ export function renderAnalytics() {
     const destination = analyticsBackDestination(
       context, _analyticsOrigin, _analyticsParentContext,
       _analyticsGrandparentContext, _analyticsParentOrigin,
+      _analyticsBandOrigin,
     );
     if (!destination) {
       // The hub is now a top-level nav destination — the bottom nav is the way
@@ -828,6 +859,8 @@ export function renderAnalytics() {
       else backBtn.removeAttribute('data-origin');
       if (destination.preserveWeek) backBtn.setAttribute('data-preserve-week', 'true');
       else backBtn.removeAttribute('data-preserve-week');
+      if (destination.bandOrigin) backBtn.setAttribute('data-band-origin', destination.bandOrigin);
+      else backBtn.removeAttribute('data-band-origin');
       if (destination.target) backBtn.setAttribute('data-target', destination.target);
       else backBtn.removeAttribute('data-target');
     }
@@ -886,6 +919,18 @@ export function renderAnalytics() {
         weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
         distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
       });
+      // Origin-aware Back: a band drilldown returns to the band it came from,
+      // not to the top of the hub (roadmap §16.6 / P-F5).
+      const bandReturn = _pendingBandReturn;
+      _pendingBandReturn = null;
+      if (bandReturn) {
+        setTimeout(() => {
+          try {
+            document.querySelector(`#analytics-hub [data-band="${bandReturn}"]`)
+              ?.scrollIntoView({ behavior: 'auto', block: 'start' });
+          } catch (_) { /* no-op */ }
+        }, 0);
+      }
       break;
     }
     // V2 (S2): the Review screen — weekly-review (Overview) + weekly-summary and

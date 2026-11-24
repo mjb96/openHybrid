@@ -18,6 +18,8 @@
 // change instead of silently resetting.
 // =============================================================================
 
+import { PROGRESS_SECTIONS, PROGRESS_SECTION_CHILDREN } from '../analytics/progress-sections.js';
+
 export const HOME_CARDS = Object.freeze([
   { id: 'weekStrip', label: 'This week', note: 'Seven-day rail with four weeks of recaps' },
   { id: 'hybridBalance', label: 'Training balance', note: 'This week’s strength vs endurance split' },
@@ -28,27 +30,28 @@ export const HOME_CARDS = Object.freeze([
   { id: 'volumeGuide', label: 'Muscle volume', note: 'Focus-muscle coverage for the week' },
 ]);
 
-export const PROGRESS_CARDS = Object.freeze([
-  { id: 'pulse', label: 'Pulse', note: 'Last 7 days, streak and training days' },
-  { id: 'balance', label: 'Balance', note: 'Strength vs endurance split' },
-  { id: 'muscles', label: 'Muscles', note: 'Sets per muscle, distribution and body split' },
-  { id: 'exercises', label: 'Main exercises', note: 'The lifts you train most and how they moved' },
-  { id: 'endurance', label: 'Endurance', note: 'Run and walk distance, pace, consistency' },
-  { id: 'body', label: 'Body', note: 'Weight, measurements and photos' },
-  { id: 'fasting', label: 'Fasting', note: 'Fast length against your goal' },
-  { id: 'reports', label: 'Reports', note: 'Monthly report and year in review' },
-]);
+export const PROGRESS_CARDS = Object.freeze(PROGRESS_SECTIONS.map((section) => ({
+  id: section.id,
+  label: section.label,
+  note: section.subtitle,
+  module: section.module,
+  routeId: section.routeId,
+  defaultVisible: section.defaultVisible,
+})));
 
 /**
  * Detail inside a band. These are switches too, but they are not bands: they do
  * not enter the render order and they cannot be the last visible card.
  *
- * @type {ReadonlyArray<{ id: string, label: string, note: string, parent: string }>}
+ * @type {ReadonlyArray<{ id: string, label: string, note: string, parent: string, routeId: string|null }>}
  */
-export const PROGRESS_SUB_CARDS = Object.freeze([
-  { id: 'bodyPhotos', label: 'Progress photos', note: 'Hidden when the phone is passed around', parent: 'body' },
-  { id: 'musclesBody', label: 'Body diagram', note: 'The ranked rows carry the same numbers', parent: 'muscles' },
-]);
+export const PROGRESS_SUB_CARDS = Object.freeze(PROGRESS_SECTION_CHILDREN.map((child) => ({
+  id: child.id,
+  label: child.label,
+  note: child.subtitle,
+  parent: /** @type {string} */ (child.parent),
+  routeId: child.routeId,
+})));
 
 /**
  * Old card id → the band(s) that inherited their content. An empty array means
@@ -62,9 +65,17 @@ export const PROGRESS_CARD_ALIASES = Object.freeze({
   muscleLoad: ['muscles'],
   running: ['endurance'],
   bodyweight: ['body'],
+  reports: ['reviews'],
   recovery: [],
   projections: [],
 });
+
+/**
+ * Order ids are one-to-one, so the Reports band is renamed rather than expanded
+ * into two rows: an existing athlete keeps the exact place they put it.
+ * @type {Readonly<Record<string, string>>}
+ */
+export const PROGRESS_ORDER_ALIASES = Object.freeze({ reports: 'reviews' });
 
 /** Progress must keep at least one BAND so the destination never renders bare. */
 export const MIN_VISIBLE_PROGRESS_CARDS = 1;
@@ -124,7 +135,8 @@ export function normalizeUi(value) {
 
   const rawOrder = Array.isArray(input?.progress?.order) ? input.progress.order : [];
   const bands = new Set(bandIds());
-  const order = dedupe(rawOrder.filter((id) => bands.has(id)));
+  const renamedOrder = rawOrder.map((id) => PROGRESS_ORDER_ALIASES[id] || id);
+  const order = dedupe(renamedOrder.filter((id) => bands.has(id)));
   // A band added in a later release appears without editing anyone's array.
   for (const id of PROGRESS_CARDS.map((card) => card.id)) {
     if (!order.includes(id)) order.push(id);

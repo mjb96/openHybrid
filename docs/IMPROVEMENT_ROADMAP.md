@@ -1096,8 +1096,10 @@ Part H flows do not regress.
   One range control, four chips. `Customize Progress` has per-band switches and
   keyboard reorder.
 - The four legacy domain cards were retired because they were a second
-  dashboard. The **footer** was left holding quiet destinations: History and
-  Week in Review (Review has a footer link that preserves the selected week).
+  dashboard. The **footer** — the trailing "More detail" list plus five quiet
+  links — was removed on 25 Nov 2026: History and the “how this is calculated”
+  note are header icons, the recaps are one Reviews row, and every other
+  destination is the detail behind its band.
 - Other destinations reached from the tab: Measures and Photos (behind Body),
   Training Report (30 days or 12 months), Review → Stats with the seasonal Year
   in Review, the exercise drilldown, the Muscles detail screen.
@@ -1153,14 +1155,14 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | PG1 | Inventory | `analytics/views/view-progress-hub.js` | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | DONE | Inventory in §16.7: 22 entries; the five fixed footer links sit outside the existing guard arrays. |
-| PG2 | One home per destination | `analytics/views/view-progress-hub.js`, `progress-landing.js` | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | MISSING | All six footer leaves duplicate a band entry and Review is reachable three ways; the test only checks `domains` + `secondary`. |
-| PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | MISSING | Zero of eight band headers are controls; no Details affordance or band-detail layer exists. |
-| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reports.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | One Review screen with Overview \| Stats and a shared share model; not Week \| Month \| Year. The Reports Year row now routes to Stats (the tab that owns the year); Reports still duplicates the screen. |
-| PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | PARTIAL | Top 5 with last performed, best e1RM, change and PR flag; no search, all-lifts list or stall flag. "Show all" opens legacy Strength. |
-| PG6 | Records row | `strength/records.js`, `set-records.js` | PR table and dated feed (A6) | MISSING | All-time PR machinery exists only inside the per-exercise drilldown; no hub row, PR table or dated feed. |
-| PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | PARTIAL | Per-band detail switches and keyboard reorder exist; default order is not strength-first, Reports is not Reviews, and module-off is not labelled. |
-| PG8 | Navigation contract | `analytics/navigation.js`, `analytics.js` | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | PARTIAL | Origin-aware Back, preserved week/range and footer padding exist; scroll resets to top on every navigation and band-origin Back loses position. |
-| PG9 | Overview concision | `views/view-progress-hub.js`, `analytics.js` | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | MISSING | Each band carries its full chart + rows + table; 8 bands + 9 trailing links; no scannability test; the retired four-domain model is still computed. |
+| PG2 | One home per destination | `analytics/views/view-progress-hub.js`, `progress-landing.js` | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | DONE | `js/analytics/progress-sections.js` is the one registry; the footer and "More detail" list are gone. Reviews is one Week \| Month \| Year row, History is the header icon, and `tests/progress_registry_guard.test.js` fails on any unregistered section/destination. |
+| PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | DONE | Every band with a detail renders its whole header as a 44px "Details ›" control; the detail inherits the range (header chip) and Back scrolls to the originating band (`data-band-origin`). The browser check asserts the chip and the restored position. |
+| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reviews.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | The hub now has ONE Reviews row (Week \| Month \| Year, all legacy route ids) and the Reports band is deleted. The screen itself is still Overview \| Stats rather than a merged Week \| Month \| Year surface. |
+| PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | PARTIAL | Top 5 with last performed, best e1RM, change and PR flag; no search, all-lifts list or stall flag. The band header and its “All lifts” switch open the legacy Strength screen. |
+| PG6 | Records row | `strength/records.js`, `set-records.js` | PR table and dated feed (A6) | PARTIAL | The Main exercises band now has a labelled “Records” switch that opens Strength’s Stats tab, but there is still no dedicated PR table or dated feed. |
+| PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | DONE | Default order is Pulse → Main exercises → Muscles → Body → Reviews, then Balance/Endurance/Fasting. Customize reads the registry for top-level rows and indented detail switches, keeps the reorder column at one x, and disables module-off rows with "module off" copy. Saved old orders preserve their position (`reports` → `reviews`). |
+| PG8 | Navigation contract | `analytics/navigation.js`, `analytics.js` | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | DONE | Band-origin Back returns to and scrolls to the originating band; every detail shows the inherited `Progress · <range>` chip; the last band still clears the fixed nav. The browser check asserts all three. |
+| PG9 | Overview concision | `views/view-progress-hub.js`, `analytics.js` | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | PARTIAL | Slice 1 removed the 9 trailing links, collapsed Reports into Reviews and gave each band one header drilldown. Each band still carries its chart + rows + table (the next slice moves the secondary evidence into the detail) and there is no scannability test; `buildProgressLanding` still computes the retired domain model. |
 
 ### 16.6 Rules and acceptance
 
@@ -1220,11 +1222,11 @@ hub entry links to it (legacy deep link only).
 | H-F3 | The single insight is not strength-derived and is not deload/overtraining-aware; it can cheer "primed for a hard session" beside the overtraining card. | `dashboard-model.js` `pickTopInsight` priority list | **P1** | H2 / HM4 |
 | H-F4 | Quick actions are Weight / Run / History, not empty workout / log a past session / one contextual action. | `index.html`, `home.js` quick-action block | P2 | H2 / HM5 |
 | H-F5 | No explicit first-run Home state; offline is a note inside Today, not a page-level stale signal. | `today-card.js`, `home.js` | P2 | H2 / HM6 |
-| P-F1 | The "one home per destination" guard cannot see the real hub: it checks `domains` + `secondary`, while the five fixed footer links are rendered outside both arrays. Six footer leaves duplicate a band and Review is reachable three ways. | `progress_landing.test.js`, `view-progress-hub.js` | **P1** | H4 / PG2 |
+| P-F1 | **Fixed 25 Nov:** the registry guard sees every rendered band and destination, so a footer leaf or an unregistered detail fails the suite instead of hiding outside the checked arrays. | `progress_registry_guard.test.js`, `progress-sections.js` | Resolved | H4 / PG2 |
 | P-F2 | **Fixed 24 Nov:** "Year in Review" now routes to `year-review`, which opens Review's Stats tab where the year section actually lives. The Progress-hub browser check asserts the active tab and visible year container. | `view-reports.js`, `analytics.js`, `progress-hub-browser-check.mjs` | Resolved | H4 / PG4 |
-| P-F3 | Zero of eight band headers drill down; no band-detail layer, no all-lifts index/search/stall flag and no Records row. | `band-kit.js`, `view-exercises.js`, `strength/records.js` | **P1** | H4 / PG3, PG5, PG6 |
+| P-F3 | **Drilldown fixed 25 Nov:** every data band header opens its detail. The all-lifts index/search/stall flag (PG5) and a real Records table/feed (PG6) remain. | `band-kit.js`, `view-exercises.js`, `strength/records.js` | PARTIAL | H4 / PG3, PG5, PG6 |
 | P-F4 | The hub still computes the retired four-domain dashboard and 12-week series on every render, while reading only `secondary`/`allEmpty`. | `analytics.js` hub render | P2 | H4 / PG9 |
-| P-F5 | Scroll resets to top on every navigation, so Back from a band detail returns to the hub top rather than the band. | `app.js` `scrollTo(0,0)`, `navigation.js` | P2 | H4 / PG8 |
+| P-F5 | **Fixed 25 Nov:** Back from a band detail carries `data-band-origin` and scrolls to that band after the hub renders. | `app.js`, `analytics.js`, `navigation.js` | Resolved | H4 / PG8 |
 
 ## 17. Workout logging (H3) and strength analytics (H4)
 
@@ -1368,10 +1370,10 @@ never assumed.
 | 3 | Start today's planned workout from cold open | pending | — | pending | pending | — |
 | 4 | Log a working set with previous values shown | pending | — | pending | pending | — |
 | 5 | Add an exercise mid-session | pending | — | pending | pending | — |
-| 6 | Review one lift's progress | pending | — | pending | pending | — |
-| 7 | Review last week | pending | — | pending | pending | — |
-| 8 | Open the month recap | pending | — | pending | pending | — |
-| 9 | Find a past PR | pending | — | pending | pending | — |
+| 6 | Review one lift's progress | 3 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
+| 7 | Review last week | 2 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
+| 8 | Open the month recap | 1 tap | 1 tap | pending | pending | 2026-11-25 (agent-traced) |
+| 9 | Find a past PR | 2 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
 
 **`[You]` task:** run each flow on the phone and on Hevy/openGym, record taps,
 seconds and the date, and commit the filled table before H1 closes. The agent
@@ -1407,6 +1409,34 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
+  - One registry (`js/analytics/progress-sections.js`) now declares every
+    section and detail: id, label, subtitle, module gate, default order and
+    visibility, route id and children. The composer, the Customize sheet, the
+    band headers and `tests/progress_registry_guard.test.js` all read it.
+  - The trailing “More detail” heading and all footer links are gone. History is
+    the header icon; “How this page is calculated” is the header info control.
+    The reports band became ONE Reviews row (Week | Month | Year) with the
+    legacy route ids (`weekly-review`, `monthly-report`, `year-review`).
+  - Every data band header is a 44px “Details ›” control (Fasting → Fasting,
+    Body → Measures, Muscles → Muscle load, Main exercises → All lifts,
+    Endurance → Running). The detail shows the inherited `Progress · <range>`
+    chip and Back scrolls to the originating band. “Records” is a labelled
+    shortcut to Strength’s Stats tab.
+  - Customize Progress is strength-first (Pulse, Main exercises, Muscles, Body,
+    Reviews, then Balance/Endurance/Fasting), with indented detail switches, a
+    fixed reorder column, an Open chevron per row and “module off” rows disabled.
+    Pulse’s subtitle names the real current calendar week.
+  - Legacy ids survive: `reports` → `reviews` in both hidden and order
+    preferences; an existing saved order keeps its positions.
+  - Evidence: `npm test` 2,692 pass, typecheck, smoke, and the rewritten
+    `progress-hub-browser-check` at 320/390/412 px light/dark plus 200% text and
+    a hidden-section case. Part H flows 6–9 are 3→2, 2→2, 1→1, 2→2 taps
+    (agent-traced; device timings remain `[You]`). Screenshots:
+    `docs/screenshots/{before,after}-{hub,customize}-*.png`.
+  - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
+    search/stall; PG6 a real Records table/feed; PG9’s remaining overview
+    concision and scannability test.
 - **2026-11-24 — H1 P0 closed: #319 and #321 merged.**
   - Onboarding equipment now survives boot; back-dated weigh-ins no longer
     become current; the notification master switch persists.
@@ -1478,11 +1508,5 @@ device timing it did not measure.
   - Still PARTIAL: the card links to the legacy Strength screen until the
     Progress restructure (PG3/PG5) owns that evidence.
 
-- **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
-  - `workout/session-preview.js` is now the one resolver shared by Train and
-    Home: it reads the same `liftTarget` and dated history the cockpit uses.
-  - The ready card shows up to three lifts with target and last-time numbers;
-    the collapsed row carries a compact `Lift 2×8 · last 100 kg × 5` line.
-  - `home-today-browser-check` covers 320/390/412 px light/dark, the compact
-    and expanded preview, and keeps the one-primary-action contract.
-  - Remaining H-F2: moving a planned day (HM2).
+> Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+

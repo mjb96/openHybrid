@@ -30,7 +30,7 @@ const ctx = { todayISO: TODAY };
 
 test('a trained athlete gets Pulse and Muscles, each with a real model', () => {
   const model = buildProgressDashboard(trainedState(), ctx);
-  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'muscles', 'reports']);
+  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'muscles', 'reviews']);
   const pulse = model.bands.find((band) => band.id === 'pulse');
   assert.equal(pulse.model.sessions, 1);
   assert.equal(model.availability.pulse.hasData, true);
@@ -74,8 +74,8 @@ test('a module switch removes the band and says so', () => {
 
 test('an empty athlete still gets Pulse, which reports no data', () => {
   const model = buildProgressDashboard({ settings: {}, weeks: {} }, ctx);
-  // Pulse keeps its empty state; Reports is static links and always renders.
-  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'reports']);
+  // Pulse keeps its empty state; Reviews is a static row and always renders.
+  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'reviews']);
   assert.equal(model.availability.pulse.hasData, false);
   assert.equal(model.availability.pulse.hidden, false);
 });
@@ -168,9 +168,10 @@ test('the saved order is honoured, with unknown ids ignored', () => {
     settings: { ui: { progress: { order: ['reports', 'pulse', 'nope'] } } },
   });
   const model = buildProgressDashboard(state, ctx);
-  // The saved order decides traversal: reports was asked for first, so it is
-  // first even though the catalogue puts it last.
-  assert.deepEqual(model.bands.map((band) => band.id).slice(0, 2), ['reports', 'pulse']);
+  // The saved order decides traversal: the old `reports` id is the renamed
+  // Reviews band, so its saved position survives even though the strength-first
+  // catalogue would put Reviews fourth.
+  assert.deepEqual(model.bands.map((band) => band.id).slice(0, 2), ['reviews', 'pulse']);
   assert.equal(model.totalCount, 8);
 });
 

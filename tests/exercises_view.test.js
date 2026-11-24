@@ -64,7 +64,7 @@ test('a tied best is not a PR', () => {
 test('the limit caps rows and offers the rest', () => {
   const html = renderExercises(model(), { limit: 1 });
   assert.equal((html.match(/class="pg-ex"/g) || []).length, 1);
-  assert.match(html, /Show all \d+ exercises/);
+  assert.match(html, /All 3 lifts/);
 });
 
 test('an empty model asks for data instead of listing nothing', () => {

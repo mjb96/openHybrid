@@ -1,11 +1,12 @@
 // =============================================================================
 // PROGRESS HUB BROWSER CHECK — roadmap Phase 3A
 //
-// The Progress landing is no longer a static index, so it needs the same
-// contract every rebuilt analytics screen has: the four headline domains render
-// with real values, secondary destinations stay reachable but quieter, Fasting
-// only appears for people who fast, every control clears 44px, and nothing
-// overflows at 320–412px in either theme.
+// Roadmap §16: the hub is a strength-first band list with ONE home per
+// destination. This check verifies the registry contract on the real surface:
+// no "More detail" footer, header History/info icons, a Details control on every
+// band with a drilldown, the single Reviews Week | Month | Year row, origin-aware
+// Back to the band, Customize rows/toggles/reorder/Open, a hidden-section case,
+// 44px controls, 320–412px, light/dark and 200% text.
 // =============================================================================
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -182,7 +183,7 @@ async function openYearReview(browser, { todayISO, width, theme = 'dark', weight
   await disableWebShare(page);
   await openHub(page);
   await page.waitForSelector('#analytics-hub.active .pg-band');
-  await page.click('.hub-link--quiet[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review card did not open`));
+  await page.click('.pg-reviews__seg[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review row did not open`));
   await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => failures.push(`${label}: Review did not open`));
   await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Stats tab did not open`));
   await page.waitForFunction(() => {
@@ -246,12 +247,17 @@ try {
         // Every band must carry a headline value and no empty chart shell.
         // Reports is a link list, not a measurement: it has no headline to show.
         values: bands
-          .filter((band) => band.getAttribute('data-band') !== 'reports')
+          // Reviews is a Week | Month | Year row, not a measurement: it has no
+          // headline to show (Pulse, and every data band, do).
+          .filter((band) => band.getAttribute('data-band') !== 'reviews')
           .map((band) => band.querySelector('.pg-band__value')?.textContent?.trim() || ''),
         rangeChips: section.querySelectorAll('[data-pg-range]').length,
         selectedRange: section.querySelector('[data-pg-range][aria-pressed="true"]')?.getAttribute('data-pg-range') || '',
-        secondary: [...section.querySelectorAll('.hub-link--quiet')].map((link) => link.getAttribute('data-context')),
-        hasMethod: !!section.querySelector('.an-method'),
+        footerLinks: section.querySelectorAll('.hub-link--quiet, .hub-group, .an-method').length,
+        hasMethod: !!section.querySelector('.hub-head details.pg-method'),
+        headerHistory: !!section.querySelector('.hub-head [data-action="open-activities"]'),
+        detailHeads: [...section.querySelectorAll('.pg-band__head--detail')].map((node) => node.getAttribute('data-context')),
+        reviews: [...section.querySelectorAll('[data-band="reviews"] .pg-reviews__seg')].map((node) => node.getAttribute('data-context')),
         // The Pulse band replaced the old week hero: same contract, same
         // assertions — the top of the page names the SELECTED week in real
         // dates and follows the navigator.
@@ -292,19 +298,23 @@ try {
     if (seen.values.some((value) => !value)) failures.push(`${width}px: a band rendered without a headline value`);
     if (seen.rangeChips !== 4) failures.push(`${width}px: expected four range chips (got ${seen.rangeChips})`);
     if (seen.selectedRange !== '30d') failures.push(`${width}px: expected 30d selected (got ${seen.selectedRange})`);
-    if (!seen.bands.includes('balance') && seen.bands.includes('endurance')) {
-      // Informational only: a single-modality fixture has no mix to show.
+    // One home per destination: the generic footer must not exist in any form.
+    if (seen.footerLinks) failures.push(`${width}px: a footer/"More detail" destination survived (${seen.footerLinks})`);
+    if (!seen.bands.includes('reviews')) failures.push(`${width}px: no Reviews row`);
+    if (seen.reviews.join(',') !== 'weekly-review,monthly-report,year-review') {
+      failures.push(`${width}px: Reviews is not Week | Month | Year (${seen.reviews.join(',')})`);
     }
-    if (seen.secondary.includes('hybrid-score')) failures.push(`${width}px: Hybrid Score must not appear as a secondary destination`);
-    if (seen.secondary.includes('fasting')) failures.push(`${width}px: Fasting must not appear for a profile with no fasting history`);
+    if (!seen.headerHistory) failures.push(`${width}px: History is not the Progress header icon`);
+    if (!seen.detailHeads.length) failures.push(`${width}px: no band has a Details control`);
+    if (seen.detailHeads.includes('hybrid-score')) failures.push(`${width}px: Hybrid Score must not be a band detail`);
     // Measures is the record behind the Body band, and body data is optional —
     // so it needs a route that does not depend on a band rendering.
+    // Measures is a Body detail, and the Customize sheet's Body row is the
+    // route that does not depend on the range having body data.
     const measuresRoutes = await page.evaluate(() => ({
       band: !!document.querySelector('#analytics-hub [data-band="body"] [data-context="measures"]'),
-      footer: !!document.querySelector('#analytics-hub .hub-link[data-action="open-analytics"][data-context="measures"]'),
     }));
     if (!measuresRoutes.band) failures.push(`${width}px: the Body band does not open Measures`);
-    if (!measuresRoutes.footer) failures.push(`${width}px: no quiet footer route to Measures`);
     // A key site is a control, not a static label: it opens Measures on that
     // site. The old cells were <li>s with no target at all.
     const bodySites = await page.evaluate(() => {
@@ -363,17 +373,21 @@ try {
       const reset = await page.$eval('#analytics-hub [data-band="muscles"] [data-pg-muscle]', (el) => el.value).catch(() => '');
       if (reset !== 'all') failures.push(`${width}px: muscle focus did not reset to All (${reset})`);
     }
-    if (!seen.hasMethod) failures.push(`${width}px: missing "how this is calculated" disclosure`);
-    if (!seen.hasWeekHero) failures.push(`${width}px: missing the this-week overview`);
-    if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: week overview does not name sessions`);
+    if (!seen.hasMethod) failures.push(`${width}px: missing the header "how this is calculated" control`);
+    if (!seen.hasWeekHero) failures.push(`${width}px: missing the Pulse band`);
+    if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: Pulse does not name sessions`);
     if (!seen.sub) failures.push(`${width}px: hub has no subtitle`);
     if (/\d{4}-\d{2}-\d{2}/.test(seen.sub)) failures.push(`${width}px: hub subtitle leaks an ISO date (${seen.sub})`);
-    const navDates = await page.$eval('#weekNavDates', (el) => el.textContent.trim());
-    if (!/^(\d{1,2}–\d{1,2} [A-Z][a-z]{2}|\d{1,2} [A-Z][a-z]{2} – \d{1,2} [A-Z][a-z]{2})$/.test(navDates)) {
-      failures.push(`${width}px: week navigator does not name a human date range (${navDates})`);
+    // Pulse is the CURRENT calendar week; the range control is the only time
+    // control on the hub, so there is no week navigator to compare against.
+    if (!/^\d{1,2}–\d{1,2} [A-Z][a-z]{2}$/.test(seen.heroEyebrow)) {
+      failures.push(`${width}px: Pulse does not name its real calendar-week range (${seen.heroEyebrow})`);
     }
-    // The hero eyebrow is the selected range; the navigator owns "This week".
-    if (seen.heroEyebrow !== navDates) failures.push(`${width}px: overview eyebrow does not name the selected range (${seen.heroEyebrow} vs ${navDates})`);
+    // The method opens from the header icon and explains the real range.
+    await page.click('.hub-head details.pg-method > summary');
+    const methodOpen = await page.$eval('.pg-method', (el) => el.open && !!el.querySelector('.pg-method__panel')?.getBoundingClientRect().height);
+    if (!methodOpen) failures.push(`${width}px: the header method control did not open`);
+    await page.click('.hub-head details.pg-method > summary');
     if (seen.overflow) failures.push(`${width}px: page-level horizontal overflow by ${seen.overflowBy}px — ${seen.overflowers.join(' ; ')}`);
     if (seen.smallControls) failures.push(`${width}px: ${seen.smallControls} controls below the 44px target`);
 
@@ -399,8 +413,8 @@ try {
     await page.click('[data-pg-range="30d"]', { timeout: 2000 });
     await page.waitForTimeout(250);
 
-    // Week in Review still opens from the hub footer.
-    const reviewLink = await page.$('.hub-link--quiet[data-context="weekly-review"]');
+    // Week in Review opens from the single Reviews row.
+    const reviewLink = await page.$('.pg-reviews__seg[data-context="weekly-review"]');
     if (!reviewLink) {
       failures.push(`${width}px: Week in Review has no entry point`);
     } else {
@@ -427,14 +441,28 @@ try {
       await page.waitForSelector('#analytics-hub.active .pg-band', { timeout: 4000 }).catch(() => {});
     }
 
-    // A band row must reach a detail screen. Muscles rows open Muscle load; the
-    // Strength screen itself is then reached from its own drilldown link.
-    await page.click('#analytics-hub [data-band="muscles"] .pg-row__hit');
+    // The WHOLE band header is the drilldown, and Back returns to that band.
+    const bandTopBefore = await page.$eval('#analytics-hub [data-band="muscles"]', (el) => el.getBoundingClientRect().top);
+    await page.click('#analytics-hub [data-band="muscles"] .pg-band__head--detail');
     await page.waitForSelector('#analytics-muscle-load.active', { timeout: 4000 }).catch(() => {
-      failures.push(`${width}px: a Muscles row did not open a detail screen`);
+      failures.push(`${width}px: the Muscles header did not open its detail`);
     });
-    await page.click('#weekNavToday:not([hidden])').catch(() => {});
-    await page.evaluate(() => { location.hash = ''; });
+    const rangeChip = await page.$eval('#analyticsRangeChip', (el) => ({
+      hidden: el.hidden, text: el.textContent.trim(),
+    })).catch(() => ({ hidden: true, text: '' }));
+    if (rangeChip.hidden || !/Progress · 30D/.test(rangeChip.text)) {
+      failures.push(`${width}px: the band detail did not inherit/show the range (${rangeChip.text})`);
+    }
+    await page.click('#view-analytics .subview-back-btn');
+    await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {
+      failures.push(`${width}px: Back from a band detail did not return to Progress`);
+    });
+    await page.waitForTimeout(200);
+    const bandTopAfter = await page.$eval('#analytics-hub [data-band="muscles"]', (el) => el.getBoundingClientRect().top)
+      .catch(() => 9999);
+    if (Math.abs(bandTopAfter) > 140) {
+      failures.push(`${width}px: Back did not restore the band position (top ${Math.round(bandTopAfter)}, was ${Math.round(bandTopBefore)})`);
+    }
 
     // The exercise drilldown still carries a real chart, stat cards and evidence.
     await page.evaluate(() => document.querySelector('[data-action="open-analytics"][data-context="strength"]')?.click());
@@ -489,7 +517,7 @@ try {
     // Review → Stats must show a twelve-week calendar log, not a program-week
     // grid that hides imported/archived sessions.
     await openHub(page);
-    await page.click('.hub-link--quiet[data-context="weekly-review"]');
+    await page.click('.pg-reviews__seg[data-context="weekly-review"]');
     await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => {
       failures.push(`${width}px: Review domain card did not open the Review screen`);
     });
@@ -532,6 +560,101 @@ try {
     }
 
     if (errors.length) failures.push(`${width}px: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // A hidden section leaves the Overview but keeps its Customize row, its
+  // Open chevron and its toggle. A module-off row is disabled and says
+  // "module off" — never "no data".
+  {
+    const theme = 'light';
+    const width = 320;
+    const hiddenFixture = fixture(theme);
+    hiddenFixture.settings.ui = { progress: { hidden: ['muscles'] } };
+    hiddenFixture.settings.modules = { running: true, fasting: false, health: true, recovery: true };
+    const context = await createBrowserContext(browser, { viewport: { width, height: 844 }, timezoneId: TZ, colorScheme: theme });
+    await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(hiddenFixture)]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await openHub(page);
+    await page.waitForSelector('#analytics-hub.active .pg-band');
+
+    const hidden = await page.evaluate(() => ({
+      muscles: !!document.querySelector('#analytics-hub [data-band="muscles"]'),
+      reviews: !!document.querySelector('#analytics-hub [data-band="reviews"]'),
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    }));
+    if (hidden.muscles) failures.push('hidden section: Muscles still renders on the Overview');
+    if (!hidden.reviews) failures.push('hidden section: hiding Muscles removed Reviews too');
+    if (hidden.overflow) failures.push('hidden section: horizontal overflow at 320px');
+
+    await page.click('[data-action="open-customize"][data-surface="progress"]');
+    await page.waitForSelector('#customizeSheet.active');
+    const sheet = await page.evaluate(() => {
+      const row = (label) => [...document.querySelectorAll('#customizeList .customize-row')]
+        .find((node) => node.querySelector('.customize-row__label')?.textContent.trim() === label);
+      const muscles = row('Muscles');
+      const fasting = row('Fasting');
+      return {
+        musclesToggle: muscles?.querySelector('[data-customize-card="muscles"]')?.checked,
+        musclesOpen: muscles?.querySelector('[data-customize-open][data-context="muscle-load"]')?.getAttribute('data-context') || '',
+        musclesNote: muscles?.querySelector('.customize-row__note')?.textContent.trim() || '',
+        fastingDisabled: !!fasting?.querySelector('[data-customize-card="fasting"]')?.disabled,
+        fastingNote: fasting?.querySelector('.customize-row__note')?.textContent.trim() || '',
+        orderLefts: [...document.querySelectorAll('#customizeList .customize-row--progress:not(.customize-row--sub) .customize-order')]
+          .map((node) => Math.round(node.getBoundingClientRect().left)),
+      };
+    });
+    if (sheet.musclesToggle !== false) failures.push('hidden section: its toggle does not read off');
+    if (sheet.musclesOpen !== 'muscle-load') failures.push('hidden section: no Open chevron to its detail');
+    if (/no data/i.test(sheet.musclesNote)) failures.push(`hidden section: row says "no data" (${sheet.musclesNote})`);
+    if (!sheet.fastingDisabled) failures.push('module off: the row is still interactive');
+    if (!/module off/i.test(sheet.fastingNote)) failures.push(`module off: row does not say "module off" (${sheet.fastingNote})`);
+    if (new Set(sheet.orderLefts).size !== 1) failures.push(`reorder column is not one fixed x (${sheet.orderLefts.join(',')})`);
+
+    await page.click('#customizeList [data-customize-open][data-context="muscle-load"]');
+    await page.waitForSelector('#analytics-muscle-load.active', { timeout: 4000 }).catch(() => {
+      failures.push('hidden section: Open did not reach its detail');
+    });
+    await page.click('#view-analytics .subview-back-btn').catch(() => {});
+    await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {});
+    const stillHidden = await page.evaluate(() => !document.querySelector('#analytics-hub [data-band="muscles"]'));
+    if (!stillHidden) failures.push('hidden section: opening it from the sheet reset the visibility choice');
+    if (errors.length) failures.push(`hidden section: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
+  // 200% text must wrap, not overflow, and the header controls must stay usable.
+  {
+    const context = await createBrowserContext(browser, { viewport: { width: 320, height: 844 }, timezoneId: TZ, colorScheme: 'light' });
+    await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(fixture('light'))]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await openHub(page);
+    await page.waitForSelector('#analytics-hub.active .pg-band');
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    await page.waitForTimeout(250);
+    const zoom = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const actions = document.querySelector('.hub-head__actions')?.getBoundingClientRect();
+      const overflowers = [...document.querySelectorAll('#view-analytics *')].filter((el) => {
+        const rect = el.getBoundingClientRect();
+        return (rect.width || rect.height) && rect.right > vw + 1;
+      }).slice(0, 5).map((el) => `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ').join('.')}`);
+      return {
+        overflow: document.documentElement.scrollWidth > vw + 1,
+        actionsRight: actions ? Math.round(actions.right) : 0,
+        vw,
+        overflowers,
+      };
+    });
+    if (zoom.overflow) failures.push(`200% text: horizontal overflow — ${zoom.overflowers.join(' ; ')}`);
+    if (zoom.actionsRight > zoom.vw + 1) failures.push(`200% text: header actions leave the viewport (${zoom.actionsRight}/${zoom.vw})`);
+    if (errors.length) failures.push(`200% text: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
 
@@ -609,7 +732,7 @@ try {
     // Review's Overview (which has no year section).
     await page.evaluate(() => document.querySelector('.bottom-nav [data-target="analytics"]')?.click());
     await page.waitForSelector('#analytics-hub.active', { timeout: 4000 });
-    const yearRow = page.locator('.pg-reports__row[data-context="year-review"]');
+    const yearRow = page.locator('.pg-reviews__seg[data-context="year-review"]');
     if (await yearRow.count() !== 1) {
       failures.push('year review 390kg: Reports has no Year in Review row');
     } else {
