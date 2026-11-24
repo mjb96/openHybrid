@@ -7,6 +7,7 @@ import {
   STANDARD_PLATE_SETUP,
   ensureEquipmentProfiles,
   getActiveEquipmentProfile,
+  applyActiveEquipment,
   projectActiveEquipmentProfile,
   switchEquipmentProfile,
   setActiveEquipmentKey,
@@ -28,6 +29,7 @@ import {
   removeActiveMachineStack,
 } from '../js/equipment-profiles.js';
 import { migrateState, CURRENT_SCHEMA_VERSION } from '../js/state/migrations.js';
+import { onboardingSettings } from '../js/onboarding/preferences.js';
 
 const baseState = () => ({
   settings: {
@@ -48,6 +50,24 @@ test('ensure seeds one profile from the legacy kit', () => {
     kg: { bar: STANDARD_PLATE_SETUP.kg.bar, plates: [...STANDARD_PLATE_SETUP.kg.plates], counts: {} },
     lb: { bar: STANDARD_PLATE_SETUP.lb.bar, plates: [...STANDARD_PLATE_SETUP.lb.plates], counts: {} },
   });
+});
+
+test('an onboarding home answer becomes the active profile and survives the next boot', () => {
+  const state = baseState();
+  ensureEquipmentProfiles(state);
+  const prefs = onboardingSettings({ equipmentTier: 'home' });
+  Object.assign(state.settings, prefs);
+  applyActiveEquipment(state, prefs.equipment);
+
+  // Simulate the next launch: boot re-ensures and reprojects the profile.
+  ensureEquipmentProfiles(state);
+  projectActiveEquipmentProfile(state);
+
+  assert.equal(state.settings.equipmentTier, 'home');
+  assert.equal(state.settings.equipment.barbell, false);
+  assert.equal(state.settings.equipment.rack, false);
+  assert.equal(state.settings.equipment.dumbbells, true);
+  assert.equal(getActiveEquipmentProfile(state).equipment.barbell, false);
 });
 
 test('switching profiles projects its equipment and band weights', () => {

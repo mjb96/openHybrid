@@ -65,6 +65,7 @@ function notify(title, body, tag) {
 }
 
 function _armAll() {
+  if (!_settings().notificationsEnabled) return;
   _armDailyReminder();
   _armWeeklySummary();
   _armStreakCheck();
@@ -72,6 +73,9 @@ function _armAll() {
 
 export function initNotifications(getStateFn) {
   _getState = getStateFn;
+  // An OS permission grant is not a preference. The athlete may have switched
+  // reminders off, so nothing is armed until the stored switch says so (S-F5).
+  if (!_getState()?.settings?.notificationsEnabled) return;
   if (!notificationsGranted()) return;
   _armAll();
   checkMissedWorkout();

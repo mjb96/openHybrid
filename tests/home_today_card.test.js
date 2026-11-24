@@ -306,3 +306,26 @@ test('a finished session from a frozen program week is not “completed today”
   assert.equal(card.state, 'ready');
   assert.equal(card.primary.label, 'Start workout');
 });
+
+test('a ready card previews the planned lifts with target and last time', () => {
+  const s = state();
+  s.weeks['2'] = {
+    dates: { mon: '2026-07-27' },
+    sessionStatus: {}, runs: {}, runSessions: {}, gymStats: {},
+    lifts: { mon: { 'Bench Press': [{ w: '100', r: '5', c: true }] } },
+  };
+  const card = buildTodayCardModel({
+    state: s, program: PROGRAM, model, now: MONDAY, tz: DISPLAY_TZ,
+  });
+  assert.equal(card.preview.length, 1);
+  assert.deepEqual(card.preview[0], {
+    name: 'Bench Press', sets: 2, reps: '5', weight: null, note: '',
+    last: { weight: 100, reps: 5, date: '2026-07-27' },
+  });
+  const html = todayCardHTML(card);
+  assert.match(html, /today-card__preview/);
+  assert.match(html, /Bench Press/);
+  assert.match(html, /2×5/);
+  assert.match(html, /last 100 kg × 5/);
+  assert.match(html, /today-card__preview-compact/);
+});

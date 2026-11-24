@@ -22,7 +22,9 @@ import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingE
 import * as equipmentProfiles from './equipment-profiles.js';
 import { convertStoredWeights, normalizeWeightUnit } from './metrics/weight-unit.js';
 import { computeExercisePRs } from './engine.js';
+import { latestWeighIn } from './metrics/bodyweight.js';
 import { applyPalette, normalizePalette } from './theme.js';
+import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
 import {
   looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport, hasBodyFatColumn,
@@ -62,7 +64,7 @@ const _parseRest = (str) => {
   return Number.isFinite(n) ? n : null;
 };
 import { showToast } from './state.js';
-import { rearmReminder, notificationsGranted } from './notifications.js';
+import { rearmReminder, notificationsGranted, cancelReminders } from './notifications.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { isHealthBridgeAvailable, getHealthAvailability, connectAndSync, syncHealthConnect, describeFieldStatus } from './health/health-bridge.js';
 import { HEALTH_FIELDS, normalizeSyncFields, selectedFieldIds, isSupportedField } from './health/health-fields.js';
@@ -73,7 +75,7 @@ import {
   validateImport,
   importReasonMessage,
 } from './state/import-validate.js';
-import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery } from './settings/nav.js';
+import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery, firstMatchingRow } from './settings/nav.js';
 import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
 import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
@@ -147,17 +149,37 @@ function _setupSettingsNavigation() {
 function _applySettingsFilter() {
   const query = (document.getElementById('settingsSearch')?.value || '').trim().toLowerCase();
   let shown = 0;
+  let firstHit = null;
   _settingsSections().forEach((section) => {
     const inGroup = !!query || section.dataset.settingsGroup === _settingsGroup;
     const matches = sectionMatchesQuery(section, query, {
       isModuleEnabled: (moduleId) => moduleEnabled(_getState?.(), moduleId),
     });
     section.hidden = !(inGroup && matches);
+    section.querySelectorAll('.settings-search-hit').forEach((row) => row.classList.remove('settings-search-hit'));
     // The no-results state must agree with what the athlete can actually see:
     // a card hidden by a module switch does not count just because its words
     // match, or the panel would look empty with no explanation.
-    if (!section.hidden && _sectionEnabledByModules(section)) shown++;
+    if (!section.hidden && _sectionEnabledByModules(section)) {
+      shown++;
+      if (!firstHit && query) {
+        firstHit = firstMatchingRow(section, query, {
+          isModuleEnabled: (moduleId) => moduleEnabled(_getState?.(), moduleId),
+        });
+      }
+    }
   });
+  if (firstHit) {
+    firstHit.classList.add('settings-search-hit');
+    const body = document.querySelector('#settingsPanel .settings-body');
+    if (body) {
+      const rowRect = firstHit.getBoundingClientRect();
+      const bodyRect = body.getBoundingClientRect();
+      if (rowRect.top < bodyRect.top || rowRect.bottom > bodyRect.bottom) {
+        body.scrollTop += rowRect.top - bodyRect.top - Math.max(0, (bodyRect.height - rowRect.height) / 2);
+      }
+    }
+  }
   document.querySelectorAll('#settingsTabs [data-settings-tab]').forEach((button) => {
     const active = !query && button.getAttribute('data-settings-tab') === _settingsGroup;
     button.classList.toggle('active', active);
@@ -306,9 +328,8 @@ function _syncSettingsUI() {
 
   const bwInput = document.getElementById('settingsBodyWeight');
   if (bwInput) {
-    const bwLog = appState.bodyWeightLog || [];
-    const latest = bwLog.length > 0 ? bwLog[bwLog.length - 1].weight : null;
-    bwInput.value = latest ?? (s.defaultBodyWeight || '');
+    const latest = latestWeighIn(appState.bodyWeightLog || []);
+    bwInput.value = latest ? latest.weight : (s.defaultBodyWeight || '');
   }
 
   const bwUnit = document.getElementById('settingsBodyWeightUnit');
@@ -320,6 +341,7 @@ function _syncSettingsUI() {
   _setToggleActive('[data-action="set-previous-scope"]', `[data-scope="${s.previousValuesScope === 'program' ? 'program' : 'all'}"]`);
   _setToggleActive('[data-action="set-theme"]',       `[data-theme-val="${s.theme || 'dark'}"]`);
   _setToggleActive('[data-action="set-palette"]',     `[data-palette="${normalizePalette(s.palette)}"]`);
+  _setToggleActive('[data-action="set-reduced-motion"]', `[data-motion="${normalizeMotionPreference(s.reducedMotion)}"]`);
   _setToggleActive('[data-action="set-fitness-goal"]',`[data-goal="${s.fitnessGoal || 'hybrid'}"]`);
   _setToggleActive('[data-action="set-weight-goal"]',`[data-weight-goal="${s.weightGoal || 'maintain'}"]`);
   _setToggleActive('[data-action="set-fitness-level"]',`[data-level="${s.fitnessLevel || 'intermediate'}"]`);
@@ -391,9 +413,10 @@ function _syncSettingsUI() {
   const livePR = document.getElementById('settingsLivePR');
   if (livePR) livePR.checked = s.livePR !== false;
 
-  // Notification toggles
+  // Notification toggles. The master switch is a stored preference, not the OS
+  // permission: a granted permission with the switch off must stay off.
   const notifCheckbox = document.getElementById('settingsNotifications');
-  if (notifCheckbox) notifCheckbox.checked = notificationsGranted();
+  if (notifCheckbox) notifCheckbox.checked = !!s.notificationsEnabled;
 
   const notifWeekly   = document.getElementById('settingsNotifWeeklySummary');
   const notifStreak   = document.getElementById('settingsNotifStreak');
@@ -422,12 +445,14 @@ function _syncSettingsUI() {
   // Notification status text
   const notifStatusEl = document.getElementById('settingsNotifStatus');
   if (notifStatusEl) {
-    if (notificationsGranted()) {
+    if (!s.notificationsEnabled) {
+      notifStatusEl.textContent = 'Enable to receive daily training reminders.';
+    } else if (!notificationsGranted()) {
+      notifStatusEl.textContent = 'Reminders are on, but notification permission is off. Allow notifications in your device settings.';
+    } else {
       const rt = s.reminderTime || { hour: 7, minute: 30 };
       const display = `${String(rt.hour).padStart(2, '0')}:${String(rt.minute).padStart(2, '0')}`;
       notifStatusEl.textContent = `Reminders active — you'll be notified at ${display}.`;
-    } else {
-      notifStatusEl.textContent = 'Enable to receive daily training reminders.';
     }
   }
 
@@ -701,6 +726,23 @@ export function setPalette(id) {
   showToast(`${palette.charAt(0).toUpperCase() + palette.slice(1)} palette`);
 }
 
+/**
+ * Accessibility preference for decorative motion. `system` follows the OS;
+ * `reduce`/`full` override it. Applies immediately and persists.
+ * @param {'system'|'reduce'|'full'} value
+ */
+export function setReducedMotion(value) {
+  const appState = _ensureSettings();
+  const pref = normalizeMotionPreference(value);
+  appState.settings.reducedMotion = pref;
+  saveStateToLocalStorage(true);
+  const effective = applyMotionPreference(pref);
+  _setToggleActive('[data-action="set-reduced-motion"]', `[data-motion="${pref}"]`);
+  showToast(pref === 'system'
+    ? `Motion follows your device (${effective === 'reduce' ? 'reduced' : 'full'})`
+    : (pref === 'reduce' ? 'Reduced motion on' : 'Full motion on'));
+}
+
 export function setDistanceUnit(unit) {
   const appState = _ensureSettings();
   appState.settings.distanceUnit = unit;
@@ -802,6 +844,19 @@ export function setNotifToggle(type, enabled) {
   else if (type === 'fasting')    appState.settings.notifFastingStage = enabled;
   saveStateToLocalStorage(true);
   rearmReminder();
+}
+
+/**
+ * Persist the master reminder switch. Permission is requested by the caller;
+ * this only records the athlete's choice and arms/cancels the timers.
+ * @param {boolean} enabled
+ */
+export function setNotificationsEnabled(enabled) {
+  const appState = _ensureSettings();
+  appState.settings.notificationsEnabled = !!enabled;
+  saveStateToLocalStorage(true);
+  if (enabled) rearmReminder();
+  else cancelReminders();
 }
 
 export function saveStreakAlertTime() {
@@ -1541,6 +1596,12 @@ export async function confirmResetAllData() {
     confirmLabel: 'Reset everything', danger: true,
   });
   if (!ok) return;
+  const finalOk = await confirmModal({
+    title: 'Delete everything on this device?',
+    message: 'Second confirmation. Logged training, settings, GPS routes and progress photos will be deleted from this device. A JSON backup is the only way to restore them.',
+    confirmLabel: 'Delete all data', danger: true,
+  });
+  if (!finalOk) return;
   // Stop any pending debounce and block pagehide/visibility flushes from writing
   // the old in-memory state back after the keys are removed. The reload below is
   // the only path out of this state.
@@ -1754,6 +1815,15 @@ export function applySettingsOnBoot(appState) {
   });
   _applyTheme(s.theme || 'dark');
   applyPalette(document.documentElement, s.palette);
+  const motionPref = normalizeMotionPreference(s.reducedMotion);
+  applyMotionPreference(motionPref);
+  if (motionPref === 'system') {
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').addEventListener('change', () => {
+      if (normalizeMotionPreference(_getState?.()?.settings?.reducedMotion) === 'system') {
+        applyMotionPreference('system');
+      }
+    });
+  }
 
   // Re-apply system theme if OS preference changes at runtime
   if (s.theme === 'system') {

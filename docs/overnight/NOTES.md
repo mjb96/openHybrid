@@ -26,3 +26,13 @@
 
 - _2026-11-24_ — Preflight committed. Next: PR the unit-conversion slice, then
   move to independent H2/H4 UI slices while H1 data PRs wait for review.
+
+## Final state
+
+- 11 PRs merged; main green at `3fe4d0a` with **2,677 tests** and **48/48**
+  browser checks.
+- PR #319 (P0 settings data-read fixes) and #321 (unit conversion rewrite)
+  remain open with `needs-human`; both have green checks.
+- No reverted PRs. No work left half-merged.
+- Stop reason: reached a clean slice boundary with the data-changing H1 work
+  awaiting owner review; continuing would have stacked unmerged data changes.

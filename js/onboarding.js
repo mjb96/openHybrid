@@ -7,6 +7,7 @@ import { provisionalScore } from './onboarding/provisional-score.js';
 import { recommendStarterPrograms } from './onboarding/starter-programs.js';
 import { difficultyDisclosure, onboardingSettings } from './onboarding/preferences.js';
 import { normalizeWeightUnit } from './metrics/weight-unit.js';
+import { applyActiveEquipment } from './equipment-profiles.js';
 import { todayKey } from './dates.js';
 import { completeRecoveryGate } from './state/recovery-gate.js';
 
@@ -245,6 +246,10 @@ function _finish() {
     level: _fitnessLevel,
     equipmentTier: _equipmentTier,
   }));
+  // The equipment answer belongs to the active profile, which boot reprojects
+  // over the legacy fields. Writing settings.equipment alone reverted a home
+  // athlete to a full gym on the next launch (S-F1).
+  applyActiveEquipment(appState, appState.settings.equipment);
   appState.settings.weeklyFrequency     = _weeklyFrequency;
   appState.settings.sessionMinutes      = _sessionMinutes;
   appState.settings.recoveryFeel        = _recoveryFeel;

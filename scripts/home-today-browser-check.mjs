@@ -171,6 +171,10 @@ try {
           insideWeek: !!card?.closest('#homeWeekStrip'),
           collapsed: !!card?.classList.contains('is-collapsed'),
           primaryCount: card?.querySelectorAll('.today-card__primary').length || 0,
+          previewRows: card?.querySelectorAll('.today-card__preview-row').length || 0,
+          previewText: card?.querySelector('.today-card__preview')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+          compactPreview: card?.querySelector('.today-card__preview-compact')?.textContent?.trim() || '',
+          compactPreviewVisible: (card?.querySelector('.today-card__preview-compact')?.getBoundingClientRect().height || 0) > 0,
           cardWithinViewport: !!cardRect && cardRect.left >= 0 && cardRect.right <= innerWidth && cardRect.bottom <= innerHeight,
           headline: document.getElementById('homeWeekBlockIndicator')?.textContent?.trim() || '',
           headerFits: !!chipRect && !!metaRect && chipRect.left >= 0
@@ -197,6 +201,9 @@ try {
       ok(layout.collapsed, `${theme} ${width}px starts the ready day compact`);
       ok(layout.primaryCount === 1, `${theme} ${width}px has exactly one Today primary action`);
       ok(layout.primaryHeight >= 44, `${theme} ${width}px Start meets 44px touch target while collapsed`);
+      ok(layout.previewRows === 1, `${theme} ${width}px previews today's one lift`);
+      ok(/EZ-Bar Curl/.test(layout.previewText) && /2×8/.test(layout.previewText), `${theme} ${width}px preview shows the lift and target (${layout.previewText})`);
+      ok(layout.compactPreviewVisible && /EZ-Bar Curl 2×8/.test(layout.compactPreview), `${theme} ${width}px keeps a compact preview in the collapsed row (${layout.compactPreview})`);
       ok(layout.cardWithinViewport, `${theme} ${width}px keeps the complete Today decision in the first viewport`);
       ok(layout.inFocusCards === 0, `${theme} ${width}px removes the In Focus cards`);
       ok(layout.glanceGrids === 0, `${theme} ${width}px removes the repeated At-a-Glance grid`);
@@ -210,9 +217,11 @@ try {
           collapsed: card?.classList.contains('is-collapsed'),
           expandedAttr: card?.querySelector('[data-action="toggle-today-card"]')?.getAttribute('aria-expanded'),
           secondaryHeight: secondary?.getBoundingClientRect().height || 0,
+          previewVisible: (card?.querySelector('.today-card__preview')?.getBoundingClientRect().height || 0) > 0,
         };
       });
       ok(!expanded.collapsed && expanded.expandedAttr === 'true', `${theme} ${width}px tapping today expands the decision`);
+      ok(expanded.previewVisible, `${theme} ${width}px expanded preview lists the lifts`);
       ok(expanded.secondaryHeight >= 44, `${theme} ${width}px expanded controls meet 44px touch target`);
       await page.locator('.home-week-day.is-today').click();
       ok(await page.locator('.today-card').evaluate((el) => el.classList.contains('is-collapsed')), `${theme} ${width}px tapping today again collapses it`);

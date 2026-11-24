@@ -146,3 +146,26 @@ test('a normal set row still carries the attributes the cockpit reads', () => {
   assert.match(html, /data-set-type="W"/);
   assert.match(html, /data-load-mode="weighted"/);
 });
+
+test('a stalled exercise renders its evidence line, not just a badge', () => {
+  const html = buildExerciseCard({
+    ...baseExerciseCardArgs(),
+    diagnostic: {
+      isStalled: true,
+      progression: null,
+      message: 'Squat has not meaningfully improved across 3 comparable sessions over 21 days. Hold the load and review recovery.',
+    },
+  });
+  assert.match(html, /PROGRESS CHECK/);
+  assert.match(html, /data-diagnostic-note/);
+  assert.match(html, /3 comparable sessions over 21 days/);
+  assert.match(html, /Hold the load and review recovery/);
+});
+
+test('an empty diagnostic message renders no empty note', () => {
+  const html = buildExerciseCard({
+    ...baseExerciseCardArgs(),
+    diagnostic: { isStalled: false, progression: null, message: '' },
+  });
+  assert.doesNotMatch(html, /data-diagnostic-note/);
+});

@@ -5464,3 +5464,159 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     Measures and Progress-hub browser checks pass at 390/320. Live captures:
     `docs/mockups/measures-trend-390.png` and `measures-trend-320.png`.
   - Next: the gated queue — Phase 0 truth pass then Phase 1 live-PR/keep-awake.
+
+- **2026-11-24 — Phase 0 truth pass, then the last Phase 1 switches.**
+  - **The matrix is now verified rather than assumed.** Every row was checked
+    against its owning module and tests. Owners that had moved were corrected
+    (P1 → the band composer, PR → `strength/records.js`, active day →
+    `analytics/logged-days.js`, streak week → `analytics/pulse.js`), and every
+    `◐`/`○` row now names its gap in a new Gap column. Phase 0 is DONE; no
+    product code changed for it.
+  - **A workout keeps the screen awake.** `js/workout/keep-awake.js` requests the
+    Screen Wake Lock only while the workout tab is visible and the session is
+    running. Leaving the tab, finishing, discarding, or turning the new
+    `settings.keepAwake` switch off releases it; an unsupported/denied platform
+    is silent. A held lock is never requested twice, and a late request after
+    the tab closed is released immediately.
+  - **Live PR now has an explicit preference.** `settings.livePR` (default on)
+    silences the banner and haptic only: `detectSetPR` still shows the badge and
+    persists `isPR`/`prKind`, so history is identical with the switch off.
+  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
+    volume is weight × reps and is already represented by the load/rep records,
+    while a volume badge would reward adding sets rather than better
+    performance. Detection covers e1RM, holds (duration), carries and reps.
+  - Tests: `tests/keep_awake.test.js` (unsupported/off/active/idempotent) and
+    the new `pr_surfaces` case (banner off, record still written); settings
+    wiring is green because both switches have real handlers.
+  - Next: Phase 2.
+
+- **2026-11-24 — Phase 1 closed by decision; Phase 2 starts with one-muscle focus.**
+  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
+    volume is weight × reps and is already represented by the load/rep records,
+    while a volume badge would reward adding sets rather than better
+    performance. Detection covers e1RM, holds (duration), carries and reps.
+  - **The Muscles band can focus one muscle.** A native 19-option select (44px,
+    no chip wall) filters the chart, headline, legend and text table to that
+    muscle while keeping its rank and share of credited sets in view. Grouping
+    Week/Month/Year still applies; All muscles restores the six-group + Other
+    stack. The focus is ephemeral and resets on hub entry, like the range.
+  - `tests/muscles_view.test.js` covers the focused chart, rank context, exact
+    table and unknown-key fallback. The Progress-hub browser check now selects a
+    muscle, asserts the focus sticks and resets, at 320/390/412.
+  - Next: P3 (calendar-month wording), P6 (distribution currency) or P10 (year
+    zoom) in Phase 2.
+
+- **2026-11-24 — Phase 2 finished: calendar month, best weekly streak, and three honest decisions.**
+  - **The Training Report is now the current calendar month.** `buildCalendarMonthReport`
+    compares 1–N of this month with 1–N of the prior month (full prior month when
+    this month is complete), so a partial month is never measured against a full
+    one. The toolbar reads “This month” / “12 months”; the 28-day rolling builder
+    remains exported for its own regression tests and a future trailing preset.
+  - **Pulse reports the best weekly streak beside the current one.**
+    `streakWeeks` now scans all trained Monday-weeks once, returning current,
+    at-risk and historical best; the band only prints “best N” when it is
+    genuinely higher, so a current record is not duplicated.
+  - **P2, P6 and P10 closed by decision, with reasons in the matrix:**
+    gym performance is answered across Pulse/Muscles/Main exercises rather than a
+    duplicate screen; muscle distribution stays in credited sets because
+    sessions/duration double-count a compound set across muscles; the training
+    calendar stays at 12 weeks because 52 columns cannot fit a phone, with Year in
+    Review owning the year. P10’s other half — best weekly streak — is implemented.
+  - Tests: calendar-month partial/complete/empty cases and the best-weekly-streak
+    gap case. Hub browser contract re-run after the UI changes.
+  - **Phase 2 is DONE.** Next: Phase 4 — the routine library’s categories and
+    filters (Phase 3 was already complete).
+
+- **2026-11-24 — Phase 4 finished: the routine library gets categories and a filter.**
+  - **Routines can be filed by context.** A fixed vocabulary — at home, travel,
+    dumbbells, band, cardio/HIIT, gym, bodyweight, suspension, other — is optional
+    metadata. The `•••` menu opens a 44px category sheet; the card shows a small
+    category chip; an unknown imported category is stripped without dropping the
+    routine.
+  - **The routine list can be filtered without hiding the library.** A native
+    44px select shows only categories that actually contain routines, filters the
+    flat list and the folder sections, hides folders with no matches while a
+    filter is active, and offers Show all routines when nothing matches. The
+    filter is ephemeral and resets on tab entry.
+  - **It is organisation only.** Categories and filtering never rewrite
+    `state.weeks`, the active program, the program week, folders or logged
+    training. The category sheet and filter are covered by the real routines
+    browser check (set → chip → filter → All) plus store/import tests.
+  - **Phase 4 is DONE.** Next: Phase 5 — the monthly report share card and the
+    Year in Review share image.
+
+- **2026-11-24 — Phase 5 finished: the month and year share the same evidence.**
+  - **Training Report → PNG card.** The existing Share action now draws the
+    sessions/volume/distance/score/fitness/adherence figures from the SAME
+    `buildCalendarMonthReport`/`buildYearReport` model the screen renders, and
+    attaches the report text as the caption. No figures are re-derived.
+  - **Year in Review → Share year.** A trained year offers an image card built
+    from `buildYearInReview` totals, best month and PR count, with the same
+    seasonal boundaries and honest partial-year range.
+  - **Both use one image pipeline.** `shareImageCanvas` now saves through
+    `saveBinaryExport`: the old `data:` anchor was blocked by the app's CSP, so a
+    Share tap silently did nothing in the installed PWA. Android uses the native
+    binary bridge; the browser downloads a real PNG.
+  - The browser contract now forces the Web Share fallback, downloads the
+    Training Report and Year in Review PNGs, and asserts their filenames at
+    320/390/412.
+  - **Phase 5 is DONE.** Next: Phase 6 — platform and intelligence.
+
+- **2026-11-24 — Phase 6 starts: a compact training context, not a connector.**
+  - **Settings → Data → Export Training Context (JSON).** The file carries the
+    athlete's stated goals/settings, the active plan at its current week (using
+    the same `liftTarget` as the cockpit), the last eight weeks of weekly totals
+    and up to 24 dated training days with exact completed sets/runs. It has a
+    format and version, and is deliberately not a backup.
+  - **Privacy is the shape of the file.** No name, session/exercise notes,
+    links, GPS routes, photos, body tape/body fat or Health Connect records are
+    read into it. The unit is labelled; a bodyweight read is included only as
+    the latest weigh-in.
+  - **The return path already exists.** Plans → Import plan (.json) accepts a
+    plan produced externally; no OAuth, hosted service, connector or new network
+    surface was added. S3/S4 are DONE.
+  - Tests: goals/plan week, exact sets/runs, notes/routes/photos/health absent,
+    24-session cap with an honest omission count, undated/out-of-window sessions
+    excluded, filename date.
+  - **Phase 6 remains ACTIVE for L14 (Android live activity), S10 (widgets) and
+    S2 (adaptive trainer).**
+
+- **2026-11-24 — Phase 6: S2 adaptive trainer landed; only native surfaces remain.**
+  - **Onboarding now asks for a typical session length** (30/45/60/75+ min). The
+    starter recommender uses it and the existing weekly-frequency answer, so a
+    6-day 75-minute block cannot lead for a 3–4 day 30-minute athlete. The
+    category filter still comes from the goal, so time cannot hand an endurance
+    athlete a powerlifting plan.
+  - **Adaptation stays explicit.** Working loads adjust through the cockpit's
+    per-lift diagnostics; deloads and progression shapes are visible edits with
+    Undo. Nothing silently rewrites the plan or logged training. S2 is DONE.
+  - **Phase 6 remains ACTIVE only for L14 (Android live activity) and S10
+    (widgets)** — both native, device-checklist work.
+  - Tests: the recommender's frequency/session-length ranking; existing engine,
+    progression, deload and Undo coverage remains green; browser suite unchanged.
+
+- **2026-11-24 — Phase 7 starts: the Week in Review shares a real PNG card.**
+  - Overview and Stats both offer **Share week**, drawn by the one share
+    pipeline (`drawProgressCard` → `shareImageCanvas`) from
+    `weeklyReviewShareRows`. The rows are the week's own totals; a historical
+    week omits plan adherence and next-week focus, and a week with no training
+    has no share action at all rather than a card full of zeros.
+  - The browser check opens Review from the Progress footer, switches to
+    Overview and asserts a real `openhybrid-week-YYYY-MM-DD.png` download.
+  - The offline path got two guards after an unresolved-merge-marker `sw.js`
+    (from branch resolution, not product code) made `navigator.serviceWorker.ready`
+    hang until the per-check kill: a precache test now rejects conflict markers
+    in `sw.js`, and the Running check races `.ready` against a 15s failure so a
+    broken worker reports its cause instead of timing out.
+  - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
+    export/import for routine and measurement metadata, large-library checks.
+
+- **2026-11-24 — Roadmap v2 adopted: Settings/Profile first, strength-first.**
+  - Owner priorities, the H0–H4 phase queue, Settings/Profile IA, Home,
+    Progress restructure, logging/strength analytics, queued H5–H8, the Part H
+    flow measures and the working rules are merged as §13–§21.
+  - Part A hygiene: the stale baseline is replaced by current gaps; DONE phases
+    carry gate-evidence lines (tap counts are explicitly pending); CP/EP phases
+    are renamed; the feature matrix gains a Decision column and `◑ reframed`;
+    CP6's native leftovers move to H8.
+  - No product code changed. **H0 — verify and audit** is next.

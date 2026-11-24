@@ -93,6 +93,7 @@ export function buildHomeHybrid(state, options = {}) {
     priorSamePointKg: priorStrengthSamePoint,
     deltaPct: signedPct(strengthWeek.elapsedVolumeKg || 0, priorStrengthSamePoint),
     sets: strengthWeek.elapsedWorkingSets || 0,
+    sessions: (strengthWeek.days || []).filter((day) => (day.workingSets || 0) > 0).length,
     topChange: strengthSummary?.topChange || null,
     prCount: strengthSummary?.prCount || 0,
     hasWork: (strengthWeek.elapsedWorkingSets || 0) > 0,
@@ -210,22 +211,22 @@ export function strengthCardHTML(model) {
   const s = model.strength;
   const unit = model.units.weight;
   const volume = s.hasWork ? formatWeight(s.volumeKg, unit, { decimals: 0 }) : '—';
-  let sub = 'No working sets yet this week';
-  if (s.topChange && s.topChange.deltaKg) {
-    const sign = s.topChange.deltaKg > 0 ? '+' : '';
-    sub = `${s.topChange.exerciseName} e1RM ${sign}${s.topChange.deltaKg} ${unit}`;
-  } else if (s.prCount > 0) {
-    sub = `${s.prCount} PR${s.prCount === 1 ? '' : 's'} this week`;
-  } else if (s.hasWork) {
-    sub = `${s.sets} working set${s.sets === 1 ? '' : 's'}`;
-  }
+  const count = s.hasWork
+    ? `${s.sessions} session${s.sessions === 1 ? '' : 's'} · ${s.sets} working set${s.sets === 1 ? '' : 's'}`
+    : 'No working sets yet this week';
+  const detail = s.topChange && s.topChange.deltaKg
+    ? `${s.topChange.exerciseName} e1RM ${s.topChange.deltaKg > 0 ? '+' : ''}${s.topChange.deltaKg} ${unit}`
+    : '';
+  const prLine = s.prCount > 0 ? `${s.prCount} PR${s.prCount === 1 ? '' : 's'} this week` : '';
 
   return `<article class="card-dark home-hy home-hy__mini">
     <button type="button" class="home-hy__mini-body" data-action="open-analytics" data-context="strength">
       <span class="home-hy__eyebrow">Strength</span>
       <span class="home-hy__value">${volume}</span>
       ${deltaChip(s.deltaPct)}
-      <span class="home-hy__sub">${escapeHtml(sub)}</span>
+      <span class="home-hy__sub">${escapeHtml(count)}</span>
+      ${detail ? `<span class="home-hy__sub">${escapeHtml(detail)}</span>` : ''}
+      ${prLine ? `<span class="home-hy__sub">${escapeHtml(prLine)}</span>` : ''}
     </button>
   </article>`;
 }

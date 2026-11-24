@@ -99,6 +99,9 @@ test('strength volume is compared with the same weekdays last week', () => {
   const model = buildHomeHybrid(state, { today: MONDAY });
   assert.equal(model.strength.volumeKg, 1000);
   assert.equal(model.strength.deltaPct, 0);
+  assert.equal(model.strength.sessions, 1);
+  assert.equal(model.strength.sets, 1);
+  assert.match(strengthCardHTML(model), /1 session · 1 working set/);
 
   // Add a huge Tuesday last week: a raw week-vs-week compare would read −90%.
   state.weeks['2'].dates.tue = PRIOR_TUESDAY;
