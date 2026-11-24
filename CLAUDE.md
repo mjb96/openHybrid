@@ -961,16 +961,21 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   discard clears both fields and blank or warm-up-only work cannot be finished as training.
 
 ## Roadmap Working Agreements
-Active goal: improve the product experience end to end before focusing on
-release. See `docs/IMPROVEMENT_ROADMAP.md` for the current Home → Train →
-Progress → Plans direction, interaction principles, prioritised phases,
-implementation status, and session log. Android public-beta work is parked, not
+Active goal: **Roadmap v2** (adopted 24 November 2026). Execute in order:
+**H0 verify/audit → H1 Settings and Profile → H2 Home → H3 workout logging →
+H4 Progress and strength analytics.** Settings and Profile come first. Strength
+first; running is deferred while the owner is not running — do not build running
+features and do not regress what exists. H5–H8 are queued; Android public-beta
+work and the native H8 surfaces (L14 live activity, S10 widgets) are parked, not
 cancelled. iOS/Capacitor and any billing/paywall remain explicitly deferred.
 
-Product/UX source of truth: `docs/IMPROVEMENT_ROADMAP.md`. It owns the settled product
-rules, rejected scope, execution status, quality gates, parked work, and session log.
+Product/UX source of truth: `docs/IMPROVEMENT_ROADMAP.md`. §13–§21 are the active
+programme; everything before §13 is the delivered capability/experience
+programme and remains the evidence base. It owns the settled product rules,
+rejected scope, execution status, quality gates, parked work, and session log.
 Read it before product-facing work; do not create parallel progress, audit, or
-checklist trackers.
+checklist trackers. "Apple-like" means interaction patterns and information
+architecture, never Apple assets, icons or wording.
 
 ### Session protocol
 - START: read this file, `docs/IMPROVEMENT_ROADMAP.md`, and `git log --oneline -15`. State in one line
@@ -990,6 +995,15 @@ checklist trackers.
   fail, say so with output.
 - Tests are part of every feature — especially sync, security, and the currently
   under-tested large files (`js/workout.js`, `js/app.js`).
+- One owner per metric and per setting. A shortcut edits the same value; a second
+  store is a defect. Settings/profile schema changes are additive migrations with
+  a backup path, an `AGENTS.md` note and a restore test.
+- Product PRs state the matrix rows they close, the Part H flow they improve and
+  the before/after tap count. A PR may not make a Part H flow slower. Never mark
+  a row ✅ without a test or check actually run; a DONE phase carries its
+  gate-evidence line, or is `DONE (unevidenced)`.
+- Keep the session log to the last ten entries; older entries are moved verbatim
+  to `docs/ROADMAP_ARCHIVE.md`, never deleted.
 - Git: short-lived feature branch per phase (e.g. `phase1-security`). Commit in logical
   units. Do NOT push to the default branch or open PRs without asking. No force-push of
   shared branches.
