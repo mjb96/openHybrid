@@ -21,7 +21,7 @@ const MONTHLY_REPORT = Object.freeze({
 const YEAR_IN_REVIEW = Object.freeze({
   title: 'Year in Review',
   desc: 'Your year so far, with the best month and the PRs that made it',
-  context: 'weekly-review',
+  context: 'year-review',
 });
 
 /**
