@@ -83,7 +83,7 @@ import {
   initSettings, openSettings, closeSettings,
   saveName, saveBodyWeight, setWeightUnit,
   setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, stepCurrentWeek, setAutoAdvanceWeek,
-  exportData, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
+  exportData, exportTrainingContext, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
   triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule, toggleHybridTraining,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
   deleteActiveEquipmentProfile,
@@ -1870,6 +1870,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'set-previous-scope') setPreviousValuesScope(target.getAttribute('data-scope'));
   else if (action === 'week-step') stepCurrentWeek(parseInt(target.getAttribute('data-delta'), 10));
   else if (action === 'export-data') exportData();
+  else if (action === 'export-training-context') exportTrainingContext();
   else if (action === 'import-data') triggerImport();
   else if (action === 'restore-import-backup') void restoreImportBackup();
   else if (action === 'import-external-csv') triggerExternalCsvImport();

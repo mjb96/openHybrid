@@ -42,6 +42,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/portability/import-fit.js`, parsed lazily by `parseFitBuffer` in
   `js/garmin.js`; runs keep date/distance/pace/HR/GPS, strength FIT files keep
   time/HR only because FIT has no exercise names.
+- Training context export: `js/portability/training-context.js` builds the
+  compact `openhybrid-training-context` JSON from Settings → Data. It includes
+  goals/settings, the active plan at the current week through `liftTarget`, the
+  last eight weeks of weekly totals and up to 24 dated training days with exact
+  completed sets/runs. It deliberately excludes name, notes, links, GPS routes,
+  photos, tape/body-fat and Health Connect; it is not a backup. The return path
+  is Plans → Import plan (.json). No account, OAuth, connector or network call.
 - Program-run isolation: every program run has a stable `state.activeActivationId`
   (`js/state/activation-identity.js`) and each week is stamped `week.activationId`. A
   switch/restart calls `startProgramActivation` (state.js) → `beginActivation` +
