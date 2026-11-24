@@ -98,6 +98,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   the stored value untouched on invalid input. `tests/settings_wiring.test.js`
   ratchets the STATIC settings input/select/textarea ids to a handler (not
   buttons or JS-rendered controls); add a real handler rather than a sixth tab.
+  `js/settings/registry.js` is the declarative descriptor list (key, label,
+  type, group, default) for every stored setting; `tests/settings_registry.test.js`
+  parses `state.js` and fails when a key exists outside it. Screens are still
+  hand-written, so the registry is not yet the renderer.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can
