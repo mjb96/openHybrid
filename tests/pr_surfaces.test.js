@@ -149,6 +149,18 @@ test('a bodyweight set never claims a PR in the cockpit', () => {
   assert.equal(state.weeks.cur.lifts.mon['Pull-Up'][0].isPR, undefined);
 });
 
+test('turning live PR banners off silences the announcement, not the record', () => {
+  const state = stateWith({ 'Back Squat': [work(100, 5)] }, { 'Back Squat': [work(100, 5)] });
+  state.settings = { livePR: false };
+  const row = fakeRow();
+  const decision = workout.detectSetPR(row, 'Back Squat', 0, work(110, 5), state, 'cur', 'mon');
+  assert.equal(decision?.kind, 'e1rm');
+  assert.equal(row.classList.contains('is-pr'), true);
+  assert.equal(row.badge.textContent, 'PR');
+  assert.equal(state.weeks.cur.lifts.mon['Back Squat'][0].isPR, true);
+  assert.equal(state.weeks.cur.lifts.mon['Back Squat'][0].prKind, 'e1rm');
+});
+
 test('the row template labels a stored hold/carry record', () => {
   const holdHtml = templates.buildSetRow(
     { w: '', sec: '60', mode: 'time', c: true, isPR: true, prKind: 'hold' },

@@ -56,6 +56,7 @@ import { applyBandLoad, applyLoadMode } from './workout/load-mode.js';
 import { compareWithPrevious, ghostForRow, validateSetEntry, primarySetEntryMessage } from './workout/set-entry.js';
 import { deleteDayWorkoutData, hasDayWorkoutDraft, snapshotDayWorkoutData, restoreDayWorkoutData } from './workout/delete-day.js';
 import { explicitSessionStatus, finishSession, markSessionInProgress, SESSION_STATUS } from './workout/session-status.js';
+import { syncWorkoutWakeLock } from './workout/keep-awake.js';
 import {
   browseExercises, equipmentLabel, exerciseStatForName, EXERCISE_CATEGORY_LABELS,
 } from './exercises/catalog.js';
@@ -808,6 +809,16 @@ export function renderWorkout() {
   // one-tap start showed the button again immediately after starting.
   const timerRunning = timerBound;
   const sessionActive = timerBound || explicitSessionStatus(weekData, selectedDay) === SESSION_STATUS.IN_PROGRESS;
+  // Keep the display on only while this workout tab is the visible surface and
+  // the session is running. Leaving the tab releases it in app.js; finishing or
+  // discarding also releases through that same tab switch.
+  syncWorkoutWakeLock({
+    enabled: appState.settings?.keepAwake !== false,
+    // The tab check matters: renderWorkout can be called while another view is
+    // mounted (for example a background refresh), and the screen must not be
+    // kept awake for a workout the athlete is not looking at.
+    active: sessionActive && Boolean(document.getElementById('view-workout')?.classList.contains('active')),
+  });
   document.getElementById('view-workout')?.classList.toggle('cockpit-session-active', sessionActive);
   const activeHead = document.getElementById('cockpitActiveHead');
   const activeRail = document.getElementById('cockpitExerciseRail');
@@ -1101,6 +1112,10 @@ export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, 
   const storedSet = appState.weeks?.[weekKey]?.lifts?.[day]?.[liftName]?.[setIndex] || null;
   const live = { ...(storedSet || {}), ...(candidate || {}), c: true };
   const wasPR = parentRow.classList.contains('is-pr') || storedSet?.isPR === true;
+  // The preference silences the BANNER only. Detection, the badge and the
+  // persisted `isPR`/`prKind` evidence stay identical; a hidden banner must not
+  // change what the athlete's history says.
+  const announce = appState.settings?.livePR !== false;
   if (isWarmupSet(live)) { clearSetPR(parentRow, storedSet); return null; }
   const kind = recordKindForSet(live, liftName);
   if (!kind) { clearSetPR(parentRow, storedSet); return null; }
@@ -1118,7 +1133,7 @@ export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, 
       ? !(Array.isArray(before?.reps) && before.reps.length > 0)
       : !(Number(before?.[kind]?.value) > 0);
     clearSetPR(parentRow, storedSet);
-    if (options.justTicked === true && !wasPR && kind === 'e1rm' && noPrior) {
+    if (options.justTicked === true && !wasPR && kind === 'e1rm' && noPrior && announce) {
       showToast(`Baseline set — ${liftName} ✓`);
     }
     return null;
@@ -1138,7 +1153,7 @@ export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, 
     storedSet.isPR = true;
     storedSet.prKind = kind;
   }
-  if (!wasPR) {
+  if (!wasPR && announce) {
     hapticSuccess();
     showToast(kind === 'e1rm'
       ? `🏆 New PR — ${liftName}!`

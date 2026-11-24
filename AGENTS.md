@@ -82,7 +82,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   query on open/close, resets scroll on search and announces no-results with
   `role="status"`; the visible count ignores cards hidden by a module switch.
   Training order is Training (units) → Logging (rest tiers/presets/sound,
-  progression, previous values, warm-up, plate hints) → Program Week → Equipment
+  progression, previous values, warm-up, plate hints, keep-awake, live-PR
+  banners) → Program Week → Equipment
   → Modules. `.settings-switch` is a 44px hit area around the unchanged 42×24
   track, every switch has an accessible name, `.hc-data-toggle` is a 44px row,
   and `.settings-body` pads with `--safe-bottom` after the env() fallback.
@@ -432,6 +433,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   heading and vertical outline. The active card is scrolled into view with
   enough offset that its first set stays under the sticky block. The rail and
   stats refresh after a set is ticked without re-rendering the cockpit.
+- Workout keeps the screen awake through `js/workout/keep-awake.js`: the Screen
+  Wake Lock is requested only while the WORKOUT TAB is visible and the session
+  is running, released on tab switch/finish/discard and by the
+  `settings.keepAwake` switch (default on). A denied/unsupported request is a
+  silent no-op; GPS keeps its own lock for its own lifecycle.
+  `settings.livePR` (default on) silences only the live-PR **banner/haptic**:
+  `detectSetPR` still marks the badge and persists `isPR`/`prKind`, so a hidden
+  banner never changes history. `tests/keep_awake.test.js` and
+  `tests/pr_surfaces.test.js` pin both.
 - Weekly analytics attribution: `state.currentWeek` is a PROGRAM-week counter that only
   advances on an explicit step / confirmed auto-advance — it is NOT the calendar week.
   So "this week" analytics must NOT read `weeks[currentWeek]` directly (that leaked a

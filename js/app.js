@@ -74,6 +74,7 @@ import {
 } from './workout.js';
 
 import { startWorkoutTimer, dismissRestTimer, toggleRestPause, checkActiveTimerOnLoad, restoreRestTimer } from './timers.js';
+import { releaseWorkoutWakeLock, initWorkoutWakeLock } from './workout/keep-awake.js';
 import { saveMapToDB } from './db.js';
 import { initGarminRunImport, initGarminGymImport } from './garmin.js';
 import { initRunLogger, openRunLogger, closeRunLogger, saveManualRun } from './run-logger.js';
@@ -91,6 +92,7 @@ import {
   setFitnessGoal, setWeightGoal, setFitnessLevel, setWeekStartDay, setFastingDefault,
   saveReminderTime, setNotifToggle, saveStreakAlertTime, toggleEquipment, saveBandWeights,
   savePlateSetup, savePlateCounts, resetPlateSetup, setShowPlateHints, setAutoWarmupRamp,
+  setKeepAwake, setLivePR,
   saveDumbbells, saveMachineStack, removeMachineStack,
   saveRestPeriods, applyRestPreset, setRestTimerEnabledSetting, setRestAlertSoundSetting,
   setRestAlertVolumeSetting, resetRestOverrides,
@@ -207,6 +209,9 @@ export function switchGlobalAppTab(targetViewID, options = {}) {
   document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active'));
   
   setActiveTab(targetViewID);
+  // The wake lock belongs to the workout surface, not to the session clock:
+  // leaving the cockpit must let the screen sleep even while a session is open.
+  if (targetViewID !== 'workout') releaseWorkoutWakeLock();
   
   const targetPanel = document.getElementById('view-' + targetViewID);
   if (targetPanel) targetPanel.classList.add('active');
@@ -1963,6 +1968,8 @@ document.addEventListener('change', (e) => {
   if (target.id === 'settingsRestAlertSound') { setRestAlertSoundSetting(target.checked); return; }
   if (target.id === 'settingsRestAlertVolume') { setRestAlertVolumeSetting(Number(target.value) / 100); return; }
   if (target.id === 'settingsAutoWarmup') { setAutoWarmupRamp(target.checked); return; }
+  if (target.id === 'settingsKeepAwake') { setKeepAwake(target.checked); return; }
+  if (target.id === 'settingsLivePR') { setLivePR(target.checked); return; }
   if (target.id === 'settingsNotifications') {
     if (target.checked) {
       requestNotificationPermission().then(({ granted }) => {
@@ -2471,6 +2478,7 @@ async function bootstrapApp() {
     // Recovery may immediately attach a device-local active session to app
     // state, so the stored training history must be loaded first.
     initGpsTracker();
+    initWorkoutWakeLock();
     // Android-only catch-up. This is deliberately fire-and-forget so a slow or
     // unavailable document provider can never block app startup.
     void checkDailyAutomaticBackup();
