@@ -5489,3 +5489,19 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     the new `pr_surfaces` case (banner off, record still written); settings
     wiring is green because both switches have real handlers.
   - Next: Phase 2.
+
+- **2026-11-24 — Phase 1 closed by decision; Phase 2 starts with one-muscle focus.**
+  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
+    volume is weight × reps and is already represented by the load/rep records,
+    while a volume badge would reward adding sets rather than better
+    performance. Detection covers e1RM, holds (duration), carries and reps.
+  - **The Muscles band can focus one muscle.** A native 19-option select (44px,
+    no chip wall) filters the chart, headline, legend and text table to that
+    muscle while keeping its rank and share of credited sets in view. Grouping
+    Week/Month/Year still applies; All muscles restores the six-group + Other
+    stack. The focus is ephemeral and resets on hub entry, like the range.
+  - `tests/muscles_view.test.js` covers the focused chart, rank context, exact
+    table and unknown-key fallback. The Progress-hub browser check now selects a
+    muscle, asserts the focus sticks and resets, at 320/390/412.
+  - Next: P3 (calendar-month wording), P6 (distribution currency) or P10 (year
+    zoom) in Phase 2.

@@ -28,3 +28,11 @@
 - **Choice:** no running feature work; only no-regression checks when shared
   session/calendar/import code is touched.
 - **Reason:** owner is not running and the plan marks H6 deferred.
+
+## D5 — Ship independent H2 UI while H1 data PRs wait
+- **Question:** should the loop idle until #319/#321 are reviewed?
+- **Choice:** continue with read-only H1/H2 slices that do not depend on the
+  stored-data changes (registry, Today preview, strength week figures).
+- **Reason:** the overnight policy says to build data slices fully, flag them,
+  then move on; read-only work still improves the product and cannot corrupt data.
+- **Reverse:** none; these are independent additive UI changes.
