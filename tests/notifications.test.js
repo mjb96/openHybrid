@@ -53,12 +53,25 @@ test('daily reminder schedules via the native alarm when the bridge is present',
     scheduleDailyReminder: (h, m) => { scheduled = [h, m]; },
   } };
   // Default reminder time (07:30) when settings omit it.
-  initNotifications(() => ({ settings: {} }));
+  initNotifications(() => ({ settings: { notificationsEnabled: true } }));
   assert.deepEqual(scheduled, [7, 30]);
   // Reads the configured reminder time.
   scheduled = null;
-  initNotifications(() => ({ settings: { reminderTime: { hour: 6, minute: 15 } } }));
+  initNotifications(() => ({ settings: { notificationsEnabled: true, reminderTime: { hour: 6, minute: 15 } } }));
   assert.deepEqual(scheduled, [6, 15]);
+  cancelReminders();
+  if (saved === undefined) delete globalThis.window; else globalThis.window = saved;
+});
+
+test('a granted permission does not arm reminders when the stored switch is off', () => {
+  const saved = globalThis.window;
+  let scheduled = false;
+  globalThis.window = { HybridNotifyBridge: {
+    hasPermission: () => true,
+    scheduleDailyReminder: () => { scheduled = true; },
+  } };
+  initNotifications(() => ({ settings: { notificationsEnabled: false } }));
+  assert.equal(scheduled, false, 'the OS permission grant is not the preference');
   cancelReminders();
   if (saved === undefined) delete globalThis.window; else globalThis.window = saved;
 });

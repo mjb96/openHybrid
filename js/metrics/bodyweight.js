@@ -54,6 +54,26 @@ export function normalizeWeighIns(log) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/**
+ * The latest VALID weigh-in by date, not by array order. A back-dated entry
+ * appended after today's must not become "current".
+ * @param {any} log
+ * @returns {{date: string, weight: number}|null}
+ */
+export function latestWeighIn(log) {
+  const rows = normalizeWeighIns(log);
+  if (rows.length) return rows[rows.length - 1];
+  // Legacy logs written before weigh-ins carried dates are still real readings.
+  // Prefer dated rows (above), but never ask for a bodyweight the athlete has
+  // already logged just because the entry predates the date field.
+  for (let index = (Array.isArray(log) ? log.length : 0) - 1; index >= 0; index -= 1) {
+    const entry = log[index];
+    const weight = Number(entry?.weight);
+    if (!entry?.date && Number.isFinite(weight) && weight > 0) return { date: '', weight };
+  }
+  return null;
+}
+
 /** @param {string} dateISO */
 function noon(dateISO) {
   return new Date(`${dateISO}T12:00:00`).getTime();

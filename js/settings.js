@@ -20,6 +20,7 @@ import { releaseWorkoutWakeLock } from './workout/keep-awake.js';
 import { parseWorkoutCsv, applyWorkoutCsvImport, CSV_IMPORT_LIMITS, decodeCsvBytes } from './portability/import-workout-csv.js';
 import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingEnabled, setHybridTraining } from './modules.js';
 import * as equipmentProfiles from './equipment-profiles.js';
+import { latestWeighIn } from './metrics/bodyweight.js';
 import { applyPalette, normalizePalette } from './theme.js';
 import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
@@ -61,7 +62,7 @@ const _parseRest = (str) => {
   return Number.isFinite(n) ? n : null;
 };
 import { showToast } from './state.js';
-import { rearmReminder, notificationsGranted } from './notifications.js';
+import { rearmReminder, notificationsGranted, cancelReminders } from './notifications.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { isHealthBridgeAvailable, getHealthAvailability, connectAndSync, syncHealthConnect, describeFieldStatus } from './health/health-bridge.js';
 import { HEALTH_FIELDS, normalizeSyncFields, selectedFieldIds, isSupportedField } from './health/health-fields.js';
@@ -325,9 +326,8 @@ function _syncSettingsUI() {
 
   const bwInput = document.getElementById('settingsBodyWeight');
   if (bwInput) {
-    const bwLog = appState.bodyWeightLog || [];
-    const latest = bwLog.length > 0 ? bwLog[bwLog.length - 1].weight : null;
-    bwInput.value = latest ?? (s.defaultBodyWeight || '');
+    const latest = latestWeighIn(appState.bodyWeightLog || []);
+    bwInput.value = latest ? latest.weight : (s.defaultBodyWeight || '');
   }
 
   const bwUnit = document.getElementById('settingsBodyWeightUnit');
@@ -411,9 +411,10 @@ function _syncSettingsUI() {
   const livePR = document.getElementById('settingsLivePR');
   if (livePR) livePR.checked = s.livePR !== false;
 
-  // Notification toggles
+  // Notification toggles. The master switch is a stored preference, not the OS
+  // permission: a granted permission with the switch off must stay off.
   const notifCheckbox = document.getElementById('settingsNotifications');
-  if (notifCheckbox) notifCheckbox.checked = notificationsGranted();
+  if (notifCheckbox) notifCheckbox.checked = !!s.notificationsEnabled;
 
   const notifWeekly   = document.getElementById('settingsNotifWeeklySummary');
   const notifStreak   = document.getElementById('settingsNotifStreak');
@@ -442,12 +443,14 @@ function _syncSettingsUI() {
   // Notification status text
   const notifStatusEl = document.getElementById('settingsNotifStatus');
   if (notifStatusEl) {
-    if (notificationsGranted()) {
+    if (!s.notificationsEnabled) {
+      notifStatusEl.textContent = 'Enable to receive daily training reminders.';
+    } else if (!notificationsGranted()) {
+      notifStatusEl.textContent = 'Reminders are on, but notification permission is off. Allow notifications in your device settings.';
+    } else {
       const rt = s.reminderTime || { hour: 7, minute: 30 };
       const display = `${String(rt.hour).padStart(2, '0')}:${String(rt.minute).padStart(2, '0')}`;
       notifStatusEl.textContent = `Reminders active — you'll be notified at ${display}.`;
-    } else {
-      notifStatusEl.textContent = 'Enable to receive daily training reminders.';
     }
   }
 
@@ -805,6 +808,19 @@ export function setNotifToggle(type, enabled) {
   else if (type === 'fasting')    appState.settings.notifFastingStage = enabled;
   saveStateToLocalStorage(true);
   rearmReminder();
+}
+
+/**
+ * Persist the master reminder switch. Permission is requested by the caller;
+ * this only records the athlete's choice and arms/cancels the timers.
+ * @param {boolean} enabled
+ */
+export function setNotificationsEnabled(enabled) {
+  const appState = _ensureSettings();
+  appState.settings.notificationsEnabled = !!enabled;
+  saveStateToLocalStorage(true);
+  if (enabled) rearmReminder();
+  else cancelReminders();
 }
 
 export function saveStreakAlertTime() {

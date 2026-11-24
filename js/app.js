@@ -92,7 +92,7 @@ import {
   setFitnessGoal, setWeightGoal, setFitnessLevel, setWeekStartDay, setFastingDefault,
   saveReminderTime, setNotifToggle, saveStreakAlertTime, toggleEquipment, saveBandWeights,
   savePlateSetup, savePlateCounts, resetPlateSetup, setShowPlateHints, setAutoWarmupRamp,
-  setKeepAwake, setLivePR,
+  setKeepAwake, setLivePR, setNotificationsEnabled,
   saveDumbbells, saveMachineStack, removeMachineStack,
   saveRestPeriods, applyRestPreset, setRestTimerEnabledSetting, setRestAlertSoundSetting,
   setRestAlertVolumeSetting, resetRestOverrides,
@@ -111,7 +111,7 @@ import { dateKey, todayKey, todayProgramDay, startOfProgramWeek, localDayKey, da
 import { resolveDateToSlot, resolveSlotDate } from './analytics/logged-days.js';
 import { newRunSessionId, runDaySummary, upsertRunSession, findImportedRunSession } from './state/run-sessions.js';
 import { FASTING_ACTIONS, handleFastingClickAction } from './fasting/fasting-actions.js';
-import { initNotifications, requestNotificationPermission, cancelReminders, checkMissedWorkout } from './notifications.js';
+import { initNotifications, requestNotificationPermission, checkMissedWorkout } from './notifications.js';
 import { buildProgramSessionChoices } from './workout/program-session-picker.js';
 import { buildActivityHistory } from './activities/model.js';
 import {
@@ -2097,13 +2097,15 @@ document.addEventListener('change', (e) => {
         const el = document.getElementById('settingsNotifStatus');
         if (!granted) {
           target.checked = false;
+          setNotificationsEnabled(false);
           if (el) el.textContent = 'Permission denied. Enable notifications for openHybrid in your device settings.';
         } else {
+          setNotificationsEnabled(true);
           if (el) el.textContent = "Reminders active — you'll be notified at 07:30 each morning.";
         }
       });
     } else {
-      cancelReminders();
+      setNotificationsEnabled(false);
       const el = document.getElementById('settingsNotifStatus');
       if (el) el.textContent = 'Reminders are off.';
     }
