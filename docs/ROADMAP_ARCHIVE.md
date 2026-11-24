@@ -5433,3 +5433,34 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - `npm run verify` green (2,619 tests); all 48 browser checks green (one
     progress-hub attempt crossed the 180s kill under 3-way load and passed on the
     built-in retry — that check is 119s on its own, the suite's longest).
+
+- **2026-11-24 — Body measurements: the read path, and the 0.1 cm edit that made it untrustworthy.**
+  - **Measurements were already captured; they were hard to READ.** The Body band
+    summarised four sites and Measures listed dates, but the only per-site chart
+    lived inside the Bodyweight card — a different destination. Measures now leads
+    with a **single-site explorer**: choose any measured site or body fat, switch
+    30D / 3M / 1Y / All, and see the latest value, its change since the previous
+    reading, the shared SVG trend and the exact readings table. The Body band's four
+    site cells are 44px buttons that open Measures on that site.
+  - **Editing at inches rewrote untouched stored centimetres.** 76.0 cm displayed as
+    29.9 in, and Save converted the display value back to 75.9 cm for every site the
+    athlete never touched (audit AUD-R6-1, previously deferred). `saveMeasureEntry`
+    now accepts `unchangedSites` — the original canonical cm for fields whose
+    prefilled display value was not edited — and the sheet passes them. A regression
+    test and a browser assertion cover the round trip.
+  - **Tape deltas now state their baseline.** They were "since the previous reading"
+    but the band's sublabel named the selected range, so a 30D card could show a
+    change measured months earlier. The card says so in one line, the body-fat line
+    names the previous date, and the data table's columns are "Change since
+    previous" / "Previous reading".
+  - **One chart, two surfaces.** `renderSiteTrend` became a DOM wrapper around the
+    pure `siteTrendHTML`, so the Bodyweight card and Measures cannot draw different
+    trends. The explorer is a leaf: its range is `data-ms-range`, defaults to All,
+    never rewrites the hub's `_progressRangeId`, and a range with no readings says
+    so and offers Show all instead of inventing a point.
+  - Also corrected the roadmap's own stale claims: Body composition was marked
+    `LATER` with six sites and no body fat, and P8 photos was still `○`.
+  - `npm test` green (2,640 tests), typecheck + smoke + precache green, and the
+    Measures and Progress-hub browser checks pass at 390/320. Live captures:
+    `docs/mockups/measures-trend-390.png` and `measures-trend-320.png`.
+  - Next: the gated queue — Phase 0 truth pass then Phase 1 live-PR/keep-awake.
