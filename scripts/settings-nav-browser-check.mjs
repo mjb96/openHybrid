@@ -35,7 +35,7 @@ const state = {
     equipment: { barbell: true, rack: true, dumbbells: true, cables: true, pullupBar: true },
     bandWeights: { L: 10, M: 20, H: 30 }, equipmentProfiles: [],
   },
-  customPrograms: [], weeks: { '1': { activationId: 'act_set', programId: 'hybrid_engine', dates: {}, lifts: {}, runs: {}, sessionStatus: {}, sessionSummary: {}, runSessions: {}, liftOrder: {}, liftMeta: {}, notes: {}, gymRpe: {}, bodyWeight: {}, gymStats: {} } },
+  customPrograms: [], weeks: { '1': { activationId: 'act_set', programId: 'hybrid_engine', dates: { mon: '2026-11-16' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {}, sessionStatus: {}, sessionSummary: {}, runSessions: {}, liftOrder: {}, liftMeta: {}, notes: {}, gymRpe: {}, bodyWeight: {}, gymStats: {} } },
   bodyWeightLog: [], wellnessLog: [], healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
   programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
   hybridScore: { history: [], xp: 0, lastRecordedDate: null }, loadMetrics: { atl: 0, ctl: 0 },
@@ -219,7 +219,21 @@ try {
   ok((await visibleLabel()).includes('Training'), 'reopening settings shows the active destination');
   ok((await page.locator('#settingsNoResults').isHidden()), 'reopening settings hides the stale no-results state');
 
-  // Motion is a real preference: reduce must publish the CSS hook and persist.
+  // Changing the weight unit converts stored weights instead of relabelling
+  // history: a 100 kg squat must read 220.5 lb after the switch (S-F4).
+  await page.click('#settingsTabs [data-settings-tab="training"]');
+  await page.click('[data-action="set-unit"][data-unit="lbs"]');
+  await page.waitForSelector('.cmodal__btn--ok');
+  await page.click('.cmodal__btn--ok');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'lbs');
+  const converted = await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+    return { unit: saved.settings?.weightUnit, weight: saved.weeks?.['1']?.lifts?.mon?.Squat?.[0]?.w };
+  });
+  ok(converted.unit === 'lbs', 'weight unit switch persists lbs');
+  ok(converted.weight === '220.5', `stored 100 kg becomes 220.5 lb (got ${converted.weight})`);
+
+// Motion is a real preference: reduce must publish the CSS hook and persist.
   await page.click('#settingsTabs [data-settings-tab="appearance"]');
   await page.click('[data-action="set-reduced-motion"][data-motion="reduce"]');
   const motion = await page.evaluate(() => ({

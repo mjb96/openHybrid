@@ -124,9 +124,13 @@ try {
   ok((await platesInput.inputValue()) === '20, 10, 5, 2.5', 'switching profiles loads that gym plate set');
 
   await page.click('#unitLbsBtn');
+  await page.waitForSelector('.cmodal__btn--ok');
+  await page.click('.cmodal__btn--ok');
   await page.waitForFunction(() => document.getElementById('settingsPlateBar')?.value === '35');
   ok((await platesInput.inputValue()) === '45, 25, 10', 'the lb setup is stored separately');
   await page.click('#unitKgBtn');
+  await page.waitForSelector('.cmodal__btn--ok');
+  await page.click('.cmodal__btn--ok');
   await page.waitForFunction(() => document.getElementById('settingsPlateBar')?.value === '15');
   ok((await platesInput.inputValue()) === '20, 10, 5, 2.5', 'switching back restores the kg setup');
 

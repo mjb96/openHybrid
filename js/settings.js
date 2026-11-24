@@ -20,6 +20,8 @@ import { releaseWorkoutWakeLock } from './workout/keep-awake.js';
 import { parseWorkoutCsv, applyWorkoutCsvImport, CSV_IMPORT_LIMITS, decodeCsvBytes } from './portability/import-workout-csv.js';
 import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingEnabled, setHybridTraining } from './modules.js';
 import * as equipmentProfiles from './equipment-profiles.js';
+import { convertStoredWeights, normalizeWeightUnit } from './metrics/weight-unit.js';
+import { computeExercisePRs } from './engine.js';
 import { latestWeighIn } from './metrics/bodyweight.js';
 import { applyPalette, normalizePalette } from './theme.js';
 import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
@@ -622,15 +624,49 @@ export function saveBodyWeight() {
   showToast(`Body weight saved: ${val} ${appState.settings.weightUnit || 'kg'}`);
 }
 
-export function setWeightUnit(unit) {
-  const appState = _ensureSettings();
-  appState.settings.weightUnit = unit;
-  saveStateToLocalStorage(true);
+function _syncWeightUnitSelection(unit) {
   _setToggleActive('[data-action="set-unit"]', `[data-unit="${unit}"]`);
   const bwUnit = document.getElementById('settingsBodyWeightUnit');
   if (bwUnit) bwUnit.textContent = unit;
-  _syncPlateSetupUI(appState);
-  showToast(`Weight unit: ${unit}`);
+  _syncPlateSetupUI(_ensureSettings());
+}
+
+export async function setWeightUnit(unit) {
+  const appState = _ensureSettings();
+  const from = normalizeWeightUnit(appState.settings.weightUnit);
+  const to = normalizeWeightUnit(unit);
+  if (from === to) { _syncWeightUnitSelection(from); return; }
+
+  const ok = await confirmModal({
+    title: 'Convert stored weights?',
+    message: `Every logged set, bodyweight entry, goal and routine prescription will be converted from ${from} to ${to}. A recovery copy is saved on this device first.`,
+    confirmLabel: `Convert to ${to}`,
+  });
+  if (!ok) { _syncWeightUnitSelection(from); return; }
+
+  const backupKey = STORAGE_KEY + '_unit_backup';
+  try {
+    localStorage.setItem(backupKey, JSON.stringify({ savedAt: new Date().toISOString(), from, to, state: appState }));
+  } catch {
+    // The recovery copy is the guard for this rewrite. Without it, do nothing.
+    showToast('Not enough storage to save a recovery copy. Export a backup first.', true);
+    _syncWeightUnitSelection(from);
+    return;
+  }
+
+  const report = convertStoredWeights(appState, from, to);
+  appState.settings.weightUnit = to;
+  // exerciseStats is derived from the sets and must not keep old-unit maxima.
+  if (appState.exerciseStats && typeof appState.exerciseStats === 'object') {
+    appState.exerciseStats = {};
+    computeExercisePRs(appState, appState.exerciseStats);
+  }
+  saveStateToLocalStorage(true);
+  _syncWeightUnitSelection(to);
+  const changed = report.sets + report.bodyWeights + report.prescriptions + report.settings + report.goals;
+  showToast(changed
+    ? `Weight unit: ${to} — ${changed} stored value${changed === 1 ? '' : 's'} converted`
+    : `Weight unit: ${to}`);
 }
 
 // Clear all remembered per-exercise rest adjustments.
