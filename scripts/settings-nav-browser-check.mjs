@@ -233,6 +233,19 @@ try {
   ok((await page.evaluate(() => document.documentElement.dataset.reducedMotionPref)) === 'system',
     'System restores the OS-following preference');
 
+  // Destructive reset needs two deliberate confirmations; cancelling the
+  // second one must leave the device state untouched.
+  await page.click('#settingsTabs [data-settings-tab="data"]');
+  await page.click('[data-action="reset-all-data"]');
+  await page.waitForSelector('.cmodal__btn--danger');
+  await page.click('.cmodal__btn--danger');
+  await page.waitForFunction(() => /Delete everything/i.test(document.querySelector('.cmodal__title')?.textContent || ''));
+  ok(true, 'reset asks for a second confirmation');
+  await page.click('.cmodal__btn--cancel');
+  await page.waitForSelector('.cmodal', { state: 'detached' });
+  ok(await page.evaluate(() => !!localStorage.getItem('hybrid_engine_v2_state')),
+    'cancelling the second reset gate preserves the saved state');
+
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 } finally {
