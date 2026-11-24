@@ -1075,7 +1075,7 @@ first.
 
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
-| HM1 | One-tap start with preview | `home/today-card.js`, `home.js`, `app.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | PARTIAL | One primary action and a 2-tap cold start; the card shows the session title only, with no lift targets or last-time numbers. |
+| HM1 | One-tap start with preview | `home/today-card.js`, `workout/session-preview.js`, `train/train-landing.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | DONE | `sessionExercisePreview` resolves the same `liftTarget` and dated history the cockpit uses; Home renders up to three rows plus a compact collapsed line. `home-today-browser-check` asserts the target and last-time numbers at 320/390/412 px light/dark. Cold start remains 2 taps. |
 | HM2 | Move a day (G1) | none | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | MISSING | No reschedule control, no attribution change and no Undo; date cells only select and recap. |
 | HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Volume + same-weekday delta + one sub-line; no session count, sets/PRs are mutually exclusive, and the link opens the legacy Strength screen. |
 | HM4 | One strength insight | `home/dashboard-model.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | PARTIAL | Exactly one insight, but it is fasting/load/readiness/streak/bodyweight-driven, not strength-derived, and it is not deload-aware; it can contradict the safety card. |
@@ -1216,7 +1216,7 @@ hub entry links to it (legacy deep link only).
 | ID | Finding | Evidence | Severity | Target |
 | --- | --- | --- | --- | --- |
 | H-F1 | Home states two contradictory "week plan done" figures: the rail counts planned days (20%), the coach line counts completed stored set rows (100%). The same consistency value feeds the Hybrid Score pillar. | `week-strip.js`, `dashboard-model.js` `consistencyPct`; one fixture proves 20% vs 100% | **P0** | H2 / HM7 |
-| H-F2 | Home answers "what should I do today?" with a workout title, not the work: no lift targets, no last-time numbers, and no way to move a planned day. | `today-card.js` title-only markup; no reschedule action in `js/` | **P1** | H2 / HM1–HM2 |
+| H-F2 | Home still cannot move a planned day: no reschedule control, attribution change or Undo. The lift preview part of this finding is fixed by HM1. | no reschedule action in `js/` | **P1** | H2 / HM2 |
 | H-F3 | The single insight is not strength-derived and is not deload/overtraining-aware; it can cheer "primed for a hard session" beside the overtraining card. | `dashboard-model.js` `pickTopInsight` priority list | **P1** | H2 / HM4 |
 | H-F4 | Quick actions are Weight / Run / History, not empty workout / log a past session / one contextual action. | `index.html`, `home.js` quick-action block | P2 | H2 / HM5 |
 | H-F5 | No explicit first-run Home state; offline is a note inside Today, not a page-level stale signal. | `today-card.js`, `home.js` | P2 | H2 / HM6 |
@@ -1407,6 +1407,15 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
+  - `workout/session-preview.js` is now the one resolver shared by Train and
+    Home: it reads the same `liftTarget` and dated history the cockpit uses.
+  - The ready card shows up to three lifts with target and last-time numbers;
+    the collapsed row carries a compact `Lift 2×8 · last 100 kg × 5` line.
+  - `home-today-browser-check` covers 320/390/412 px light/dark, the compact
+    and expanded preview, and keeps the one-primary-action contract.
+  - Remaining H-F2: moving a planned day (HM2).
+
 - **2026-11-24 — H0 verified: three audits, two inventories, and the P0 findings.**
   - All 47 C/D/D.2/E rows resolved to DONE/PARTIAL/MISSING with owners and
     evidence. ST1 is recorded in §14.7 and PG1's 22-entry destination map in
@@ -1551,28 +1560,3 @@ device timing it did not measure.
     muscle, asserts the focus sticks and resets, at 320/390/412.
   - Next: P3 (calendar-month wording), P6 (distribution currency) or P10 (year
     zoom) in Phase 2.
-
-- **2026-11-24 — Phase 0 truth pass, then the last Phase 1 switches.**
-  - **The matrix is now verified rather than assumed.** Every row was checked
-    against its owning module and tests. Owners that had moved were corrected
-    (P1 → the band composer, PR → `strength/records.js`, active day →
-    `analytics/logged-days.js`, streak week → `analytics/pulse.js`), and every
-    `◐`/`○` row now names its gap in a new Gap column. Phase 0 is DONE; no
-    product code changed for it.
-  - **A workout keeps the screen awake.** `js/workout/keep-awake.js` requests the
-    Screen Wake Lock only while the workout tab is visible and the session is
-    running. Leaving the tab, finishing, discarding, or turning the new
-    `settings.keepAwake` switch off releases it; an unsupported/denied platform
-    is silent. A held lock is never requested twice, and a late request after
-    the tab closed is released immediately.
-  - **Live PR now has an explicit preference.** `settings.livePR` (default on)
-    silences the banner and haptic only: `detectSetPR` still shows the badge and
-    persists `isPR`/`prKind`, so history is identical with the switch off.
-  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
-    volume is weight × reps and is already represented by the load/rep records,
-    while a volume badge would reward adding sets rather than better
-    performance. Detection covers e1RM, holds (duration), carries and reps.
-  - Tests: `tests/keep_awake.test.js` (unsupported/off/active/idempotent) and
-    the new `pr_surfaces` case (banner off, record still written); settings
-    wiring is green because both switches have real handlers.
-  - Next: Phase 2.

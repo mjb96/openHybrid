@@ -5464,3 +5464,28 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     Measures and Progress-hub browser checks pass at 390/320. Live captures:
     `docs/mockups/measures-trend-390.png` and `measures-trend-320.png`.
   - Next: the gated queue — Phase 0 truth pass then Phase 1 live-PR/keep-awake.
+
+- **2026-11-24 — Phase 0 truth pass, then the last Phase 1 switches.**
+  - **The matrix is now verified rather than assumed.** Every row was checked
+    against its owning module and tests. Owners that had moved were corrected
+    (P1 → the band composer, PR → `strength/records.js`, active day →
+    `analytics/logged-days.js`, streak week → `analytics/pulse.js`), and every
+    `◐`/`○` row now names its gap in a new Gap column. Phase 0 is DONE; no
+    product code changed for it.
+  - **A workout keeps the screen awake.** `js/workout/keep-awake.js` requests the
+    Screen Wake Lock only while the workout tab is visible and the session is
+    running. Leaving the tab, finishing, discarding, or turning the new
+    `settings.keepAwake` switch off releases it; an unsupported/denied platform
+    is silent. A held lock is never requested twice, and a late request after
+    the tab closed is released immediately.
+  - **Live PR now has an explicit preference.** `settings.livePR` (default on)
+    silences the banner and haptic only: `detectSetPR` still shows the badge and
+    persists `isPR`/`prKind`, so history is identical with the switch off.
+  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
+    volume is weight × reps and is already represented by the load/rep records,
+    while a volume badge would reward adding sets rather than better
+    performance. Detection covers e1RM, holds (duration), carries and reps.
+  - Tests: `tests/keep_awake.test.js` (unsupported/off/active/idempotent) and
+    the new `pr_surfaces` case (banner off, record still written); settings
+    wiring is green because both switches have real handlers.
+  - Next: Phase 2.

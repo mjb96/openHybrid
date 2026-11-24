@@ -9,6 +9,7 @@ import { activeOneOffSession } from '../workout/one-off-session.js';
 import { explicitSessionStatus, SESSION_STATUS } from '../workout/session-status.js';
 import { buildSessionSummary, sessionSummaryHTML } from './session-summary.js';
 import { buildDayRecap } from './week-view.js';
+import { sessionExercisePreview } from '../workout/session-preview.js';
 
 const DAY_NAMES = Object.freeze({
   mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
@@ -333,6 +334,7 @@ export function buildTodayCardModel(options) {
     return card;
   }
 
+  card.preview = sessionExercisePreview(state, program, card.day);
   card.guidance = readinessGuidance(model, 'Follow the planned session and log how it feels.');
   card.primary = { action: 'select-program-workout', day: card.day, label: 'Start workout' };
   card.secondary = { action: 'open-program-workout-picker', label: 'Choose another workout' };
@@ -359,6 +361,21 @@ function actionAttrs(action) {
  */
 export function isTodayCardCollapsible(card) {
   return card?.state === 'ready';
+}
+
+function previewTarget(item) {
+  return item?.sets && item?.reps ? `${item.sets}×${item.reps}` : (item?.reps || '');
+}
+
+function previewLast(item, unit) {
+  return item?.last ? `last ${item.last.weight} ${unit} × ${item.last.reps}` : '';
+}
+
+function previewListHTML(card) {
+  return (card.preview || []).slice(0, 3).map((item) => {
+    const last = previewLast(item, card.weightUnit);
+    return `<li class="today-card__preview-row"><span class="today-card__preview-name">${esc(item.name)}</span><span class="today-card__preview-target">${esc(previewTarget(item))}</span>${last ? `<span class="today-card__preview-last">${esc(last)}</span>` : ''}</li>`;
+  }).join('');
 }
 
 /**
@@ -390,16 +407,22 @@ export function todayCardHTML(card, options = {}) {
   const summary = card.state === 'completed' && card.summary
     ? sessionSummaryHTML(card.summary, { weightUnit: card.weightUnit, distanceUnit: card.distanceUnit })
     : '';
+  const preview = previewListHTML(card);
+  const previewCompact = card.preview?.length
+    ? `<p class="today-card__preview-compact">${esc(card.preview.slice(0, 2).map((item) => `${item.name} ${previewTarget(item)}`).join(' · '))}${card.preview.length > 2 ? ` · +${card.preview.length - 2} more` : ''}</p>`
+    : '';
 
   return `<article class="${classes.join(' ')}" data-today-state="${esc(card.state)}" aria-labelledby="homeTodayTitle">
     <div class="today-card__head">
       <span class="today-card__eyebrow">${esc(card.eyebrow)}</span>
       <h2 id="homeTodayTitle" class="today-card__title">${esc(card.title)}</h2>
       <p class="today-card__meta">${esc(card.meta)}</p>
+      ${previewCompact}
       ${toggle}
     </div>
     ${summary}
     <div class="today-card__detail" id="homeTodayCardDetail">
+      ${preview ? `<ul class="today-card__preview" aria-label="Today's lifts">${preview}</ul>` : ''}
       <p class="today-card__guidance">${esc(card.guidance)}</p>
       ${offline}
     </div>
