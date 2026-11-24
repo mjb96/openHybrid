@@ -349,7 +349,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   distinct sessions by stamped date (one strength session + each run), and
   reports totals, best month, the in-year consecutive-day run, per-DATE annual
   e1RM PR events and top exercises, and offers a **Share year** PNG card from the
-  same model. Volume goes through the shared
+  same model. Week in Review offers the same one-canvas PNG from BOTH its
+  Overview and Stats tabs, built from `weeklyReviewShareRows` — the rows are the
+  week's own numbers, and a historical week omits adherence and focus. Volume
+  goes through the shared
   `formatVolume` (`js/analytics/utils.js`), which LABELS the athlete's stored
   unit and never converts it — kg keeps its `t` compaction, lbs stays lbs.
   Bodyweight is deliberately omitted because weigh-ins are stored in the

@@ -3,13 +3,14 @@
 // WEEK IN REVIEW — analytics leaf (js/analytics/views/view-weekly-review.js)
 //
 // Presenter for the R6 weekly review: the week's story (totals · deltas · PRs
-// · plan adherence · one focus) with a text-share action. The data comes from the
-// pure builder (js/brain/weekly-review.js); this file only renders and wires
+// · plan adherence · one focus) with an image-share action. The data comes from
+// the pure builder (js/brain/weekly-review.js); this file only renders and wires
 // the Share button.
 // =============================================================================
 import { showToast, getProgramById } from '../../state.js';
 import { weightUnitOf, formatVolume } from '../utils.js';
 import { reviewToText, buildWeeklyReview } from '../../brain/weekly-review.js';
+import { shareSummaryCard, weeklyReviewShareRows } from '../share-card.js';
 import { statCard } from '../charts/chart-primitives.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
 import { renderYearInReview } from './view-year-review.js';
@@ -102,7 +103,7 @@ export function renderReview(data, getState, getDays, onTabChange) {
     renderGoalProgressDetail(data, getState);
     renderProgressAnalytics(data, getState);
   } else {
-    renderReviewOverview(body, review);
+    renderReviewOverview(body, review, state);
   }
 
   mountScreenTabs('analytics-weekly-review', (tab) => {
@@ -114,13 +115,36 @@ export function renderReview(data, getState, getDays, onTabChange) {
   });
 }
 
+/** Share one calendar week as the same PNG card from either Review tab. */
+async function shareWeekCard(review, state) {
+  const distUnit = state?.settings?.distanceUnit || 'km';
+  await shareSummaryCard(weeklyReviewShareRows(review, state), {
+    title: review.isCurrentWeek ? 'This week' : `Week of ${review.label}`,
+    subtitle: review.label,
+    filename: `openhybrid-week-${review.weekStart}.png`,
+    caption: reviewToText(review, distUnit, weightUnitOf(state)),
+    toast: showToast,
+    savedMessage: 'Week card saved',
+  });
+}
+
+function wireWeekShare(scope, selector, review, state) {
+  const btn = scope.querySelector(selector);
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    try { await shareWeekCard(review, state); }
+    catch { showToast('Sharing unavailable on this device', true); }
+  });
+}
+
 /**
  * Review → Overview. Exported so the render guard can drive both the live and
  * the historical copy without depending on the system clock.
  * @param {HTMLElement} body
  * @param {ReturnType<typeof buildWeeklyReview>} review
+ * @param {any} [state] durable state; when present the week can be shared as a card
  */
-export function renderReviewOverview(body, review) {
+export function renderReviewOverview(body, review, state) {
   const period = review.isCurrentWeek ? 'this week' : 'that week';
   if (!review.hasData) {
     body.innerHTML = `<article class="card-dark an-hero">
@@ -157,7 +181,9 @@ export function renderReviewOverview(body, review) {
       ${cards.join('')}
     </div>
     ${focusHTML}
+    ${state ? '<button id="wrevOverviewShareBtn" class="btn-action-block btn-ghost" aria-label="Share this week\'s review as a card">📤 Share week</button>' : ''}
   `;
+  if (state) wireWeekShare(body, '#wrevOverviewShareBtn', review, state);
 }
 
 function deltaChip(pct) {
@@ -224,23 +250,9 @@ export function renderWeeklyReview(review, state) {
     ${consHTML}
     ${prsHTML}
     ${focusHTML}
-    <button id="wrevShareBtn" class="btn-action-block btn-ghost" aria-label="Share week review as text">📤 Share as text</button>
+    <button id="wrevShareBtn" class="btn-action-block btn-ghost" aria-label="Share week review as a card">📤 Share week</button>
   `;
 
-  const btn = el.querySelector('#wrevShareBtn');
-  if (btn) {
-    btn.addEventListener('click', async () => {
-      const text = reviewToText(review, distUnit, weightUnitOf(state));
-      try {
-        if (navigator.share) { await navigator.share({ text }); return; }
-        throw new Error('no-share');
-      } catch {
-        try {
-          await navigator.clipboard.writeText(text);
-          showToast('Copied to clipboard ✓');
-        } catch { showToast('Sharing unavailable on this device', true); }
-      }
-    });
-  }
+  wireWeekShare(el, '#wrevShareBtn', review, state);
 
 }

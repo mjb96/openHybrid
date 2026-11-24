@@ -544,7 +544,8 @@ nothing; no data leaves the device.
 
 ### Phase 7 — Polish and scale
 
-**Status: ONGOING.** **Goal:** keep the finished surface fast and reachable.
+**Status: ONGOING — Week in Review share card landed 2026-11-24.** **Goal:** keep
+the finished surface fast and reachable.
 
 Share cards for progress charts and the calendar; performance with five years of
 history and a large photo library; accessibility and text scaling; empty states;
@@ -753,9 +754,25 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,662 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,664 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Phase 7 starts: the Week in Review shares a real PNG card.**
+  - Overview and Stats both offer **Share week**, drawn by the one share
+    pipeline (`drawProgressCard` → `shareImageCanvas`) from
+    `weeklyReviewShareRows`. The rows are the week's own totals; a historical
+    week omits plan adherence and next-week focus, and a week with no training
+    has no share action at all rather than a card full of zeros.
+  - The browser check opens Review from the Progress footer, switches to
+    Overview and asserts a real `openhybrid-week-YYYY-MM-DD.png` download.
+  - The offline path got two guards after an unresolved-merge-marker `sw.js`
+    (from branch resolution, not product code) made `navigator.serviceWorker.ready`
+    hang until the per-check kill: a precache test now rejects conflict markers
+    in `sw.js`, and the Running check races `.ready` against a 15s failure so a
+    broken worker reports its cause instead of timing out.
+  - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
+    export/import for routine and measurement metadata, large-library checks.
 
 - **2026-11-24 — Phase 6: S2 adaptive trainer landed; only native surfaces remain.**
   - **Onboarding now asks for a typical session length** (30/45/60/75+ min). The
