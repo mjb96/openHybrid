@@ -37,3 +37,18 @@ test('always returns something (never an empty picker)', () => {
   const recs = recommendStarterPrograms({ goal: 'strength', level: 'elite', equipmentTier: 'home' }, CATALOG);
   assert.ok(recs.length > 0);
 });
+
+test('frequency and session length rank plans that fit the athlete time', () => {
+  const catalog = [
+    { id: 'short', name: 'Two Short Days', category: 'strength', difficulty: 'beginner', equipmentTier: 'gym', sessionsPerWeek: 2, sessionDurationMinutes: { min: 25, max: 35 }, rating: 4.5, popularity: 50 },
+    { id: 'long', name: 'Six Long Days', category: 'strength', difficulty: 'beginner', equipmentTier: 'gym', sessionsPerWeek: 6, sessionDurationMinutes: { min: 70, max: 90 }, rating: 4.5, popularity: 50 },
+  ];
+  const short = recommendStarterPrograms({
+    goal: 'strength', level: 'beginner', equipmentTier: 'gym', frequency: 'low', sessionMinutes: 30,
+  }, catalog);
+  assert.equal(short[0].id, 'short');
+  const long = recommendStarterPrograms({
+    goal: 'strength', level: 'beginner', equipmentTier: 'gym', frequency: 'high', sessionMinutes: 90,
+  }, catalog);
+  assert.equal(long[0].id, 'long');
+});

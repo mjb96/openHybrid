@@ -510,8 +510,8 @@ partial year; the card downloads as a real PNG when Web Share is unavailable.
 
 ### Phase 6 — Platform and intelligence
 
-**Status: ACTIVE — S3/S4 context export landed 2026-11-24; L14, S10 and S2
-remain.** **Goal:** native-feeling surfaces and assistance without a
+**Status: ACTIVE — S2/S3/S4 landed; L14 and S10 are the remaining native
+surfaces.** **Goal:** native-feeling surfaces and assistance without a
 backend.
 
 Features: L14, S10, S2, S3/S4 (reframed).
@@ -521,9 +521,11 @@ Features: L14, S10, S2, S3/S4 (reframed).
    degrades with no promise.
 2. **Android widgets** — calendar, seven-day data, routine of the day, streak,
    quick log. No iOS widget promise exists.
-3. **Adaptive trainer** — onboarding inputs (level, goal, equipment, frequency,
-   session length, focus) produce a plan whose working weights adjust from
-   logged performance, with deloads, short tips, and Undo.
+3. **Adaptive trainer.** Landed: onboarding goal, level, equipment, weekly
+   frequency and typical session length rank a fitting starter plan; working
+   loads adapt through the cockpit's per-lift diagnostics, never by silently
+   rewriting the plan. Deloads, progression shapes and Undo stay explicit.
+   "Short tips" remain the existing Home insight/coach line.
 4. **AI, reframed.** Landed: Settings → Data exports a compact
    `openhybrid-training-context` JSON (goals/settings, active plan, last eight
    weeks of sets/runs and weekly totals) with no name, notes, routes, photos or
@@ -608,7 +610,7 @@ to that site.
 | ID | Feature | Owner | Target behaviour | Status | Gap | Phase |
 | --- | --- | --- | --- | --- | --- | --- |
 | S1 | Workout settings | `settings.js` + `settings/nav.js` | One Logging card: rest tiers/presets/sound, previous values, progression, warm-up, plate hints, keep-awake and live-PR switches | ✅ | — | 1 |
-| S2 | Adaptive trainer | `programs/progression.js` | Onboarding → plan, performance-adjusted loads, deloads | ◐ | No automatic plan adaptation; per-lift suggestions and deload templates only | 6 |
+| S2 | Adaptive trainer | `onboarding/starter-programs.js`, `engine.js`, `programs/progression.js` | Onboarding goal/level/equipment/frequency/session length produce a fitting plan; loads adapt via cockpit diagnostics; deloads and Undo stay explicit | ✅ | — | 6 |
 | S3 | AI plan generation | `portability/training-context.js`, `programs/program-json.js` | Export compact training context; import a returned plan JSON; no account linking | ✅ | — | 6 |
 | S4 | AI analysis | `portability/training-context.js` | Same external context; deterministic in-app coach Q&A remains the offline path | ✅ | — | 6 |
 | S5 | Folders and routines | `programs/library.js`, `routines/` | Create, folder, reorder, start | ✅ | — | 4 |
@@ -751,9 +753,23 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,661 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,662 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Phase 6: S2 adaptive trainer landed; only native surfaces remain.**
+  - **Onboarding now asks for a typical session length** (30/45/60/75+ min). The
+    starter recommender uses it and the existing weekly-frequency answer, so a
+    6-day 75-minute block cannot lead for a 3–4 day 30-minute athlete. The
+    category filter still comes from the goal, so time cannot hand an endurance
+    athlete a powerlifting plan.
+  - **Adaptation stays explicit.** Working loads adjust through the cockpit's
+    per-lift diagnostics; deloads and progression shapes are visible edits with
+    Undo. Nothing silently rewrites the plan or logged training. S2 is DONE.
+  - **Phase 6 remains ACTIVE only for L14 (Android live activity) and S10
+    (widgets)** — both native, device-checklist work.
+  - Tests: the recommender's frequency/session-length ranking; existing engine,
+    progression, deload and Undo coverage remains green; browser suite unchanged.
 
 - **2026-11-24 — Phase 6 starts: a compact training context, not a connector.**
   - **Settings → Data → Export Training Context (JSON).** The file carries the
