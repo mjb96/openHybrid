@@ -206,10 +206,16 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
   };
   let sets = 0, reps = 0, consistencyDone = 0, consistencyTotal = 0;
   let consistencyDoneToDate = 0, consistencyTotalToDate = 0;
+  let planTotal = 0, planDone = 0;
   days.forEach(d => {
     const due = dayElapsed(d) || dayHasWork(d);
     const bp = program?.days?.[d];
     const runScheduled = bp?.runs && !bp.runs.toLowerCase().includes('no structured') && bp.runs.toLowerCase() !== 'rest';
+    const liftScheduled = Array.isArray(bp?.lifts) && bp.lifts.length > 0;
+    if (runScheduled || liftScheduled) {
+      planTotal += 1;
+      if (dayHasWork(d)) planDone += 1;
+    }
     if (runScheduled) {
       consistencyTotal++; if (due) consistencyTotalToDate++;
       if (num(runDaySummary(weekData, d).dist) > 0) { consistencyDone++; if (due) consistencyDoneToDate++; }
@@ -318,6 +324,11 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
       distance: { current: distCurrent, prev: distPrev, delta: makeDelta(distCurrent, distPrev), spark: tail(distanceSeries, 8) },
       sets, reps, consistencyDone, consistencyTotal,
       consistencyPct: consistencyTotal > 0 ? Math.round((consistencyDone / consistencyTotal) * 100) : 0,
+      // Session-plan progress is the same unit the week rail shows. The coach
+      // line must never call a set-row percentage "the plan" (H-F1).
+      planDone,
+      planTotal,
+      planPct: planTotal > 0 ? Math.round((planDone / planTotal) * 100) : null,
       // Scheduled-to-date adherence (only days that have arrived / been trained).
       // Null when nothing is due yet, so the score's Consistency pillar can tell
       // "nothing scheduled yet" apart from "0% of what was due got done".
@@ -377,8 +388,8 @@ function pickTopInsight(m) {
     return { text: `${m.streak.current}-day training streak — keep it alive.`, tone: 'positive', nav: 'streak' };
   }
   // Complementary to (not a duplicate of) the coaching card below.
-  if (m.week.consistencyTotal > 0 && m.week.consistencyPct >= 50) {
-    return { text: `${m.week.consistencyPct}% of this week's plan done — stay on it.`, tone: 'neutral', nav: 'progress' };
+  if (m.week.planTotal > 0 && m.week.planPct >= 50) {
+    return { text: `${m.week.planDone} of ${m.week.planTotal} planned sessions done — stay on it.`, tone: 'neutral', nav: 'progress' };
   }
   if (m.bodyweight.hasData && m.bodyweight.delta7 !== null && m.bodyweight.delta7 !== 0) {
     const dir = m.bodyweight.delta7 < 0 ? 'down' : 'up';
