@@ -161,7 +161,12 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   display index and the membership). Folder order is display-based (`sortOrder`,
   then name) and renormalised on every create/delete/restore/move; a routine has no
   ordering field of its own. `js/app.js` owns those actions; they never activate
-  or reseed a program.
+  or reseed a program. A routine also has an OPTIONAL `category` from the fixed
+  `ROUTINE_CATEGORIES` vocabulary (`push/pull/legs/upper/lower/full_body/
+  conditioning/mobility/other`; absent = uncategorised). The `•••` Category sheet
+  and the library's 44px filter select are metadata only; an unknown imported
+  category is stripped without dropping the routine, and filtering never rewrites
+  folders, the program, the week or logged training.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported
@@ -333,7 +338,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `display:flex !important`, so only hiding the container hides both. It counts
   distinct sessions by stamped date (one strength session + each run), and
   reports totals, best month, the in-year consecutive-day run, per-DATE annual
-  e1RM PR events and top exercises. Volume goes through the shared
+  e1RM PR events and top exercises, and offers a **Share year** PNG card from the
+  same model. Volume goes through the shared
   `formatVolume` (`js/analytics/utils.js`), which LABELS the athlete's stored
   unit and never converts it — kg keeps its `t` compaction, lbs stays lbs.
   Bodyweight is deliberately omitted because weigh-ins are stored in the
@@ -345,7 +351,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   (`js/brain/monthly-report.js`) uses the same rule through
   `forEachLoggedDay().sessionCount`: the current calendar month compared with the
   same elapsed part of the prior month, or a trailing 12-month window compared
-  with its own prior window. `reportToText` names the real span. Projections use the
+  with its own prior window. `reportToText` names the real span, and the Share
+  action exports the same figures as a PNG card. Projections use the
   same dated calendar series for strength and running, with a program-week
   fallback only for legacy undated states. Recovery/Strength current load
   (ATL/CTL/ACWR, monotony, strain, consistency) uses the same dated timeline;
@@ -843,7 +850,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   draws the WHOLE session from the same `buildSessionRecap` model the recap and
   History detail render — never from re-derived numbers — and is reachable from
   both surfaces. `shareImageCanvas` (pr-share.js) is the single
-  navigator.share → download path for every card; run distance/pace formatting
+  navigator.share → `saveBinaryExport` path for every card; the old `data:` anchor
+  was blocked by the app CSP, so it now uses a blob download or the Android
+  binary bridge. Run distance/pace formatting
   lives in `js/workout/run-units.js` so the recap and card cannot drift.
 - Circuits / supersets: `js/workout/superset.js` is the pure group model — any
   pair or circuit of three or more same-day lifts sharing a non-empty

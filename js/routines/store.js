@@ -26,6 +26,38 @@ export const MAX_ROUTINE_FOLDERS = 200;
 export const MAX_ROUTINE_NOTE = 500;
 
 /**
+ * The routine library's small, stable category vocabulary. A category is optional
+ * metadata for finding a session again; it never changes what the routine does.
+ * `uncategorised` is a FILTER key, not a stored value — an absent category is
+ * the honest "not filed yet" state.
+ */
+export const ROUTINE_CATEGORIES = Object.freeze([
+  Object.freeze({ id: 'home', label: 'At home' }),
+  Object.freeze({ id: 'travel', label: 'Travel' }),
+  Object.freeze({ id: 'dumbbells', label: 'Dumbbells' }),
+  Object.freeze({ id: 'band', label: 'Band' }),
+  Object.freeze({ id: 'cardio', label: 'Cardio / HIIT' }),
+  Object.freeze({ id: 'gym', label: 'Gym' }),
+  Object.freeze({ id: 'bodyweight', label: 'Bodyweight' }),
+  Object.freeze({ id: 'suspension', label: 'Suspension' }),
+  Object.freeze({ id: 'other', label: 'Other' }),
+]);
+
+/** One stored category id, or null for absent/unknown values. */
+export function normalizeRoutineCategory(value) {
+  if (value == null || value === '') return null;
+  const id = String(value);
+  return ROUTINE_CATEGORIES.some((category) => category.id === id) ? id : null;
+}
+
+/** Readable category label, or '' when the routine is uncategorised. */
+export function routineCategoryLabel(value) {
+  const id = normalizeRoutineCategory(value);
+  return ROUTINE_CATEGORIES.find((category) => category.id === id)?.label || '';
+}
+
+
+/**
  * Guarantee both root routine arrays exist. Idempotent; returns true when it
  * had to repair something (callers do not need the value).
  * @param {any} state
@@ -92,6 +124,20 @@ export function updateRoutineNote(state, routineId, text) {
   const note = String(text ?? '').trim().slice(0, MAX_ROUTINE_NOTE);
   if (note) routine.note = note;
   else delete routine.note;
+  routine.updatedAt = new Date().toISOString();
+  return true;
+}
+
+/**
+ * Set or clear a routine's category. Unknown values are cleared rather than
+ * stored, so a renamed/removed category cannot leave an unreachable routine.
+ */
+export function setRoutineCategory(state, routineId, category) {
+  const routine = findRoutine(state, routineId);
+  if (!routine) return false;
+  const id = normalizeRoutineCategory(category);
+  if (id) routine.category = id;
+  else delete routine.category;
   routine.updatedAt = new Date().toISOString();
   return true;
 }

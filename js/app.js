@@ -120,10 +120,13 @@ import {
 import { markSessionInProgress } from './workout/session-status.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
 import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
+import { shareSummaryCard, yearReviewShareRows } from './analytics/share-card.js';
+import { buildYearInReview, yearReviewYear } from './brain/year-review.js';
 import {
   createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, hasRoutineCapacity,
   MAX_ROUTINE_NOTE, MAX_ROUTINES, moveFolder, moveRoutineToFolder, orderedFolders, removeRoutine,
-  renameFolder, restoreFolder, updateRoutineNote,
+  renameFolder, restoreFolder, ROUTINE_CATEGORIES, routineCategoryLabel, setRoutineCategory,
+  updateRoutineNote,
 } from './routines/store.js';
 import { showUndo } from './ui/undo-bar.js';
 
@@ -625,6 +628,7 @@ export async function deleteRoutine(routineId) {
 // never deletes a routine; no folder action reads or writes state.weeks.
 
 let _routineFolderRoutineId = null;
+let _routineCategoryRoutineId = null;
 
 export async function createRoutineFolder() {
   const name = await textPromptModal({
@@ -769,6 +773,108 @@ export function closeRoutineFolderSheet() {
   backdrop?.classList.remove('active');
   if (sheet) closeManagedModal(sheet);
   _routineFolderRoutineId = null;
+}
+
+// ── Routine categories ───────────────────────────────────────────────────────
+//
+// A category is optional metadata for finding a routine again. It never changes
+// the session, the folder, the programme or logged training.
+
+function renderRoutineCategoryChoices(routine) {
+  const list = document.getElementById('routineCategoryList');
+  if (!list) return;
+  const current = routine?.category || null;
+  const countIn = (category) => (appState.routines || [])
+    .filter((entry) => (entry?.category || null) === category).length;
+  const choices = [{ id: null, label: 'No category' }, ...ROUTINE_CATEGORIES];
+  list.innerHTML = choices.map((choice) => {
+    const id = choice.id == null ? null : choice.id;
+    const isCurrent = current === id;
+    const count = countIn(id);
+    return `<button type="button" class="program-workout-choice routine-folder-choice${isCurrent ? ' is-current' : ''}"
+        data-action="choose-routine-category" data-category="${escapeHtml(id == null ? '' : String(id))}"
+        aria-pressed="${isCurrent}">
+      <span class="program-workout-choice__day" aria-hidden="true">${id == null ? '—' : '🏷️'}</span>
+      <span class="program-workout-choice__main">
+        <strong>${escapeHtml(String(choice.label || ''))}</strong>
+        <span>${count} routine${count === 1 ? '' : 's'}</span>
+      </span>
+      <span class="program-workout-choice__chev" aria-hidden="true">${isCurrent ? '✓' : '›'}</span>
+    </button>`;
+  }).join('');
+}
+
+export function openRoutineCategorySheet(routineId) {
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { showToast('That routine could not be found', true); return; }
+  const sheet = document.getElementById('routineCategorySheet');
+  const backdrop = document.getElementById('routineCategoryBackdrop');
+  if (!sheet || !backdrop) return;
+  _routineCategoryRoutineId = routineId;
+  renderRoutineCategoryChoices(routine);
+  sheet.classList.add('active');
+  backdrop.classList.add('active');
+  openManagedModal(sheet, { initialFocus: '.routine-folder-choice' });
+}
+
+export function closeRoutineCategorySheet() {
+  const sheet = document.getElementById('routineCategorySheet');
+  const backdrop = document.getElementById('routineCategoryBackdrop');
+  sheet?.classList.remove('active');
+  backdrop?.classList.remove('active');
+  if (sheet) closeManagedModal(sheet);
+  _routineCategoryRoutineId = null;
+}
+
+export async function chooseRoutineCategory(category) {
+  const routineId = _routineCategoryRoutineId;
+  const routine = findRoutine(appState, routineId);
+  if (!routine) { closeRoutineCategorySheet(); return; }
+  const previous = routine.category || null;
+  if (!setRoutineCategory(appState, routineId, category)) {
+    closeRoutineCategorySheet();
+    showToast('That routine could not be found', true);
+    return;
+  }
+  const next = routine.category || null;
+  if (next === previous) { closeRoutineCategorySheet(); return; }
+  const saved = await saveStateToLocalStorage(true);
+  if (!saved) {
+    setRoutineCategory(appState, routineId, previous);
+    closeRoutineCategorySheet();
+    showToast('The routine category could not be saved', true);
+    return;
+  }
+  closeRoutineCategorySheet();
+  renderLibrary();
+  showToast(next ? `Category: ${routineCategoryLabel(next)}` : 'Category cleared');
+}
+
+/**
+ * Share the Year in Review image. It rebuilds the SAME model the seasonal
+ * section renders, so the card cannot claim a year or figure the screen lacks.
+ */
+async function shareYearReview() {
+  const today = todayKey();
+  const year = yearReviewYear(today);
+  if (year == null) return;
+  const review = buildYearInReview(appState, DEFAULT_DAYS, { year, today });
+  if (!review.hasData) {
+    showToast(`No sessions logged in ${year} yet`);
+    return;
+  }
+  try {
+    await shareSummaryCard(yearReviewShareRows(review, appState), {
+      title: `${review.year} in review`,
+      subtitle: review.rangeLabel,
+      filename: `openhybrid-year-review-${review.year}.png`,
+      caption: `My ${review.year} in review on openHybrid: ${review.totals.sessions} sessions, ${review.totals.workingSets} working sets, ${review.totals.prCount} e1RM PRs.`,
+      toast: showToast,
+      savedMessage: 'Year card saved',
+    });
+  } catch {
+    showToast('Sharing unavailable on this device', true);
+  }
 }
 
 export async function chooseRoutineFolder(folderId) {
@@ -1542,6 +1648,7 @@ document.addEventListener('click', (e) => {
   });
   else if (action === 'open-wellness-checkin') openAnalyticsView('recovery-score', 'wellnessFormSection');
   else if (action === 'share-score-card') shareScoreCard();
+  else if (action === 'share-year-review') shareYearReview();
   else if (action === 'tile-nav') document.dispatchEvent(new CustomEvent('app:navigate', { detail: { target: target.getAttribute('data-nav') } }));
   else if (action === 'set-day') setCockpitActiveDay(target.getAttribute('data-day'));
   else if (action === 'start-today-workout') launchActiveWorkoutCockpit();
@@ -1604,8 +1711,10 @@ document.addEventListener('click', (e) => {
     if (isActionMenuOpen()) closeActionMenu();
     else if (routineId) {
       const hasFolders = orderedFolders(appState).length > 0;
+      const categoryLabel = routineCategoryLabel(findRoutine(appState, routineId)?.category);
       openActionMenu(target, [
         { label: 'Rename', action: 'rename-routine', routineId },
+        { label: categoryLabel ? `Category: ${categoryLabel}` : 'Category', action: 'open-routine-category', routineId },
         { label: 'Routine note', action: 'edit-routine-note', routineId },
         ...(hasFolders ? [{ label: 'Move to folder', action: 'move-routine-to-folder', routineId }] : []),
         { label: 'Delete', action: 'delete-routine', routineId, danger: true },
@@ -1624,6 +1733,16 @@ document.addEventListener('click', (e) => {
       showToast('The routine note could not be saved', true);
     });
   }
+  else if (action === 'open-routine-category') {
+    openRoutineCategorySheet(target.getAttribute('data-routine-id'));
+  }
+  else if (action === 'choose-routine-category') {
+    chooseRoutineCategory(target.getAttribute('data-category') || '').catch((error) => {
+      console.warn('Routine category failed:', error);
+      showToast('The routine category could not be saved', true);
+    });
+  }
+  else if (action === 'close-routine-category-sheet') closeRoutineCategorySheet();
   else if (action === 'delete-routine') {
     deleteRoutine(target.getAttribute('data-routine-id')).catch((error) => {
       console.warn('Routine delete failed:', error);
@@ -1701,7 +1820,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'close-compare') closeCompareModal();
 
   // New Program Library actions
-  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage'].includes(action)) {
+  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage', 'clear-routine-filter'].includes(action)) {
     handleLibraryAction(action, target, e);
   }
   else if (['close-program-detail', 'make-active-from-detail', 'view-active-program', 'open-day-preview', 'preview-week-step', 'close-day-preview', 'detail-toggle-bookmark', 'mark-program-complete', 'detail-week-step', 'detail-week-current'].includes(action)) {

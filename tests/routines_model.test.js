@@ -17,7 +17,8 @@ import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek, routin
 import {
   createFolder, deleteFolder, ensureRoutines, findFolder, hasRoutineCapacity,
   MAX_ROUTINE_LIFTS, MAX_ROUTINES, MAX_ROUTINE_SETS, moveFolder, moveRoutineToFolder,
-  newFolderId, orderedFolders, removeRoutine, renameFolder, restoreFolder,
+  newFolderId, normalizeRoutineCategory, orderedFolders, removeRoutine, renameFolder,
+  restoreFolder, ROUTINE_CATEGORIES, routineCategoryLabel, setRoutineCategory,
 } from '../js/routines/store.js';
 import { createOneOffStrengthSession } from '../js/workout/one-off-session.js';
 import { buildSetRow } from '../js/templates.js';
@@ -409,6 +410,29 @@ test('folders group routines one-way; deleting a folder never deletes a routine'
   assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Trips', 'Home']);
 });
 
+test('routine categories are optional, valid vocabulary, and clearable', () => {
+  const routine = build({ name: 'Push day' });
+  const state = { routines: [routine] };
+  assert.equal(routine.category, undefined);
+  assert.equal(routineCategoryLabel(routine.category), '');
+  assert.equal(normalizeRoutineCategory('home'), 'home');
+  assert.equal(normalizeRoutineCategory('not-a-category'), null);
+  assert.deepEqual(ROUTINE_CATEGORIES.map((category) => category.id), [
+    'home', 'travel', 'dumbbells', 'band', 'cardio', 'gym', 'bodyweight', 'suspension', 'other',
+  ]);
+
+  assert.equal(setRoutineCategory(state, routine.id, 'home'), true);
+  assert.equal(routine.category, 'home');
+  assert.equal(routineCategoryLabel(routine.category), 'At home');
+  assert.equal(typeof routine.updatedAt, 'string');
+  assert.equal(setRoutineCategory(state, routine.id, 'not-a-category'), true);
+  assert.equal('category' in routine, false, 'an unknown category clears rather than stores junk');
+  assert.equal(setRoutineCategory(state, routine.id, 'travel'), true);
+  assert.equal(setRoutineCategory(state, routine.id, null), true);
+  assert.equal('category' in routine, false);
+  assert.equal(setRoutineCategory(state, 'rtn_missing', 'home'), false);
+});
+
 test('folder reorder, delete and Undo preserve the exact DISPLAY order', () => {
   const state = { routines: [], libraryFolders: [] };
   const alpha = createFolder(state, 'Alpha');
@@ -482,6 +506,7 @@ test('a full-state export/import round-trips routines and folders', () => {
     createdAt: '2026-11-16T10:00:00.000Z', updatedAt: '2026-11-16T10:00:00.000Z',
   };
   routine.folderId = folder.id;
+  routine.category = 'home';
   const saved = {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     currentWeek: '1',
@@ -497,6 +522,23 @@ test('a full-state export/import round-trips routines and folders', () => {
   const migrated = migrateState(checked.state);
   assert.deepEqual(migrated.routines, [routine]);
   assert.deepEqual(migrated.libraryFolders, [folder]);
+});
+
+test('an imported routine with an unknown category keeps the routine and drops the category', () => {
+  const routine = build();
+  routine.category = 'legacy-category';
+  const parsed = {
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+    currentWeek: '1',
+    weeks: { '1': { lifts: {} } },
+    routines: [routine],
+    libraryFolders: [],
+  };
+  const checked = validateImport(parsed, { currentSchemaVersion: CURRENT_SCHEMA_VERSION });
+  assert.equal(checked.ok, true);
+  assert.equal(checked.state.routines.length, 1);
+  assert.equal('category' in checked.state.routines[0], false);
+  assert.equal(checked.state.routines[0].name, routine.name);
 });
 
 test('routine modules never activate a program or write a week slot', () => {

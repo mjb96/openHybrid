@@ -13,7 +13,9 @@ import { toggleBookmark, recordRecentlyViewed, getProgramById, getActiveProgramI
 import { escapeHtml, safeCssColor } from '../util.js';
 import { buildActivePlanBanner } from './active-plan-banner.js';
 import { routineSummary } from '../routines/model.js';
-import { orderedFolders } from '../routines/store.js';
+import {
+  normalizeRoutineCategory, orderedFolders, ROUTINE_CATEGORIES, routineCategoryLabel,
+} from '../routines/store.js';
 
 // V2-6 — the curated home rails (in order) shown on the lean Discover surface.
 // Everything else stays reachable via the category chips + Browse-all grid.
@@ -26,6 +28,9 @@ let _activeTab = 'discover'; // 'discover' | 'my'
 let _showAllPrograms = false;
 let _searchQuery = '';
 let _searchDebounce = null;
+// Routine-library category filter. Ephemeral, like the Progress filters: opening
+// the tab again must not silently hide routines because of last week's choice.
+let _routineCategoryFilter = 'all';
 
 export function initProgramLibrary(appState) {
   _appState = appState;
@@ -36,6 +41,7 @@ export function showLibraryTab(tab) {
   _activeTab = tab === 'my' ? 'my' : 'discover';
   _searchQuery = '';
   _showAllPrograms = false;
+  _routineCategoryFilter = 'all';
   renderLibrary();
   persistFilters();
 }
@@ -467,6 +473,13 @@ function renderRoutineCardNode(routine) {
   if (summary.minutes != null) parts.push(`~${summary.minutes} min`);
   meta.textContent = parts.join(' · ');
   main.append(name, meta);
+  const category = routineCategoryLabel(routine.category);
+  if (category) {
+    const categoryFlag = document.createElement('span');
+    categoryFlag.className = 'routine-card__category';
+    categoryFlag.textContent = category;
+    main.append(categoryFlag);
+  }
   // A routine note is context for starting, not a summary: the card only marks
   // that one exists. Printing the text would break the compact card contract
   // and put a paragraph in a list.
@@ -515,8 +528,67 @@ function renderRoutineCardNode(routine) {
  * @param {any[]} routines
  * @param {any[]} folders
  */
+function routineFilterValue(routine) {
+  return normalizeRoutineCategory(routine?.category) || 'uncategorised';
+}
+
+function routineFilterOptions(routines) {
+  const counts = new Map();
+  for (const routine of routines) {
+    const key = routineFilterValue(routine);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const options = [{ value: 'all', label: 'All routines', count: routines.length }];
+  for (const category of ROUTINE_CATEGORIES) {
+    const count = counts.get(category.id) || 0;
+    if (count) options.push({ value: category.id, label: category.label, count });
+  }
+  const uncategorised = counts.get('uncategorised') || 0;
+  if (uncategorised) options.push({ value: 'uncategorised', label: 'Uncategorised', count: uncategorised });
+  return options;
+}
+
+function routineFilterEmptyNode() {
+  const empty = document.createElement('div');
+  empty.className = 'routine-filter-empty';
+  const text = document.createElement('p');
+  text.textContent = 'No routines in this category.';
+  const clear = document.createElement('button');
+  clear.type = 'button';
+  clear.className = 'routine-filter-clear';
+  clear.setAttribute('data-action', 'clear-routine-filter');
+  clear.textContent = 'Show all routines';
+  empty.append(text, clear);
+  return empty;
+}
+
+/**
+ * The Routines area of My Plans.
+ *
+ * With no folders it is the flat list this screen already had. With folders it
+ * becomes one section per folder (sortOrder, then name) plus an Unfiled bucket
+ * for routines with no folder (or a folder id that no longer exists). Empty
+ * folders stay visible — an explicitly created folder must be fillable — and say
+ * so quietly. A folder never stores members; grouping reads `routine.folderId`.
+ *
+ * A category filter narrows the same list and reuses those folder sections;
+ * folders with no matches hide while a filter is active, and a filter with no
+ * matches says so instead of showing a wall of empty folders.
+ *
+ * @param {HTMLElement[]} nodes
+ * @param {any[]} routines
+ * @param {any[]} folders
+ */
 function renderRoutineLibrary(nodes, routines, folders) {
   if (!routines.length && !folders.length) return;
+
+  const options = routineFilterOptions(routines);
+  const active = options.some((option) => option.value === _routineCategoryFilter)
+    ? _routineCategoryFilter
+    : 'all';
+  const visible = active === 'all'
+    ? routines
+    : routines.filter((routine) => routineFilterValue(routine) === active);
 
   const header = document.createElement('div');
   header.className = 'filtered-grid-header mb-4 routine-library-head';
@@ -527,7 +599,9 @@ function renderRoutineLibrary(nodes, routines, folders) {
   title.textContent = 'Routines';
   const count = document.createElement('div');
   count.className = 'filtered-grid-count';
-  count.textContent = String(routines.length);
+  count.textContent = visible.length === routines.length
+    ? String(visible.length)
+    : `${visible.length} of ${routines.length}`;
   titleWrap.append(title, count);
   const create = document.createElement('button');
   create.type = 'button';
@@ -537,21 +611,52 @@ function renderRoutineLibrary(nodes, routines, folders) {
   header.append(titleWrap, create);
   nodes.push(header);
 
+  if (routines.length) {
+    const filterRow = document.createElement('div');
+    filterRow.className = 'routine-library-filter';
+    const select = document.createElement('select');
+    select.className = 'routine-filter-select';
+    select.setAttribute('data-routine-category', '');
+    select.setAttribute('aria-label', 'Filter routines by category');
+    for (const option of options) {
+      const item = document.createElement('option');
+      item.value = option.value;
+      item.textContent = `${option.label} (${option.count})`;
+      if (option.value === active) item.selected = true;
+      select.append(item);
+    }
+    filterRow.append(select);
+    nodes.push(filterRow);
+  }
+
   if (!folders.length) {
-    const list = document.createElement('div');
-    list.className = 'routine-list mb-6';
-    routines.forEach((routine) => list.append(renderRoutineCardNode(routine)));
-    nodes.push(list);
+    if (visible.length) {
+      const list = document.createElement('div');
+      list.className = 'routine-list mb-6';
+      visible.forEach((routine) => list.append(renderRoutineCardNode(routine)));
+      nodes.push(list);
+    } else if (routines.length) {
+      nodes.push(routineFilterEmptyNode());
+    }
     return;
   }
 
   const folderIds = new Set(folders.map((folder) => folder.id));
+  let rendered = false;
   for (const folder of folders) {
-    const members = routines.filter((routine) => routine?.folderId === folder.id);
+    const members = visible.filter((routine) => routine?.folderId === folder.id);
+    // While filtered, a folder with no matches is noise; when unfiltered, an
+    // explicitly created empty folder stays visible and fillable.
+    if (!members.length && active !== 'all') continue;
     nodes.push(renderRoutineFolderNode(folder, members));
+    rendered = true;
   }
-  const unfiled = routines.filter((routine) => !routine?.folderId || !folderIds.has(routine.folderId));
-  if (unfiled.length) nodes.push(renderRoutineFolderNode(null, unfiled));
+  const unfiled = visible.filter((routine) => !routine?.folderId || !folderIds.has(routine.folderId));
+  if (unfiled.length) {
+    nodes.push(renderRoutineFolderNode(null, unfiled));
+    rendered = true;
+  }
+  if (!rendered && routines.length) nodes.push(routineFilterEmptyNode());
 }
 
 /**
@@ -1042,6 +1147,22 @@ function advanceHero() {
 // ── Event handling ─────────────────────────────────────────────────────────────
 
 function setupLibraryEvents() {
+  // Routine category filter. Delegated on the stable screen because the select
+  // is recreated whenever the list renders.
+  const screen = document.getElementById('programLibraryScreen');
+  if (screen && !screen._routineFilterEvt) {
+    screen._routineFilterEvt = true;
+    screen.addEventListener('change', (event) => {
+      const select = event.target instanceof Element ? event.target.closest('[data-routine-category]') : null;
+      if (!select) return;
+      const value = select.value;
+      _routineCategoryFilter = value === 'uncategorised' || ROUTINE_CATEGORIES.some((category) => category.id === value)
+        ? value
+        : 'all';
+      renderLibraryContent();
+    });
+  }
+
   // Search input
   const searchInput = document.getElementById('progSearchInput');
   const searchClear = document.getElementById('progSearchClear');
@@ -1123,6 +1244,11 @@ export function handleLibraryAction(action, el, event) {
       renderLibraryContent();
       break;
     }
+    case 'clear-routine-filter': {
+      _routineCategoryFilter = 'all';
+      renderLibraryContent();
+      break;
+    }
     case 'prog-filter': {
       const filter = el.getAttribute('data-filter');
       setActiveFilter(filter);
@@ -1168,6 +1294,7 @@ export function handleLibraryAction(action, el, event) {
         _showAllPrograms = false;
         _searchQuery = '';
         _activeDifficulty = null;
+        _routineCategoryFilter = 'all';
         const inp = document.getElementById('progSearchInput');
         if (inp) inp.value = '';
         renderLibrary();

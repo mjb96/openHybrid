@@ -264,6 +264,47 @@ try {
   const sectionTitle = await page.locator('#progLibraryContent .filtered-grid-title').first().innerText();
   ok(sectionTitle === 'Routines', `the routines section is labelled (${sectionTitle})`);
 
+  // ── Categories + filter ──────────────────────────────────────────────────
+  const pushId = await card.getAttribute('data-routine-id');
+  await openRoutineMenuById(page, pushId, 'open-routine-category');
+  await page.waitForSelector('#routineCategorySheet.active');
+  const categoryChoices = await page.locator('#routineCategoryList [data-action="choose-routine-category"]').count();
+  ok(categoryChoices === 10, `the category sheet offers 9 categories plus none (${categoryChoices})`);
+  await page.click('#routineCategoryList [data-category="home"]');
+  await page.waitForFunction(([key, id]) => {
+    const state = JSON.parse(localStorage.getItem(key) || '{}');
+    return (state.routines || []).find((routine) => routine.id === id)?.category === 'home';
+  }, [STORAGE_KEY, pushId]);
+  ok((await page.locator(`#progLibraryContent .routine-card[data-routine-id="${pushId}"] .routine-card__category`).textContent()) === 'At home',
+    'the card marks its category');
+
+  const secondCard = page.locator('#progLibraryContent .routine-card').nth(1);
+  const secondId = await secondCard.getAttribute('data-routine-id');
+  await openRoutineMenuById(page, secondId, 'open-routine-category');
+  await page.waitForSelector('#routineCategorySheet.active');
+  await page.click('#routineCategoryList [data-category="travel"]');
+  await page.waitForFunction(([key, id]) => {
+    const state = JSON.parse(localStorage.getItem(key) || '{}');
+    return (state.routines || []).find((routine) => routine.id === id)?.category === 'travel';
+  }, [STORAGE_KEY, secondId]);
+
+  const filterHeight = await page.locator('#progLibraryContent [data-routine-category]').evaluate((el) => Math.round(el.getBoundingClientRect().height));
+  ok(filterHeight >= 44, `the routine filter is ${filterHeight}px`);
+  await page.selectOption('#progLibraryContent [data-routine-category]', 'home');
+  await page.waitForFunction(() => document.querySelectorAll('#progLibraryContent .routine-card').length === 1);
+  const filteredCards = await page.locator('#progLibraryContent .routine-card').count();
+  ok(filteredCards === 1, `the category filter narrows the library (${filteredCards})`);
+  const filteredName = await page.locator('#progLibraryContent .routine-card__name').innerText();
+  ok(filteredName === 'Push day', `the filtered card is the Push routine (${filteredName})`);
+  await page.selectOption('#progLibraryContent [data-routine-category]', 'all');
+  await page.waitForFunction(() => document.querySelectorAll('#progLibraryContent .routine-card').length === 2);
+  ok(await page.locator('#progLibraryContent .routine-card').count() === 2, 'All routines restores both');
+
+  const afterCategory = await readState(page);
+  ok(JSON.stringify(afterCategory.weeks) === JSON.stringify(baseline.weeks), 'categories never rewrite logged weeks');
+  ok(afterCategory.activeProgramId === baseline.activeProgramId, 'categories never move the active program');
+  ok(afterCategory.currentWeek === baseline.currentWeek, 'categories never move the program week');
+
   const startButton = card.locator('[data-action="start-routine"]');
   const menuButton = card.locator('[data-action="open-routine-menu"]');
   const startBox = await startButton.boundingBox();

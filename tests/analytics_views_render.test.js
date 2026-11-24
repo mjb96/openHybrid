@@ -368,6 +368,7 @@ test('the Training Report names the current calendar month, never "30 days"', as
   const html = el.innerHTML;
   assert.match(html, /data-report-period="month"[^>]*>This month</);
   assert.match(html, /data-report-period="year"[^>]*>12 months</);
+  assert.match(html, /id="mrepShareBtn"/);
   // The comparison names the prior month, not a made-up 30-day window.
   assert.match(html, /vs prior month/);
   assert.doesNotMatch(html, /30[- ]day/i);

@@ -114,3 +114,10 @@ test('a capped PR list says it is the biggest, and renders only five', () => {
   assert.equal((html.match(/<span aria-hidden="true">🏆<\/span>/g) || []).length, 5);
   assert.match(html, /e1RM PRs<\/div>/);
 });
+
+test('a trained year offers the shared image card; an empty year does not', () => {
+  view.renderYearInReview(stateWith({ '1': oneLift('2026-03-10') }), [], '2026-12-15');
+  assert.match(getEl('yearReviewContainer').innerHTML, /data-action="share-year-review"/);
+  view.renderYearInReview(stateWith({}), [], '2026-12-15');
+  assert.doesNotMatch(getEl('yearReviewContainer').innerHTML, /data-action="share-year-review"/);
+});

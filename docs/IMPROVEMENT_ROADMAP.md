@@ -432,34 +432,36 @@ round-trip.
 
 ### Phase 4 — Organisation
 
-**Status: ACTIVE — routines landed, the routine library remains.** **Goal:**
-routines become a first-class library, and a good session becomes reusable in
-one action.
+**Status: DONE (2026-11-24).** **Goal:** routines become a first-class library,
+and a good session becomes reusable in one action.
 
 Features: P11, S5, S6.
 
 Implemented in the routines slice: save a finished History session as a routine
 (`state.routines`, schema v14), list it in Plans → My Plans and Start it as a
 one-off session, and organise routines into ordered folders
-(`state.libraryFolders`) with Undo. What remains is item 4's **routine library**:
-single-routine categories and filters (programme browsing already exists through
-Plans).
+(`state.libraryFolders`) with Undo. The routine library now has an optional
+single-category vocabulary, a category sheet in the `•••` menu, a 44px filter
+select, and folder sections that respect the filter. Programme browsing remains
+in Plans → Discover.
 
 1. **Save as routine** from a History detail, building a routine from the
    session's actual exercises, sets and rest. *Landed: History "Save as routine"
    (root `state.routines`/`state.libraryFolders`, schema v14, Undo) and the
    Plans → My Plans routine list — Start, Rename, Delete with Undo, a badge that
-   counts routines, and an honest summary line. Categories and filters are next.*
+   counts routines, and an honest summary line. Categories and filters landed in
+   the routine-library slice.*
 2. **Copy, edit and delete** with Undo — verify the existing actions and close
    the gaps rather than adding a second action row.
 3. **Routine folders** — create, rename, delete, reorder, assign, undo.
    *Landed: sortOrder-ordered folder sections plus an Unfiled bucket, a `•••`
    folder menu with Move up/down, and a Move-to-folder sheet. Deleting a folder
    files its routines under Unfiled and Undo restores the folder and membership.*
-4. **Routine library** — categories (at home, travel, dumbbells, band,
-   cardio/HIIT, gym, bodyweight, suspension), filters, and saving either a whole
-   programme or a single routine. *Landed: saving a single routine from History.
-   Remaining: categories and filters for routines.*
+4. **Routine library** — one optional category per routine (at home, travel,
+   dumbbells, band, cardio/HIIT, gym, bodyweight, suspension, other), a category
+   sheet in the `•••` menu, a 44px filter select, and saving either a whole
+   programme or a single routine. *Landed: saving a single routine from History,
+   categories, filters and folder-aware filtering.*
 
 **Data rules:** a plan-changing edit snapshots the PLAN only (`days` +
 `weeklyVolModifiers`), never `state.weeks`, so an Undo can never rewrite logged
@@ -475,12 +477,15 @@ action has Undo; the routine list survives export/import.
 
 ### Phase 5 — Reports and recap
 
-**Status: LATER.** **Goal:** make the month and the year worth reviewing.
+**Status: DONE (2026-11-24).** **Goal:** make the month and the year worth
+reviewing.
 
 Features: P3 (share), P12.
 
 1. **Monthly report share card** built from the Phase 2 model, using the one
-   share pipeline.
+   share pipeline. Landed: the Training Report's Share action now exports the
+   same sessions/volume/distance/score/fitness/adherence figures the screen
+   shows, as a PNG card, with the report text as its caption.
 2. **Year in Review** — *Landed (P12):* a December/January section at the top of
    Review → Stats with annual totals, best month, the in-year consecutive run,
    per-date annual e1RM PR events and top exercises. It is seasonal by design:
@@ -488,19 +493,20 @@ Features: P3 (share), P12.
    every other month renders nothing. Sessions are counted by identity on their
    stamped date (a strength + run day is two; a copied slot is one); volume is
    labelled in the athlete's stored unit and bodyweight is omitted because
-   weigh-ins are stored in the unit the athlete was using then. No share card in
-   this slice.
+   weigh-ins are stored in the unit the athlete was using then. A trained year
+   now also offers **Share year**, built from the SAME annual totals.
 
 **Data rules:** date-strict, using the same calendar series as Phase 2. No
 fabricated comparison when the prior period has no data. No "supporters" or
 social block exists to add.
 
 **Reuse:** `js/brain/monthly-report.js`, `js/analytics/views/view-monthly-report.js`,
-`js/share/workout-share.js` (`shareImageCanvas`).
+`js/analytics/share-card.js` (`shareSummaryCard`, `drawProgressCard`),
+`js/brain/pr-share.js` (`shareImageCanvas`), `js/portability/export-service.js`.
 
 **Acceptance:** every figure traces to a Phase 2 model value; the card cannot
 claim a number the screen does not show; a first-year user sees an honest
-partial year.
+partial year; the card downloads as a real PNG when Web Share is unavailable.
 
 ### Phase 6 — Platform and intelligence
 
@@ -554,7 +560,7 @@ not rebuild a ✅.
 | --- | --- | --- | --- | --- | --- | --- |
 | P1 | Progress hub | `analytics/progress-dashboard.js` | Eight bands over calendar weeks; each answers one question and links to exact evidence | ✅ | — | — |
 | P2 | Gym performance | `analytics/progress-dashboard.js` | Pulse, Muscles and Main exercises together answer the gym-performance question | ✅ | — | 2 |
-| P3 | Monthly report | `brain/monthly-report.js`, `analytics/views/view-monthly-report.js` | Current calendar month with elapsed-matched prior month; trailing 12-month view; text share | ✅ | — | 2, 5 |
+| P3 | Monthly report | `brain/monthly-report.js`, `analytics/views/view-monthly-report.js` | Current calendar month with elapsed-matched prior month; trailing 12-month view; PNG share card | ✅ | — | 2, 5 |
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on the shared body diagram, respecting the selected period | ✅ | — | — |
 | P5 | Sets per muscle per week | `analytics/muscles.js`, `analytics/views/view-muscles.js` | Weekly/monthly/yearly credited sets, long ranges, one-muscle focus | ✅ | — | 2 |
 | P6 | Muscle distribution | `analytics/muscle-load.js`, `analytics/views/view-muscles.js` | Per-muscle credits and recovery; credited-set share with equal-length period comparison | ✅ | — | 2 |
@@ -563,7 +569,7 @@ not rebuild a ✅.
 | P9 | Exercise performance | `analytics/exercise-detail.js`, `strength/set-records.js` | Graph, PR summary, set records by rep target, exact history | ✅ | — | 2 |
 | P10 | Consistency and streak | `analytics/training-calendar.js`, `analytics/pulse.js` | Calendar weeks, current and best weekly streak, rest days | ✅ | — | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, repeat, edit, delete with Undo | ✅ | — | 4 |
-| P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — | — |
+| P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; PNG share card | ✅ | — | — |
 
 P7 is complete: the measurements record carries an entered body fat, 14
 canonical bilateral tape sites (pre-14-site single Arm/Thigh readings preserved
@@ -602,7 +608,7 @@ to that site.
 | S3 | AI plan generation | — | Export context, import a plan; no account linking | ○ | No generation surface; plan import only | 6 |
 | S4 | AI analysis | — | Same surface as S3 | ○ | No analysis surface; coach Q&A is deterministic | 6 |
 | S5 | Folders and routines | `programs/library.js`, `routines/` | Create, folder, reorder, start | ✅ | — | 4 |
-| S6 | Routine library | `programs/library.js` | Categories, filters, save a programme or a single routine | ◐ | Routine folders exist; categories and filters for the routine list do not | 4 |
+| S6 | Routine library | `programs/library.js` | Optional category, category filter, folders, save a programme or a single routine | ✅ | — | 4 |
 | S7 | Exercise library | `exercises/` | 5,700+ entries, filters, instructions | ✅ | — | — |
 | S8 | Custom exercises | `exercises/` | Name, equipment, muscles, type, duplicate/edit/delete | ✅ | — | — |
 | S9 | Programming options | `workout/exercise-config.js` | Notes, rest, sets, types, load, reps/time, reorder, replace | ✅ | — | — |
@@ -741,9 +747,44 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,650 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,656 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Phase 5 finished: the month and year share the same evidence.**
+  - **Training Report → PNG card.** The existing Share action now draws the
+    sessions/volume/distance/score/fitness/adherence figures from the SAME
+    `buildCalendarMonthReport`/`buildYearReport` model the screen renders, and
+    attaches the report text as the caption. No figures are re-derived.
+  - **Year in Review → Share year.** A trained year offers an image card built
+    from `buildYearInReview` totals, best month and PR count, with the same
+    seasonal boundaries and honest partial-year range.
+  - **Both use one image pipeline.** `shareImageCanvas` now saves through
+    `saveBinaryExport`: the old `data:` anchor was blocked by the app's CSP, so a
+    Share tap silently did nothing in the installed PWA. Android uses the native
+    binary bridge; the browser downloads a real PNG.
+  - The browser contract now forces the Web Share fallback, downloads the
+    Training Report and Year in Review PNGs, and asserts their filenames at
+    320/390/412.
+  - **Phase 5 is DONE.** Next: Phase 6 — platform and intelligence.
+
+- **2026-11-24 — Phase 4 finished: the routine library gets categories and a filter.**
+  - **Routines can be filed by context.** A fixed vocabulary — at home, travel,
+    dumbbells, band, cardio/HIIT, gym, bodyweight, suspension, other — is optional
+    metadata. The `•••` menu opens a 44px category sheet; the card shows a small
+    category chip; an unknown imported category is stripped without dropping the
+    routine.
+  - **The routine list can be filtered without hiding the library.** A native
+    44px select shows only categories that actually contain routines, filters the
+    flat list and the folder sections, hides folders with no matches while a
+    filter is active, and offers Show all routines when nothing matches. The
+    filter is ephemeral and resets on tab entry.
+  - **It is organisation only.** Categories and filtering never rewrite
+    `state.weeks`, the active program, the program week, folders or logged
+    training. The category sheet and filter are covered by the real routines
+    browser check (set → chip → filter → All) plus store/import tests.
+  - **Phase 4 is DONE.** Next: Phase 5 — the monthly report share card and the
+    Year in Review share image.
 
 - **2026-11-24 — Phase 2 finished: calendar month, best weekly streak, and three honest decisions.**
   - **The Training Report is now the current calendar month.** `buildCalendarMonthReport`

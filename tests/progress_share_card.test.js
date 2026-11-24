@@ -4,7 +4,11 @@
 // =============================================================================
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { drawProgressCard } from '../js/analytics/share-card.js';
+import {
+  drawProgressCard, monthlyReportShareRows, yearReviewShareRows,
+} from '../js/analytics/share-card.js';
+import { buildCalendarMonthReport } from '../js/brain/monthly-report.js';
+import { buildYearInReview } from '../js/brain/year-review.js';
 
 /** A recording 2d context: no canvas implementation in node. */
 function fakeCanvas() {
@@ -42,6 +46,56 @@ test('empty rows still produce a card rather than a blank canvas', () => {
   drawProgressCard([], { title: 'Training progress' });
   assert.equal(canvas.width, 1080);
   assert.ok(ctx.calls.some((call) => call[0] === 'fillRect'));
+});
+
+test('a generic label can replace the band vocabulary for report cards', () => {
+  const { ctx } = fakeCanvas();
+  drawProgressCard([{ label: 'Sessions', value: '7' }], { title: 'Training Report' });
+  const texts = ctx.calls.filter((call) => call[0] === 'fillText').map((call) => call[1]);
+  assert.ok(texts.includes('SESSIONS'));
+  assert.ok(texts.includes('7'));
+});
+
+test('monthly report rows are the figures the Training Report screen shows', () => {
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const state = {
+    settings: { weightUnit: 'kg', distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: '2026-07-01' }, lifts: { mon: { Squat: [{ c: true, w: '100', r: '5' }] } }, runs: {} },
+    },
+  };
+  const report = buildCalendarMonthReport(state, days, null, new Date('2026-07-02T12:00:00+10:00'));
+  const rows = monthlyReportShareRows(report, state);
+  assert.deepEqual(rows.map((row) => row.label), [
+    'Sessions', 'Lifted', 'Run', 'Avg score', 'Fitness', 'Adherence',
+  ]);
+  assert.equal(rows[0].value, '1');
+  assert.equal(rows[0].note, '1 active day');
+  assert.equal(rows[1].value, '500 kg');
+  assert.equal(rows[2].value, '0 km');
+  assert.equal(rows[3].value, '—');
+  assert.equal(rows[4].value, 'CTL 0');
+  assert.equal(rows[5].value, '0%');
+});
+
+test('year review rows are the same annual totals the Year in Review prints', () => {
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+  const state = {
+    settings: { weightUnit: 'kg', distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: '2026-07-01' }, lifts: { mon: { Squat: [{ c: true, w: '100', r: '5' }] } }, runs: {} },
+    },
+  };
+  const review = buildYearInReview(state, days, { year: 2026, today: '2026-12-15' });
+  const rows = yearReviewShareRows(review, state);
+  assert.deepEqual(rows.map((row) => row.label), [
+    'Sessions', 'Lifted', 'Run', 'Working sets', 'e1RM PRs', 'Most trained',
+  ]);
+  assert.equal(rows[0].value, String(review.totals.sessions));
+  assert.equal(rows[1].value, '500 kg');
+  assert.equal(rows[3].value, String(review.totals.workingSets));
+  assert.equal(rows[4].value, String(review.totals.prCount));
+  assert.equal(rows[5].value, review.bestMonth.label);
 });
 
 test('more than seven rows are capped, and empty values are dropped', () => {

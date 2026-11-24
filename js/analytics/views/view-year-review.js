@@ -4,7 +4,8 @@
 //
 // The seasonal (December/January) calendar-year recap. The data comes from the
 // pure builder (js/brain/year-review.js); this file only renders it with the
-// athlete's weight/distance units. No chart library, no share action, no route.
+// athlete's weight/distance units. No chart library; the share button is a
+// data-action routed to the shared image-card pipeline.
 //
 // The heading lives INSIDE `#yearReviewContainer`. `.analytics-section
 // h2.section-header` is `display:flex !important`, so a `hidden` attribute on the
@@ -130,5 +131,6 @@ export function renderYearInReview(state, days, todayISO) {
     </div>
     ${topHTML}
     ${prHTML}
+    <button type="button" class="btn-action-block btn-ghost mt-3" data-action="share-year-review" aria-label="Share this year in review">📤 Share year</button>
   `;
 }

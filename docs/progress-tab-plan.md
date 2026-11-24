@@ -98,7 +98,7 @@ That is the pitch, and it should be stated on the surface itself: this app gives
 | 13 | Monthly Report | current calendar month + trailing 12 months | ✅ parity+ |
 | 14 | Year in Review | exists | ✅ parity+ |
 | 15 | Calendar + streak | History calendar | ✅ parity+ |
-| 16 | Share any chart as an image | `shareImageCanvas` exists, not wired to charts | **P6** |
+| 16 | Share summaries as an image | Progress, Training Report and Year in Review cards wired; per-chart cards remain | ◐ |
 | 17 | Running analytics (30 metrics, pace/HR/zones/load) | strictly more than Hevy | ✅ beyond · **band 5** |
 | 18 | Hybrid strength-vs-endurance balance | `hybrid-balance.js`, Home card only | ✅ beyond · **band 2** |
 | 19 | Fasting analytics (score, stages, trends, calendar) | `view-fasting.js` + 1,147 lines of calcs | ✅ beyond · **band 7** |
