@@ -1169,6 +1169,28 @@ and no stored key was deleted.
   format keys, Watches/AI Coach/Strava, equipment-tier derivation) are still
   open.
 
+### 14.12 Settings & Profile rebuild — Phase 3 (shared components)
+
+**Status: DONE for the component layer.** No page was rebuilt; Phase 4 composes
+these components into the 13-row IA.
+
+- `js/settings/components.js` is the one builder set: `settingsPage`,
+  `settingsGroup`, `settingsRow`, `toggleControl`, `segmentedControl`,
+  `stepperControl`, `sliderRow`, `timeControl`, `textControl`, `selectList`,
+  `pickerSheet`, `dangerRow` and `mountCollapsingTitle`.
+- Rows are 64px with a 36px rounded-square icon tile, inset hairline dividers,
+  a one-line truncated summary, a chevron only for drill-downs, and an explicit
+  disabled reason. Toggles keep a 48px hit area around a 42×24 track; segmented
+  options are 44px; steppers, inputs, time fields and the back control are 48px.
+- `css/settings.css` uses the app's existing semantic tokens only (no hex/rgb),
+  is linked in `index.html` and hand-listed in the precache CORE set.
+- `tests/settings_components.test.js` pins structure, escaping, accessible
+  names, the disabled contract and the no-literal-colour rule. A new
+  `settings-components-browser-check` renders the real module at 320/390/412 in
+  light/dark, measures every target and proves the title collapses.
+- **Not done yet:** no user-facing page uses the components; Phase 4 replaces
+  the legacy cards. The Phase 0 decisions remain open.
+
 ## 15. Home (H2)
 
 Source of truth for intent: §3 "Home is a decision surface". Verify what exists
@@ -1510,6 +1532,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
+  - Added `js/settings/components.js` (page/group/row, toggle, segmented,
+    stepper, slider, time, text, select list, picker and danger) and
+    `css/settings.css` using existing semantic tokens only.
+  - Rows are 64px, icon tiles 36px, toggle hit areas 48px, segmented 44px,
+    inputs/steppers/back controls 48px; summaries truncate and disabled rows
+    state a reason.
+  - Added unit tests plus a real-browser component probe at 320/390/412 in
+    light/dark, including the collapsing title. No page has been switched to the
+    components yet; Phase 4 does that.
+  - 2,718 tests pass; the browser suite grows to 50 checks.
+
 - **2026-11-25 — H1 Settings/Profile Phase 2: registry, store and migration snapshot.**
   - Expanded `js/settings/registry.js` to 57 descriptors with section/page,
     validators, keywords, visibility/enablement rules and summary formatters.
@@ -1620,13 +1654,6 @@ device timing it did not measure.
     set percentage is 100 but the plan line says "1 of 2 planned sessions done".
   - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
     is no duplicate-metric guard.
-
-- **2026-11-24 — H1 ST9: the JSON export says what it does not carry.**
-  - The Data & Backups card now states that progress photos stay on the device
-    and are not inside the JSON file, with the separate Measures → Export photos
-    path named in the same hint.
-  - The settings browser check asserts the exclusion and the named backup path.
-  - Still PARTIAL: there is no manual-export "last backup" timestamp.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

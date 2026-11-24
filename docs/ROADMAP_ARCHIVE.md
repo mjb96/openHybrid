@@ -5639,6 +5639,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
     deep, so the 2-tap acceptance is unmet.
 
+- **2026-11-24 — H1 ST9: the JSON export says what it does not carry.**
+  - The Data & Backups card now states that progress photos stay on the device
+    and are not inside the JSON file, with the separate Measures → Export photos
+    path named in the same hint.
+  - The settings browser check asserts the exclusion and the named backup path.
+  - Still PARTIAL: there is no manual-export "last backup" timestamp.
+
 - **2026-11-24 — H2 HM3: Strength this week states every figure.**
   - The Home strength card now shows sessions and working sets together, the
     same-weekday volume delta, the top e1RM change and this week's PR count.

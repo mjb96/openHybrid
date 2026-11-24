@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 49 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 50 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -118,6 +118,12 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `tests/settings_registry.test.js` fails when a stored key is outside the
   registry or a default fails its validator; `tests/settings_store.test.js`
   pins validation-before-mutation, atomic batches and cross-tab isolation.
+- Settings components (§14.12, Phase 3): `js/settings/components.js` is the ONE
+  builder set for pages/groups/rows and every control (toggle, segmented,
+  stepper, slider, time, text, select list, picker, danger). Rows are 64px with
+  a 36px icon tile and inset dividers; controls are 44/48px. `css/settings.css`
+  uses existing semantic tokens only and is in the precache CORE list. Pages
+  must compose these builders; Phase 4 switches the legacy cards to them.
 - Settings routing (§14.10, Phase 1): the Home header's 48px **gear** opens a
   full-screen Settings route; the avatar is gone. The route token is
   `#/settings` (the `/settings` path cannot be refreshed on GitHub Pages or the
