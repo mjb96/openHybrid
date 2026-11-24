@@ -5629,6 +5629,16 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
     the Reports band still duplicates the screen.
 
+- **2026-11-24 — H1 ST3: settings search opens the row, not just the card.**
+  - `firstMatchingRow` finds the exact `.settings-row`, band grid or hint that
+    matched, and the Settings filter highlights it and scrolls the panel to it.
+    The highlight clears with the query.
+  - The settings browser check searches by an accessible name only ("light band
+    weight"), asserts one marked row containing the light-band control, and
+    asserts it is inside the panel viewport.
+  - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
+    deep, so the 2-tap acceptance is unmet.
+
 - **2026-11-24 — H2 HM3: Strength this week states every figure.**
   - The Home strength card now shows sessions and working sets together, the
     same-weekday volume delta, the top e1RM change and this week's PR count.

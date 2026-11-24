@@ -105,10 +105,19 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `settings.notificationsEnabled` is the persisted master reminder preference:
   a granted OS permission alone never arms a reminder, and switching it off
   cancels the native alarm (S-F5).
-  `js/settings/registry.js` is the declarative descriptor list (key, label,
-  type, group, default) for every stored setting; `tests/settings_registry.test.js`
-  parses `state.js` and fails when a key exists outside it. Screens are still
-  hand-written, so the registry is not yet the renderer.
+  `js/settings/registry.js` is the declarative descriptor list for every stored
+  setting — key/path, section/page in the 13-row IA, label, type, default,
+  validator, keywords, visible/enabled rules and summary formatter. It covers all
+  48 `settings.*` keys, the settings-like root paths and deprecated legacy
+  stores. `js/settings/store.js` is the validated write path: `set`/`setMany`
+  (atomic), selector `subscribe` by key/page/section, `describe`, `resetPage`
+  with an undo snapshot, and cross-tab sync that copies registered settings only
+  (never training history). Writes persist through the existing
+  `saveStateToLocalStorage`; screens are still hand-written and write directly
+  until Phase 4, so the registry is not yet the renderer.
+  `tests/settings_registry.test.js` fails when a stored key is outside the
+  registry or a default fails its validator; `tests/settings_store.test.js`
+  pins validation-before-mutation, atomic batches and cross-tab isolation.
 - Settings routing (§14.10, Phase 1): the Home header's 48px **gear** opens a
   full-screen Settings route; the avatar is gone. The route token is
   `#/settings` (the `/settings` path cannot be refreshed on GitHub Pages or the

@@ -78,6 +78,7 @@ import {
 } from './state/import-validate.js';
 import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery, firstMatchingRow } from './settings/nav.js';
 import { SETTINGS_HASH, settingsHashForPage, settingsRouteFromHash } from './settings/route.js';
+import { configureSettingsStore } from './settings/store.js';
 import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
 import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
@@ -92,6 +93,15 @@ let _settingsReturnScroll = 0;
 
 export function initSettings(getStateFn) {
   _getState = getStateFn;
+  configureSettingsStore({
+    getState: () => _getState(),
+    save: () => saveStateToLocalStorage(true),
+    onChange: (detail) => {
+      if (typeof document !== 'undefined') {
+        document.dispatchEvent(new CustomEvent('settings:changed', { detail }));
+      }
+    },
+  });
   // Single source of truth for the displayed version (aligns with package.json
   // + Android versionName). No hardcoded string to drift out of date.
   const vEl = document.getElementById('settingsAppVersion');

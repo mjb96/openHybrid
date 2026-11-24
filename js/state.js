@@ -14,7 +14,7 @@ import { showToast } from './toast.js';
 import { secureRandomSuffix } from './util/secure-id.js';
 import { recomputeLoadMetrics } from './brain/load_models.js';
 import { initImportExport, triggerCSVExport, triggerBodyweightCSVExport, triggerMeasurementsCSVExport } from './state/import-export.js';
-import { migrateState } from './state/migrations.js';
+import { CURRENT_SCHEMA_VERSION, migrateState, snapshotBeforeMigration } from './state/migrations.js';
 import { showMigrationRecovery } from './state/migration-recovery-ui.js';
 import { preserveCorruptState, recoveryRawState } from './state/corrupt-state.js';
 import { writeMirror, restoreStateMirror, mirrorSupported, clearMirror } from './state/mirror.js';
@@ -951,6 +951,9 @@ settings: { name: '', weightUnit: 'kg', distanceUnit: 'km', progressionIncrement
   // of boot, and presents an explicit retry path instead of running on a
   // partially upgraded blob.
   try {
+    if (rawLocal && (Number(localData?.schemaVersion) || 0) < CURRENT_SCHEMA_VERSION) {
+      snapshotBeforeMigration(localStorage, STORAGE_KEY, rawLocal);
+    }
     migrateState(appState);
   } catch (migrationError) {
     showMigrationRecovery(migrationError);

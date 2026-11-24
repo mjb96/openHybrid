@@ -552,6 +552,24 @@ function validateStep(state, version) {
 }
 
 /**
+ * Keep the pre-migration bytes beside the live blob. A failed or surprising
+ * upgrade must leave the user's original document recoverable; this is the
+ * migration counterpart of the import backup.
+ * @param {Storage|null|undefined} storage
+ * @param {string} storageKey
+ * @param {string|null|undefined} raw
+ */
+export function snapshotBeforeMigration(storage, storageKey, raw) {
+  if (!storage || !raw) return false;
+  try {
+    storage.setItem(`${storageKey}_pre_migration`, raw);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Apply every pending migration as an independently validated transaction.
  * `afterStep` is a fault-injection seam used by the migration tests; production
  * callers should omit it.

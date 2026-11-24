@@ -959,7 +959,7 @@ or corrects it.
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
-| ST2 | **Declarative settings registry** | new `js/settings/registry.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | MISSING | No per-setting metadata exists; `settings/nav.js` maps card labels to five tabs only. Screens are hand-written HTML and handlers. |
+| ST2 | **Declarative settings registry** | `js/settings/registry.js`, `js/settings/store.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | PARTIAL | Phase 2 expanded the registry to 57 descriptors (48 settings keys, root paths, deprecated stores) with section/page, validator, keywords, visible/enabled rules and summaries. `js/settings/store.js` validates writes, persists, batches, resets and syncs settings across tabs. The hand-written cards still render/write directly until Phase 4. |
 | ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search marks the exact matching row and scrolls it into view. Settings is now ONE tap from Home (gear), so search is tap 2; registry keywords and the typed index still land in Phase 6. |
 | ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | PARTIAL | Phase 1 added the Home gear and the full-screen `#/settings` route; the Home sliders stays Customize Home. The logger/Progress/Plans/Measures gears and the workout settings sheet are still Phase 6. |
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable. The equipment answer now writes through `applyActiveEquipment` and survives boot (S-F1), and both bodyweight readers use `latestWeighIn` (S-F2). Equipment tier, frequency, session length, focus and height are still not editable; Profile still needs a bodyweight link. |
@@ -1136,6 +1136,38 @@ gym-profile sub-page, contextual workout sheet, deep links into individual
 settings, and visual redesign. Those are Phases 2–6. **Known decision:** the
 brief writes `/settings`; the implemented token is `#/settings` for static
 hosting. Approve the hash or add a server/404 rewrite before Phase 6.
+
+### 14.11 Settings & Profile rebuild — Phase 2 (registry + store)
+
+**Status: DONE for the registry/store/migration slice.** No card was rewritten
+and no stored key was deleted.
+
+- **Registry:** `js/settings/registry.js` now has **57 descriptors** covering all
+  48 `settings.*` keys, the three settings-like root paths
+  (`thresholdPaceSeconds`, `prGoals`, `healthConnect.stepGoal`) and the three
+  legacy stores (`recoveryFeel`, `profileSections`, `dashboardTiles`, marked
+  `deprecated`). Every renderable entry has a section/page in the 13-row IA,
+  keywords, type/default and a summary formatter; entries may declare
+  `visibleWhen` and `enabledWhen` with a one-line disabled reason.
+- **Store:** `js/settings/store.js` is the validated write path: `get`, `set`,
+  `setMany` (atomic), selector `subscribe` by key/page/section, `describe`
+  (value/visible/enabled/reason/summary), `resetPage` with a returned undo
+  snapshot, `restore`, and `snapshot`. Writes persist through the existing
+  `saveStateToLocalStorage`. Cross-tab `storage` events copy registered setting
+  values only — never training history — into the live state.
+- **Migrations:** `snapshotBeforeMigration` writes the exact pre-upgrade bytes
+  to `<state>_pre_migration` before any ordered migration runs. Import already
+  writes its `<state>_backup` before replacing live data.
+- **Tests:** `tests/settings_store.test.js` covers validation-before-mutation,
+  atomic batches, root paths, selector subscriptions, reset/undo, cross-tab
+  isolation and the migration snapshot. The registry test now asserts every
+  default passes its validator and every summary is throw-free. `npm test`
+  passes 2,709 tests.
+- **Not done yet:** the existing cards still write `appState` directly; Phase 4
+  switches them to the store. The remaining Phase 0 decisions (dead-store
+  removals, `fastingDefault` home, PR-goal home, optional personal fields,
+  format keys, Watches/AI Coach/Strava, equipment-tier derivation) are still
+  open.
 
 ## 15. Home (H2)
 
@@ -1478,6 +1510,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H1 Settings/Profile Phase 2: registry, store and migration snapshot.**
+  - Expanded `js/settings/registry.js` to 57 descriptors with section/page,
+    validators, keywords, visibility/enablement rules and summary formatters.
+    Root settings and deprecated legacy stores are registered rather than hidden.
+  - Added `js/settings/store.js`: validated atomic writes, selector
+    subscriptions, page reset with undo data, snapshots and cross-tab setting
+    sync that never touches training history.
+  - Added `snapshotBeforeMigration`, called before ordered migrations; import
+    already keeps its pre-import backup.
+  - Tests: 2,709 pass, including new store tests and default/summary registry
+    gates. Existing cards still write directly until Phase 4.
+
 - **2026-11-25 — H1 Settings/Profile Phase 1: route shell and Home gear.**
   - Home header now has a 48px gear that opens a full-screen `#/settings`
     route; the sliders button remains Customize Home.
@@ -1583,16 +1627,6 @@ device timing it did not measure.
     path named in the same hint.
   - The settings browser check asserts the exclusion and the named backup path.
   - Still PARTIAL: there is no manual-export "last backup" timestamp.
-
-- **2026-11-24 — H1 ST3: settings search opens the row, not just the card.**
-  - `firstMatchingRow` finds the exact `.settings-row`, band grid or hint that
-    matched, and the Settings filter highlights it and scrolls the panel to it.
-    The highlight clears with the query.
-  - The settings browser check searches by an accessible name only ("light band
-    weight"), asserts one marked row containing the light-band control, and
-    asserts it is inside the panel viewport.
-  - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
-    deep, so the 2-tap acceptance is unmet.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

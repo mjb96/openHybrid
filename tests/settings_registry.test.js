@@ -13,6 +13,9 @@ import {
   missingSettingsKeys,
   settingsEntry,
   settingsRegistryKeys,
+  renderableSettings,
+  settingSummary,
+  validateSettingValue,
 } from '../js/settings/registry.js';
 
 function defaultSettingsKeys() {
@@ -76,7 +79,8 @@ test('migration-only settings are registered', () => {
 
 test('retired keys are not offered again', () => {
   assert.deepEqual(RETIRED_SETTINGS_KEYS, ['recoveryFeel']);
-  assert.equal(settingsEntry('recoveryFeel'), null);
+  assert.equal(settingsEntry('recoveryFeel')?.deprecated, true, 'the descriptor is retained for migrations');
+  assert.ok(!renderableSettings().some((entry) => entry.key === 'recoveryFeel'), 'but it is never offered');
   assert.deepEqual(missingSettingsKeys(['name', 'recoveryFeel']), []);
 });
 
@@ -95,4 +99,31 @@ test('registry keys are unique and every entry is renderable metadata', () => {
 
 test('settings-like root values are named so they cannot hide', () => {
   assert.deepEqual([...NON_SETTINGS_STATE_KEYS], ['thresholdPaceSeconds', 'healthConnect.stepGoal', 'prGoals']);
+});
+
+
+test('every renderable setting has a page, keywords and a summary that cannot throw', () => {
+  const state = { settings: {}, healthConnect: {}, prGoals: {} };
+  for (const entry of SETTINGS_REGISTRY) {
+    assert.ok(entry.page, `${entry.key} has no page`);
+    assert.ok(Array.isArray(entry.keywords) && entry.keywords.length, `${entry.key} has no search keywords`);
+    assert.ok(entry.label, `${entry.key} has no label`);
+    assert.doesNotThrow(() => settingSummary(entry, state), `${entry.key} summary threw`);
+  }
+});
+
+test('every default passes its own validator', () => {
+  for (const entry of SETTINGS_REGISTRY) {
+    const result = validateSettingValue(entry, entry.default);
+    assert.equal(result.ok, true, `${entry.key} default failed: ${result.reason || ''}`);
+  }
+});
+
+test('root settings declare their path and storage explicitly', () => {
+  for (const key of ['thresholdPaceSeconds', 'prGoals', 'healthConnect.stepGoal']) {
+    const entry = settingsEntry(key);
+    assert.ok(entry, `${key} is missing`);
+    assert.equal(entry.storage, 'root');
+    assert.equal(entry.path, key);
+  }
 });
