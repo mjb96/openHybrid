@@ -71,7 +71,7 @@ import {
   validateImport,
   importReasonMessage,
 } from './state/import-validate.js';
-import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery } from './settings/nav.js';
+import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery, firstMatchingRow } from './settings/nav.js';
 import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
 import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
@@ -145,17 +145,37 @@ function _setupSettingsNavigation() {
 function _applySettingsFilter() {
   const query = (document.getElementById('settingsSearch')?.value || '').trim().toLowerCase();
   let shown = 0;
+  let firstHit = null;
   _settingsSections().forEach((section) => {
     const inGroup = !!query || section.dataset.settingsGroup === _settingsGroup;
     const matches = sectionMatchesQuery(section, query, {
       isModuleEnabled: (moduleId) => moduleEnabled(_getState?.(), moduleId),
     });
     section.hidden = !(inGroup && matches);
+    section.querySelectorAll('.settings-search-hit').forEach((row) => row.classList.remove('settings-search-hit'));
     // The no-results state must agree with what the athlete can actually see:
     // a card hidden by a module switch does not count just because its words
     // match, or the panel would look empty with no explanation.
-    if (!section.hidden && _sectionEnabledByModules(section)) shown++;
+    if (!section.hidden && _sectionEnabledByModules(section)) {
+      shown++;
+      if (!firstHit && query) {
+        firstHit = firstMatchingRow(section, query, {
+          isModuleEnabled: (moduleId) => moduleEnabled(_getState?.(), moduleId),
+        });
+      }
+    }
   });
+  if (firstHit) {
+    firstHit.classList.add('settings-search-hit');
+    const body = document.querySelector('#settingsPanel .settings-body');
+    if (body) {
+      const rowRect = firstHit.getBoundingClientRect();
+      const bodyRect = body.getBoundingClientRect();
+      if (rowRect.top < bodyRect.top || rowRect.bottom > bodyRect.bottom) {
+        body.scrollTop += rowRect.top - bodyRect.top - Math.max(0, (bodyRect.height - rowRect.height) / 2);
+      }
+    }
+  }
   document.querySelectorAll('#settingsTabs [data-settings-tab]').forEach((button) => {
     const active = !query && button.getAttribute('data-settings-tab') === _settingsGroup;
     button.classList.toggle('active', active);

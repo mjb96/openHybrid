@@ -60,6 +60,56 @@ export function settingsGroupForLabel(label) {
 }
 
 /**
+ * @param {Element|null|undefined} root
+ * @param {string} needle
+ * @param {{ isModuleEnabled?: (moduleId: string) => boolean, boundary?: Element|null }} [options]
+ * @returns {boolean}
+ */
+function matchesQuery(root, needle, { isModuleEnabled, boundary } = {}) {
+  if (!root) return false;
+  if (!needle) return true;
+  const enabled = typeof isModuleEnabled === 'function' ? isModuleEnabled : () => true;
+  const inDisabledSubtree = (element) => {
+    let current = element;
+    while (current && current.nodeType === 1) {
+      if (current.hasAttribute('data-module') && !enabled(current.getAttribute('data-module'))) return true;
+      if (current === (boundary || root)) break;
+      current = current.parentElement;
+    }
+    return false;
+  };
+  if (inDisabledSubtree(root)) return false;
+
+  const parts = [];
+  const doc = root.ownerDocument;
+  if (doc?.createTreeWalker) {
+    const walker = doc.createTreeWalker(root, 4); // NodeFilter.SHOW_TEXT
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!inDisabledSubtree(node.parentElement)) parts.push(node.nodeValue || '');
+    }
+  } else {
+    parts.push(root.textContent || '');
+  }
+
+  const ownLabel = root.getAttribute?.('aria-label');
+  if (ownLabel) parts.push(ownLabel);
+  const ownTitle = root.getAttribute?.('title');
+  if (ownTitle) parts.push(ownTitle);
+
+  root.querySelectorAll('[aria-label], [title], option').forEach((node) => {
+    if (inDisabledSubtree(node)) return;
+    const ariaLabel = node.getAttribute('aria-label');
+    if (ariaLabel) parts.push(ariaLabel);
+    const title = node.getAttribute('title');
+    if (title) parts.push(title);
+    if (node.tagName === 'OPTION') parts.push(node.textContent || '');
+  });
+
+  return parts.join(' ').toLowerCase().includes(needle);
+}
+
+/**
  * Does a settings card match a search term? Matches the card's visible text
  * plus words that are only exposed to assistive tech or on hover: `aria-label`,
  * `title`, and `<option>` labels. A control whose visible label is short (for
@@ -77,47 +127,20 @@ export function settingsGroupForLabel(label) {
  * @returns {boolean}
  */
 export function sectionMatchesQuery(section, query, { isModuleEnabled } = {}) {
+  return matchesQuery(section, String(query || '').trim().toLowerCase(), { isModuleEnabled });
+}
+
+/**
+ * The first actual row a search should open, not merely the card that contains
+ * it. Returns null for an empty/non-matching query.
+ * @param {Element|null|undefined} section
+ * @param {string|null|undefined} query
+ * @param {{ isModuleEnabled?: (moduleId: string) => boolean }} [options]
+ * @returns {Element|null}
+ */
+export function firstMatchingRow(section, query, { isModuleEnabled } = {}) {
   const needle = String(query || '').trim().toLowerCase();
-  if (!section) return false;
-  if (!needle) return true;
-
-  const enabled = typeof isModuleEnabled === 'function' ? isModuleEnabled : () => true;
-  const inDisabledSubtree = (element) => {
-    let current = element;
-    while (current && current.nodeType === 1) {
-      if (current.hasAttribute('data-module') && !enabled(current.getAttribute('data-module'))) return true;
-      if (current === section) break;
-      current = current.parentElement;
-    }
-    return false;
-  };
-  if (inDisabledSubtree(section)) return false;
-
-  const parts = [];
-  const doc = section.ownerDocument;
-  if (doc?.createTreeWalker) {
-    const walker = doc.createTreeWalker(section, 4); // NodeFilter.SHOW_TEXT
-    while (walker.nextNode()) {
-      const node = walker.currentNode;
-      if (!inDisabledSubtree(node.parentElement)) parts.push(node.nodeValue || '');
-    }
-  } else {
-    parts.push(section.textContent || '');
-  }
-
-  const ownLabel = section.getAttribute?.('aria-label');
-  if (ownLabel) parts.push(ownLabel);
-  const ownTitle = section.getAttribute?.('title');
-  if (ownTitle) parts.push(ownTitle);
-
-  section.querySelectorAll('[aria-label], [title], option').forEach((node) => {
-    if (inDisabledSubtree(node)) return;
-    const ariaLabel = node.getAttribute('aria-label');
-    if (ariaLabel) parts.push(ariaLabel);
-    const title = node.getAttribute('title');
-    if (title) parts.push(title);
-    if (node.tagName === 'OPTION') parts.push(node.textContent || '');
-  });
-
-  return parts.join(' ').toLowerCase().includes(needle);
+  if (!section || !needle) return null;
+  const rows = [...section.querySelectorAll('.settings-row, .run-grid-inputs, .settings-hint')];
+  return rows.find((row) => matchesQuery(row, needle, { isModuleEnabled, boundary: section })) || null;
 }

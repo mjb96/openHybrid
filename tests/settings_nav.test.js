@@ -17,6 +17,7 @@ import {
   SETTINGS_GROUP_BY_LABEL,
   settingsGroupForLabel,
   sectionMatchesQuery,
+  firstMatchingRow,
 } from '../js/settings/nav.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,6 +52,20 @@ test('an unknown card label falls back to Training instead of disappearing', () 
   for (const inherited of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
     assert.equal(settingsGroupForLabel(inherited), 'training', `${inherited} must fall back to Training`);
   }
+});
+
+test('search opens the exact row, not merely the card', () => {
+  const dom = new JSDOM(`<div class="settings-section">
+    <div class="settings-row"><label>Theme</label><select><option>Dark</option></select></div>
+    <div class="run-grid-inputs"><label><input aria-label="Light band weight"></label></div>
+    <div class="settings-hint">Band weights are canonical kilograms.</div>
+  </div>`);
+  const section = dom.window.document.querySelector('.settings-section');
+  assert.equal(firstMatchingRow(section, 'light band weight')?.className, 'run-grid-inputs');
+  assert.equal(firstMatchingRow(section, 'canonical kilograms')?.className, 'settings-hint');
+  assert.ok(firstMatchingRow(section, 'theme'));
+  assert.equal(firstMatchingRow(section, ''), null);
+  assert.equal(firstMatchingRow(section, 'missing'), null);
 });
 
 test('every top-level section in index.html maps to a real tab', () => {

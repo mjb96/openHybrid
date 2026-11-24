@@ -11097,3 +11097,11 @@ html[data-theme="dark"] .tl-today__primary {
 }
 .prog-card-bookmark .ic.is-saved { fill: currentColor; }
 .lib-empty-icon { color: var(--text-muted); display: flex; justify-content: center; }
+
+/* A settings search opens the exact control, not just the card that holds it. */
+.settings-search-hit {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+}

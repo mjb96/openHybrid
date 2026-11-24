@@ -960,7 +960,7 @@ or corrects it.
 | --- | --- | --- | --- | --- | --- |
 | ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
 | ST2 | **Declarative settings registry** | new `js/settings/registry.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | MISSING | No per-setting metadata exists; `settings/nav.js` maps card labels to five tabs only. Screens are hand-written HTML and handlers. |
-| ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card-level filter, no-results status and module-hidden exclusion exist; no row jump/highlight or keywords. Settings is 2 taps deep, search is tap 3. |
+| ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search now marks the exact matching row and scrolls it into the panel viewport; registry keywords are not wired yet, and Settings remains 2 taps deep (search is tap 3). |
 | ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | MISSING | Only Settings entry is the Home avatar; no gear from logger/Progress/Plans/Measures. Muscle priorities wrongly say "set in Settings". |
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable; equipmentTier, frequency, session length and focus are not. Equipment answer is reverted on boot (S-F1); bodyweight is duplicated (S-F2). |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. Unit switch relabels stored history (S-F4). |
@@ -1407,6 +1407,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H1 ST3: settings search opens the row, not just the card.**
+  - `firstMatchingRow` finds the exact `.settings-row`, band grid or hint that
+    matched, and the Settings filter highlights it and scrolls the panel to it.
+    The highlight clears with the query.
+  - The settings browser check searches by an accessible name only ("light band
+    weight"), asserts one marked row containing the light-band control, and
+    asserts it is inside the panel viewport.
+  - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
+    deep, so the 2-tap acceptance is unmet.
+
 - **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
   - The Reports band sent the row to `weekly-review`, which forces Review's
     Overview tab; the year section lives on Stats. A new `year-review` route
@@ -1520,21 +1530,3 @@ device timing it did not measure.
     Training Report and Year in Review PNGs, and asserts their filenames at
     320/390/412.
   - **Phase 5 is DONE.** Next: Phase 6 — platform and intelligence.
-
-- **2026-11-24 — Phase 4 finished: the routine library gets categories and a filter.**
-  - **Routines can be filed by context.** A fixed vocabulary — at home, travel,
-    dumbbells, band, cardio/HIIT, gym, bodyweight, suspension, other — is optional
-    metadata. The `•••` menu opens a 44px category sheet; the card shows a small
-    category chip; an unknown imported category is stripped without dropping the
-    routine.
-  - **The routine list can be filtered without hiding the library.** A native
-    44px select shows only categories that actually contain routines, filters the
-    flat list and the folder sections, hides folders with no matches while a
-    filter is active, and offers Show all routines when nothing matches. The
-    filter is ephemeral and resets on tab entry.
-  - **It is organisation only.** Categories and filtering never rewrite
-    `state.weeks`, the active program, the program week, folders or logged
-    training. The category sheet and filter are covered by the real routines
-    browser check (set → chip → filter → All) plus store/import tests.
-  - **Phase 4 is DONE.** Next: Phase 5 — the monthly report share card and the
-    Year in Review share image.
