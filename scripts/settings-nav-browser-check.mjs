@@ -219,6 +219,20 @@ try {
   ok((await visibleLabel()).includes('Training'), 'reopening settings shows the active destination');
   ok((await page.locator('#settingsNoResults').isHidden()), 'reopening settings hides the stale no-results state');
 
+  // Motion is a real preference: reduce must publish the CSS hook and persist.
+  await page.click('#settingsTabs [data-settings-tab="appearance"]');
+  await page.click('[data-action="set-reduced-motion"][data-motion="reduce"]');
+  const motion = await page.evaluate(() => ({
+    effective: document.documentElement.dataset.reducedMotion,
+    pref: document.documentElement.dataset.reducedMotionPref,
+    stored: JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.reducedMotion,
+  }));
+  ok(motion.effective === 'reduce' && motion.pref === 'reduce', 'Reduce publishes the reduced-motion hook');
+  ok(motion.stored === 'reduce', 'Reduce persists as the stored motion preference');
+  await page.click('[data-action="set-reduced-motion"][data-motion="system"]');
+  ok((await page.evaluate(() => document.documentElement.dataset.reducedMotionPref)) === 'system',
+    'System restores the OS-following preference');
+
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 } finally {

@@ -11115,3 +11115,14 @@ html[data-theme="dark"] .tl-today__primary {
   font-size: max(0.7rem, var(--text-xs));
   line-height: 1.4;
 }
+
+/* Explicit reduced-motion preference. The OS media query stays authoritative
+   for `system`; this hook lets the athlete force reduce or opt back in. */
+html[data-reduced-motion="reduce"] *,
+html[data-reduced-motion="reduce"] *::before,
+html[data-reduced-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

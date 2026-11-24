@@ -90,6 +90,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `role="status"`; the visible count ignores cards hidden by a module switch.
   A matching search also marks the exact row (`.settings-search-hit`) and
   scrolls the panel to it, so the athlete lands on the control, not a card top.
+  `settings.reducedMotion` is system|reduce|full; `ui/motion.js` publishes
+  `data-reduced-motion` on `<html>` for the CSS hook.
   Training order is Training (units) → Logging (rest tiers/presets/sound,
   progression, previous values, warm-up, plate hints, keep-awake, live-PR
   banners) → Program Week → Equipment

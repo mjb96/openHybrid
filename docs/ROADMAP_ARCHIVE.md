@@ -5594,3 +5594,19 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     (widgets)** — both native, device-checklist work.
   - Tests: the recommender's frequency/session-length ranking; existing engine,
     progression, deload and Undo coverage remains green; browser suite unchanged.
+
+- **2026-11-24 — Phase 7 starts: the Week in Review shares a real PNG card.**
+  - Overview and Stats both offer **Share week**, drawn by the one share
+    pipeline (`drawProgressCard` → `shareImageCanvas`) from
+    `weeklyReviewShareRows`. The rows are the week's own totals; a historical
+    week omits plan adherence and next-week focus, and a week with no training
+    has no share action at all rather than a card full of zeros.
+  - The browser check opens Review from the Progress footer, switches to
+    Overview and asserts a real `openhybrid-week-YYYY-MM-DD.png` download.
+  - The offline path got two guards after an unresolved-merge-marker `sw.js`
+    (from branch resolution, not product code) made `navigator.serviceWorker.ready`
+    hang until the per-check kill: a precache test now rejects conflict markers
+    in `sw.js`, and the Running check races `.ready` against a 15s failure so a
+    broken worker reports its cause instead of timing out.
+  - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
+    export/import for routine and measurement metadata, large-library checks.
