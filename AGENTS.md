@@ -791,6 +791,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `applyProgressionShape` writes, and it returns a snapshot for Undo. Shapes emit
   the SAME `weeklyVolModifiers` the grid does, so no per-lift prescription data is
   introduced and the 4C ADR gate stays shut), `onboarding/starter-programs.js`.
+  Onboarding ranks starters by goal, level, equipment tier, weekly frequency and
+  typical session length; a 6-day 75-minute plan cannot lead for a 3–4 day
+  30-minute athlete. Working loads adapt through the cockpit's per-lift
+  diagnostics, never by silently rewriting the plan; deloads and Undo stay
+  explicit.
   Every plan-changing builder edit snapshots via `captureProgramDraft` and is
   undoable from one strip (`markUndoable` → `b-undo`); the snapshot is the PLAN
   only (`days` + `weeklyVolModifiers`), never `state.weeks`, so an undo can never

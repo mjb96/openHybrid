@@ -87,6 +87,7 @@ let _equipmentTier   = 'gym';
 // provisional Hybrid Score reveal at the end of onboarding.
 let _weeklyFrequency = 'some';   // low | some | high | daily
 let _recoveryFeel    = 'ok';     // low | ok | fresh
+let _sessionMinutes  = 45;       // typical session length
 
 function _showStep(n) {
   document.querySelectorAll('.ob-step').forEach((el, i) => {
@@ -94,15 +95,16 @@ function _showStep(n) {
   });
 }
 
-// C1 — the picker is now level- and equipment-aware. Rank the catalog against
-// the three self-reports (goal · level · equipment) so the first program fits;
-// fall back to the curated goal list if the recommender comes back empty.
+// C1 — the picker is level-, equipment-, frequency- and time-aware. Rank the
+// catalog against the self-reports so the first program fits; fall back to the
+// curated goal list if the recommender comes back empty.
 function _renderProgramList() {
   const list = document.getElementById('obProgramList');
   if (!list) return;
 
   const recs = recommendStarterPrograms({
     goal: _selectedGoal, level: _fitnessLevel, equipmentTier: _equipmentTier,
+    frequency: _weeklyFrequency, sessionMinutes: _sessionMinutes,
   });
 
   // The one line that shapes week 1: duration · frequency · session length. From
@@ -175,6 +177,13 @@ export function handleOnboardingAction(action, target) {
     _weeklyFrequency = target.dataset.freq;
     document.querySelectorAll('[data-action="ob-frequency"]').forEach(b => b.classList.remove('active'));
     target.classList.add('active');
+    _renderProgramList();
+  } else if (action === 'ob-session') {
+    const minutes = Number(target.dataset.minutes);
+    _sessionMinutes = [30, 45, 60, 90].includes(minutes) ? minutes : 45;
+    document.querySelectorAll('[data-action="ob-session"]').forEach(b => b.classList.remove('active'));
+    target.classList.add('active');
+    _renderProgramList();
   } else if (action === 'ob-recovery') {
     _recoveryFeel = target.dataset.recovery;
     document.querySelectorAll('[data-action="ob-recovery"]').forEach(b => b.classList.remove('active'));
@@ -236,6 +245,7 @@ function _finish() {
     equipmentTier: _equipmentTier,
   }));
   appState.settings.weeklyFrequency     = _weeklyFrequency;
+  appState.settings.sessionMinutes      = _sessionMinutes;
   appState.settings.recoveryFeel        = _recoveryFeel;
   appState.settings.onboardingComplete  = true;
   document.documentElement.dataset.theme = appState.settings.theme || 'dark';
