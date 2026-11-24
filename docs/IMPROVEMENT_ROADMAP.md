@@ -892,8 +892,8 @@ run in order. H5–H8 are queued, not active.
 
 | Phase | Scope | Gate |
 | --- | --- | --- |
-| **H0 — Verify and audit** | Verify Parts C, D, D.2 and E rows against code and tests; ST1 inventory; baseline Part H flows; add the smallest regression test for any untested metric. Tests only. | Zero `UNVERIFIED` in C/D/E; one owner per metric; baseline recorded |
-| **H1 — Settings and Profile** | ST1–ST11, G6 (ST7), G8 (ST8) | §14.6 |
+| **H0 — Verify and audit** (DONE 24 Nov; device baseline `[You]`) | Verify Parts C, D, D.2 and E rows against code and tests; ST1 inventory; baseline Part H flows; add the smallest regression test for any untested metric. Tests only. | Zero `UNVERIFIED` in C/D/E; one owner per metric; baseline recorded |
+| **H1 — Settings and Profile** | ST1–ST11, G6 (ST7), G8 (ST8). Start with the P0 findings S-F1, S-F2, S-F4 decision and S-F5. | §14.6 |
 | **H2 — Home** | HM1–HM7, G1 (HM2) | §15 acceptance |
 | **H3 — Workout logging** | G2, G3, G5, G7, G9 (rolling), G10, LG1, LG2 | §17.1 acceptance |
 | **H4 — Progress and strength analytics** | PG1–PG9 (§16) first, then A1–A9 and G4 inside the new structure | §16.6 and §17.2 acceptance |
@@ -902,6 +902,14 @@ run in order. H5–H8 are queued, not active.
 | H7 — Hybrid intelligence | §18.3 | deferred |
 | H8 — Platform | §18.4 | queued |
 | **F — Foundation** | Continuous. Split large modules and reduce CSS specificity **only in modules a phase touches**; finish technique metadata for the G9 core set. Behaviour-preserving; tests green before and after | Never blocks a phase |
+
+**H0 evidence (24 Nov 2026):** all 47 C/D/D.2/E rows were checked against their
+modules and tests; ST1 is recorded in §14.7 and PG1 in §16.7. Findings are
+S-F1–S-F5 (§14.8), H-F1–H-F5, P-F1–P-F5 (§16.8) and L-F1–L-F6 (§17.3). The
+Part H baseline table is recorded in §19.1; openHybrid/Hevy/openGym device
+numbers remain `[You]`. No untested metric calculation was found — the gaps are
+missing features, dead surfaces and navigation, not unverified arithmetic. H1
+starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
@@ -948,19 +956,19 @@ or corrects it.
 
 ### 14.4 Work items
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| ST1 | **Settings inventory** | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | UNVERIFIED |
-| ST2 | **Declarative settings registry** | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | UNVERIFIED |
-| ST3 | **Settings search** | Matches labels, footers and keywords; result opens the exact row with the group in view | UNVERIFIED |
-| ST4 | **Contextual shortcuts** | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | UNVERIFIED |
-| ST5 | **Profile redevelopment** | Per §14.3; migrates existing profile data losslessly | UNVERIFIED |
-| ST6 | **Units and formats** | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | UNVERIFIED |
-| ST7 | **Week start (G6)** | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | UNVERIFIED |
-| ST8 | **Appearance and feel** | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | UNVERIFIED |
-| ST9 | **Data safety screens** | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | UNVERIFIED |
-| ST10 | **Destructive actions** | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | UNVERIFIED |
-| ST11 | **Notifications screens** | UI and preferences only; delivery work is G5 in H3 | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
+| ST2 | **Declarative settings registry** | new `js/settings/registry.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | MISSING | No per-setting metadata exists; `settings/nav.js` maps card labels to five tabs only. Screens are hand-written HTML and handlers. |
+| ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card-level filter, no-results status and module-hidden exclusion exist; no row jump/highlight or keywords. Settings is 2 taps deep, search is tap 3. |
+| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | MISSING | Only Settings entry is the Home avatar; no gear from logger/Progress/Plans/Measures. Muscle priorities wrongly say "set in Settings". |
+| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable; equipmentTier, frequency, session length and focus are not. Equipment answer is reverted on boot (S-F1); bodyweight is duplicated (S-F2). |
+| ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. Unit switch relabels stored history (S-F4). |
+| ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
+| ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | MISSING | Theme + palette only; no text size, reduced motion, haptics, demo size or sounds group. |
+| ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist; the card does not say photo bytes are outside the JSON backup and has no manual last-backup timestamp. |
+| ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | One confirm names the losses; no second gate or typed confirmation, reset and delete-all are one action, no per-domain choice. |
+| ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist; the master switch reads OS permission and stores nothing (S-F5); no planned-day preference. Delivery is G5. |
 
 ### 14.5 Data rules
 
@@ -982,20 +990,98 @@ or corrects it.
   labels pass; rows are at least 44 px.
 - Old backups restore cleanly; no setting lost in migration (tested).
 
+### 14.7 ST1 settings inventory (H0)
+
+Every key under `appState.settings` plus the settings-like values stored
+elsewhere. **Class:** keep · merge · move · remove. Current location is the
+settings card; "not shown" means the value has no Settings row.
+
+| Key | Current location | Default | Owner / writers | Readers | Class |
+| --- | --- | --- | --- | --- | --- |
+| `name` | Profile card + hero | `''` | `settings.js`, `onboarding.js` | athlete profile, Home, briefing, share card | keep |
+| `avatarDataUrl` | Hero avatar | `null` | `settings.js` (320px JPEG in state) | athlete profile, Home, import validation | keep; move bytes to IndexedDB later |
+| `fitnessGoal` | Profile card | `hybrid` | `settings.js`, onboarding, plan library | recommendation fit, Hybrid Score, training context | keep; Profile owns it |
+| `fitnessLevel` | Profile card | `intermediate` | `settings.js`, onboarding, plan library | recommendation fit, Hybrid Score | keep |
+| `weightGoal` | Profile card | `maintain` | `settings.js` | recommendation fit, training context | keep |
+| `equipmentTier` | Not shown | `gym` | `onboarding.js`, plan library | recommendation fit, training context | merge: derive from the active equipment profile |
+| `weeklyFrequency` | Not shown | `some` | `onboarding.js` only | none | remove or revive; recommendations use real frequency |
+| `sessionMinutes` | Not shown | `45` | `onboarding.js` only | onboarding only | remove or revive |
+| `recoveryFeel` | Not shown | undeclared | `onboarding.js` only | none | remove (write-only orphan) |
+| `onboardingComplete` | Not shown | `false` | `onboarding.js` | recovery gate, onboarding | keep (system flag) |
+| `defaultBodyWeight` | Profile card "Body Weight" | `null` | `settings.js`, set mutations, CSV import | set mutations | merge into `bodyWeightLog` |
+| `weightUnit` | Training card | `kg` | `settings.js`, onboarding | most surfaces | move to Units |
+| `distanceUnit` | Training card | `km` | `settings.js`, onboarding | GPS, Home, dashboard | move to Units |
+| `measurementUnit` | Not shown (Measures sheet only) | seeded from weight unit | `measurements-sheet.js` | measurements, Measures | move to Units |
+| `weekStartDay` | Training card | `mon` | `settings.js` | Home rail, dashboard model, History calendar, bodyweight | move to Units; see S-F3 |
+| `progressionIncrement` | Logging | `2.5` | `settings.js` | engine, session recap | keep |
+| `previousValuesScope` | Logging | `all` | `settings.js` | workout | keep |
+| `showPlateHints` | Logging | `false` | `settings.js` | workout | keep |
+| `autoWarmupRamp` | Logging | `false` | `settings.js` | warm-up ramp | keep |
+| `keepAwake` | Logging | `true` | `settings.js` | workout wake lock | move to Appearance and feel |
+| `livePR` | Logging | `true` | `settings.js` | workout PR banner | move to Appearance and feel |
+| `restPeriods` | Logging | `DEFAULT_REST_TIERS` | `settings.js`, rest presets | timers, rest duration | keep |
+| `restOverrides` | Logging ("Reset remembered rests") | `{}` | `settings.js`, timers | timers, set sheet | keep |
+| `restTimerEnabled` | Logging | `true` | `settings.js` | timers | keep |
+| `restAlertSound` | Logging | `true` | `settings.js` | timers | move to Appearance and feel |
+| `restAlertVolume` | Logging | `0.4` | `settings.js` | timers | move to Appearance and feel |
+| `exercisePrefs` | Not shown (cockpit exercise options) | `{}` | `exercise-config.js`, `exercise-options.js` | set shape, exercise config, workout | keep (single owner) |
+| `musclePriorities` | Not shown (Progress → Volume Guide → Priorities) | `{}` | `view-strength.js` | volume guide, muscle load | keep; fix the false "set in Settings" pointer |
+| `targetWeight` | Not shown (Bodyweight view) | `null` | `analytics.js` | bodyweight, body metrics, Home card | keep; link from Profile |
+| `rateGoal` | Not shown (Bodyweight view) | `null` | `analytics.js` | bodyweight, view | keep |
+| `fastingDefault` | Fasting card | `16` | `settings.js` | fasting actions as fallback | merge into one fasting-goal owner |
+| `theme` | Appearance | `dark` | `settings.js`, onboarding | boot, onboarding | keep |
+| `palette` | Appearance | `midnight` | `settings.js` | theme, boot | keep |
+| `hybridTraining` | Modules card | `true` | `settings.js` | modules, CSS | keep; move out of Modules (presentation, not a module) |
+| `modules` | Modules card | not in defaults (`{}` = all on) | `modules.js` via `settings.js` | modules, CSS, filters | keep; declare in defaults |
+| `equipment` | Equipment card | 5 core true | `equipment-profiles.js` projection; onboarding writes directly | recommendation fit, compare, engine | keep as derived; onboarding write is a defect |
+| `bandWeights` | Equipment sub-card | `10/20/30` | `equipment-profiles.js` projection | engine, volume, load mode | keep as derived |
+| `equipmentProfiles` | Equipment card | `[]` (v6 seeds one) | `equipment-profiles.js` | plate sheet, suggestions, fit | keep (source of truth) |
+| `activeEquipmentProfileId` | Equipment selector | `null` (v6 seeds one) | `equipment-profiles.js` | plate sheet, suggestions, fit | keep |
+| `reminderTime` | Notifications | `07:30` | `settings.js` | notifications | keep |
+| `streakAlertTime` | Notifications | `20:00` | `settings.js` | notifications | keep |
+| `notifWeeklySummary` | Notifications | `false` | `settings.js` | notifications | keep |
+| `notifStreak` | Notifications | `false` | `settings.js` | notifications | keep |
+| `notifMissedWorkout` | Notifications | `false` | `settings.js` | notifications | keep |
+| `notifFastingStage` | Notifications (Fasting sub-block) | `true` | `settings.js` | fasting nudge | keep |
+| `ui` | Not shown (Home/Progress Customize) | normalized empty (v12) | `ui/customize.js` | customize, progress dashboard, analytics | keep |
+
+**Settings-like values outside `appState.settings`:**
+
+| Value | Current location | Class |
+| --- | --- | --- |
+| `state.thresholdPaceSeconds` | Settings → Training; written by analytics | move into Units (or a typed descriptor) |
+| `state.healthConnect.stepGoal` | Settings → Health Connect | move into Health settings |
+| `state.prGoals` | No Settings row | keep for now; no owner review |
+| `state.profileSections` | Defaulted, never read | remove (dead) |
+| `state.dashboardTiles` | Home drag-drop registry | keep only if the registry stays; otherwise remove |
+
+### 14.8 H0 findings (Settings/Profile)
+
+These are verified defects, not design preferences. Data-safety findings are
+P0 and must be closed before H1's acceptance is claimed.
+
+| ID | Finding | Evidence | Severity | Target |
+| --- | --- | --- | --- | --- |
+| S-F1 | The onboarding equipment answer is destroyed on the next launch: onboarding writes the legacy projection but never the equipment profile, and boot reprojects the profile over it. A home athlete is then recommended barbell plans as "equipment you have". | `js/onboarding.js` equipment write; `js/state.js` boot `ensureEquipmentProfiles` + `projectActiveEquipmentProfile`; reproduced headlessly | **P0** | H1 / ST5; add a boot-path test |
+| S-F2 | `defaultBodyWeight` and `bodyWeightLog` are two stores of one fact. A back-dated weigh-in after today's entry makes `currentBodyweight()` return the older weight, so bodyweight/assisted sets load against a stale value. | `js/workout/set-mutations.js` reverse scan; `js/settings.js` last-entry read; `normalizeWeighIns` already sorts | **P0** | H1 / ST5; route both readers through `normalizeWeighIns` |
+| S-F3 | "Week starts on" already splits the app: Home/History/bodyweight honour Sunday, every Progress analytic and `startOfProgramWeek` hardcodes Monday, and changing it refreshes nothing. | `js/analytics/weekly-aggregate.js`, `pulse.js`, `muscles.js`, `hybrid-balance.js`, `dates.js`; no refresh dispatch | **P1** | H1 / ST7; one calendar-week owner + tests |
+| S-F4 | The weight unit is not display-only. Switching kg→lbs keeps every stored number and relabels it, so a 100 kg squat reads as 100 lb. | `js/settings.js` `setWeightUnit`; `tests/volume_format.test.js` pins "labels, never converts" | **P0 decision** | H1 / ST6; choose convert-on-switch or lock-the-unit, with a backup path |
+| S-F5 | The notification master switch is a dead toggle: it reads OS permission, stores no preference, and reads ON again after reload. | `index.html` Workout Reminder; `js/settings.js` permission read; `js/app.js` cancel handler | **P1** | H1 / ST11; persist a real preference and test reload |
+
 ## 15. Home (H2)
 
 Source of truth for intent: §3 "Home is a decision surface". Verify what exists
 first.
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| HM1 | One-tap start with preview | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | UNVERIFIED |
-| HM2 | Move a day (G1) | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | UNVERIFIED |
-| HM3 | Strength this week | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | UNVERIFIED |
-| HM4 | One strength insight | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | UNVERIFIED |
-| HM5 | Quick actions | At most three: empty workout, log a past session (G3), and one contextual action | UNVERIFIED |
-| HM6 | Honest states | Rest day, no plan, first run, offline, partial data: each distinct and useful | UNVERIFIED |
-| HM7 | No duplicate metrics | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| HM1 | One-tap start with preview | `home/today-card.js`, `home.js`, `app.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | PARTIAL | One primary action and a 2-tap cold start; the card shows the session title only, with no lift targets or last-time numbers. |
+| HM2 | Move a day (G1) | none | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | MISSING | No reschedule control, no attribution change and no Undo; date cells only select and recap. |
+| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Volume + same-weekday delta + one sub-line; no session count, sets/PRs are mutually exclusive, and the link opens the legacy Strength screen. |
+| HM4 | One strength insight | `home/dashboard-model.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | PARTIAL | Exactly one insight, but it is fasting/load/readiness/streak/bodyweight-driven, not strength-derived, and it is not deload-aware; it can contradict the safety card. |
+| HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
+| HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | PARTIAL | Ready/rest/in-progress/completed/unresolved/no-plan/offline-note/past-week empty exist; no explicit first-run state and offline is only a note. |
+| HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | PARTIAL | Proven 20% rail vs 100% coach-line plan-done contradiction; readiness and weekly volume are also duplicated; no duplicate-metric guard. |
 
 **Acceptance:** Home answers "what should I do today?" without scrolling; no
 metric appears twice; hybrid cards stay hidden when Hybrid training is off;
@@ -1064,17 +1150,17 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 
 ### 16.5 Work items
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| PG1 | Inventory | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | UNVERIFIED |
-| PG2 | One home per destination | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | UNVERIFIED |
-| PG3 | Band-header drilldown | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | UNVERIFIED |
-| PG4 | Reviews surface | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | UNVERIFIED |
-| PG5 | All lifts index | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | UNVERIFIED |
-| PG6 | Records row | PR table and dated feed (A6) | UNVERIFIED |
-| PG7 | Strength-first defaults | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | UNVERIFIED |
-| PG8 | Navigation contract | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | UNVERIFIED |
-| PG9 | Overview concision | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| PG1 | Inventory | `analytics/views/view-progress-hub.js` | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | DONE | Inventory in §16.7: 22 entries; the five fixed footer links sit outside the existing guard arrays. |
+| PG2 | One home per destination | `analytics/views/view-progress-hub.js`, `progress-landing.js` | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | MISSING | All six footer leaves duplicate a band entry and Review is reachable three ways; the test only checks `domains` + `secondary`. |
+| PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | MISSING | Zero of eight band headers are controls; no Details affordance or band-detail layer exists. |
+| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reports.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | One Review screen with Overview \| Stats and a shared share model; not Week \| Month \| Year. The Year row opens Overview (wrong tab) and Reports duplicates it. |
+| PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | PARTIAL | Top 5 with last performed, best e1RM, change and PR flag; no search, all-lifts list or stall flag. "Show all" opens legacy Strength. |
+| PG6 | Records row | `strength/records.js`, `set-records.js` | PR table and dated feed (A6) | MISSING | All-time PR machinery exists only inside the per-exercise drilldown; no hub row, PR table or dated feed. |
+| PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | PARTIAL | Per-band detail switches and keyboard reorder exist; default order is not strength-first, Reports is not Reviews, and module-off is not labelled. |
+| PG8 | Navigation contract | `analytics/navigation.js`, `analytics.js` | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | PARTIAL | Origin-aware Back, preserved week/range and footer padding exist; scroll resets to top on every navigation and band-origin Back loses position. |
+| PG9 | Overview concision | `views/view-progress-hub.js`, `analytics.js` | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | MISSING | Each band carries its full chart + rows + table; 8 bands + 9 trailing links; no scannability test; the retired four-domain model is still computed. |
 
 ### 16.6 Rules and acceptance
 
@@ -1090,22 +1176,72 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
   320/390/412 px, light/dark, 200% text; the Progress hub browser check is
   rewritten for the new structure, not patched around.
 
+### 16.7 PG1 destination inventory (H0)
+
+Everything reachable from the Progress hub today. "Landing" is one tap on the
+Progress bottom-nav item. Every row below is one tap from the hub; the duplicate
+column names the other route to the same screen.
+
+| # | Entry | Target | Route | Owning module | Duplicate entry |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Pulse → History | `#activitiesScreen` | `open-activities` | `activities.js` | Footer History; Home quick action; Train History |
+| 2 | Muscles row / Show all muscles | `#analytics-muscle-load` | `muscle-load` | `views/view-muscle-load.js` | Footer Muscle Load |
+| 3 | Main exercises row | `#analytics-strength-entity` | `exercise` + entity | `views/view-strength-entity.js` | — |
+| 4 | Main exercises → Show all | `#analytics-strength` | `strength` | `views/view-strength.js` | Footer Strength |
+| 5 | Body site / All sites | `#analytics-measures` | `measures` + entity | `views/view-measures.js` | Footer Measures |
+| 6 | Body photo tile | photo viewer | `data-photo-view` | `ui/photo-viewer.js` | Measures → Library |
+| 7 | Body → Weight trend | `#analytics-bodyweight` | `bodyweight` | `views/view-bodyweight.js` | Footer Body Weight |
+| 8 | Body → Log weigh-in | bodyweight sheet | `open-bw-sheet` | `bodyweight-sheet.js` | Home bodyweight card |
+| 9 | Endurance → All running metrics | `#analytics-running` | `running` | `views/view-running.js` | Footer Running |
+| 10 | Fasting → analytics | `#analytics-fasting` | `fasting` | `views/view-fasting.js` | Footer Fasting |
+| 11 | Reports → Monthly Report | `#analytics-weekly-review` (Stats) | `monthly-report` | `view-weekly-review.js`, `view-monthly-report.js` | Footer Week in Review (Overview) |
+| 12 | Reports → Year in Review (Dec/Jan) | `#analytics-weekly-review` (**Overview — wrong tab**) | `weekly-review` | `view-year-review.js` | Footer Week in Review |
+| 13 | More detail → Fasting | `#analytics-fasting` | `fasting` | `views/view-fasting.js` | Fasting band |
+| 14 | More detail → Body Weight | `#analytics-bodyweight` | `bodyweight` | `views/view-bodyweight.js` | Body band |
+| 15 | More detail → Muscle Load | `#analytics-muscle-load` | `muscle-load` | `views/view-muscle-load.js` | Muscles band |
+| 16 | More detail → Projections (running on) | `#analytics-projections` | `projections` | `views/view-projections.js` | — |
+| 17 | Footer → Running (module on) | `#analytics-running` | `running` | `views/view-running.js` | Endurance band |
+| 18 | Footer → Strength | `#analytics-strength` | `strength` | `views/view-strength.js` | Exercises Show all |
+| 19 | Footer → Week in Review | `#analytics-weekly-review` (Overview) | `weekly-review` | `views/view-weekly-review.js` | Reports ×2 |
+| 20 | Footer → Measures | `#analytics-measures` | `measures` | `views/view-measures.js` | Body band |
+| 21 | Footer → History | `#activitiesScreen` | `open-activities` | `activities.js` | Pulse band |
+| 22 | How this page is calculated | inline `<details>` | — | `view-progress-hub.js` | — |
+
+Rows 13–16 sit under the "More detail" heading; rows 17–21 are footer links
+appended after it with no heading. The router also holds `hybrid-score`, but no
+hub entry links to it (legacy deep link only).
+
+### 16.8 H0 findings (Home and Progress)
+
+| ID | Finding | Evidence | Severity | Target |
+| --- | --- | --- | --- | --- |
+| H-F1 | Home states two contradictory "week plan done" figures: the rail counts planned days (20%), the coach line counts completed stored set rows (100%). The same consistency value feeds the Hybrid Score pillar. | `week-strip.js`, `dashboard-model.js` `consistencyPct`; one fixture proves 20% vs 100% | **P0** | H2 / HM7 |
+| H-F2 | Home answers "what should I do today?" with a workout title, not the work: no lift targets, no last-time numbers, and no way to move a planned day. | `today-card.js` title-only markup; no reschedule action in `js/` | **P1** | H2 / HM1–HM2 |
+| H-F3 | The single insight is not strength-derived and is not deload/overtraining-aware; it can cheer "primed for a hard session" beside the overtraining card. | `dashboard-model.js` `pickTopInsight` priority list | **P1** | H2 / HM4 |
+| H-F4 | Quick actions are Weight / Run / History, not empty workout / log a past session / one contextual action. | `index.html`, `home.js` quick-action block | P2 | H2 / HM5 |
+| H-F5 | No explicit first-run Home state; offline is a note inside Today, not a page-level stale signal. | `today-card.js`, `home.js` | P2 | H2 / HM6 |
+| P-F1 | The "one home per destination" guard cannot see the real hub: it checks `domains` + `secondary`, while the five fixed footer links are rendered outside both arrays. Six footer leaves duplicate a band and Review is reachable three ways. | `progress_landing.test.js`, `view-progress-hub.js` | **P1** | H4 / PG2 |
+| P-F2 | "Year in Review" opens Review's Overview tab, which contains no year section; it should open Stats or the new Reviews/Year surface. | `view-reports.js` route, `analytics.js` tab force, `renderReviewOverview` | **P1** | H4 / PG4 |
+| P-F3 | Zero of eight band headers drill down; no band-detail layer, no all-lifts index/search/stall flag and no Records row. | `band-kit.js`, `view-exercises.js`, `strength/records.js` | **P1** | H4 / PG3, PG5, PG6 |
+| P-F4 | The hub still computes the retired four-domain dashboard and 12-week series on every render, while reading only `secondary`/`allEmpty`. | `analytics.js` hub render | P2 | H4 / PG9 |
+| P-F5 | Scroll resets to top on every navigation, so Back from a band detail returns to the hub top rather than the band. | `app.js` `scrollTo(0,0)`, `navigation.js` | P2 | H4 / PG8 |
+
 ## 17. Workout logging (H3) and strength analytics (H4)
 
 ### 17.1 Logging gaps
 
 Verify first; sources: openGym, Hevy.
 
-| ID | Gap | Target behaviour | Status |
-| --- | --- | --- | --- |
-| G2 | Reps per side | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | UNVERIFIED |
-| G3 | Log a past session | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | UNVERIFIED |
-| G5 | Closed-app rest alerts | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | UNVERIFIED |
-| G7 | Favourite exercises | Star an exercise; favourites sort first in the picker and library | UNVERIFIED |
-| G9 | Curated exercise core | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | UNVERIFIED |
-| G10 | Explained targets | Every progression target states in one line why today's number is today's number | UNVERIFIED |
-| LG1 | Set-entry tap audit | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | UNVERIFIED |
-| LG2 | Ergonomics | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | UNVERIFIED |
+| ID | Gap | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| G2 | Reps per side | `workout/load-basis.js`, `set-utils.js` | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | MISSING | Only load basis each/per-side/total exists; a set stores one `r`; no per-side rep model or stepper. |
+| G3 | Log a past session | `run-logger.js`, `workout/one-off-session.js`, `activities.js` | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | PARTIAL | Backdated runs exist; strength sessions stamp today; no replace/keep-both/cancel when the day already has a session. |
+| G5 | Closed-app rest alerts | `notifications.js`, `timers.js`, Android `ReminderScheduler` | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | PARTIAL | A fixed-time daily OS alarm exists; it is not planned-day, not cancelled by training, and the rest alert cannot fire while WebView timers are paused. |
+| G7 | Favourite exercises | new `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | MISSING | No favourite field, star control, persistence or favourites-first sort anywhere. |
+| G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | PARTIAL | 66 reviewed core entries of 157; catalogue is 5,712; target is 300–500; the guard ratchets at >=32. |
+| G10 | Explained targets | `engine.js`, `templates.js` | Every progression target states in one line why today's number is today's number | PARTIAL | Suggested-next and the recap explain themselves; today's `Target 4 × 8` has no why; deload explanation exists only on Home. |
+| LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
+| LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | PARTIAL | 44px, contrast, safe areas and inputmode pass; keyboard inset is used only by the program builder, the set sheet uses 88vh, and there is no enterkeyhint or focus-scroll. |
 
 G8 (demo size) and G6 (week start) live in H1; G4 (year heatmap) is in §17.2.
 
@@ -1119,23 +1255,39 @@ Principle (§3): every surface answers what changed, whether it is meaningful,
 what contributed, what to do, and how it was calculated. Do **not** add metric
 families without an action. Verify what already answers each question.
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| A1 | Stall detection | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | UNVERIFIED |
-| A2 | Volume vs target per muscle | Weekly sets per muscle against the volume guide with under/over status and one action | UNVERIFIED |
-| A3 | Strength trend | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | UNVERIFIED |
-| A4 | Rep-range and intensity mix | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | UNVERIFIED |
-| A5 | Session vs last time | After a workout, compare to the last session of the same routine: volume, best sets, PRs | UNVERIFIED |
-| A6 | PR timeline | All-time PR table per lift plus a dated feed; baseline uses every earlier session | UNVERIFIED |
-| A7 | Muscle frequency | Sessions per muscle per week with the same period comparison as sets | UNVERIFIED |
-| G4 | Year heatmap | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | UNVERIFIED |
-| A8 | Relative strength | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | UNVERIFIED |
-| A9 | Long-range comparability | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| A1 | Stall detection | `engine.js`, `templates.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | PARTIAL | Stall rule + evidence message exist and are tested; the message has no reader, the cockpit shows only a badge, and no analytics surface lists stalls. |
+| A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js` | Weekly sets per muscle against the volume guide with under/over status and one action | PARTIAL | Weekly credited sets vs MV/MEV/MAV/MRV with zones; no action by design; current-week only and no target band in the range view. |
+| A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | PARTIAL | ROI, block PR and rolling-4 exist; the e1RM chart stops at 12w/6m/all (no 4w/1y) and ROI is program-week indexed. |
+| A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
+| A5 | Session vs last time | `session-recap.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | PARTIAL | Per-lift Last time/Next time/PRs exist; no session-level volume or best-set delta vs the previous session, and it is not routine-aware. |
+| A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | PARTIAL | Per-lift values, set records, dated per-exercise history and annual PRs exist; no all-time PR table with dates or cross-lift feed. |
+| A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js` | Sessions per muscle per week with the same period comparison as sets | PARTIAL | Credited sets and last-trained exist; no sessions-per-muscle-per-week series. |
+| G4 | Year heatmap | `analytics/training-calendar.js`, `profile-stats.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | MISSING | Trailing heatmap only (26-week cap, default 12), shaded by volume/distance; no 52-week time view or day recap. |
+| A8 | Relative strength | `profile-stats.js`, `athlete-profile.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | PARTIAL | Big-3 e1RM/BW + tier exists; the ratio is unlabeled, has no estimate wording, falls back to an undated session weight, and is not in Progress. |
+| A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `exercise-detail.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | PARTIAL | Range vocabulary covers bands; strength volume has 4w–all; e1RM stops at 12w/6m/all and the legacy Strength screen is the only 4w–all home. |
 
 **Data rules (unchanged):** Monday-based calendar weeks unless ST7 ships (then
 the setting); never `state.currentWeek` in analytics; archived weeks count;
 merge multiple slots per date; holds and carries are volume 0 but count as
 working sets; estimates labelled; an empty range is a true zero.
+
+### 17.3 H0 findings (logging and strength analytics)
+
+| ID | Finding | Evidence | Severity | Target |
+| --- | --- | --- | --- | --- |
+| L-F1 | The closed-app rest alert cannot fire in the state it names: the only native rest call sits inside the JS interval and Android pauses WebView timers in the background. The daily alarm that survives is fixed-time, not planned-day, and is never cancelled by training. | `timers.js`, `MainActivity.kt`, `ReminderScheduler.kt` | **P1** | H3 / G5 (device half `[You]`) |
+| L-F2 | A1's evidence text is dead code: the model builds "3 comparable sessions over N days … hold the load and review recovery", but nothing renders it; the cockpit shows a badge only and no analytics surface lists stalls. | `engine.js` diagnostic message, `templates.js` badge | **P1** | H4 / A1 |
+| L-F3 | A4 has no owner at all. RIR/RPE is captured per set and used for sRPE/ATL, but no module distributes rep ranges or effort bands. This is the largest H4 scope risk and feeds H5. | repo-wide grep; `workout/effort.js` readers | **P1** | H4 / A4 |
+| L-F4 | The strength analytics H4 depends on are orphaned by the P8 restructure: Lifetime PR/ROI/projection, 4w–all volume details and goal/PR rows live behind the legacy `strength` context, reachable only from Home's hybrid mini card. The hub has no strength/volume band. | `view-strength.js`, `progress-dashboard.js`, `hybrid-dashboard.js` | **P0 navigation** | H4 / PG3, PG5, A3, A6, A9 |
+| L-F5 | G2 and G3 are schema/date risks, not UI rows. Reps are one `r` with no per-side field; strength sessions stamp `now`. A backdated strength flow reusing the run slot resolver would write into the active activation, the cross-run leak `arch:` weeks exist to prevent. | `set-utils.js`, `one-off-session.js`, `run-logger.js` | **P0 design** | H3 / G2, G3 |
+| L-F6 | The replace-exercise sheet says "Use the full list below" but contains no full-list control; the G9 guard ratchets at >=32 while 66 entries ship. | `exercise-picker.js`, `exercise_catalog.test.js` | P2 | H3 / G7, G9 |
+
+**H0 metric-owner conclusion:** every existing metric calculation already has a
+test; no untested calculation was found. The gaps are missing features and
+unreachable/dead surfaces, not unverified arithmetic. H0 therefore adds the two
+inventories and the finding register rather than a redundant test.
 
 ## 18. Queued and deferred (H5–H8)
 
@@ -1203,6 +1355,36 @@ numbers.
 A PR may not make any flow slower. Keep a dated **friction log** from real
 training weeks and promote recurring entries into the phases above.
 
+### 19.1 H0 baseline table
+
+H0 records the baseline here. openHybrid numbers are measured on the owner's
+phone; Hevy and openGym numbers are owner-supplied. Blank cells are **pending**,
+never assumed.
+
+| # | Flow | openHybrid before | openHybrid after | Hevy | openGym | Date |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Change the weight unit | pending | — | pending | pending | — |
+| 2 | Find a setting by name | pending | — | pending | pending | — |
+| 3 | Start today's planned workout from cold open | pending | — | pending | pending | — |
+| 4 | Log a working set with previous values shown | pending | — | pending | pending | — |
+| 5 | Add an exercise mid-session | pending | — | pending | pending | — |
+| 6 | Review one lift's progress | pending | — | pending | pending | — |
+| 7 | Review last week | pending | — | pending | pending | — |
+| 8 | Open the month recap | pending | — | pending | pending | — |
+| 9 | Find a past PR | pending | — | pending | pending | — |
+
+**`[You]` task:** run each flow on the phone and on Hevy/openGym, record taps,
+seconds and the date, and commit the filled table before H1 closes. The agent
+can produce the interaction trace and a screenshot checklist; it cannot claim a
+device timing it did not measure.
+
+### 19.2 Friction log
+
+| Date | Flow | Friction | Promoted to |
+| --- | --- | --- | --- |
+| — | — | — | — |
+
+
 ## 20. Roadmap v2 working rules
 
 - One tracker: this file. No parallel checklist or audit file.
@@ -1224,6 +1406,18 @@ training weeks and promote recurring entries into the phases above.
   the exact gaps instead of merging.
 
 ## 21. Session log
+
+- **2026-11-24 — H0 verified: three audits, two inventories, and the P0 findings.**
+  - All 47 C/D/D.2/E rows resolved to DONE/PARTIAL/MISSING with owners and
+    evidence. ST1 is recorded in §14.7 and PG1's 22-entry destination map in
+    §16.7; the Part H baseline table is in §19.1 with device numbers `[You]`.
+  - P0 findings: S-F1 (onboarding equipment answer destroyed at boot), S-F2
+    (back-dated weigh-in wins and loads stale bodyweight), S-F4 (weight-unit
+    switch relabels history), L-F4 (strength analytics orphaned behind the
+    legacy screen) and L-F5 (backdated strength schema/date risk). H1 starts
+    with these before the registry.
+  - No product code changed in H0. The audit found no untested metric
+    calculation; the gaps are missing features, dead surfaces and navigation.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
@@ -1382,34 +1576,3 @@ training weeks and promote recurring entries into the phases above.
     the new `pr_surfaces` case (banner off, record still written); settings
     wiring is green because both switches have real handlers.
   - Next: Phase 2.
-
-- **2026-11-24 — Body measurements: the read path, and the 0.1 cm edit that made it untrustworthy.**
-  - **Measurements were already captured; they were hard to READ.** The Body band
-    summarised four sites and Measures listed dates, but the only per-site chart
-    lived inside the Bodyweight card — a different destination. Measures now leads
-    with a **single-site explorer**: choose any measured site or body fat, switch
-    30D / 3M / 1Y / All, and see the latest value, its change since the previous
-    reading, the shared SVG trend and the exact readings table. The Body band's four
-    site cells are 44px buttons that open Measures on that site.
-  - **Editing at inches rewrote untouched stored centimetres.** 76.0 cm displayed as
-    29.9 in, and Save converted the display value back to 75.9 cm for every site the
-    athlete never touched (audit AUD-R6-1, previously deferred). `saveMeasureEntry`
-    now accepts `unchangedSites` — the original canonical cm for fields whose
-    prefilled display value was not edited — and the sheet passes them. A regression
-    test and a browser assertion cover the round trip.
-  - **Tape deltas now state their baseline.** They were "since the previous reading"
-    but the band's sublabel named the selected range, so a 30D card could show a
-    change measured months earlier. The card says so in one line, the body-fat line
-    names the previous date, and the data table's columns are "Change since
-    previous" / "Previous reading".
-  - **One chart, two surfaces.** `renderSiteTrend` became a DOM wrapper around the
-    pure `siteTrendHTML`, so the Bodyweight card and Measures cannot draw different
-    trends. The explorer is a leaf: its range is `data-ms-range`, defaults to All,
-    never rewrites the hub's `_progressRangeId`, and a range with no readings says
-    so and offers Show all instead of inventing a point.
-  - Also corrected the roadmap's own stale claims: Body composition was marked
-    `LATER` with six sites and no body fat, and P8 photos was still `○`.
-  - `npm test` green (2,640 tests), typecheck + smoke + precache green, and the
-    Measures and Progress-hub browser checks pass at 390/320. Live captures:
-    `docs/mockups/measures-trend-390.png` and `measures-trend-320.png`.
-  - Next: the gated queue — Phase 0 truth pass then Phase 1 live-PR/keep-awake.
