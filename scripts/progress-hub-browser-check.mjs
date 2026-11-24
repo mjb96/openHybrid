@@ -314,6 +314,40 @@ try {
       await openHub(page);
       await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {});
     }
+
+    // The Muscles band can focus ONE muscle without leaving the hub. A native
+    // select keeps 19 options usable; the chart and table answer for that muscle
+    // while the rest of the band stays present.
+    const muscleFocus = await page.evaluate(() => {
+      const select = document.querySelector('#analytics-hub [data-band="muscles"] [data-pg-muscle]');
+      return {
+        present: Boolean(select),
+        values: [...(select?.options || [])].map((option) => option.value),
+        height: Math.round(select?.getBoundingClientRect().height || 0),
+      };
+    });
+    if (!muscleFocus.present) failures.push(`${width}px: the Muscles band has no muscle focus`);
+    if (muscleFocus.height < 44) failures.push(`${width}px: the muscle focus is ${muscleFocus.height}px`);
+    const focusKey = muscleFocus.values.find((value) => value !== 'all');
+    if (muscleFocus.present && focusKey) {
+      await page.selectOption('#analytics-hub [data-band="muscles"] [data-pg-muscle]', focusKey);
+      await page.waitForTimeout(300);
+      const focused = await page.evaluate(() => {
+        const band = document.querySelector('#analytics-hub [data-band="muscles"]');
+        return {
+          value: band?.querySelector('[data-pg-muscle]')?.value || '',
+          meta: band?.querySelector('.pg-muscle-meta')?.textContent?.trim() || '',
+          headline: band?.querySelector('.pg-band__value')?.textContent?.trim() || '',
+        };
+      });
+      if (focused.value !== focusKey) failures.push(`${width}px: muscle focus did not stick (${focused.value} vs ${focusKey})`);
+      if (!/Rank \d+ of \d+/.test(focused.meta)) failures.push(`${width}px: focused muscle has no rank context (${focused.meta})`);
+      if (!focused.headline) failures.push(`${width}px: focused muscle has no headline`);
+      await page.selectOption('#analytics-hub [data-band="muscles"] [data-pg-muscle]', 'all');
+      await page.waitForTimeout(250);
+      const reset = await page.$eval('#analytics-hub [data-band="muscles"] [data-pg-muscle]', (el) => el.value).catch(() => '');
+      if (reset !== 'all') failures.push(`${width}px: muscle focus did not reset to All (${reset})`);
+    }
     if (!seen.hasMethod) failures.push(`${width}px: missing "how this is calculated" disclosure`);
     if (!seen.hasWeekHero) failures.push(`${width}px: missing the this-week overview`);
     if (!/session/i.test(seen.weekHeroText)) failures.push(`${width}px: week overview does not name sessions`);

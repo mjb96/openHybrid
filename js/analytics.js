@@ -58,6 +58,9 @@ let _lastScoreResult = null;   // most recent Score-detail result, for the Share
 let _progressRangeId = '30d';
 let _progressFocus = 'all';
 let _progressGrouping = 'week';
+// The Muscles band's one-muscle focus. Ephemeral like the range: entering the
+// hub again must not hide 18 muscles because of a choice made last week.
+let _progressMuscle = 'all';
 // Measures is a two-faced screen (entry list | photo library). Ephemeral like
 // the Progress controls: returning to it from elsewhere starts on the list.
 let _measuresMode = 'list';
@@ -84,6 +87,7 @@ export function setAnalyticsContext(ctx, options = {}) {
   const previousOrigin = _analyticsOrigin;
   const previousParentContext = _analyticsParentContext;
   _analyticsContext = ctx || 'weekly-summary';
+  if (_analyticsContext === 'hub') _progressMuscle = 'all';
   if (options.origin) _analyticsOrigin = options.origin === 'home' ? 'home' : 'insights';
   _analyticsEntity = options.entity ? { id: options.entity, name: options.entityName || '' } : null;
   // Entering the leaf resets its local controls; the site deep link (the Body
@@ -468,8 +472,17 @@ function onProgressControlClick(event) {
 function onProgressControlChange(event) {
   const el = event.target;
   if (!el || /** @type {any} */ (el).tagName !== 'SELECT' || typeof (/** @type {any} */ (el).matches) !== 'function') return;
-  if (!(/** @type {any} */ (el).matches('[data-ms-site]'))) return;
-  const next = /** @type {HTMLSelectElement} */ (el).value;
+  const select = /** @type {HTMLSelectElement} */ (el);
+  if (select.matches('[data-pg-muscle]')) {
+    const next = select.value || 'all';
+    if (next === _progressMuscle) return;
+    _progressMuscle = next;
+    renderAnalytics();
+    document.querySelector('#analytics-hub [data-pg-muscle]')?.focus?.();
+    return;
+  }
+  if (!select.matches('[data-ms-site]')) return;
+  const next = select.value;
   if (!next || next === _measuresSite) return;
   _measuresSite = next;
   renderAnalytics();
@@ -869,6 +882,7 @@ export function renderAnalytics() {
         renderableCount: progressDashboard.renderableCount,
         showRunning: !progressDashboard.availability?.endurance?.moduleOff,
         hidden: st.settings?.ui?.progress?.hidden || [],
+        selectedMuscle: _progressMuscle,
         weightUnit: st.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
         distanceUnit: st.settings?.distanceUnit === 'mi' ? 'mi' : 'km',
       });

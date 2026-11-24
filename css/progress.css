@@ -447,6 +447,25 @@ html[data-theme="light"] .pg-state--error { background: rgba(239, 68, 68, 0.06);
 /* ------------------------------------------------- 10. RANGE + FOCUS CHIPS */
 .pg-controls { margin: 0 0 14px; }
 
+/* One-muscle focus. A native select keeps 19 options usable on a 320px phone;
+   a chip wall was the failure the Plans redesign already removed. */
+.pg-muscle-pick { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+.pg-muscle-pick > span {
+  flex: 0 0 auto; font-size: 0.60rem; font-weight: 800; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.pg-muscle-select {
+  flex: 1; min-width: 0; min-height: var(--touch-target);
+  padding: 0 10px; border-radius: 12px;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--bg-input); color: var(--text-primary);
+  font: inherit; font-size: 0.78rem; font-weight: 700;
+}
+.pg-muscle-select:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+.pg-muscle-meta { margin: 6px 4px 0; font-size: 0.60rem; color: var(--text-muted); }
+html[data-theme="light"] .pg-muscle-select { color: #0f172a; }
+html[data-theme="light"] .pg-muscle-meta { color: #64748b; }
+
 .pg-range {
   display: flex;
   gap: 4px;

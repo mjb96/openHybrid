@@ -43,6 +43,7 @@ function bandsHTML(extras) {
         distanceUnit: extras.distanceUnit,
         error: entry.error || null,
         hidden: Array.isArray(extras.hidden) ? extras.hidden : [],
+        selected: extras.selectedMuscle,
       });
     }).join('');
   }

@@ -66,12 +66,45 @@ function groupingBar(active) {
       data-pg-grouping="${esc(option.id)}" aria-pressed="${option.id === active ? 'true' : 'false'}">${esc(option.label)}</button>`).join('')}</div>`;
 }
 
+/** One muscle's history, or all muscles when `selected` is 'all'. */
+function muscleBar(model, selected) {
+  if (!Array.isArray(model.muscles) || model.muscles.length < 2) return '';
+  const options = [
+    { key: 'all', label: 'All muscles' },
+    ...model.muscles.map((muscle) => ({ key: muscle.key, label: muscle.label })),
+  ];
+  return `<label class="pg-muscle-pick">
+    <span>Muscle</span>
+    <select class="pg-muscle-select" data-pg-muscle aria-label="Muscle focus">
+      ${options.map((option) => `<option value="${esc(option.key)}"${option.key === selected ? ' selected' : ''}>${esc(option.label)}</option>`).join('')}
+    </select>
+  </label>`;
+}
+
+/** @param {number} value */
+const round1 = (value) => Math.round(value * 10) / 10;
+
 /**
  * The charted series: the biggest muscles individually, everything else
  * aggregated into one muted "Other" so the legend can never exceed six entries.
+ * A selected muscle is the WHOLE chart, because the question has changed from
+ * "where is the volume?" to "what is this muscle doing?".
  * @param {any[]} muscles
+ * @param {Map<string, string>} colours
+ * @param {string} selected
  */
-function seriesFor(muscles, colours) {
+function seriesFor(muscles, colours, selected = 'all') {
+  if (selected !== 'all') {
+    const muscle = muscles.find((entry) => entry.key === selected);
+    if (muscle) {
+      return [{
+        key: muscle.key,
+        label: muscle.label,
+        color: colours.get(muscle.key) || 'var(--text-secondary)',
+        muted: false,
+      }];
+    }
+  }
   const top = muscles.slice(0, MAX_SERIES).map((muscle) => ({
     key: muscle.key,
     label: muscle.label,
@@ -88,23 +121,24 @@ function seriesFor(muscles, colours) {
  * @param {any[]} series
  */
 function stackHTML(model, series) {
-  const otherKeys = new Set(model.muscles.slice(MAX_SERIES).map((muscle) => muscle.key));
+  const seriesKeys = new Set(series.filter((entry) => entry.key !== '__other').map((entry) => entry.key));
+  const otherKeys = series.some((entry) => entry.key === '__other')
+    ? new Set(model.muscles.filter((muscle) => !seriesKeys.has(muscle.key)).map((muscle) => muscle.key))
+    : new Set();
   const buckets = model.buckets;
   if (!buckets.length) return '';
 
-  const totals = buckets.map((bucket) => Object.entries(bucket.setsByMuscle)
-    .reduce((sum, [, value]) => sum + (Number(value) || 0), 0));
+  const valueFor = (bucket, entry) => entry.key === '__other'
+    ? [...otherKeys].reduce((sum, key) => sum + (Number(bucket.setsByMuscle[key]) || 0), 0)
+    : (Number(bucket.setsByMuscle[entry.key]) || 0);
+  const totals = buckets.map((bucket) => series.reduce((sum, entry) => sum + valueFor(bucket, entry), 0));
   const max = Math.max(...totals, 0);
   if (!(max > 0)) return '';
 
   const columns = buckets.map((bucket, index) => {
     const total = totals[index];
     const segments = series.map((entry) => {
-      const value = entry.key === '__other'
-        ? Object.entries(bucket.setsByMuscle)
-          .filter(([key]) => otherKeys.has(key))
-          .reduce((sum, [, raw]) => sum + (Number(raw) || 0), 0)
-        : (bucket.setsByMuscle[entry.key] || 0);
+      const value = valueFor(bucket, entry);
       if (!(value > 0)) return '';
       const height = (value / max) * 100;
       return `<span class="pg-stack__seg" style="height:${height.toFixed(2)}%;background:${esc(entry.color)}"></span>`;
@@ -113,16 +147,20 @@ function stackHTML(model, series) {
     return `<div class="pg-stack__bucket">
       <div class="pg-stack__bar" aria-hidden="true">${segments}</div>
       <span class="pg-stack__label">${esc(bucket.label)}</span>
-      <span class="sr-only">${esc(`${bucket.label}: ${Math.round(total * 10) / 10} credited sets`)}</span>
+      <span class="sr-only">${esc(`${bucket.label}: ${round1(total)} credited sets`)}</span>
     </div>`;
   }).join('');
 
-  return `<div class="pg-stack" role="img" aria-label="${esc(`Credited sets per muscle, ${buckets.length} ${model.grouping === 'week' ? 'weeks' : model.grouping === 'month' ? 'months' : 'years'}, peak ${Math.round(max * 10) / 10} sets`)}">${columns}</div>`;
+  const focused = series.length === 1 && series[0].key !== '__other' ? series[0].label : null;
+  const ariaLabel = focused
+    ? `${focused} credited sets, ${buckets.length} ${model.grouping === 'week' ? 'weeks' : model.grouping === 'month' ? 'months' : 'years'}, peak ${round1(max)} sets`
+    : `Credited sets per muscle, ${buckets.length} ${model.grouping === 'week' ? 'weeks' : model.grouping === 'month' ? 'months' : 'years'}, peak ${round1(max)} sets`;
+  return `<div class="pg-stack" role="img" aria-label="${esc(ariaLabel)}">${columns}</div>`;
 }
 
 /**
  * @param {ReturnType<import('../muscles.js').buildMuscleModel>|null} model
- * @param {{ error?: string|null, unit?: string, limit?: number, hidden?: string[] }} [options]
+ * @param {{ error?: string|null, unit?: string, limit?: number, hidden?: string[], selected?: string }} [options]
  */
 export function renderMuscles(model, options = {}) {
   if (options.error) {
@@ -155,11 +193,19 @@ export function renderMuscles(model, options = {}) {
     });
   }
 
+  const requested = model.muscles.length > 1 && options.selected && options.selected !== 'all'
+    ? options.selected
+    : 'all';
+  const focused = requested === 'all'
+    ? null
+    : model.muscles.find((muscle) => muscle.key === requested) || null;
+  const selectedKey = focused?.key || 'all';
   const colours = colourMapFor(model.muscles);
-  const series = seriesFor(model.muscles, colours);
+  const series = seriesFor(model.muscles, colours, selectedKey);
   const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 5;
-  const shown = model.muscles.slice(0, limit);
-  const extra = model.muscles.length - shown.length;
+  const shown = focused ? [focused] : model.muscles.slice(0, limit);
+  const extra = focused ? 0 : model.muscles.length - shown.length;
+  const rank = focused ? model.muscles.findIndex((muscle) => muscle.key === focused.key) + 1 : 0;
 
   const rows = rankedRows(shown.map((muscle) => ({
     label: muscle.label,
@@ -171,16 +217,16 @@ export function renderMuscles(model, options = {}) {
     action: { action: 'open-analytics', context: 'muscle-load' },
   })));
 
-  const body = `
-    ${groupingBar(model.grouping)}
-    ${stackHTML(model, series)}
-    ${legend(series.map((entry) => ({ label: entry.label, color: entry.color, muted: entry.muted })))}
-    ${rows}
-    ${extra > 0 ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
-    ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData
-      ? muscleHeatmapHTML(model.bodyMap, { label: 'Muscles trained in this period' })
-      : ''}
-    ${dataTableDisclosure(
+  const table = focused
+    ? dataTableDisclosure(
+      ['Period', `${focused.label} (credited sets)`],
+      model.buckets.map((bucket) => [
+        bucket.label,
+        String(round1(Number(bucket.setsByMuscle?.[focused.key]) || 0)),
+      ]),
+      `${focused.label} credited sets in ${model.range?.spanLabel || 'the selected period'}`,
+    )
+    : dataTableDisclosure(
       ['Muscle', 'Sets', 'Share', 'vs previous'],
       model.muscles.map((muscle) => [
         muscle.label,
@@ -189,16 +235,33 @@ export function renderMuscles(model, options = {}) {
         muscle.deltaPct == null ? '—' : `${muscle.deltaPct > 0 ? '+' : ''}${muscle.deltaPct}`,
       ]),
       `Credited sets per muscle for ${model.range?.spanLabel || 'the selected period'}`,
-    )}`;
+    );
+
+  const body = `
+    ${muscleBar(model, selectedKey)}
+    ${groupingBar(model.grouping)}
+    ${stackHTML(model, series)}
+    ${legend(series.map((entry) => ({ label: entry.label, color: entry.color, muted: entry.muted })))}
+    ${focused ? `<p class="pg-muscle-meta">Rank ${rank} of ${model.muscles.length} · ${focused.sharePct}% of credited sets</p>` : ''}
+    ${rows}
+    ${extra > 0 ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
+    ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData
+      ? muscleHeatmapHTML(model.bodyMap, { label: 'Muscles trained in this period' })
+      : ''}
+    ${table}`;
 
   return band({
     id: 'muscles',
-    eyebrow: 'Muscles',
+    eyebrow: focused ? `Muscles · ${focused.label}` : 'Muscles',
     title: 'Muscles',
-    value: `${model.totalSets}`,
+    value: `${focused ? focused.sets : model.totalSets}`,
     valueUnit: 'credited sets',
-    sub: model.range?.spanLabel,
-    ariaLabel: `${model.range?.spanLabel || 'Selected period'} muscle volume: ${model.totalSets} credited sets across ${model.muscles.length} muscles`,
+    sub: focused
+      ? `${model.range?.spanLabel || 'Selected period'} · ${focused.sharePct}% of total`
+      : model.range?.spanLabel,
+    ariaLabel: focused
+      ? `${model.range?.spanLabel || 'Selected period'} ${focused.label} volume: ${focused.sets} credited sets, ${focused.sharePct}% of total`
+      : `${model.range?.spanLabel || 'Selected period'} muscle volume: ${model.totalSets} credited sets across ${model.muscles.length} muscles`,
     body,
   });
 }

@@ -249,10 +249,8 @@ row names its gap in the matrix's Gap column.
 
 ### Phase 1 — Logging fidelity
 
-**Status: ACTIVE — S1's keep-awake and live-PR toggles landed 2026-11-24; L13
-retains a named gap (no separate volume PR banner).** **Goal:** a logged set
-carries everything later analytics needs, so no later surface has to re-derive
-or invent it.
+**Status: DONE (2026-11-24).** **Goal:** a logged set carries everything later
+analytics needs, so no later surface has to re-derive or invent it.
 
 Features: L3, L9, L10, L12, L13 (see §7).
 
@@ -287,11 +285,13 @@ Features: L3, L9, L10, L12, L13 (see §7).
 7. **Previous values scope.** Verify the `last anywhere` / `last in this
    routine` toggle and tap-to-fill, and make the scope visible where it matters.
    Scope limits the panel and the fill action; it never limits PR detection.
-8. **Live PR.** Confirm detection for estimated 1RM, weight, volume, reps and
-   duration; show one non-blocking banner; persist the evidence on the set.
-   Landed for e1RM, hold (duration), carry and reps; the settings switch
-   `livePR` silences the banner without changing the badge or stored evidence.
-   A separate **volume** PR banner remains the named gap.
+8. **Live PR.** Detection for estimated 1RM, weight, reps and duration; show
+   one non-blocking banner; persist the evidence on the set. Landed for e1RM,
+   hold (duration), carry and reps; the settings switch `livePR` silences the
+   banner without changing the badge or stored evidence. **Volume is
+   deliberately not a separate badge:** set volume is weight × reps and is
+   already represented by the load/rep records, while a volume trophy would
+   reward adding sets rather than better performance.
 9. **Finish sheet.** Name, duration, date/time, notes, summary. No visibility or
    social field exists to add.
 
@@ -344,8 +344,10 @@ strength card, Today and the week surface.
 
 ### Phase 2 — Progress analytics
 
-**Status: LATER.** **Goal:** answer consistency, strength and volume questions
+**Status: ACTIVE.** **Goal:** answer consistency, strength and volume questions
 with calendar-correct numbers, at week, month, year and all-time range.
+Per-muscle focus landed 2026-11-24; P3's rolling-vs-calendar-month wording, P6's
+currency toggle and P10's year zoom remain.
 
 Features: P2, P3 (model), P4, P5, P6, P9 (close gaps), P10.
 
@@ -544,7 +546,7 @@ not rebuild a ✅.
 | P2 | Gym performance | `analytics/progress-dashboard.js` | Pulse, Muscles and Main exercises together answer the gym-performance question | ◐ | No single Gym Performance screen; the answer is split across three bands | 2 |
 | P3 | Monthly report | `brain/monthly-report.js` | Rolling 28-day / 12-month report with prior-window comparison and share | ◐ | Rolling windows, not calendar months; share is text only | 2, 5 |
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on the shared body diagram, respecting the selected period | ✅ | — | — |
-| P5 | Sets per muscle per week | `analytics/muscles.js`, `analytics/volume-guide.js` | Weekly/monthly/yearly credited sets and long ranges | ◐ | No per-muscle selection; the chart caps at six groups + Other | 2 |
+| P5 | Sets per muscle per week | `analytics/muscles.js`, `analytics/views/view-muscles.js` | Weekly/monthly/yearly credited sets, long ranges, one-muscle focus | ✅ | — | 2 |
 | P6 | Muscle distribution | `analytics/muscle-load.js` | Per-muscle credits and recovery beside the volume guide | ◐ | No sessions/time currency toggle; credits only | 2 |
 | P7 | Body measurements | `metrics/measurements.js`, `analytics/measurement-explorer.js` | Weight, body fat, 14 sites, per-site trend, Measures explorer | ✅ | — | 3 |
 | P8 | Progress photos | `photos/library.js`, `portability/zip.js` | Dated photos, timeline, compare, edit/replace/delete, zip export/import | ✅ | — | 3 |
@@ -578,7 +580,7 @@ to that site.
 | L10 | RPE | `workout/effort.js`, `workout/set-sheet.js` | 0–4 RIR (6–10 RPE) in half steps, per-set sheet, live entry, review later | ✅ | — | 1 |
 | L11 | Supersets | `workout/superset.js` | Pairs and circuits, stable colours, rest after the group | ✅ | — | 1 |
 | L12 | Saving a workout | `workout/session-status.js` | Name, duration, date, notes, summary | ✅ | — | 1 |
-| L13 | Live PR | `workout.js`, `strength/records.js` | e1RM/hold/carry/rep detection, one non-blocking banner, persisted evidence | ◐ | No separate volume PR banner; `settings.livePR` can silence the existing banner without changing evidence | 1 |
+| L13 | Live PR | `workout.js`, `strength/records.js` | e1RM/hold/carry/rep detection, one non-blocking banner, persisted evidence; volume stays represented by load × reps, not a separate trophy | ✅ | — | 1 |
 | L14 | Live activity | — | Lock-screen/ongoing notification with set and rest controls | ○ | No native notification surface | 6 |
 
 ### Settings and extra (10)
@@ -729,9 +731,25 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,645 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,647 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Phase 1 closed by decision; Phase 2 starts with one-muscle focus.**
+  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
+    volume is weight × reps and is already represented by the load/rep records,
+    while a volume badge would reward adding sets rather than better
+    performance. Detection covers e1RM, holds (duration), carries and reps.
+  - **The Muscles band can focus one muscle.** A native 19-option select (44px,
+    no chip wall) filters the chart, headline, legend and text table to that
+    muscle while keeping its rank and share of credited sets in view. Grouping
+    Week/Month/Year still applies; All muscles restores the six-group + Other
+    stack. The focus is ephemeral and resets on hub entry, like the range.
+  - `tests/muscles_view.test.js` covers the focused chart, rank context, exact
+    table and unknown-key fallback. The Progress-hub browser check now selects a
+    muscle, asserts the focus sticks and resets, at 320/390/412.
+  - Next: P3 (calendar-month wording), P6 (distribution currency) or P10 (year
+    zoom) in Phase 2.
 
 - **2026-11-24 — Phase 0 truth pass, then the last Phase 1 switches.**
   - **The matrix is now verified rather than assumed.** Every row was checked
@@ -749,12 +767,14 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
   - **Live PR now has an explicit preference.** `settings.livePR` (default on)
     silences the banner and haptic only: `detectSetPR` still shows the badge and
     persists `isPR`/`prKind`, so history is identical with the switch off.
-  - **Phase 1 remains ACTIVE for one named gap:** there is no separate volume PR
-    banner. Detection covers e1RM, holds (duration), carries and reps.
+  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
+    volume is weight × reps and is already represented by the load/rep records,
+    while a volume badge would reward adding sets rather than better
+    performance. Detection covers e1RM, holds (duration), carries and reps.
   - Tests: `tests/keep_awake.test.js` (unsupported/off/active/idempotent) and
     the new `pr_surfaces` case (banner off, record still written); settings
     wiring is green because both switches have real handlers.
-  - Next: the volume-PR decision, then Phase 2.
+  - Next: Phase 2.
 
 - **2026-11-24 — Body measurements: the read path, and the 0.1 cm edit that made it untrustworthy.**
   - **Measurements were already captured; they were hard to READ.** The Body band
