@@ -3605,6 +3605,71 @@ html[data-theme="light"] .lib-tab.active { background: transparent; color: var(-
   color: var(--text-muted);
 }
 
+.routine-card__category {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 1px 7px;
+  border: 1px solid color-mix(in srgb, var(--color-cyan) 38%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-cyan) 10%, transparent);
+  color: var(--color-cyan);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+html[data-theme="light"] .routine-card__category {
+  border-color: rgba(14, 116, 144, 0.35);
+  background: rgba(14, 116, 144, 0.08);
+  color: #155e75;
+}
+
+/* Routine library category filter: one 44px select, no chip wall. */
+.routine-library-filter { display: flex; margin: 0 0 12px; }
+.routine-filter-select {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: 0 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.routine-filter-select:focus-visible { outline: 2px solid var(--color-blue); outline-offset: 2px; }
+html[data-theme="light"] .routine-filter-select { color: #0f172a; }
+.routine-filter-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 16px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+.routine-filter-empty p { margin: 0; }
+.routine-filter-clear {
+  min-height: var(--touch-target);
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-medium, rgba(255,255,255,0.14));
+  background: var(--overlay-md, rgba(255,255,255,0.06));
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+html[data-theme="light"] .routine-filter-clear { color: #0f172a; }
+
 /* A note EXISTS; the text does not belong on a compact library card. */
 .routine-card__note-flag {
   display: inline-flex;

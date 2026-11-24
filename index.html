@@ -2261,6 +2261,20 @@
     <div id="routineFolderList" class="routine-folder-sheet__list"></div>
   </div>
 
+  <!-- Routine category picker — optional metadata for finding a session again. -->
+  <div id="routineCategoryBackdrop" class="sheet-backdrop" data-action="close-routine-category-sheet"></div>
+  <div id="routineCategorySheet" class="bottom-sheet routine-folder-sheet" role="dialog" aria-labelledby="routineCategoryTitle" data-modal-root data-modal-close-action="close-routine-category-sheet" data-modal-companion="#routineCategoryBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <div>
+        <h3 id="routineCategoryTitle" class="bottom-sheet-title">Routine category</h3>
+        <p class="routine-folder-sheet__sub">A category helps you find a session again. It never changes the exercises, folder or logged training.</p>
+      </div>
+      <button class="sheet-close-btn" data-action="close-routine-category-sheet" aria-label="Close">✕</button>
+    </div>
+    <div id="routineCategoryList" class="routine-folder-sheet__list"></div>
+  </div>
+
   <!-- Weigh-in sheet — prefilled with the last weight; steppers make the common edits one tap. -->
   <div id="bwSheetBackdrop" class="sheet-backdrop" data-action="close-bw-sheet"></div>
   <div id="bwSheet" class="bottom-sheet" role="dialog" aria-labelledby="bwSheetTitle" data-modal-root data-modal-close-action="close-bw-sheet" data-modal-companion="#bwSheetBackdrop" inert aria-hidden="true">

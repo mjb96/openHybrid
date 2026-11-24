@@ -161,7 +161,12 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   display index and the membership). Folder order is display-based (`sortOrder`,
   then name) and renormalised on every create/delete/restore/move; a routine has no
   ordering field of its own. `js/app.js` owns those actions; they never activate
-  or reseed a program.
+  or reseed a program. A routine also has an OPTIONAL `category` from the fixed
+  `ROUTINE_CATEGORIES` vocabulary (`push/pull/legs/upper/lower/full_body/
+  conditioning/mobility/other`; absent = uncategorised). The `•••` Category sheet
+  and the library's 44px filter select are metadata only; an unknown imported
+  category is stripped without dropping the routine, and filtering never rewrites
+  folders, the program, the week or logged training.
 - Plans library: Discover is one searchable all-programs list (12 initial, Show
   all expands); saved, completed, custom and imported plans share My Plans.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported

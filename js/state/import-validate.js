@@ -20,6 +20,7 @@
 // =============================================================================
 import {
   MAX_ROUTINE_FOLDERS, MAX_ROUTINE_LIFTS, MAX_ROUTINE_NOTE, MAX_ROUTINES, MAX_ROUTINE_SETS,
+  normalizeRoutineCategory,
 } from '../routines/store.js';
 import { isGroupId } from '../workout/superset.js';
 import { safeExternalHttpUrl } from '../util.js';
@@ -109,7 +110,7 @@ export function sanitizeImportedState(state) {
       ? out.routines
         .filter(isValidRoutine)
         .slice(0, MAX_ROUTINES)
-        .map((routine) => sanitizeRoutineNote(sanitizeRoutineGroupIds(routine)))
+        .map((routine) => sanitizeRoutineNote(sanitizeRoutineCategory(sanitizeRoutineGroupIds(routine))))
       : [];
   }
   if (out.libraryFolders != null) {
@@ -261,6 +262,22 @@ function sanitizeRoutineGroupIds(routine) {
       }
     }
   }
+  return next;
+}
+
+/**
+ * Repair a routine category WITHOUT dropping the routine. An unknown/obsolete
+ * category is removed; the routine stays unfiled rather than disappearing from
+ * a filter it can never match.
+ * @param {any} routine
+ * @returns {any}
+ */
+function sanitizeRoutineCategory(routine) {
+  if (!isRecord(routine) || routine.category == null) return routine;
+  const category = normalizeRoutineCategory(routine.category);
+  if (category) return routine.category === category ? routine : { ...routine, category };
+  const next = { ...routine };
+  delete next.category;
   return next;
 }
 
