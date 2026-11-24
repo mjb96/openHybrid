@@ -88,6 +88,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `role="group"` of `aria-pressed` buttons (never a fake tablist), clears the
   query on open/close, resets scroll on search and announces no-results with
   `role="status"`; the visible count ignores cards hidden by a module switch.
+  A matching search also marks the exact row (`.settings-search-hit`) and
+  scrolls the panel to it, so the athlete lands on the control, not a card top.
+  `settings.reducedMotion` is system|reduce|full; `ui/motion.js` publishes
+  `data-reduced-motion` on `<html>` for the CSS hook.
   Training order is Training (units) → Logging (rest tiers/presets/sound,
   progression, previous values, warm-up, plate hints, keep-awake, live-PR
   banners) → Program Week → Equipment
@@ -101,6 +105,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `settings.notificationsEnabled` is the persisted master reminder preference:
   a granted OS permission alone never arms a reminder, and switching it off
   cancels the native alarm (S-F5).
+  `js/settings/registry.js` is the declarative descriptor list (key, label,
+  type, group, default) for every stored setting; `tests/settings_registry.test.js`
+  parses `state.js` and fails when a key exists outside it. Screens are still
+  hand-written, so the registry is not yet the renderer.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can
@@ -419,7 +427,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/home/today-card.js`). A fresh `ready` day collapses Today to one compact
   row but KEEPS `#homePrimaryCta` visible; tapping today's date cell or the row
   expands the guidance, and `isTodayCardCollapsible` keeps in-progress/
-  completed/rest/no-plan/unresolved states fully open. Hiding "This week" in
+  completed/rest/no-plan/unresolved states fully open. The ready card previews
+  up to three lifts with the same target and last-time numbers the cockpit
+  resolves through `workout/session-preview.js` (shared with Train); the compact
+  row carries a one-line version. Hiding "This week" in
   Customize hides only the rail, never Today. Completed days add the session
   summary and anatomical heat map (`js/home/session-summary.js` /
   `js/home/body-heatmap.js`: the static path geometry is Apache-2.0 Body

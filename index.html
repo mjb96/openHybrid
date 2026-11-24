@@ -1845,6 +1845,15 @@
               <button class="settings-toggle-btn" data-action="set-palette" data-palette="ember">Ember</button>
             </div>
           </div>
+          <div class="settings-row">
+            <label class="settings-row-label">Motion</label>
+            <div class="settings-toggle-group">
+              <button class="settings-toggle-btn active" data-action="set-reduced-motion" data-motion="system">System</button>
+              <button class="settings-toggle-btn" data-action="set-reduced-motion" data-motion="reduce">Reduce</button>
+              <button class="settings-toggle-btn" data-action="set-reduced-motion" data-motion="full">Full</button>
+            </div>
+          </div>
+          <div class="settings-hint">Reduce turns off decorative animation. System follows your device's reduced-motion setting.</div>
           <div class="settings-hint">Midnight matches the app icon: navy surfaces, steel text, cyan actions and lime progress. Palettes apply to Dark/System; Light keeps its own colours.</div>
         </div>
 
@@ -1860,6 +1869,7 @@
           <button class="settings-action-btn settings-action-btn-muted" id="settingsAutoBackupDisableBtn" data-action="auto-backup-disable" style="display:none;">Turn Off Automatic Backups</button>
           <p class="settings-hint">Android automatic backups are complete portable JSON files, including GPS routes. They are stored unencrypted in the folder you choose. Pick a private device folder for offline-only storage; a cloud-backed folder may be synced by its provider.</p>
           <button class="settings-action-btn" data-action="export-data">Export Training Data (JSON)</button>
+          <p class="settings-hint" id="settingsPhotoBackupHint">Progress photos stay on this device and are <strong>not</strong> inside this JSON file. Back them up separately in Progress → Measures → Export photos.</p>
           <button class="settings-action-btn" data-action="export-training-context">Export Training Context (JSON)</button>
           <p class="settings-hint">A compact context for an external coach or AI: goals, active plan and the last eight weeks. It contains no name, notes, GPS routes, photos or health records. Import the returned plan with Plans → Import plan (.json).</p>
           <button class="settings-action-btn" data-action="export-csv">Export Spreadsheet (CSV)</button>

@@ -192,3 +192,34 @@ test('empty state is safe (no data logged)', () => {
   assert.equal(m.ready.hasData, false);
   assert.ok(m.topInsight.text.length > 0);
 });
+
+test('the coach line counts planned sessions, not completed set rows', () => {
+  const program = {
+    totalWeeks: 4,
+    days: {
+      mon: { title: 'Push', lifts: ['Squat'], runs: 'Rest' },
+      tue: { title: 'Pull', lifts: ['Row'], runs: 'Rest' },
+    },
+  };
+  const state = {
+    currentWeek: '1',
+    weekStartedAt: '2026-06-15T00:00:00.000Z',
+    healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
+    wellnessLog: [],
+    weeks: {
+      '1': {
+        lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } },
+        runs: {},
+        gymRpe: {}, gymStats: {},
+      },
+    },
+  };
+  const m = computeDashboardModel(state, DAYS, program, 'tue');
+  assert.equal(m.week.planTotal, 2);
+  assert.equal(m.week.planDone, 1);
+  assert.equal(m.week.planPct, 50);
+  // The set-row percentage is a different unit and may be 100 for one logged
+  // set; it must not be presented as "the plan".
+  assert.equal(m.week.consistencyPct, 100);
+  assert.match(m.topInsight.text, /1 of 2 planned sessions done/);
+});

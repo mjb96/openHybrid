@@ -2296,6 +2296,49 @@ html[data-theme="light"] .home-insight { background: linear-gradient(135deg, rgb
   font-size: .77rem;
   line-height: 1.42;
 }
+
+.today-card__preview {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.today-card__preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: .74rem;
+  line-height: 1.35;
+}
+.today-card__preview-name {
+  font-weight: 700;
+  color: var(--text-inverse);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.today-card__preview-target {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.today-card__preview-last {
+  color: var(--text-muted);
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+}
+.today-card__preview-compact {
+  display: none;
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: .7rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.today-card.is-collapsed .today-card__preview-compact { display: block; }
+.today-card.is-collapsed .today-card__preview { display: none; }
 .today-card__offline {
   display: flex;
   align-items: center;
@@ -11054,3 +11097,32 @@ html[data-theme="dark"] .tl-today__primary {
 }
 .prog-card-bookmark .ic.is-saved { fill: currentColor; }
 .lib-empty-icon { color: var(--text-muted); display: flex; justify-content: center; }
+
+/* A settings search opens the exact control, not just the card that holds it. */
+.settings-search-hit {
+  outline: 2px solid var(--color-blue);
+  outline-offset: 2px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+}
+
+/* The stall/fatigue diagnostic used to be dead text; the evidence belongs under
+   the target so a PROGRESS CHECK badge can explain itself. */
+.cockpit-ex-diagnostic {
+  margin-top: 3px;
+  max-width: 44ch;
+  color: var(--text-muted);
+  font-size: max(0.7rem, var(--text-xs));
+  line-height: 1.4;
+}
+
+/* Explicit reduced-motion preference. The OS media query stays authoritative
+   for `system`; this hook lets the athlete force reduce or opt back in. */
+html[data-reduced-motion="reduce"] *,
+html[data-reduced-motion="reduce"] *::before,
+html[data-reduced-motion="reduce"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

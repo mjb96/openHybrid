@@ -605,6 +605,21 @@ try {
         failures.push(`year review 390kg: the share card did not download (${download?.suggestedFilename?.() || 'none'})`);
       }
     }
+    // The Reports row must open the tab that actually contains the year, not
+    // Review's Overview (which has no year section).
+    await page.evaluate(() => document.querySelector('.bottom-nav [data-target="analytics"]')?.click());
+    await page.waitForSelector('#analytics-hub.active', { timeout: 4000 });
+    const yearRow = page.locator('.pg-reports__row[data-context="year-review"]');
+    if (await yearRow.count() !== 1) {
+      failures.push('year review 390kg: Reports has no Year in Review row');
+    } else {
+      await yearRow.click();
+      await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 });
+      const activeTab = await page.$eval('#analytics-weekly-review .an-tab--active', (el) => el.getAttribute('data-an-tab')).catch(() => '');
+      const yearVisible = await page.$eval('#yearReviewContainer', (el) => !el.hidden && el.getBoundingClientRect().height > 0).catch(() => false);
+      if (activeTab !== 'stats') failures.push(`year review 390kg: Reports opened Review "${activeTab}" instead of Stats`);
+      if (!yearVisible) failures.push('year review 390kg: Reports opened a tab without the year section');
+    }
     if (seen.documentOverflow || seen.containerOverflow) failures.push('year review 390kg: horizontal overflow');
     if (errors.length) failures.push(`year review 390kg: browser errors: ${errors.join(' | ')}`);
     await context.close();

@@ -79,6 +79,10 @@ try {
   ));
   ok(hintsCard === 'Logging', 'plate hints live in the Logging card');
 
+  const photoHint = await page.textContent('#settingsPhotoBackupHint').catch(() => '');
+  ok(/not.*inside this JSON file/i.test(photoHint), 'the JSON export says photos are not included');
+  ok(/Measures/.test(photoHint), 'the photo hint names where the separate backup lives');
+
   // The filters are buttons in a group, not a tablist: there are no tabpanels,
   // no aria-controls and no arrow-key contract to honour.
   ok((await page.getAttribute('#settingsTabs', 'role')) === 'group', 'settings filters expose role="group"');
@@ -167,7 +171,17 @@ try {
   // assistive tech. "Light band weight" only exists as the input's aria-label.
   await page.fill('#settingsSearch', 'light band weight');
   ok((await visibleLabel()).includes('Equipment'), 'search matches an accessible name');
+  const hit = page.locator('.settings-search-hit');
+  ok((await hit.count()) === 1, 'search marks one exact row, not the whole card');
+  ok(await hit.evaluate((el) => !!el.querySelector('#settingsBandLight')),
+    'the marked row is the light-band control');
+  ok(await hit.evaluate((el) => {
+    const row = el.getBoundingClientRect();
+    const body = document.querySelector('#settingsPanel .settings-body')?.getBoundingClientRect();
+    return !!body && row.top >= body.top - 1 && row.bottom <= body.bottom + 1;
+  }), 'the marked row is scrolled into view');
   await page.fill('#settingsSearch', '');
+  ok((await page.locator('.settings-search-hit').count()) === 0, 'clearing search clears the row highlight');
 
   // A row switched off with a feature module is invisible, so its words must
   // not return a blank card that looks like a broken search.
@@ -204,6 +218,33 @@ try {
   ok((await page.inputValue('#settingsSearch')) === '', 'reopening settings clears the search');
   ok((await visibleLabel()).includes('Training'), 'reopening settings shows the active destination');
   ok((await page.locator('#settingsNoResults').isHidden()), 'reopening settings hides the stale no-results state');
+
+  // Motion is a real preference: reduce must publish the CSS hook and persist.
+  await page.click('#settingsTabs [data-settings-tab="appearance"]');
+  await page.click('[data-action="set-reduced-motion"][data-motion="reduce"]');
+  const motion = await page.evaluate(() => ({
+    effective: document.documentElement.dataset.reducedMotion,
+    pref: document.documentElement.dataset.reducedMotionPref,
+    stored: JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.reducedMotion,
+  }));
+  ok(motion.effective === 'reduce' && motion.pref === 'reduce', 'Reduce publishes the reduced-motion hook');
+  ok(motion.stored === 'reduce', 'Reduce persists as the stored motion preference');
+  await page.click('[data-action="set-reduced-motion"][data-motion="system"]');
+  ok((await page.evaluate(() => document.documentElement.dataset.reducedMotionPref)) === 'system',
+    'System restores the OS-following preference');
+
+  // Destructive reset needs two deliberate confirmations; cancelling the
+  // second one must leave the device state untouched.
+  await page.click('#settingsTabs [data-settings-tab="data"]');
+  await page.click('[data-action="reset-all-data"]');
+  await page.waitForSelector('.cmodal__btn--danger');
+  await page.click('.cmodal__btn--danger');
+  await page.waitForFunction(() => /Delete everything/i.test(document.querySelector('.cmodal__title')?.textContent || ''));
+  ok(true, 'reset asks for a second confirmation');
+  await page.click('.cmodal__btn--cancel');
+  await page.waitForSelector('.cmodal', { state: 'detached' });
+  ok(await page.evaluate(() => !!localStorage.getItem('hybrid_engine_v2_state')),
+    'cancelling the second reset gate preserves the saved state');
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
