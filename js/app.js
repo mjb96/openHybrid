@@ -120,6 +120,8 @@ import {
 import { markSessionInProgress } from './workout/session-status.js';
 import { initAutomaticBackups, checkDailyAutomaticBackup } from './portability/auto-backup.js';
 import { buildRoutineFromSession, routineSourceWeek } from './routines/model.js';
+import { shareSummaryCard, yearReviewShareRows } from './analytics/share-card.js';
+import { buildYearInReview, yearReviewYear } from './brain/year-review.js';
 import {
   createFolder, deleteFolder, ensureRoutines, findFolder, findRoutine, hasRoutineCapacity,
   MAX_ROUTINE_NOTE, MAX_ROUTINES, moveFolder, moveRoutineToFolder, orderedFolders, removeRoutine,
@@ -846,6 +848,33 @@ export async function chooseRoutineCategory(category) {
   closeRoutineCategorySheet();
   renderLibrary();
   showToast(next ? `Category: ${routineCategoryLabel(next)}` : 'Category cleared');
+}
+
+/**
+ * Share the Year in Review image. It rebuilds the SAME model the seasonal
+ * section renders, so the card cannot claim a year or figure the screen lacks.
+ */
+async function shareYearReview() {
+  const today = todayKey();
+  const year = yearReviewYear(today);
+  if (year == null) return;
+  const review = buildYearInReview(appState, DEFAULT_DAYS, { year, today });
+  if (!review.hasData) {
+    showToast(`No sessions logged in ${year} yet`);
+    return;
+  }
+  try {
+    await shareSummaryCard(yearReviewShareRows(review, appState), {
+      title: `${review.year} in review`,
+      subtitle: review.rangeLabel,
+      filename: `openhybrid-year-review-${review.year}.png`,
+      caption: `My ${review.year} in review on openHybrid: ${review.totals.sessions} sessions, ${review.totals.workingSets} working sets, ${review.totals.prCount} e1RM PRs.`,
+      toast: showToast,
+      savedMessage: 'Year card saved',
+    });
+  } catch {
+    showToast('Sharing unavailable on this device', true);
+  }
 }
 
 export async function chooseRoutineFolder(folderId) {
@@ -1619,6 +1648,7 @@ document.addEventListener('click', (e) => {
   });
   else if (action === 'open-wellness-checkin') openAnalyticsView('recovery-score', 'wellnessFormSection');
   else if (action === 'share-score-card') shareScoreCard();
+  else if (action === 'share-year-review') shareYearReview();
   else if (action === 'tile-nav') document.dispatchEvent(new CustomEvent('app:navigate', { detail: { target: target.getAttribute('data-nav') } }));
   else if (action === 'set-day') setCockpitActiveDay(target.getAttribute('data-day'));
   else if (action === 'start-today-workout') launchActiveWorkoutCockpit();

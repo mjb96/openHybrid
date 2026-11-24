@@ -142,6 +142,19 @@ async function openHub(page) {
   });
 }
 
+/**
+ * The app page is a secure context, so Chromium exposes Web Share and the card
+ * takes that path instead of downloading. Pin the fallback so the browser
+ * contract can assert the real PNG download.
+ */
+async function disableWebShare(page) {
+  await page.evaluate(() => {
+    for (const name of ['share', 'canShare']) {
+      try { Object.defineProperty(navigator, name, { value: undefined, configurable: true }); } catch (_) {}
+    }
+  });
+}
+
 // Wait for a navigator label with a short, explicit timeout so a stuck step
 // fails the check instead of hanging the suite.
 async function waitForNavLabel(page, expected) {
@@ -166,6 +179,7 @@ async function openYearReview(browser, { todayISO, width, theme = 'dark', weight
     if (message.type() === 'error' && !/frame-ancestors.*ignored.*meta/i.test(message.text()) && !/net::ERR_/.test(message.text())) errors.push(message.text());
   });
   await page.goto(BASE, { waitUntil: 'networkidle' });
+  await disableWebShare(page);
   await openHub(page);
   await page.waitForSelector('#analytics-hub.active .pg-band');
   await page.click('.hub-link--quiet[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review card did not open`));
@@ -221,6 +235,7 @@ try {
     });
 
     await page.goto(BASE, { waitUntil: 'networkidle' });
+    await disableWebShare(page);
     await openHub(page);
     await page.waitForSelector('#analytics-hub.active .pg-band');
 
@@ -495,6 +510,13 @@ try {
     if (yearPressed !== 'true') failures.push(`${width}px: 12-month report did not activate`);
     await page.click('#monthlyReportContainer [data-report-period="month"]');
     await page.waitForTimeout(200);
+    const [reportDownload] = await Promise.all([
+      page.waitForEvent('download', { timeout: 8000 }).catch(() => null),
+      page.click('#mrepShareBtn'),
+    ]);
+    if (!reportDownload || reportDownload.suggestedFilename() !== 'openhybrid-training-report.png') {
+      failures.push(`${width}px: the Training Report card did not download (${reportDownload?.suggestedFilename?.() || 'none'})`);
+    }
 
     if (errors.length) failures.push(`${width}px: browser errors: ${errors.join(' | ')}`);
     await context.close();
@@ -558,6 +580,17 @@ try {
     if (!/Top exercises/.test(seen.text) || !seen.longNameVisible) failures.push('year review 390kg: missing the top exercises/long-named lift');
     if (!/e1RM PRs/.test(seen.text) || !/Barbell Bench Press/.test(seen.text) || !/128 kg/.test(seen.text)) {
       failures.push('year review 390kg: missing the annual e1RM PR');
+    }
+    const yearShare = await page.locator('[data-action="share-year-review"]').count();
+    if (yearShare !== 1) failures.push('year review 390kg: missing the share action');
+    else {
+      const [download] = await Promise.all([
+        page.waitForEvent('download', { timeout: 8000 }).catch(() => null),
+        page.click('[data-action="share-year-review"]'),
+      ]);
+      if (!download || download.suggestedFilename() !== 'openhybrid-year-review-2026.png') {
+        failures.push(`year review 390kg: the share card did not download (${download?.suggestedFilename?.() || 'none'})`);
+      }
     }
     if (seen.documentOverflow || seen.containerOverflow) failures.push('year review 390kg: horizontal overflow');
     if (errors.length) failures.push(`year review 390kg: browser errors: ${errors.join(' | ')}`);

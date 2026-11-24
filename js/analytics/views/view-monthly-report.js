@@ -5,6 +5,7 @@
 // =============================================================================
 import { showToast } from '../../state.js';
 import { buildCalendarMonthReport, buildYearReport, reportToText } from '../../brain/monthly-report.js';
+import { monthlyReportShareRows, shareSummaryCard } from '../share-card.js';
 import { addDaysISO, formatDayMonthShort } from '../../dates.js';
 import { formatVolume, weightUnitOf } from '../utils.js';
 
@@ -90,13 +91,17 @@ export function renderMonthlyReport(getState, getDays, getProgram) {
   }));
   const btn = el.querySelector('#mrepShareBtn');
   if (btn) btn.addEventListener('click', async () => {
-    const text = reportToText(r, distUnit, weightUnitOf(state));
     try {
-      if (navigator.share) { await navigator.share({ text }); return; }
-      throw new Error('no-share');
+      await shareSummaryCard(monthlyReportShareRows(r, state), {
+        title: 'Training Report',
+        subtitle: r.window.label,
+        filename: 'openhybrid-training-report.png',
+        caption: reportToText(r, distUnit, weightUnitOf(state)),
+        toast: showToast,
+        savedMessage: 'Report card saved',
+      });
     } catch {
-      try { await navigator.clipboard.writeText(text); showToast('Copied to clipboard ✓'); }
-      catch { showToast('Sharing unavailable on this device', true); }
+      showToast('Sharing unavailable on this device', true);
     }
   });
 }

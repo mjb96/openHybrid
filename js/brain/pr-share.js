@@ -75,19 +75,34 @@ export function drawPRCard(ctx, W, H, pr, state) {
  */
 export function shareImageCanvas(canvas, { filename, caption = '', title = '', toast = () => {}, savedMessage = 'Card saved' } = /** @type {any} */ ({})) {
   const fname = filename || 'openhybrid-card.png';
-  const finish = (blob) => {
+  const finish = async (blob) => {
     const file = blob && typeof File !== 'undefined' ? new File([blob], fname, { type: 'image/png' }) : null;
     if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       navigator.share({ files: [file], title, text: caption }).catch(() => {});
-    } else {
-      try {
-        const a = document.createElement('a');
-        a.href = canvas.toDataURL('image/png');
-        a.download = fname;
-        a.click();
-        toast(savedMessage);
-      } catch (_) { toast('Could not create the card'); }
+      return;
     }
+    if (blob) {
+      try {
+        const bytes = new Uint8Array(await blob.arrayBuffer());
+        // The browser/Android export service owns the download and native bridge
+        // path. A data: anchor was blocked by the app's CSP, so "Share" silently
+        // did nothing on the installed PWA.
+        const { saveBinaryExport, exportResultMessage } = await import('../portability/export-service.js');
+        const result = await saveBinaryExport({ filename: fname, bytes, mime: 'image/png' });
+        const message = exportResultMessage(result, 'Card');
+        toast(result.status === 'saved' ? (savedMessage || message.message) : message.message, message.error);
+      } catch (_) {
+        toast('Could not save the card', true);
+      }
+      return;
+    }
+    try {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = fname;
+      a.click();
+      toast(savedMessage);
+    } catch (_) { toast('Could not create the card', true); }
   };
   if (canvas.toBlob) canvas.toBlob(finish, 'image/png'); else finish(null);
 }
