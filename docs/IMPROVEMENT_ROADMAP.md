@@ -948,19 +948,19 @@ or corrects it.
 
 ### 14.4 Work items
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| ST1 | **Settings inventory** | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | UNVERIFIED |
-| ST2 | **Declarative settings registry** | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | UNVERIFIED |
-| ST3 | **Settings search** | Matches labels, footers and keywords; result opens the exact row with the group in view | UNVERIFIED |
-| ST4 | **Contextual shortcuts** | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | UNVERIFIED |
-| ST5 | **Profile redevelopment** | Per §14.3; migrates existing profile data losslessly | UNVERIFIED |
-| ST6 | **Units and formats** | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | UNVERIFIED |
-| ST7 | **Week start (G6)** | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | UNVERIFIED |
-| ST8 | **Appearance and feel** | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | UNVERIFIED |
-| ST9 | **Data safety screens** | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | UNVERIFIED |
-| ST10 | **Destructive actions** | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | UNVERIFIED |
-| ST11 | **Notifications screens** | UI and preferences only; delivery work is G5 in H3 | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| ST1 | **Settings inventory** | — | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | UNVERIFIED | pending H0 audit |
+| ST2 | **Declarative settings registry** | — | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | UNVERIFIED | pending H0 audit |
+| ST3 | **Settings search** | — | Matches labels, footers and keywords; result opens the exact row with the group in view | UNVERIFIED | pending H0 audit |
+| ST4 | **Contextual shortcuts** | — | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | UNVERIFIED | pending H0 audit |
+| ST5 | **Profile redevelopment** | — | Per §14.3; migrates existing profile data losslessly | UNVERIFIED | pending H0 audit |
+| ST6 | **Units and formats** | — | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | UNVERIFIED | pending H0 audit |
+| ST7 | **Week start (G6)** | — | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | UNVERIFIED | pending H0 audit |
+| ST8 | **Appearance and feel** | — | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | UNVERIFIED | pending H0 audit |
+| ST9 | **Data safety screens** | — | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | UNVERIFIED | pending H0 audit |
+| ST10 | **Destructive actions** | — | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | UNVERIFIED | pending H0 audit |
+| ST11 | **Notifications screens** | — | UI and preferences only; delivery work is G5 in H3 | UNVERIFIED | pending H0 audit |
 
 ### 14.5 Data rules
 
@@ -987,15 +987,15 @@ or corrects it.
 Source of truth for intent: §3 "Home is a decision surface". Verify what exists
 first.
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| HM1 | One-tap start with preview | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | UNVERIFIED |
-| HM2 | Move a day (G1) | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | UNVERIFIED |
-| HM3 | Strength this week | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | UNVERIFIED |
-| HM4 | One strength insight | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | UNVERIFIED |
-| HM5 | Quick actions | At most three: empty workout, log a past session (G3), and one contextual action | UNVERIFIED |
-| HM6 | Honest states | Rest day, no plan, first run, offline, partial data: each distinct and useful | UNVERIFIED |
-| HM7 | No duplicate metrics | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| HM1 | One-tap start with preview | — | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | UNVERIFIED | pending H0 audit |
+| HM2 | Move a day (G1) | — | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | UNVERIFIED | pending H0 audit |
+| HM3 | Strength this week | — | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | UNVERIFIED | pending H0 audit |
+| HM4 | One strength insight | — | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | UNVERIFIED | pending H0 audit |
+| HM5 | Quick actions | — | At most three: empty workout, log a past session (G3), and one contextual action | UNVERIFIED | pending H0 audit |
+| HM6 | Honest states | — | Rest day, no plan, first run, offline, partial data: each distinct and useful | UNVERIFIED | pending H0 audit |
+| HM7 | No duplicate metrics | — | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | UNVERIFIED | pending H0 audit |
 
 **Acceptance:** Home answers "what should I do today?" without scrolling; no
 metric appears twice; hybrid cards stay hidden when Hybrid training is off;
@@ -1064,17 +1064,17 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 
 ### 16.5 Work items
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
-| PG1 | Inventory | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | UNVERIFIED |
-| PG2 | One home per destination | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | UNVERIFIED |
-| PG3 | Band-header drilldown | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | UNVERIFIED |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| PG1 | Inventory | — | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | UNVERIFIED | pending H0 audit |
+| PG2 | One home per destination | — | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | UNVERIFIED | pending H0 audit |
+| PG3 | Band-header drilldown | — | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | UNVERIFIED | pending H0 audit |
 | PG4 | Reviews surface | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | UNVERIFIED |
-| PG5 | All lifts index | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | UNVERIFIED |
-| PG6 | Records row | PR table and dated feed (A6) | UNVERIFIED |
-| PG7 | Strength-first defaults | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | UNVERIFIED |
-| PG8 | Navigation contract | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | UNVERIFIED |
-| PG9 | Overview concision | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | UNVERIFIED |
+| PG5 | All lifts index | — | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | UNVERIFIED | pending H0 audit |
+| PG6 | Records row | — | PR table and dated feed (A6) | UNVERIFIED | pending H0 audit |
+| PG7 | Strength-first defaults | — | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | UNVERIFIED | pending H0 audit |
+| PG8 | Navigation contract | — | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | UNVERIFIED | pending H0 audit |
+| PG9 | Overview concision | — | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | UNVERIFIED | pending H0 audit |
 
 ### 16.6 Rules and acceptance
 
@@ -1096,14 +1096,14 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 
 Verify first; sources: openGym, Hevy.
 
-| ID | Gap | Target behaviour | Status |
-| --- | --- | --- | --- |
-| G2 | Reps per side | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | UNVERIFIED |
-| G3 | Log a past session | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | UNVERIFIED |
-| G5 | Closed-app rest alerts | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | UNVERIFIED |
-| G7 | Favourite exercises | Star an exercise; favourites sort first in the picker and library | UNVERIFIED |
-| G9 | Curated exercise core | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | UNVERIFIED |
-| G10 | Explained targets | Every progression target states in one line why today's number is today's number | UNVERIFIED |
+| ID | Gap | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
+| G2 | Reps per side | — | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | UNVERIFIED | pending H0 audit |
+| G3 | Log a past session | — | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | UNVERIFIED | pending H0 audit |
+| G5 | Closed-app rest alerts | — | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | UNVERIFIED | pending H0 audit |
+| G7 | Favourite exercises | — | Star an exercise; favourites sort first in the picker and library | UNVERIFIED | pending H0 audit |
+| G9 | Curated exercise core | — | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | UNVERIFIED | pending H0 audit |
+| G10 | Explained targets | — | Every progression target states in one line why today's number is today's number | UNVERIFIED | pending H0 audit |
 | LG1 | Set-entry tap audit | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | UNVERIFIED |
 | LG2 | Ergonomics | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | UNVERIFIED |
 
@@ -1119,8 +1119,8 @@ Principle (§3): every surface answers what changed, whether it is meaningful,
 what contributed, what to do, and how it was calculated. Do **not** add metric
 families without an action. Verify what already answers each question.
 
-| ID | Item | Target behaviour | Status |
-| --- | --- | --- | --- |
+| ID | Item | Owner | Target behaviour | Status | Evidence / gap |
+| --- | --- | --- | --- | --- | --- |
 | A1 | Stall detection | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | UNVERIFIED |
 | A2 | Volume vs target per muscle | Weekly sets per muscle against the volume guide with under/over status and one action | UNVERIFIED |
 | A3 | Strength trend | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | UNVERIFIED |
