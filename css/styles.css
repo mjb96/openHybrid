@@ -11105,3 +11105,13 @@ html[data-theme="dark"] .tl-today__primary {
   border-radius: 8px;
   background: rgba(59, 130, 246, 0.12);
 }
+
+/* The stall/fatigue diagnostic used to be dead text; the evidence belongs under
+   the target so a PROGRESS CHECK badge can explain itself. */
+.cockpit-ex-diagnostic {
+  margin-top: 3px;
+  max-width: 44ch;
+  color: var(--text-muted);
+  font-size: max(0.7rem, var(--text-xs));
+  line-height: 1.4;
+}

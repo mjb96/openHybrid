@@ -1257,7 +1257,7 @@ families without an action. Verify what already answers each question.
 
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
-| A1 | Stall detection | `engine.js`, `templates.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | PARTIAL | Stall rule + evidence message exist and are tested; the message has no reader, the cockpit shows only a badge, and no analytics surface lists stalls. |
+| A1 | Stall detection | `engine.js`, `templates.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | PARTIAL | The cockpit now renders the evidence/action message under the target, so a PROGRESS CHECK badge explains itself. No analytics surface lists stalls yet. |
 | A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js` | Weekly sets per muscle against the volume guide with under/over status and one action | PARTIAL | Weekly credited sets vs MV/MEV/MAV/MRV with zones; no action by design; current-week only and no target band in the range view. |
 | A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | PARTIAL | ROI, block PR and rolling-4 exist; the e1RM chart stops at 12w/6m/all (no 4w/1y) and ROI is program-week indexed. |
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
@@ -1407,6 +1407,13 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H4 A1: the stall evidence is no longer dead code.**
+  - `buildExerciseCard` now renders `diagnostic.message` under the target, so a
+    PROGRESS CHECK badge states the 3-session span, the missed target and the
+    hold/recovery action instead of leaving the athlete to guess.
+  - Tests pin the stalled line and the empty-message case.
+  - Still PARTIAL: no analytics surface lists stalled lifts.
+
 - **2026-11-24 — H2 HM7: the plan-done copy counts sessions, not set rows.**
   - The week rail said "1/5 done" while the coach line said "100% of this
     week's plan done" from completed stored set rows. The coach line now uses
@@ -1497,17 +1504,3 @@ device timing it did not measure.
     broken worker reports its cause instead of timing out.
   - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
     export/import for routine and measurement metadata, large-library checks.
-
-- **2026-11-24 — Phase 6: S2 adaptive trainer landed; only native surfaces remain.**
-  - **Onboarding now asks for a typical session length** (30/45/60/75+ min). The
-    starter recommender uses it and the existing weekly-frequency answer, so a
-    6-day 75-minute block cannot lead for a 3–4 day 30-minute athlete. The
-    category filter still comes from the goal, so time cannot hand an endurance
-    athlete a powerlifting plan.
-  - **Adaptation stays explicit.** Working loads adjust through the cockpit's
-    per-lift diagnostics; deloads and progression shapes are visible edits with
-    Undo. Nothing silently rewrites the plan or logged training. S2 is DONE.
-  - **Phase 6 remains ACTIVE only for L14 (Android live activity) and S10
-    (widgets)** — both native, device-checklist work.
-  - Tests: the recommender's frequency/session-length ranking; existing engine,
-    progression, deload and Undo coverage remains green; browser suite unchanged.

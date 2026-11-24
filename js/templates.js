@@ -171,6 +171,7 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
           ${stalledBadge}
         </div>
         <div class="cockpit-ex-target" style="${targetStyle}" data-target-label="${escapeHtml(String(targetLabel || blueprintLabel))}">${escapeHtml(blueprintLabel)}</div>
+        ${diagnostic?.message ? `<div class="cockpit-ex-diagnostic" data-diagnostic-note>${escapeHtml(diagnostic.message)}</div>` : ''}
       </div>
       <div class="cockpit-ex-status">${isCompleted ? 'DONE' : 'LOG'}</div>
     </div>
