@@ -11,6 +11,7 @@
 // vocabulary the app already browses with.
 // =============================================================================
 import { band, dataTableDisclosure, legend, rankedRows, stateBlock } from './band-kit.js';
+import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { muscleHeatmapHTML } from '../../home/body-heatmap.js';
 
@@ -166,6 +167,7 @@ export function renderMuscles(model, options = {}) {
   if (options.error) {
     return band({
       id: 'muscles',
+      detail: progressDetailFor('muscles'),
       eyebrow: 'Muscles',
       title: 'Muscles',
       body: stateBlock('error', {
@@ -177,12 +179,13 @@ export function renderMuscles(model, options = {}) {
   }
 
   if (!model) {
-    return band({ id: 'muscles', eyebrow: 'Muscles', title: 'Muscles', body: stateBlock('loading', { height: 230 }) });
+    return band({ id: 'muscles', detail: progressDetailFor('muscles'), eyebrow: 'Muscles', title: 'Muscles', body: stateBlock('loading', { height: 230 }) });
   }
 
   if (!model.hasData) {
     return band({
       id: 'muscles',
+      detail: progressDetailFor('muscles'),
       eyebrow: 'Muscles',
       title: 'Muscles',
       sub: model.range?.spanLabel,
@@ -244,7 +247,7 @@ export function renderMuscles(model, options = {}) {
     ${legend(series.map((entry) => ({ label: entry.label, color: entry.color, muted: entry.muted })))}
     ${focused ? `<p class="pg-muscle-meta">Rank ${rank} of ${model.muscles.length} · ${focused.sharePct}% of credited sets</p>` : ''}
     ${rows}
-    ${extra > 0 ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
+    ${extra > 0 && !(Array.isArray(options.hidden) && options.hidden.includes('muscleLoadDetail')) ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
     ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData
       ? muscleHeatmapHTML(model.bodyMap, { label: 'Muscles trained in this period' })
       : ''}
@@ -252,6 +255,7 @@ export function renderMuscles(model, options = {}) {
 
   return band({
     id: 'muscles',
+    detail: progressDetailFor('muscles'),
     eyebrow: focused ? `Muscles · ${focused.label}` : 'Muscles',
     title: 'Muscles',
     value: `${focused ? focused.sets : model.totalSets}`,

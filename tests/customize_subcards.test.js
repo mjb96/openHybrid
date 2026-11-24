@@ -13,8 +13,8 @@ import {
 } from '../js/ui/customize.js';
 
 test('the two detail switches belong to their bands', () => {
-  assert.deepEqual(subCardsFor('body').map((card) => card.id), ['bodyPhotos']);
-  assert.deepEqual(subCardsFor('muscles').map((card) => card.id), ['musclesBody']);
+  assert.deepEqual(subCardsFor('body').map((card) => card.id), ['bodyWeight', 'bodyMeasures', 'bodyPhotos']);
+  assert.deepEqual(subCardsFor('muscles').map((card) => card.id), ['musclesBody', 'muscleLoadDetail']);
   // ...and they are not bands, so they never enter the render order.
   const ui = normalizeUi(null);
   assert.equal(ui.progress.order.includes('bodyPhotos'), false);
@@ -32,8 +32,8 @@ test('a detail switch is never blocked by the one-card minimum', () => {
   const settings = {};
   for (const card of PROGRESS_CARDS.slice(0, -1)) setCardVisible(settings, 'progress', card.id, false);
   // Only one band left; hiding a detail inside it is still allowed.
-  setCardVisible(settings, 'progress', PROGRESS_SUB_CARDS[0].id, false);
-  assert.equal(isCardVisible(settings, 'progress', PROGRESS_SUB_CARDS[0].id), false);
+  setCardVisible(settings, 'progress', 'bodyPhotos', false);
+  assert.equal(isCardVisible(settings, 'progress', 'bodyPhotos'), false);
 });
 
 test('unknown sub ids are still dropped on read', () => {

@@ -14,6 +14,7 @@ import {
 } from '../js/analytics/progress-landing.js';
 import { renderProgressHub } from '../js/analytics/views/view-progress-hub.js';
 import { buildRunningMetricDetail, collectRunningHistory } from '../js/analytics/running-detail.js';
+import { PROGRESS_SUB_CARDS } from '../js/ui/customize.js';
 
 const work = (w, r) => ({ c: true, w: String(w), r: String(r) });
 const run = (sessionId, dist, time) => ({ sessionId, dist: String(dist), time, type: 'run', source: 'gps' });
@@ -755,10 +756,11 @@ test('the hub renders the empty lead instead of a fabricated week hero', () => {
 
 test('Measures has a route that does not depend on body data', () => {
   // The Body band is range-scoped and only renders when it has something true
-  // to say, so it cannot be the only way into the record behind it. A fresh
-  // athlete (and an athlete whose last weigh-in is outside the selected range)
-  // must still be able to log a first entry.
+  // to say. The Body detail switch in Customize Progress is therefore the
+  // route that does not depend on data: hiding a section leaves it openable
+  // from its row, and a fresh athlete can log a first entry from there.
   const container = { innerHTML: '' };
   renderProgressHub(container, buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }));
-  assert.match(container.innerHTML, /data-action="open-analytics" data-context="measures"/);
+  assert.match(container.innerHTML, /data-action="open-customize" data-surface="progress"/);
+  assert.ok(PROGRESS_SUB_CARDS.some((card) => card.parent === 'body' && card.routeId === 'measures'));
 });

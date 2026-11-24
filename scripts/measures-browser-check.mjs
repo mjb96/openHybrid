@@ -165,13 +165,15 @@ try {
     await page.waitForSelector('#analytics-hub.active', { timeout: 15000 });
 
     // A brand-new athlete has no body data, so the Body BAND does not render —
-    // which is why Measures needs a data-independent route. The quiet footer
-    // destination is it; without this there was no way to record a first entry
-    // from Progress at all.
-    const footerLink = await page.$('#analytics-hub [data-action="open-analytics"][data-context="measures"]');
-    ok(Boolean(footerLink), `${width}px: no route to Measures on an empty profile`);
-    if (!footerLink) { failures.push(`${width}px: Measures is unreachable with no body data`); await context.close(); continue; }
-    await footerLink.click();
+    // which is why the Body row in Customize is the data-independent route. It
+    // is still two taps from landing (Customize → Open), and hiding a section
+    // never removes it from the sheet.
+    await page.click('[data-action="open-customize"][data-surface="progress"]');
+    await page.waitForSelector('#customizeSheet.active', { timeout: 5000 });
+    const bodyOpen = await page.$('#customizeList [data-customize-open][data-context="measures"]');
+    ok(Boolean(bodyOpen), `${width}px: no route to Measures on an empty profile`);
+    if (!bodyOpen) { failures.push(`${width}px: Measures is unreachable with no body data`); await context.close(); continue; }
+    await bodyOpen.click();
     await page.waitForSelector('#analytics-measures.active', { timeout: 10000 });
     const empty = (await page.textContent('#analytics-measures')) || '';
     ok(/no entries yet/i.test(empty), `${width}px: Measures did not show an empty state`);

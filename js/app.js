@@ -1645,6 +1645,11 @@ document.addEventListener('click', (e) => {
     parentContext: target.getAttribute('data-parent-context'),
     origin: target.getAttribute('data-origin') || undefined,
     preserveWeek: target.getAttribute('data-preserve-week') === 'true' || !!target.getAttribute('data-parent-context'),
+    // A control inside a band is a drilldown from that band: Back returns here
+    // and scrolls to it (roadmap §16.6).
+    bandOrigin: target.getAttribute('data-band-origin')
+      || target.closest('#analytics-hub [data-band]')?.getAttribute('data-band')
+      || undefined,
   });
   else if (action === 'open-wellness-checkin') openAnalyticsView('recovery-score', 'wellnessFormSection');
   else if (action === 'share-score-card') shareScoreCard();

@@ -6,6 +6,7 @@
 // a delta (never a second axis on the bars), and walking reported separately.
 // =============================================================================
 import { band, dataTableDisclosure, legend, stateBlock } from './band-kit.js';
+import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { formatRunDistance } from '../../workout/run-units.js';
 import { formatDuration } from '../../set-utils.js';
@@ -58,7 +59,7 @@ function consistencyHTML(model) {
 
 /**
  * @param {ReturnType<import('../endurance.js').buildEnduranceModel>|null} model
- * @param {{ error?: string|null, distanceUnit?: string }} [options]
+ * @param {{ error?: string|null, distanceUnit?: string, hidden?: string[] }} [options]
  */
 export function renderEndurance(model, options = {}) {
   const distanceUnit = options.distanceUnit === 'mi' ? 'mi' : 'km';
@@ -66,6 +67,7 @@ export function renderEndurance(model, options = {}) {
   if (options.error) {
     return band({
       id: 'endurance',
+      detail: progressDetailFor('endurance'),
       eyebrow: 'Endurance',
       title: 'Endurance',
       body: stateBlock('error', {
@@ -77,12 +79,13 @@ export function renderEndurance(model, options = {}) {
   }
 
   if (!model) {
-    return band({ id: 'endurance', eyebrow: 'Endurance', title: 'Endurance', body: stateBlock('loading', { height: 220 }) });
+    return band({ id: 'endurance', detail: progressDetailFor('endurance'), eyebrow: 'Endurance', title: 'Endurance', body: stateBlock('loading', { height: 220 }) });
   }
 
   if (!model.hasData) {
     return band({
       id: 'endurance',
+      detail: progressDetailFor('endurance'),
       eyebrow: 'Endurance',
       title: 'Endurance',
       sub: model.range?.spanLabel,
@@ -120,7 +123,8 @@ export function renderEndurance(model, options = {}) {
     ${walks}
     ${consistencyHTML(model)}
     <div class="pg-band__actions">
-      <button type="button" class="pg-band__action" data-action="open-analytics" data-context="running">All running metrics →</button>
+      ${Array.isArray(options.hidden) && options.hidden.includes('enduranceRunning') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="running">All running metrics →</button>'}
+      ${Array.isArray(options.hidden) && options.hidden.includes('enduranceProjections') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="projections">Projections →</button>'}
     </div>
     ${dataTableDisclosure(
       ['Period', `Run (${distanceUnit})`, `Walk (${distanceUnit})`, 'Runs'],
@@ -135,6 +139,7 @@ export function renderEndurance(model, options = {}) {
 
   return band({
     id: 'endurance',
+    detail: progressDetailFor('endurance'),
     eyebrow: 'Endurance',
     title: 'Endurance',
     value: formatRunDistance(model.runKm, distanceUnit),

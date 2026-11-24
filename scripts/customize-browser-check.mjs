@@ -93,7 +93,7 @@ try {
   await page.waitForFunction(() => !document.querySelector('#analytics-hub [data-band="pulse"]'));
   ok(true, 'turning the Progress Pulse card off removes it');
   await page.click('#customizeSheet [data-action="reset-customize"]');
-  await page.waitForSelector('#analytics-hub [data-context="running"]');
+  await page.waitForSelector('#analytics-hub [data-band="pulse"]');
   ok(true, 'Reset restores the Progress card');
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);

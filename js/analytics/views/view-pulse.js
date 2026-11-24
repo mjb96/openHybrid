@@ -162,7 +162,6 @@ export function renderPulse(model, options = {}) {
     sub: model.spanLabel,
     ariaLabel: `${model.spanLabel} overview`,
     chip: model.isPartial ? 'Week in progress' : '',
-    actions: [{ label: 'History →', action: 'open-activities' }],
     body,
   });
 }

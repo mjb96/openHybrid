@@ -17,7 +17,7 @@
 // renders an error instead of blanking the section.
 // =============================================================================
 import { localDayKey } from '../dates.js';
-import { moduleEnabled } from '../modules.js';
+import { progressSectionModuleOff, PROGRESS_SECTIONS } from './progress-sections.js';
 import { normalizeUi } from '../ui/customize.js';
 import { previousRange, resolveRange } from './ranges.js';
 import { buildPulseModel } from './pulse.js';
@@ -29,24 +29,20 @@ import { buildBodyMetricsModel } from './body-metrics.js';
 import { buildFastingBandModel } from './fasting-band.js';
 
 /**
- * @typedef {'pulse'|'balance'|'muscles'|'exercises'|'endurance'|'body'|'fasting'|'reports'} BandId
+ * @typedef {'pulse'|'balance'|'muscles'|'exercises'|'endurance'|'body'|'fasting'|'reviews'} BandId
  * @typedef {'all'|'strength'|'endurance'} Focus
  */
 
-/** Catalogue order is the default render order; the athlete may reorder it. */
-// `alwaysShow` bands render even with no data, because their empty state is
-// itself the answer ("nothing logged this week"). Every other band appears only
-// when it has something true to say, which is what keeps eight bands short.
-const BAND_DEFINITIONS = Object.freeze([
-  { id: 'pulse', module: null, alwaysShow: true },
-  { id: 'balance', module: null },
-  { id: 'muscles', module: null },
-  { id: 'exercises', module: null },
-  { id: 'endurance', module: 'running' },
-  { id: 'body', module: null },
-  { id: 'fasting', module: 'fasting' },
-  { id: 'reports', module: null, alwaysShow: true },
-]);
+/**
+ * Catalogue order is the default render order; the athlete may reorder it. The
+ * registry is the single declaration, so a section added there cannot be
+ * skipped by the composer.
+ */
+const BAND_DEFINITIONS = Object.freeze(PROGRESS_SECTIONS.map((section) => ({
+  id: /** @type {BandId} */ (section.id),
+  module: section.module,
+  alwaysShow: !!section.alwaysShow,
+})));
 
 /**
  * Bands whose model exists today. The rest are declared in the catalogue so
@@ -79,8 +75,9 @@ export const BAND_BUILDERS = Object.freeze({
   }),
   body: (state, ctx) => buildBodyMetricsModel(state, { range: ctx.range }),
   fasting: (state, ctx) => buildFastingBandModel(state, { range: ctx.range }),
-  // Reports is static links: no range, no data, always available.
-  reports: () => ({ hasData: true }),
+  // Reviews is a static Week | Month | Year row: no range, no data, always
+  // available even for a brand-new athlete.
+  reviews: () => ({ hasData: true }),
 });
 
 /** @param {unknown} value */
@@ -141,7 +138,7 @@ export function buildProgressDashboard(state, options = {}) {
 
   for (const id of order) {
     const def = byId.get(id);
-    const moduleOff = def.module ? !moduleEnabled(state, def.module) : false;
+    const moduleOff = progressSectionModuleOff(state, id);
     const isHidden = hidden.has(id);
 
     if (moduleOff) {
@@ -199,7 +196,7 @@ export function buildProgressDashboard(state, options = {}) {
     // (`bodyPhotos`, `musclesBody`), so subtracting its size made the last
     // remaining band look hidden; a module-off band is not visible either.
     visibleCount: BAND_DEFINITIONS.filter((band) => !hidden.has(band.id)
-      && !(band.module && !moduleEnabled(state, band.module))).length,
+      && !progressSectionModuleOff(state, band.id)).length,
     // What the surface can actually put on screen right now.
     renderableCount,
     // The filter is derived from visibility AND data: one modality means no

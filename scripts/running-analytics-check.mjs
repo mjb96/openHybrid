@@ -123,7 +123,13 @@ function powerUserState() {
 
 async function openRunningStats(page) {
   await page.click('.nav-item[data-target="analytics"]');
-  await page.click('#analytics-hub .hub-link--quiet[data-context="running"]');
+  await page.waitForSelector('#analytics-hub.active .pg-band');
+  // Running is the Endurance band's detail since §16 (no footer list). The
+  // Customize row is the stable route for every fixture, including one where
+  // the range has no run to show.
+  await page.click('[data-action="open-customize"][data-surface="progress"]');
+  await page.waitForSelector('#customizeSheet.active');
+  await page.click('#customizeList [data-customize-open][data-context="running"]');
   await page.waitForSelector('#analytics-running.active [data-an-tab="stats"]');
   await page.click('#analytics-running [data-an-tab="stats"]');
   await page.waitForSelector('#analytics-running.active [data-metric-id="running.personal-bests"]');

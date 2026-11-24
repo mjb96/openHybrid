@@ -5620,3 +5620,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     are renamed; the feature matrix gains a Decision column and `◑ reframed`;
     CP6's native leftovers move to H8.
   - No product code changed. **H0 — verify and audit** is next.
+
+- **2026-11-24 — H0 verified: three audits, two inventories, and the P0 findings.**
+  - All 47 C/D/D.2/E rows resolved to DONE/PARTIAL/MISSING with owners and
+    evidence. ST1 is recorded in §14.7 and PG1's 22-entry destination map in
+    §16.7; the Part H baseline table is in §19.1 with device numbers `[You]`.
+  - P0 findings: S-F1 (onboarding equipment answer destroyed at boot), S-F2
+    (back-dated weigh-in wins and loads stale bodyweight), S-F4 (weight-unit
+    switch relabels history), L-F4 (strength analytics orphaned behind the
+    legacy screen) and L-F5 (backdated strength schema/date risk). H1 starts
+    with these before the registry.
+  - No product code changed in H0. The audit found no untested metric
+    calculation; the gaps are missing features, dead surfaces and navigation.

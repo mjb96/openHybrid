@@ -36,9 +36,10 @@ import { esc } from './screen-kit.js';
  *   actions?: BandAction[],
  *   body?: string,
  *   ariaLabel?: string,
+ *   detail?: { context: string, label?: string } | null,
  * }} input
  */
-export function band({ id, eyebrow, value, valueUnit, title, sub, chip, actions, body, ariaLabel }) {
+export function band({ id, eyebrow, value, valueUnit, title, sub, chip, actions, body, ariaLabel, detail }) {
   const headingId = `pg-band-${id}-title`;
   const heading = title || eyebrow;
   const valueHTML = value
@@ -55,14 +56,25 @@ export function band({ id, eyebrow, value, valueUnit, title, sub, chip, actions,
   const named = ariaLabel
     ? `aria-label="${esc(ariaLabel)}"`
     : `aria-labelledby="${esc(headingId)}"`;
-  return `<section class="pg-band" data-band="${esc(id)}" ${named}>
-    <div class="pg-band__head">
-      <div class="pg-band__headline">
+  // The whole header is the drill-down: 44px tall, one target, one affordance.
+  // A `div` header on a band with a detail was a dead end — the extra charts and
+  // lists it owned were pushed to a generic footer instead.
+  const headInner = `<div class="pg-band__headline">
         <span class="pg-band__eyebrow" id="${esc(headingId)}">${esc(eyebrow)}</span>
         ${valueHTML}
       </div>
-      ${chipHTML}
-    </div>
+      ${chipHTML}`;
+  const head = detail
+    ? `<button type="button" class="pg-band__head pg-band__head--detail"
+        data-action="open-analytics" data-context="${esc(detail.context)}"
+        data-parent-context="hub"
+        aria-label="${esc(`${heading}: open ${detail.label || 'details'}`)}">
+        ${headInner}
+        <span class="pg-band__details">Details <span aria-hidden="true">›</span></span>
+      </button>`
+    : `<div class="pg-band__head">${headInner}</div>`;
+  return `<section class="pg-band" data-band="${esc(id)}" ${named}>
+    ${head}
     ${subHTML}
     ${body || ''}
     ${actionsHTML}

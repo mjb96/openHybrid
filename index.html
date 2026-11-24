@@ -811,9 +811,12 @@
 
     <section id="view-analytics" class="view-container" aria-label="Progress">
 
-      <button class="subview-back-btn" data-action="switch-tab" data-target="home">
-        ← Back to Dashboard
-      </button>
+      <div class="an-topline">
+        <button class="subview-back-btn" data-action="switch-tab" data-target="home">
+          ← Back to Dashboard
+        </button>
+        <span id="analyticsRangeChip" class="an-range-chip" hidden></span>
+      </div>
 
       <!-- ── Week Navigator ──────────────────────────────────────── -->
       <div id="analyticsWeekNav" class="week-nav-bar">
