@@ -79,6 +79,10 @@ try {
   ));
   ok(hintsCard === 'Logging', 'plate hints live in the Logging card');
 
+  const photoHint = await page.textContent('#settingsPhotoBackupHint').catch(() => '');
+  ok(/not.*inside this JSON file/i.test(photoHint), 'the JSON export says photos are not included');
+  ok(/Measures/.test(photoHint), 'the photo hint names where the separate backup lives');
+
   // The filters are buttons in a group, not a tablist: there are no tabpanels,
   // no aria-controls and no arrow-key contract to honour.
   ok((await page.getAttribute('#settingsTabs', 'role')) === 'group', 'settings filters expose role="group"');

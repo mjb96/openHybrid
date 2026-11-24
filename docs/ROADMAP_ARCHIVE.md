@@ -5544,3 +5544,20 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     browser check (set → chip → filter → All) plus store/import tests.
   - **Phase 4 is DONE.** Next: Phase 5 — the monthly report share card and the
     Year in Review share image.
+
+- **2026-11-24 — Phase 5 finished: the month and year share the same evidence.**
+  - **Training Report → PNG card.** The existing Share action now draws the
+    sessions/volume/distance/score/fitness/adherence figures from the SAME
+    `buildCalendarMonthReport`/`buildYearReport` model the screen renders, and
+    attaches the report text as the caption. No figures are re-derived.
+  - **Year in Review → Share year.** A trained year offers an image card built
+    from `buildYearInReview` totals, best month and PR count, with the same
+    seasonal boundaries and honest partial-year range.
+  - **Both use one image pipeline.** `shareImageCanvas` now saves through
+    `saveBinaryExport`: the old `data:` anchor was blocked by the app's CSP, so a
+    Share tap silently did nothing in the installed PWA. Android uses the native
+    binary bridge; the browser downloads a real PNG.
+  - The browser contract now forces the Web Share fallback, downloads the
+    Training Report and Year in Review PNGs, and asserts their filenames at
+    320/390/412.
+  - **Phase 5 is DONE.** Next: Phase 6 — platform and intelligence.
