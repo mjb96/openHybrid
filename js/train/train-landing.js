@@ -23,9 +23,9 @@ import { buildHomeWeekStrip } from '../home/week-strip.js';
 import { buildActivityHistory } from '../activities/model.js';
 import { moduleEnabled } from '../modules.js';
 import { localDayKey } from '../dates.js';
-import { getWeekModifier } from '../schema.js';
-import { liftTarget } from '../engine.js';
-import { getExerciseNote } from '../workout/exercise-config.js';
+import { sessionExercisePreview } from '../workout/session-preview.js';
+
+export { sessionExercisePreview };
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -64,36 +64,6 @@ export function recentActivities(state, limit = 3) {
       dateLabel: row.dateLabel || row.localDate,
       subtitle: row.subtitle || '',
     }));
-}
-
-/**
- * The day's exercises and targets, resolved by the SAME `liftTarget` the
- * cockpit uses. That keeps the preview and the logger from promising different
- * prescriptions.
- *
- * @param {any} state
- * @param {any} program
- * @param {string} day
- * @returns {Array<{ name: string, sets: number, reps: string, weight: number|null, note: string }>}
- */
-export function sessionExercisePreview(state, program, day) {
-  const blueprint = program?.days?.[day];
-  const lifts = Array.isArray(blueprint?.lifts) ? blueprint.lifts : [];
-  if (!lifts.length) return [];
-  const week = String(state?.currentWeek || '1');
-  const modifier = getWeekModifier(program, week);
-  return lifts.map((name) => {
-    const target = liftTarget(blueprint?.desc, name, modifier, { program, week, dayKey: day });
-    return {
-      name: String(name),
-      sets: Number(target?.sets) || 0,
-      reps: target?.reps == null ? '' : String(target.reps),
-      weight: Number.isFinite(Number(target?.weight)) && Number(target.weight) > 0
-        ? Number(target.weight)
-        : null,
-      note: getExerciseNote(state, name),
-    };
-  });
 }
 
 /**

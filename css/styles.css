@@ -2296,6 +2296,49 @@ html[data-theme="light"] .home-insight { background: linear-gradient(135deg, rgb
   font-size: .77rem;
   line-height: 1.42;
 }
+
+.today-card__preview {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+.today-card__preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  font-size: .74rem;
+  line-height: 1.35;
+}
+.today-card__preview-name {
+  font-weight: 700;
+  color: var(--text-inverse);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.today-card__preview-target {
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.today-card__preview-last {
+  color: var(--text-muted);
+  font-size: .68rem;
+  font-variant-numeric: tabular-nums;
+}
+.today-card__preview-compact {
+  display: none;
+  margin: 5px 0 0;
+  color: var(--text-muted);
+  font-size: .7rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.today-card.is-collapsed .today-card__preview-compact { display: block; }
+.today-card.is-collapsed .today-card__preview { display: none; }
 .today-card__offline {
   display: flex;
   align-items: center;

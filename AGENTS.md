@@ -417,7 +417,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/home/today-card.js`). A fresh `ready` day collapses Today to one compact
   row but KEEPS `#homePrimaryCta` visible; tapping today's date cell or the row
   expands the guidance, and `isTodayCardCollapsible` keeps in-progress/
-  completed/rest/no-plan/unresolved states fully open. Hiding "This week" in
+  completed/rest/no-plan/unresolved states fully open. The ready card previews
+  up to three lifts with the same target and last-time numbers the cockpit
+  resolves through `workout/session-preview.js` (shared with Train); the compact
+  row carries a one-line version. Hiding "This week" in
   Customize hides only the rail, never Today. Completed days add the session
   summary and anatomical heat map (`js/home/session-summary.js` /
   `js/home/body-heatmap.js`: the static path geometry is Apache-2.0 Body
