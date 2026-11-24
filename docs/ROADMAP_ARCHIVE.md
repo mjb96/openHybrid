@@ -5621,6 +5621,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     CP6's native leftovers move to H8.
   - No product code changed. **H0 — verify and audit** is next.
 
+- **2026-11-24 — H2 HM3: Strength this week states every figure.**
+  - The Home strength card now shows sessions and working sets together, the
+    same-weekday volume delta, the top e1RM change and this week's PR count.
+    Previously sets and PRs were mutually exclusive and sessions were absent.
+  - Still PARTIAL: the card links to the legacy Strength screen until the
+    Progress restructure (PG3/PG5) owns that evidence.
+
 - **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
   - `workout/session-preview.js` is now the one resolver shared by Train and
     Home: it reads the same `liftTarget` and dated history the cockpit uses.

@@ -1068,6 +1068,45 @@ P0 and must be closed before H1's acceptance is claimed.
 | S-F4 | **Fixed 24 Nov (#321):** the kg↔lb switch converts stored sets, bodyweight, goals, PR targets and prescriptions after a confirmation and a localStorage recovery copy. Canonical display-only units remain a later migration. | `metrics/weight-unit.js`, `settings.js`, `settings-nav-browser-check.mjs` | Resolved | H1 / ST6 |
 | S-F5 | **Fixed 24 Nov (#319):** `settings.notificationsEnabled` is the persisted master switch; a granted OS permission alone never arms reminders, and switching off cancels the native alarm. | `state.js`, `notifications.js`, `settings.js`, `tests/notifications.test.js` | Resolved | H1 / ST11 |
 
+### 14.9 Settings & Profile rebuild — Phase 0 audit (25 Nov 2026)
+
+**Status: AWAITING APPROVAL — no UI has been written.** The full setting-by-setting
+matrix, entry-point audit, proposed 13-row IA, profile-field map and
+dead/duplicate/conflicting list live in
+`docs/audit/settings-profile-rebuild-audit.md`.
+
+- **48 settings keys** under `settings.*` all map to a page; 3 settings-like root
+  values (`thresholdPaceSeconds`, `prGoals`, `healthConnect.stepGoal`) need a
+  registry descriptor that can point outside `settings`.
+- **Entry points:** Home avatar → Profile → gear → Settings modal. The Home
+  sliders button opens **Customize Home**, not Settings. No `/settings` or
+  `/profile` URL exists, no PWA shortcut, no cockpit gear and no browser back
+  through Profile.
+- **Dead stores:** `settings.recoveryFeel` (write-only), `state.profileSections`
+  (never read), `state.dashboardTiles` (legacy Home-layout store beside
+  `settings.ui.home`). `weeklyFrequency`/`sessionMinutes` are written by
+  onboarding and read nowhere.
+- **Duplicates/conflicts:** `defaultBodyWeight` vs `bodyWeightLog`;
+  `fastingDefault` vs `fastingSession.goal`; `equipmentTier` not re-derived;
+  `equipment`/`bandWeights` projections; theme+palette will migrate in Part B.
+- **Missing for the requested IA:** height/DOB/sex/training-start fields,
+  date/time/number/pace formats, last-backup timestamp, Watches, AI Coach and
+  Strava. No current calculation uses height/sex/DOB, so storing them would be
+  display-only until a formula exists.
+- **Proposed top level (13 rows + profile card + search):** Training (Workout,
+  Timer alerts, Plan & schedule, Reminders) · Set once (Units & language,
+  Equipment, Look & Home, Modules) · Connections (Watches, Integrations, AI
+  Coach) · Data & backup · About.
+- **Decisions requested:** remove/revive the four dead stores; where
+  `fastingDefault` lives; whether PR goals live on Profile or Workout; add
+  height/DOB/sex now or later; add format keys now or defer; show or omit
+  Watches/AI Coach/Strava; derive equipment tier; confirm the pushed-route tab
+  bar behaviour.
+
+Phase 1 starts only after approval: navigation + `/settings` route +
+redirects + hidden tab bar + Settings shell. Phase 2 adds the typed registry,
+store, validators and migrations; no control renders before those exist.
+
 ## 15. Home (H2)
 
 Source of truth for intent: §3 "Home is a decision surface". Verify what exists
@@ -1409,6 +1448,22 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H1 Settings/Profile rebuild: Phase 0 audit, awaiting approval.**
+  - Inventoried all 48 `settings.*` keys, 3 settings-like root values and the
+    Profile page's stored/derived fields with defaults, readers, current UI and
+    proposed page.
+  - Audited every entry point: Home avatar → Profile → Settings modal; the Home
+    sliders control is Customize Home; no URL route, PWA shortcut, cockpit gear
+    or browser-back path through Profile.
+  - Flagged dead stores (`recoveryFeel`, `profileSections`, `dashboardTiles`,
+    `weeklyFrequency`/`sessionMinutes`), duplicates (`defaultBodyWeight` vs the
+    weigh-in log, two fasting lengths, projected equipment fields) and missing
+    IA fields (height/DOB/sex/training start, formats, backup timestamp,
+    Watches/AI Coach/Strava).
+  - Full matrix and 13-row mapping:
+    `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
+    changed. Next: approval, then Phase 1 navigation.
+
 - **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
   - One registry (`js/analytics/progress-sections.js`) now declares every
     section and detail: id, label, subtitle, module gate, default order and
@@ -1500,13 +1555,6 @@ device timing it did not measure.
     asserts both the active tab and the visible year container.
   - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
     the Reports band still duplicates the screen.
-
-- **2026-11-24 — H2 HM3: Strength this week states every figure.**
-  - The Home strength card now shows sessions and working sets together, the
-    same-weekday volume delta, the top e1RM change and this week's PR count.
-    Previously sets and PRs were mutually exclusive and sessions were absent.
-  - Still PARTIAL: the card links to the legacy Strength screen until the
-    Progress restructure (PG3/PG5) owns that evidence.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
