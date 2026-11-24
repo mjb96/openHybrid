@@ -148,6 +148,35 @@ export function yearReviewShareRows(review, state) {
 }
 
 /**
+ * Rows for the Week in Review card. Adherence and Focus exist only for the live
+ * week (the model omits them for a historical selection), so the card omits them
+ * too rather than inventing a comparison.
+ * @param {any} review
+ * @param {any} state
+ */
+export function weeklyReviewShareRows(review, state) {
+  const unit = weightUnitOf(state);
+  const distUnit = state?.settings?.distanceUnit === 'mi' ? 'mi' : 'km';
+  const rows = [
+    { label: 'Sessions', value: String(review.totals.sessions), note: review.label },
+    { label: 'Lifted', value: formatVolume(review.totals.volume, unit), note: `${review.totals.sets} working set${review.totals.sets === 1 ? '' : 's'}` },
+    { label: 'Run', value: shareDistance(review.totals.distanceKm, distUnit), note: review.isCurrentWeek ? 'this calendar week' : review.label },
+    { label: 'e1RM PR lifts', value: String(review.totals.prCount), note: '' },
+  ];
+  if (review.consistency?.total != null) {
+    rows.push({
+      label: 'Plan adherence',
+      value: `${review.consistency.pct}%`,
+      note: `${review.consistency.done} of ${review.consistency.total} planned`,
+    });
+  }
+  if (review.focus?.area) {
+    rows.push({ label: 'Focus', value: review.focus.area, note: '' });
+  }
+  return rows;
+}
+
+/**
  * The one image-share entry point for report-style cards. It uses the same
  * canvas and `shareImageCanvas` path as Progress and PR cards.
  * @param {Array<{ label: string, value: string, note?: string }>} rows

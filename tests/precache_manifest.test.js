@@ -124,6 +124,17 @@ function cacheNameInSw() {
   return m[1];
 }
 
+test('sw.js carries no unresolved merge-conflict markers', () => {
+  // A resolved-looking merge once left these markers in sw.js. Every other
+  // check passed because nothing imports the worker; the browser check that
+  // waits on navigator.serviceWorker.ready then hung until its kill timer.
+  assert.doesNotMatch(
+    SW_SRC,
+    /^(<<<<<<<|=======|>>>>>>>)/m,
+    'sw.js contains merge-conflict markers and cannot register as a service worker',
+  );
+});
+
 test('CACHE_NAME carries a content hash of the precached assets', () => {
   assert.match(
     cacheNameInSw(),
