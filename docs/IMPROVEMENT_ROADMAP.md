@@ -966,7 +966,7 @@ or corrects it.
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. Unit switch relabels stored history (S-F4). |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | MISSING | Theme + palette only; no text size, reduced motion, haptics, demo size or sounds group. |
-| ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist; the card does not say photo bytes are outside the JSON backup and has no manual last-backup timestamp. |
+| ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist. The JSON export now says progress photos are device-local and outside the file, pointing to Measures → Export photos. No manual last-backup timestamp yet. |
 | ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | One confirm names the losses; no second gate or typed confirmation, reset and delete-all are one action, no per-domain choice. |
 | ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist; the master switch reads OS permission and stores nothing (S-F5); no planned-day preference. Delivery is G5. |
 
@@ -1407,6 +1407,13 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H1 ST9: the JSON export says what it does not carry.**
+  - The Data & Backups card now states that progress photos stay on the device
+    and are not inside the JSON file, with the separate Measures → Export photos
+    path named in the same hint.
+  - The settings browser check asserts the exclusion and the named backup path.
+  - Still PARTIAL: there is no manual-export "last backup" timestamp.
+
 - **2026-11-24 — H1 ST3: settings search opens the row, not just the card.**
   - `firstMatchingRow` finds the exact `.settings-row`, band grid or hint that
     matched, and the Settings filter highlights it and scrolls the panel to it.
@@ -1513,20 +1520,3 @@ device timing it did not measure.
     excluded, filename date.
   - **Phase 6 remains ACTIVE for L14 (Android live activity), S10 (widgets) and
     S2 (adaptive trainer).**
-
-- **2026-11-24 — Phase 5 finished: the month and year share the same evidence.**
-  - **Training Report → PNG card.** The existing Share action now draws the
-    sessions/volume/distance/score/fitness/adherence figures from the SAME
-    `buildCalendarMonthReport`/`buildYearReport` model the screen renders, and
-    attaches the report text as the caption. No figures are re-derived.
-  - **Year in Review → Share year.** A trained year offers an image card built
-    from `buildYearInReview` totals, best month and PR count, with the same
-    seasonal boundaries and honest partial-year range.
-  - **Both use one image pipeline.** `shareImageCanvas` now saves through
-    `saveBinaryExport`: the old `data:` anchor was blocked by the app's CSP, so a
-    Share tap silently did nothing in the installed PWA. Android uses the native
-    binary bridge; the browser downloads a real PNG.
-  - The browser contract now forces the Web Share fallback, downloads the
-    Training Report and Year in Review PNGs, and asserts their filenames at
-    320/390/412.
-  - **Phase 5 is DONE.** Next: Phase 6 — platform and intelligence.
