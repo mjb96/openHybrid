@@ -1199,6 +1199,36 @@ numbers.
 A PR may not make any flow slower. Keep a dated **friction log** from real
 training weeks and promote recurring entries into the phases above.
 
+### 19.1 H0 baseline table
+
+H0 records the baseline here. openHybrid numbers are measured on the owner's
+phone; Hevy and openGym numbers are owner-supplied. Blank cells are **pending**,
+never assumed.
+
+| # | Flow | openHybrid before | openHybrid after | Hevy | openGym | Date |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Change the weight unit | pending | — | pending | pending | — |
+| 2 | Find a setting by name | pending | — | pending | pending | — |
+| 3 | Start today's planned workout from cold open | pending | — | pending | pending | — |
+| 4 | Log a working set with previous values shown | pending | — | pending | pending | — |
+| 5 | Add an exercise mid-session | pending | — | pending | pending | — |
+| 6 | Review one lift's progress | pending | — | pending | pending | — |
+| 7 | Review last week | pending | — | pending | pending | — |
+| 8 | Open the month recap | pending | — | pending | pending | — |
+| 9 | Find a past PR | pending | — | pending | pending | — |
+
+**`[You]` task:** run each flow on the phone and on Hevy/openGym, record taps,
+seconds and the date, and commit the filled table before H1 closes. The agent
+can produce the interaction trace and a screenshot checklist; it cannot claim a
+device timing it did not measure.
+
+### 19.2 Friction log
+
+| Date | Flow | Friction | Promoted to |
+| --- | --- | --- | --- |
+| — | — | — | — |
+
+
 ## 20. Roadmap v2 working rules
 
 - One tracker: this file. No parallel checklist or audit file.
