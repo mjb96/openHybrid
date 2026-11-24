@@ -965,7 +965,7 @@ or corrects it.
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable; equipmentTier, frequency, session length and focus are not. Equipment answer is reverted on boot (S-F1); bodyweight is duplicated (S-F2). |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. Unit switch relabels stored history (S-F4). |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
-| ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | MISSING | Theme + palette only; no text size, reduced motion, haptics, demo size or sounds group. |
+| ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist. The JSON export now says progress photos are device-local and outside the file, pointing to Measures → Export photos. No manual last-backup timestamp yet. |
 | ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | One confirm names the losses; no second gate or typed confirmation, reset and delete-all are one action, no per-domain choice. |
 | ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist; the master switch reads OS permission and stores nothing (S-F5); no planned-day preference. Delivery is G5. |
@@ -1407,6 +1407,14 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H1 ST8: an explicit reduced-motion preference.**
+  - Appearance now offers System / Reduce / Full. `ui/motion.js` publishes
+    `data-reduced-motion` on `<html>`; the CSS hook collapses animation and
+    transition durations, and System follows the OS (including live changes).
+  - The settings browser check clicks Reduce, asserts the hook and the stored
+    preference, then restores System.
+  - Still PARTIAL: no text size, haptics, demo size or sounds group.
+
 - **2026-11-24 — H4 A1: the stall evidence is no longer dead code.**
   - `buildExerciseCard` now renders `diagnostic.message` under the target, so a
     PROGRESS CHECK badge states the 3-session span, the missed target and the
@@ -1488,19 +1496,3 @@ device timing it did not measure.
     are renamed; the feature matrix gains a Decision column and `◑ reframed`;
     CP6's native leftovers move to H8.
   - No product code changed. **H0 — verify and audit** is next.
-
-- **2026-11-24 — Phase 7 starts: the Week in Review shares a real PNG card.**
-  - Overview and Stats both offer **Share week**, drawn by the one share
-    pipeline (`drawProgressCard` → `shareImageCanvas`) from
-    `weeklyReviewShareRows`. The rows are the week's own totals; a historical
-    week omits plan adherence and next-week focus, and a week with no training
-    has no share action at all rather than a card full of zeros.
-  - The browser check opens Review from the Progress footer, switches to
-    Overview and asserts a real `openhybrid-week-YYYY-MM-DD.png` download.
-  - The offline path got two guards after an unresolved-merge-marker `sw.js`
-    (from branch resolution, not product code) made `navigator.serviceWorker.ready`
-    hang until the per-check kill: a precache test now rejects conflict markers
-    in `sw.js`, and the Running check races `.ready` against a 15s failure so a
-    broken worker reports its cause instead of timing out.
-  - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
-    export/import for routine and measurement metadata, large-library checks.

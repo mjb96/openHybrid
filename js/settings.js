@@ -21,6 +21,7 @@ import { parseWorkoutCsv, applyWorkoutCsvImport, CSV_IMPORT_LIMITS, decodeCsvByt
 import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingEnabled, setHybridTraining } from './modules.js';
 import * as equipmentProfiles from './equipment-profiles.js';
 import { applyPalette, normalizePalette } from './theme.js';
+import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
 import {
   looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport, hasBodyFatColumn,
@@ -338,6 +339,7 @@ function _syncSettingsUI() {
   _setToggleActive('[data-action="set-previous-scope"]', `[data-scope="${s.previousValuesScope === 'program' ? 'program' : 'all'}"]`);
   _setToggleActive('[data-action="set-theme"]',       `[data-theme-val="${s.theme || 'dark'}"]`);
   _setToggleActive('[data-action="set-palette"]',     `[data-palette="${normalizePalette(s.palette)}"]`);
+  _setToggleActive('[data-action="set-reduced-motion"]', `[data-motion="${normalizeMotionPreference(s.reducedMotion)}"]`);
   _setToggleActive('[data-action="set-fitness-goal"]',`[data-goal="${s.fitnessGoal || 'hybrid'}"]`);
   _setToggleActive('[data-action="set-weight-goal"]',`[data-weight-goal="${s.weightGoal || 'maintain'}"]`);
   _setToggleActive('[data-action="set-fitness-level"]',`[data-level="${s.fitnessLevel || 'intermediate'}"]`);
@@ -683,6 +685,23 @@ export function setPalette(id) {
   applyPalette(document.documentElement, palette);
   _setToggleActive('[data-action="set-palette"]', `[data-palette="${palette}"]`);
   showToast(`${palette.charAt(0).toUpperCase() + palette.slice(1)} palette`);
+}
+
+/**
+ * Accessibility preference for decorative motion. `system` follows the OS;
+ * `reduce`/`full` override it. Applies immediately and persists.
+ * @param {'system'|'reduce'|'full'} value
+ */
+export function setReducedMotion(value) {
+  const appState = _ensureSettings();
+  const pref = normalizeMotionPreference(value);
+  appState.settings.reducedMotion = pref;
+  saveStateToLocalStorage(true);
+  const effective = applyMotionPreference(pref);
+  _setToggleActive('[data-action="set-reduced-motion"]', `[data-motion="${pref}"]`);
+  showToast(pref === 'system'
+    ? `Motion follows your device (${effective === 'reduce' ? 'reduced' : 'full'})`
+    : (pref === 'reduce' ? 'Reduced motion on' : 'Full motion on'));
 }
 
 export function setDistanceUnit(unit) {
@@ -1738,6 +1757,15 @@ export function applySettingsOnBoot(appState) {
   });
   _applyTheme(s.theme || 'dark');
   applyPalette(document.documentElement, s.palette);
+  const motionPref = normalizeMotionPreference(s.reducedMotion);
+  applyMotionPreference(motionPref);
+  if (motionPref === 'system') {
+    window.matchMedia?.('(prefers-reduced-motion: reduce)').addEventListener('change', () => {
+      if (normalizeMotionPreference(_getState?.()?.settings?.reducedMotion) === 'system') {
+        applyMotionPreference('system');
+      }
+    });
+  }
 
   // Re-apply system theme if OS preference changes at runtime
   if (s.theme === 'system') {

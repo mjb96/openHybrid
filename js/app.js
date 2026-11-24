@@ -82,7 +82,7 @@ import { initOnboarding, shouldShowOnboarding, startOnboarding, handleOnboarding
 import {
   initSettings, openSettings, closeSettings,
   saveName, saveBodyWeight, setWeightUnit,
-  setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, stepCurrentWeek, setAutoAdvanceWeek,
+  setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, setReducedMotion, stepCurrentWeek, setAutoAdvanceWeek,
   exportData, exportTrainingContext, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
   triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule, toggleHybridTraining,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
@@ -1863,6 +1863,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'set-unit') setWeightUnit(target.getAttribute('data-unit'));
   else if (action === 'set-dist-unit') setDistanceUnit(target.getAttribute('data-unit'));
   else if (action === 'set-theme')    setTheme(target.getAttribute('data-theme-val'));
+  else if (action === 'set-reduced-motion') setReducedMotion(target.getAttribute('data-motion'));
   else if (action === 'set-palette')  setPalette(target.getAttribute('data-palette'));
   else if (action === 'rest-preset') applyRestPreset(target.getAttribute('data-preset'));
   else if (action === 'reset-rest-overrides') resetRestOverrides();

@@ -77,6 +77,8 @@ export const SETTINGS_REGISTRY = Object.freeze([
   { key: 'rateGoal', label: 'Weight rate goal', type: 'number', group: 'health', default: null, keywords: ['goal', 'rate', 'bodyweight'] },
 
   { key: 'theme', label: 'Theme', type: 'select', group: 'appearance', default: 'dark', keywords: ['light', 'dark', 'system'] },
+  { key: 'reducedMotion', label: 'Motion', type: 'select', group: 'appearance', default: 'system', keywords: ['reduced motion', 'animation', 'accessibility'] },
+
   { key: 'palette', label: 'Palette', type: 'select', group: 'appearance', default: 'midnight', keywords: ['colour', 'color'] },
   { key: 'hybridTraining', label: 'Hybrid training', type: 'toggle', group: 'training', default: true, keywords: ['running', 'strength', 'balance'] },
   { key: 'modules', label: 'Modules', type: 'object', group: 'training', default: {}, keywords: ['running', 'fasting', 'health', 'recovery'] },
