@@ -5580,3 +5580,17 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     excluded, filename date.
   - **Phase 6 remains ACTIVE for L14 (Android live activity), S10 (widgets) and
     S2 (adaptive trainer).**
+
+- **2026-11-24 — Phase 6: S2 adaptive trainer landed; only native surfaces remain.**
+  - **Onboarding now asks for a typical session length** (30/45/60/75+ min). The
+    starter recommender uses it and the existing weekly-frequency answer, so a
+    6-day 75-minute block cannot lead for a 3–4 day 30-minute athlete. The
+    category filter still comes from the goal, so time cannot hand an endurance
+    athlete a powerlifting plan.
+  - **Adaptation stays explicit.** Working loads adjust through the cockpit's
+    per-lift diagnostics; deloads and progression shapes are visible edits with
+    Undo. Nothing silently rewrites the plan or logged training. S2 is DONE.
+  - **Phase 6 remains ACTIVE only for L14 (Android live activity) and S10
+    (widgets)** — both native, device-checklist work.
+  - Tests: the recommender's frequency/session-length ranking; existing engine,
+    progression, deload and Undo coverage remains green; browser suite unchanged.
