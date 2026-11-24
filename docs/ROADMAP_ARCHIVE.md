@@ -5621,6 +5621,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     CP6's native leftovers move to H8.
   - No product code changed. **H0 — verify and audit** is next.
 
+- **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
+  - `workout/session-preview.js` is now the one resolver shared by Train and
+    Home: it reads the same `liftTarget` and dated history the cockpit uses.
+  - The ready card shows up to three lifts with target and last-time numbers;
+    the collapsed row carries a compact `Lift 2×8 · last 100 kg × 5` line.
+  - `home-today-browser-check` covers 320/390/412 px light/dark, the compact
+    and expanded preview, and keeps the one-primary-action contract.
+  - Remaining H-F2: moving a planned day (HM2).
+
 - **2026-11-24 — H0 verified: three audits, two inventories, and the P0 findings.**
   - All 47 C/D/D.2/E rows resolved to DONE/PARTIAL/MISSING with owners and
     evidence. ST1 is recorded in §14.7 and PG1's 22-entry destination map in
@@ -5632,3 +5641,6 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     with these before the registry.
   - No product code changed in H0. The audit found no untested metric
     calculation; the gaps are missing features, dead surfaces and navigation.
+
+> Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+

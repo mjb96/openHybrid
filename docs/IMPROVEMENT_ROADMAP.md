@@ -962,13 +962,13 @@ or corrects it.
 | ST2 | **Declarative settings registry** | new `js/settings/registry.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | MISSING | No per-setting metadata exists; `settings/nav.js` maps card labels to five tabs only. Screens are hand-written HTML and handlers. |
 | ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search now marks the exact matching row and scrolls it into the panel viewport; registry keywords are not wired yet, and Settings remains 2 taps deep (search is tap 3). |
 | ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | MISSING | Only Settings entry is the Home avatar; no gear from logger/Progress/Plans/Measures. Muscle priorities wrongly say "set in Settings". |
-| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable; equipmentTier, frequency, session length and focus are not. Equipment answer is reverted on boot (S-F1); bodyweight is duplicated (S-F2). |
-| ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. Unit switch relabels stored history (S-F4). |
+| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable. The equipment answer now writes through `applyActiveEquipment` and survives boot (S-F1), and both bodyweight readers use `latestWeighIn` (S-F2). Equipment tier, frequency, session length, focus and height are still not editable; Profile still needs a bodyweight link. |
+| ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist. The JSON export now says progress photos are device-local and outside the file, pointing to Measures → Export photos. No manual last-backup timestamp yet. |
 | ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | Two deliberate confirmations now name the losses; cancelling the second preserves state. Reset and delete-all are still one action with no per-domain choice. |
-| ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist; the master switch reads OS permission and stores nothing (S-F5); no planned-day preference. Delivery is G5. |
+| ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist. The master switch is now `settings.notificationsEnabled` and survives reload (S-F5); no planned-day preference yet. Delivery is G5. |
 
 ### 14.5 Data rules
 
@@ -1062,11 +1062,11 @@ P0 and must be closed before H1's acceptance is claimed.
 
 | ID | Finding | Evidence | Severity | Target |
 | --- | --- | --- | --- | --- |
-| S-F1 | The onboarding equipment answer is destroyed on the next launch: onboarding writes the legacy projection but never the equipment profile, and boot reprojects the profile over it. A home athlete is then recommended barbell plans as "equipment you have". | `js/onboarding.js` equipment write; `js/state.js` boot `ensureEquipmentProfiles` + `projectActiveEquipmentProfile`; reproduced headlessly | **P0** | H1 / ST5; add a boot-path test |
-| S-F2 | `defaultBodyWeight` and `bodyWeightLog` are two stores of one fact. A back-dated weigh-in after today's entry makes `currentBodyweight()` return the older weight, so bodyweight/assisted sets load against a stale value. | `js/workout/set-mutations.js` reverse scan; `js/settings.js` last-entry read; `normalizeWeighIns` already sorts | **P0** | H1 / ST5; route both readers through `normalizeWeighIns` |
+| S-F1 | **Fixed 24 Nov (#319):** onboarding now writes its equipment answer through `applyActiveEquipment`, so boot reprojects the profile without reverting it. | `equipment-profiles.js`, `onboarding.js`, `tests/equipment_profiles.test.js` | Resolved | H1 / ST5 |
+| S-F2 | **Fixed 24 Nov (#319):** both readers use `latestWeighIn`, which orders by date and still accepts legacy undated readings. Back-dated entries no longer become current. | `metrics/bodyweight.js`, `workout/set-mutations.js`, `settings.js`, `tests/bodyweight_current.test.js` | Resolved | H1 / ST5 |
 | S-F3 | "Week starts on" already splits the app: Home/History/bodyweight honour Sunday, every Progress analytic and `startOfProgramWeek` hardcodes Monday, and changing it refreshes nothing. | `js/analytics/weekly-aggregate.js`, `pulse.js`, `muscles.js`, `hybrid-balance.js`, `dates.js`; no refresh dispatch | **P1** | H1 / ST7; one calendar-week owner + tests |
-| S-F4 | The weight unit is not display-only. Switching kg→lbs keeps every stored number and relabels it, so a 100 kg squat reads as 100 lb. | `js/settings.js` `setWeightUnit`; `tests/volume_format.test.js` pins "labels, never converts" | **P0 decision** | H1 / ST6; choose convert-on-switch or lock-the-unit, with a backup path |
-| S-F5 | The notification master switch is a dead toggle: it reads OS permission, stores no preference, and reads ON again after reload. | `index.html` Workout Reminder; `js/settings.js` permission read; `js/app.js` cancel handler | **P1** | H1 / ST11; persist a real preference and test reload |
+| S-F4 | **Fixed 24 Nov (#321):** the kg↔lb switch converts stored sets, bodyweight, goals, PR targets and prescriptions after a confirmation and a localStorage recovery copy. Canonical display-only units remain a later migration. | `metrics/weight-unit.js`, `settings.js`, `settings-nav-browser-check.mjs` | Resolved | H1 / ST6 |
+| S-F5 | **Fixed 24 Nov (#319):** `settings.notificationsEnabled` is the persisted master switch; a granted OS permission alone never arms reminders, and switching off cancels the native alarm. | `state.js`, `notifications.js`, `settings.js`, `tests/notifications.test.js` | Resolved | H1 / ST11 |
 
 ## 15. Home (H2)
 
@@ -1437,6 +1437,13 @@ device timing it did not measure.
   - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
     search/stall; PG6 a real Records table/feed; PG9’s remaining overview
     concision and scannability test.
+- **2026-11-24 — H1 P0 closed: #319 and #321 merged.**
+  - Onboarding equipment now survives boot; back-dated weigh-ins no longer
+    become current; the notification master switch persists.
+  - The kg↔lb switch converts stored sets, bodyweight, goals, PR targets and
+    prescriptions after a confirmation and a localStorage recovery copy.
+  - S-F1, S-F2, S-F4 and S-F5 are Resolved. ST5/ST6/ST11 remain PARTIAL for the
+    wider Profile and Units work, not these defects.
 
 - **2026-11-24 — H1 ST10: destructive reset gets a second gate.**
   - Reset now asks twice, with the second dialog naming exactly what is deleted
@@ -1501,13 +1508,5 @@ device timing it did not measure.
   - Still PARTIAL: the card links to the legacy Strength screen until the
     Progress restructure (PG3/PG5) owns that evidence.
 
-- **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
-  - `workout/session-preview.js` is now the one resolver shared by Train and
-    Home: it reads the same `liftTarget` and dated history the cockpit uses.
-  - The ready card shows up to three lifts with target and last-time numbers;
-    the collapsed row carries a compact `Lift 2×8 · last 100 kg × 5` line.
-  - `home-today-browser-check` covers 320/390/412 px light/dark, the compact
-    and expanded preview, and keeps the one-primary-action contract.
-  - Remaining H-F2: moving a planned day (HM2).
-
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+
