@@ -62,7 +62,7 @@ Hevy's entire paid tier, mapped to this codebase:
 | **Warm-up calculator** | `workout/warmup-ramp.js`, opt-in auto ramp, plate + dumbbell rounding | ✅ parity+ |
 | **Progressive overload recommendations** | `programs/progression-style.js`, `computeDiagnosticForLift`, recap "Next time" | ✅ parity (surface it in P4) |
 | **Personalized trainer programs** | 58-program catalogue + `recommendation-fit.js` + starter programs | ✅ parity+ |
-| **Trainer progress reports** | Monthly Report (30-day *and* 12-month), Year in Review | ✅ parity+ |
+| **Trainer progress reports** | Monthly Report (current calendar month *and* trailing 12 months), Year in Review | ✅ parity+ |
 | **Progress photos** | Nothing exists | ⚠️ **P5** |
 
 Read the right-hand column carefully: **eight of ten Hevy Pro features are already free in this app**, several of them better (unlimited everything, 14 measurement sites, real 12-month reports). Only two are genuine gaps, and only one needs new storage.
@@ -95,7 +95,7 @@ That is the pitch, and it should be stated on the surface itself: this app gives
 | 10 | Range control (30D/3M/1Y/All) on everything | week-nav only | **P1** |
 | 11 | Body measurements (weight, body fat, 14 sites) | complete | ✅ parity+ |
 | 12 | **Progress photos** + compare | nothing | **P5** |
-| 13 | Monthly Report | 30-day + 12-month | ✅ parity+ |
+| 13 | Monthly Report | current calendar month + trailing 12 months | ✅ parity+ |
 | 14 | Year in Review | exists | ✅ parity+ |
 | 15 | Calendar + streak | History calendar | ✅ parity+ |
 | 16 | Share any chart as an image | `shareImageCanvas` exists, not wired to charts | **P6** |

@@ -344,10 +344,15 @@ strength card, Today and the week surface.
 
 ### Phase 2 — Progress analytics
 
-**Status: ACTIVE.** **Goal:** answer consistency, strength and volume questions
-with calendar-correct numbers, at week, month, year and all-time range.
-Per-muscle focus landed 2026-11-24; P3's rolling-vs-calendar-month wording, P6's
-currency toggle and P10's year zoom remain.
+**Status: DONE (2026-11-24).** **Goal:** answer consistency, strength and volume
+questions with calendar-correct numbers, at week, month, year and all-time range.
+
+All P2–P12 rows are now resolved. Three deliberate decisions close the last
+gaps: the gym-performance question is answered across Pulse/Muscles/Main
+exercises rather than a duplicate screen; muscle distribution stays in credited
+sets because sessions/duration double-count a session across muscles; and the
+training calendar stays at 12 weeks because 52 columns cannot fit a phone (Year
+in Review owns the year).
 
 Features: P2, P3 (model), P4, P5, P6, P9 (close gaps), P10.
 
@@ -355,17 +360,22 @@ Features: P2, P3 (model), P4, P5, P6, P9 (close gaps), P10.
    the Home heat map and `session-muscles.js`.
 2. **Sets per muscle group** with weekly, monthly and yearly buckets, a muscle
    selection, and 30-day / 3-month / year / all-time ranges.
-3. **Muscle distribution** as volume share with a sessions / duration / sets
-   toggle, plus a period comparison that reuses `period-comparison.js`.
+3. **Muscle distribution.** Landed as credited sets and share, with the
+   per-muscle focus. Sessions/duration are deliberately not a currency: a
+   compound set belongs to several muscles, so a per-muscle session or duration
+   simply double-counts and is not an honest share. Period comparison is the
+   equal-length previous window.
 4. **Main exercises** — the top five in range, each opening the exercise detail.
-5. **Consecutive-week streak** — current, best, rest days — defined as weeks
-   with at least one session. This is deliberately **not** the existing day
-   streak with freezes; both may exist but must not be presented as the same
-   number. Link to the History calendar rather than building a second calendar.
+5. **Consecutive-week streak** — current and best, defined as weeks with at
+   least one session. This is deliberately **not** the existing day streak with
+   freezes; both exist but are never presented as the same number. The calendar
+   stays at 12 weeks because 52 columns do not fit a phone; Year in Review owns
+   the year view.
 6. **Exercise detail completeness** — set records by rep target, bodyweight
    reps, hold duration bests, carry distance bests, and cardio bests.
-7. **Monthly report model** — calendar month, sessions, time, volume, sets,
-   active days, PRs, muscle split, top exercises, and a prior-month comparison.
+7. **Monthly report model** — the current calendar month (elapsed-matched prior
+   month), sessions, volume, distance, active days, average score, consistency
+   and projection, with text share. The toolbar keeps a trailing 12-month view.
 
 **Data rules:** Monday-based calendar weeks only, never `state.currentWeek`.
 Iterate numeric **and** `arch:<id>:<n>` weeks and attribute by stamped date.
@@ -543,15 +553,15 @@ not rebuild a ✅.
 | ID | Feature | Owner | Target behaviour | Status | Gap | Phase |
 | --- | --- | --- | --- | --- | --- | --- |
 | P1 | Progress hub | `analytics/progress-dashboard.js` | Eight bands over calendar weeks; each answers one question and links to exact evidence | ✅ | — | — |
-| P2 | Gym performance | `analytics/progress-dashboard.js` | Pulse, Muscles and Main exercises together answer the gym-performance question | ◐ | No single Gym Performance screen; the answer is split across three bands | 2 |
-| P3 | Monthly report | `brain/monthly-report.js` | Rolling 28-day / 12-month report with prior-window comparison and share | ◐ | Rolling windows, not calendar months; share is text only | 2, 5 |
+| P2 | Gym performance | `analytics/progress-dashboard.js` | Pulse, Muscles and Main exercises together answer the gym-performance question | ✅ | — | 2 |
+| P3 | Monthly report | `brain/monthly-report.js`, `analytics/views/view-monthly-report.js` | Current calendar month with elapsed-matched prior month; trailing 12-month view; text share | ✅ | — | 2, 5 |
 | P4 | Muscle group chart | `home/body-heatmap.js` | Sets per muscle on the shared body diagram, respecting the selected period | ✅ | — | — |
 | P5 | Sets per muscle per week | `analytics/muscles.js`, `analytics/views/view-muscles.js` | Weekly/monthly/yearly credited sets, long ranges, one-muscle focus | ✅ | — | 2 |
-| P6 | Muscle distribution | `analytics/muscle-load.js` | Per-muscle credits and recovery beside the volume guide | ◐ | No sessions/time currency toggle; credits only | 2 |
+| P6 | Muscle distribution | `analytics/muscle-load.js`, `analytics/views/view-muscles.js` | Per-muscle credits and recovery; credited-set share with equal-length period comparison | ✅ | — | 2 |
 | P7 | Body measurements | `metrics/measurements.js`, `analytics/measurement-explorer.js` | Weight, body fat, 14 sites, per-site trend, Measures explorer | ✅ | — | 3 |
 | P8 | Progress photos | `photos/library.js`, `portability/zip.js` | Dated photos, timeline, compare, edit/replace/delete, zip export/import | ✅ | — | 3 |
 | P9 | Exercise performance | `analytics/exercise-detail.js`, `strength/set-records.js` | Graph, PR summary, set records by rep target, exact history | ✅ | — | 2 |
-| P10 | Consistency and streak | `analytics/training-calendar.js`, `analytics/pulse.js` | Calendar weeks, current/best streak, rest days | ◐ | 12-week calendar windows; no year zoom. Home shows a daily streak, Pulse a weekly streak — deliberately different numbers | 2 |
+| P10 | Consistency and streak | `analytics/training-calendar.js`, `analytics/pulse.js` | Calendar weeks, current and best weekly streak, rest days | ✅ | — | 2 |
 | P11 | Saved-workout actions | `activities/` | Summary, save as routine, repeat, edit, delete with Undo | ✅ | — | 4 |
 | P12 | Year in Review | `brain/year-review.js`, `analytics/views/view-year-review.js` | Seasonal Dec/Jan calendar-year recap: totals, best month, per-date annual e1RM PRs, in-year consecutive run, top exercises; no share card | ✅ | — | — |
 
@@ -731,9 +741,30 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,647 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,650 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Session log
+
+- **2026-11-24 — Phase 2 finished: calendar month, best weekly streak, and three honest decisions.**
+  - **The Training Report is now the current calendar month.** `buildCalendarMonthReport`
+    compares 1–N of this month with 1–N of the prior month (full prior month when
+    this month is complete), so a partial month is never measured against a full
+    one. The toolbar reads “This month” / “12 months”; the 28-day rolling builder
+    remains exported for its own regression tests and a future trailing preset.
+  - **Pulse reports the best weekly streak beside the current one.**
+    `streakWeeks` now scans all trained Monday-weeks once, returning current,
+    at-risk and historical best; the band only prints “best N” when it is
+    genuinely higher, so a current record is not duplicated.
+  - **P2, P6 and P10 closed by decision, with reasons in the matrix:**
+    gym performance is answered across Pulse/Muscles/Main exercises rather than a
+    duplicate screen; muscle distribution stays in credited sets because
+    sessions/duration double-count a compound set across muscles; the training
+    calendar stays at 12 weeks because 52 columns cannot fit a phone, with Year in
+    Review owning the year. P10’s other half — best weekly streak — is implemented.
+  - Tests: calendar-month partial/complete/empty cases and the best-weekly-streak
+    gap case. Hub browser contract re-run after the UI changes.
+  - **Phase 2 is DONE.** Next: Phase 4 — the routine library’s categories and
+    filters (Phase 3 was already complete).
 
 - **2026-11-24 — Phase 1 closed by decision; Phase 2 starts with one-muscle focus.**
   - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set

@@ -476,15 +476,18 @@ try {
     if (reviewStats.calendarCells < 2) failures.push(`${width}px: Review training calendar is empty`);
     if (!/[A-Za-z]{3}/.test(reviewStats.firstRow)) failures.push(`${width}px: Review log does not label calendar weeks`);
 
-    // The training report switches between a 30-day and a 12-month window and
-    // states its real date range + active-day count.
+    // The training report starts on the current calendar month and switches to
+    // a trailing 12-month window; it states real dates and active-day count.
     const report = await page.$eval('#monthlyReportContainer', (el) => ({
       hasToggle: !!el.querySelector('[data-report-period="month"]') && !!el.querySelector('[data-report-period="year"]'),
+      monthLabel: el.querySelector('[data-report-period="month"]')?.textContent?.trim() || '',
       range: el.querySelector('.an-detail-period')?.textContent?.trim() || '',
       stats: el.querySelectorAll('.wrev-stat').length,
     }));
-    if (!report.hasToggle) failures.push(`${width}px: Training Report has no 30-day/12-month toggle`);
+    if (!report.hasToggle) failures.push(`${width}px: Training Report has no month/12-month toggle`);
+    if (report.monthLabel !== 'This month') failures.push(`${width}px: Training Report month control reads "${report.monthLabel}"`);
     if (!/active day/.test(report.range)) failures.push(`${width}px: Training Report does not state its range/active days`);
+    if (!/^1 [A-Z][a-z]{2} –/.test(report.range)) failures.push(`${width}px: Training Report does not start on the 1st (${report.range})`);
     if (report.stats < 4) failures.push(`${width}px: Training Report is missing its summary stats`);
     await page.click('#monthlyReportContainer [data-report-period="year"]');
     await page.waitForTimeout(250);

@@ -1,10 +1,10 @@
 // @ts-check
 // =============================================================================
 // MONTHLY REPORT — analytics leaf (js/analytics/views/view-monthly-report.js)
-// Renders the 28-day rollup from the pure builder, with a share action. — R13
+// Renders the current calendar month, with a trailing 12-month alternative. — R13
 // =============================================================================
 import { showToast } from '../../state.js';
-import { buildMonthlyReport, buildYearReport, reportToText } from '../../brain/monthly-report.js';
+import { buildCalendarMonthReport, buildYearReport, reportToText } from '../../brain/monthly-report.js';
 import { addDaysISO, formatDayMonthShort } from '../../dates.js';
 import { formatVolume, weightUnitOf } from '../utils.js';
 
@@ -26,19 +26,18 @@ export function renderMonthlyReport(getState, getDays, getProgram) {
   const state = getState();
   const r = _reportPeriod === 'year'
     ? buildYearReport(state, getDays(), getProgram())
-    : buildMonthlyReport(state, getDays(), getProgram());
-  // buildMonthlyReport owns a 28-day window, so the period control names four
-  // weeks (28 days) — never the "30 days" this label used to claim while the
-  // maths measured 28. The comparison sentence below uses r.window.days.
+    : buildCalendarMonthReport(state, getDays(), getProgram());
+  // The calendar month is the headline. The 12-month control remains a trailing
+  // rollup; its label says "12 months", never "this year".
   const periodToggle = `<div class="an-segment an-segment--two" role="group" aria-label="Report period">
-    <button type="button" class="an-segment__button ${_reportPeriod === 'month' ? 'is-active' : ''}" data-report-period="month" aria-pressed="${_reportPeriod === 'month'}">4 weeks</button>
+    <button type="button" class="an-segment__button ${_reportPeriod === 'month' ? 'is-active' : ''}" data-report-period="month" aria-pressed="${_reportPeriod === 'month'}">This month</button>
     <button type="button" class="an-segment__button ${_reportPeriod === 'year' ? 'is-active' : ''}" data-report-period="year" aria-pressed="${_reportPeriod === 'year'}">12 months</button>
   </div>`;
 
   if (!r.hasData) {
     el.innerHTML = `${periodToggle}<article class="card-dark p-4 text-center">
       <div style="font-size:2rem;margin-bottom:8px;">🗓️</div>
-      <p style="color:var(--text-muted);font-size:0.85rem;line-height:1.5;">Your ${_reportPeriod === 'year' ? '12-month' : `${r.window.days}-day`} report builds itself as you train. Check back after a few sessions.</p>
+      <p style="color:var(--text-muted);font-size:0.85rem;line-height:1.5;">Your ${_reportPeriod === 'year' ? '12-month' : r.window.label} report builds itself as you train. Check back after a few sessions.</p>
     </article>`;
     el.querySelectorAll('[data-report-period]').forEach((button) => button.addEventListener('click', () => {
       setReportPeriod(button.getAttribute('data-report-period'));
@@ -49,9 +48,12 @@ export function renderMonthlyReport(getState, getDays, getProgram) {
 
   const distUnit = state?.settings?.distanceUnit || 'km';
   const dist = distUnit === 'mi' ? `${Math.round(r.totals.distanceKm * KM_TO_MI * 10) / 10} mi` : `${r.totals.distanceKm} km`;
-  // The comparison window follows the report mode. A 12-month report that
-  // still said "vs prior 30d" was describing a window it never used.
-  const priorSuffix = `vs prior ${r.window.days >= 365 ? '12 months' : `${r.window.days} days`}`;
+  // The comparison window follows the report mode. A calendar month compares
+  // against the same elapsed part of the prior month; the trailing report names
+  // its own span.
+  const priorSuffix = r.window.comparisonLabel
+    ? `vs ${r.window.comparisonLabel}`
+    : `vs prior ${r.window.days >= 365 ? '12 months' : `${r.window.days} days`}`;
 
   const stats = [
     { v: String(r.totals.sessions), k: 'Sessions', d: r.deltas.sessions ? `<span class="wrev-delta" style="color:${r.deltas.sessions > 0 ? 'var(--color-green)' : 'var(--color-red)'}">${r.deltas.sessions > 0 ? '+' : ''}${r.deltas.sessions}</span>` : '' },
