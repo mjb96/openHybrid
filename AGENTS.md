@@ -98,6 +98,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   the stored value untouched on invalid input. `tests/settings_wiring.test.js`
   ratchets the STATIC settings input/select/textarea ids to a handler (not
   buttons or JS-rendered controls); add a real handler rather than a sixth tab.
+  `settings.notificationsEnabled` is the persisted master reminder preference:
+  a granted OS permission alone never arms a reminder, and switching it off
+  cancels the native alarm (S-F5).
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can
@@ -396,6 +399,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `activeEquipmentProfileId`. `settings.equipment` / `settings.bandWeights` are
   the active profile's projection and remain the fields every other caller
   reads; always update through the helpers rather than writing them directly.
+  Onboarding's equipment answer goes through `applyActiveEquipment`, because
+  writing only the projection is reverted by boot's `projectActiveEquipmentProfile`
+  (S-F1).
   `plateSetup` stores `{ kg: { bar, plates[], counts{} }, lb: { … } }` per
   profile. `counts` is optional pairs per size; absent means unlimited.
   `getActivePlateSetup(state, unit)` feeds `plateHint(total, unit, setup)`, which

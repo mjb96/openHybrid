@@ -23,6 +23,7 @@ import { applyBandLoad, applyLoadMode, bandRole, resolvedLoadMode } from './load
 import {
   defaultBasisForExercise, nextBasis, normalizeBasis,
 } from './load-basis.js';
+import { latestWeighIn } from '../metrics/bodyweight.js';
 import { effortForSet, normalizeEffortRir } from './effort.js';
 import { getExerciseRestOverride, setExerciseRestOverride } from './exercise-config.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
@@ -313,11 +314,10 @@ export function cycleSetType(liftName, setIndex) {
 
 /** The latest athlete-supplied body weight, or null. Never fabricate a default. */
 export function currentBodyweight(appState) {
-  const log = appState.bodyWeightLog || [];
-  for (let index = log.length - 1; index >= 0; index -= 1) {
-    const weight = parseFloat(log[index]?.weight);
-    if (Number.isFinite(weight) && weight > 0) return weight;
-  }
+  // Date order, not array order: a back-dated weigh-in appended after today's
+  // is history, not the current body weight (S-F2).
+  const latest = latestWeighIn(appState.bodyWeightLog || []);
+  if (latest) return latest.weight;
   const defaultWeight = parseFloat(appState.settings?.defaultBodyWeight);
   if (Number.isFinite(defaultWeight) && defaultWeight > 0) return defaultWeight;
   return null;

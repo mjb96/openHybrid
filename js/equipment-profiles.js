@@ -296,6 +296,26 @@ export function projectActiveEquipmentProfile(state) {
 }
 
 /**
+ * Apply an onboarding equipment answer to the ACTIVE profile and keep the
+ * legacy projection in sync. Onboarding must never write `settings.equipment`
+ * alone: boot reprojects the profile over it, which silently reverted a home
+ * athlete to a full gym on the next launch.
+ * @param {any} state
+ * @param {Record<string, boolean>} equipment
+ */
+export function applyActiveEquipment(state, equipment) {
+  const profile = getActiveEquipmentProfile(state);
+  const next = { ...profile.equipment };
+  for (const key of EQUIPMENT_KEYS) {
+    if (Object.hasOwn(equipment || {}, key)) next[key] = !!equipment[key];
+  }
+  profile.equipment = next;
+  const settings = ensureSettings(state);
+  settings.equipment = { ...next };
+  return profile;
+}
+
+/**
  * @param {any} state
  * @param {string} id
  * @returns {boolean} true when the id exists and became active
