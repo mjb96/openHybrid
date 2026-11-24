@@ -5561,3 +5561,22 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     Training Report and Year in Review PNGs, and asserts their filenames at
     320/390/412.
   - **Phase 5 is DONE.** Next: Phase 6 — platform and intelligence.
+
+- **2026-11-24 — Phase 6 starts: a compact training context, not a connector.**
+  - **Settings → Data → Export Training Context (JSON).** The file carries the
+    athlete's stated goals/settings, the active plan at its current week (using
+    the same `liftTarget` as the cockpit), the last eight weeks of weekly totals
+    and up to 24 dated training days with exact completed sets/runs. It has a
+    format and version, and is deliberately not a backup.
+  - **Privacy is the shape of the file.** No name, session/exercise notes,
+    links, GPS routes, photos, body tape/body fat or Health Connect records are
+    read into it. The unit is labelled; a bodyweight read is included only as
+    the latest weigh-in.
+  - **The return path already exists.** Plans → Import plan (.json) accepts a
+    plan produced externally; no OAuth, hosted service, connector or new network
+    surface was added. S3/S4 are DONE.
+  - Tests: goals/plan week, exact sets/runs, notes/routes/photos/health absent,
+    24-session cap with an honest omission count, undated/out-of-window sessions
+    excluded, filename date.
+  - **Phase 6 remains ACTIVE for L14 (Android live activity), S10 (widgets) and
+    S2 (adaptive trainer).**

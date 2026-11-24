@@ -1081,7 +1081,7 @@ first.
 | HM4 | One strength insight | `home/dashboard-model.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | PARTIAL | Exactly one insight, but it is fasting/load/readiness/streak/bodyweight-driven, not strength-derived, and it is not deload-aware; it can contradict the safety card. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | PARTIAL | Ready/rest/in-progress/completed/unresolved/no-plan/offline-note/past-week empty exist; no explicit first-run state and offline is only a note. |
-| HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | PARTIAL | Proven 20% rail vs 100% coach-line plan-done contradiction; readiness and weekly volume are also duplicated; no duplicate-metric guard. |
+| HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | PARTIAL | The rail/coach plan-done contradiction is fixed: the coach line now counts planned sessions (`planDone`/`planTotal`) like the rail, while the Hybrid Score keeps its set-based consistency. Readiness and weekly volume still have two surfaces; no duplicate-metric guard yet. |
 
 **Acceptance:** Home answers "what should I do today?" without scrolling; no
 metric appears twice; hybrid cards stay hidden when Hybrid training is off;
@@ -1215,7 +1215,7 @@ hub entry links to it (legacy deep link only).
 
 | ID | Finding | Evidence | Severity | Target |
 | --- | --- | --- | --- | --- |
-| H-F1 | Home states two contradictory "week plan done" figures: the rail counts planned days (20%), the coach line counts completed stored set rows (100%). The same consistency value feeds the Hybrid Score pillar. | `week-strip.js`, `dashboard-model.js` `consistencyPct`; one fixture proves 20% vs 100% | **P0** | H2 / HM7 |
+| H-F1 | **Fixed 24 Nov:** the rail and coach line now both count planned sessions (`planDone`/`planTotal`). The set-based `consistencyPct` remains only for the Hybrid Score pillar, not the "plan done" copy. | `dashboard-model.js` `planPct`, `tests/dashboard_model.test.js` | Resolved | H2 / HM7 |
 | H-F2 | Home still cannot move a planned day: no reschedule control, attribution change or Undo. The lift preview part of this finding is fixed by HM1. | no reschedule action in `js/` | **P1** | H2 / HM2 |
 | H-F3 | The single insight is not strength-derived and is not deload/overtraining-aware; it can cheer "primed for a hard session" beside the overtraining card. | `dashboard-model.js` `pickTopInsight` priority list | **P1** | H2 / HM4 |
 | H-F4 | Quick actions are Weight / Run / History, not empty workout / log a past session / one contextual action. | `index.html`, `home.js` quick-action block | P2 | H2 / HM5 |
@@ -1407,6 +1407,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H2 HM7: the plan-done copy counts sessions, not set rows.**
+  - The week rail said "1/5 done" while the coach line said "100% of this
+    week's plan done" from completed stored set rows. The coach line now uses
+    `planDone`/`planTotal` from the program's planned days, the same unit as the
+    rail; the Hybrid Score keeps the set-based consistency value it needs.
+  - `tests/dashboard_model.test.js` pins a one-of-two-sessions fixture where the
+    set percentage is 100 but the plan line says "1 of 2 planned sessions done".
+  - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
+    is no duplicate-metric guard.
+
 - **2026-11-24 — H1 ST9: the JSON export says what it does not carry.**
   - The Data & Backups card now states that progress photos stay on the device
     and are not inside the JSON file, with the separate Measures → Export photos
@@ -1501,22 +1511,3 @@ device timing it did not measure.
     (widgets)** — both native, device-checklist work.
   - Tests: the recommender's frequency/session-length ranking; existing engine,
     progression, deload and Undo coverage remains green; browser suite unchanged.
-
-- **2026-11-24 — Phase 6 starts: a compact training context, not a connector.**
-  - **Settings → Data → Export Training Context (JSON).** The file carries the
-    athlete's stated goals/settings, the active plan at its current week (using
-    the same `liftTarget` as the cockpit), the last eight weeks of weekly totals
-    and up to 24 dated training days with exact completed sets/runs. It has a
-    format and version, and is deliberately not a backup.
-  - **Privacy is the shape of the file.** No name, session/exercise notes,
-    links, GPS routes, photos, body tape/body fat or Health Connect records are
-    read into it. The unit is labelled; a bodyweight read is included only as
-    the latest weigh-in.
-  - **The return path already exists.** Plans → Import plan (.json) accepts a
-    plan produced externally; no OAuth, hosted service, connector or new network
-    surface was added. S3/S4 are DONE.
-  - Tests: goals/plan week, exact sets/runs, notes/routes/photos/health absent,
-    24-session cap with an honest omission count, undated/out-of-window sessions
-    excluded, filename date.
-  - **Phase 6 remains ACTIVE for L14 (Android live activity), S10 (widgets) and
-    S2 (adaptive trainer).**
