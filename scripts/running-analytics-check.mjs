@@ -277,7 +277,13 @@ try {
   if (powerDetail.points < 100 || powerDetail.evidence < 1 || powerDetail.hasInvalid || powerDetail.overflowing) {
     failures.push('power history detail is incomplete, invalid or overflowing');
   }
-  await powerPage.evaluate(() => navigator.serviceWorker.ready);
+  await powerPage.evaluate(() => Promise.race([
+    navigator.serviceWorker.ready.then(() => true),
+    // `.ready` never settles when registration/install fails, which used to
+    // hang this whole check until the suite's kill timer. Fail with the real
+    // condition instead (for example a sw.js parse error).
+    new Promise((_, reject) => setTimeout(() => reject(new Error('service worker never became ready')), 15000)),
+  ]));
   await powerPage.reload({ waitUntil: 'networkidle' });
   await powerContext.setOffline(true);
   await powerPage.reload({ waitUntil: 'domcontentloaded' });

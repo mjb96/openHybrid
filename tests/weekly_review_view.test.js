@@ -106,6 +106,7 @@ test('a historical week renders no plan adherence bar and no next-week advice', 
   assert.match(html, /6 km/);
   assert.match(html, /wrev-stat__v">2<\/div><div class="wrev-stat__k">Sessions/);
   assert.match(html, /wrev-stat__v">0<\/div><div class="wrev-stat__k">e1RM PR lifts/);
+  assert.match(html, /wrevShareBtn/);
   // … but the active plan and the coming week are not claims about that week.
   assert.doesNotMatch(html, /Plan adherence/);
   assert.doesNotMatch(html, /wrev-bar/);
@@ -130,7 +131,7 @@ test('the Overview tab drops the plan and focus cards for a historical week', ()
   const state = makeState();
   const body = getEl('review-tab-body');
 
-  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: W2 }));
+  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: W2 }), state);
   const past = body.innerHTML;
   assert.match(past, /9–15 Nov/);
   assert.match(past, /logged that week/);
@@ -139,17 +140,18 @@ test('the Overview tab drops the plan and focus cards for a historical week', ()
   assert.doesNotMatch(past, /next week/i);
   assert.doesNotMatch(past, /Hybrid Score/);
 
-  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: W3 }));
+  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: W3 }), state);
   const live = body.innerHTML;
   assert.match(live, /Adherence/);
   assert.match(live, /2\/5 planned/);
   assert.match(live, /next week/i);
+  assert.match(live, /wrevOverviewShareBtn/);
 });
 
 test('an empty historical Overview says so in the past tense', () => {
   const state = makeState();
   const body = getEl('review-tab-body');
-  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: '2026-06-01' }));
+  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: '2026-06-01' }), state);
   assert.match(body.innerHTML, /No training was recorded that week/);
   assert.doesNotMatch(body.innerHTML, /builds itself as you train/);
   assert.doesNotMatch(body.innerHTML, /next week/i);
