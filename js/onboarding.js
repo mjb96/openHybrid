@@ -6,6 +6,7 @@ import { requestNotificationPermission } from './notifications.js';
 import { provisionalScore } from './onboarding/provisional-score.js';
 import { recommendStarterPrograms } from './onboarding/starter-programs.js';
 import { difficultyDisclosure, onboardingSettings } from './onboarding/preferences.js';
+import { normalizeWeightUnit } from './metrics/weight-unit.js';
 import { todayKey } from './dates.js';
 import { completeRecoveryGate } from './state/recovery-gate.js';
 
@@ -237,7 +238,7 @@ function _finish() {
     startProgramActivation(_selectedProgram, appState.currentWeek || 1);
     Object.keys(appState.weeks || {}).forEach(wk => reseedActiveProgramIntoWeek(wk));
   } catch (_) {}
-  appState.settings.weightUnit          = _weightUnit;
+  appState.settings.weightUnit          = normalizeWeightUnit(_weightUnit);
   appState.settings.distanceUnit        = _distUnit;
   Object.assign(appState.settings, onboardingSettings({
     goal: _selectedGoal,
