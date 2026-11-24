@@ -348,33 +348,36 @@ test('the Strength hero spark is anchored on the selected week, like the PR chip
   nav.resetWeekNav();
 });
 
-test('the Training Report labels its real 28-day window, never "30 days"', async () => {
+test('the Training Report names the current calendar month, never "30 days"', async () => {
   const { renderMonthlyReport } = await import('../js/analytics/views/view-monthly-report.js');
   const today = dateKey(new Date());
+  const priorDate = new Date(`${today}T12:00:00`);
+  priorDate.setMonth(priorDate.getMonth() - 1);
   const state = {
     currentWeek: '1',
     settings: { distanceUnit: 'km', weightUnit: 'kg' },
     weeks: {
       '1': { dates: { mon: today }, lifts: { mon: { Squat: [work(100, 5)] } } },
-      // One session in the prior window so the comparison sentence has a value.
-      '2': { dates: { mon: addDaysISO(today, -30) }, lifts: { mon: { Squat: [work(80, 5)] } } },
+      // One session in the same elapsed part of the prior month, so the
+      // comparison sentence has a value to name.
+      '2': { dates: { mon: dateKey(priorDate) }, lifts: { mon: { Squat: [work(80, 5)] } } },
     },
   };
   const el = getEl('monthlyReportContainer');
   assert.doesNotThrow(() => renderMonthlyReport(() => state, () => DAYS, () => null));
   const html = el.innerHTML;
-  assert.match(html, /data-report-period="month"[^>]*>4 weeks</);
+  assert.match(html, /data-report-period="month"[^>]*>This month</);
   assert.match(html, /data-report-period="year"[^>]*>12 months</);
-  // The comparison names the same 28 days the report measured.
-  assert.match(html, /vs prior 28 days/);
+  // The comparison names the prior month, not a made-up 30-day window.
+  assert.match(html, /vs prior month/);
   assert.doesNotMatch(html, /30[- ]day/i);
-  // Real dates come from the shared formatter: "26 Oct – 22 Nov · 1 active day".
+  // Real dates come from the shared formatter: "1 Nov – 24 Nov · 1 active day".
   assert.match(html, /an-detail-period">\d{1,2} [A-Z][a-z]{2} – \d{1,2} [A-Z][a-z]{2} · \d+ active day/);
   assert.doesNotMatch(html, /Invalid Date|\d{4}-\d{2}-\d{2}/);
 
-  // An empty report names the same 28-day window instead of 30.
+  // An empty report still names its calendar month.
   renderMonthlyReport(() => ({ weeks: {} }), () => DAYS, () => null);
   const empty = el.innerHTML;
-  assert.match(empty, /Your 28-day report builds itself as you train/);
+  assert.match(empty, /Your [A-Z][a-z]+ \d{4} report builds itself as you train/);
   assert.doesNotMatch(empty, /30[- ]day/i);
 });

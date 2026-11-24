@@ -79,7 +79,20 @@ function streakWeeks(trainedDates, weekStart, limit = 260) {
     count++;
     cursor = /** @type {string} */ (addDaysISO(cursor, -7));
   }
-  return { weeks: count, atRisk: !currentTrained && count > 0 };
+
+  // The best run of consecutive trained weeks, independent of where today is.
+  // Pulse shows the current streak; this is the number it can be compared with.
+  const trainedWeeks = [...new Set([...trainedDates].map((date) => weekStartOf(date)).filter(Boolean))].sort();
+  let best = 0;
+  let run = 0;
+  let previous = null;
+  for (const start of trainedWeeks) {
+    run = previous && addDaysISO(previous, 7) === start ? run + 1 : 1;
+    if (run > best) best = run;
+    previous = start;
+  }
+
+  return { weeks: count, atRisk: !currentTrained && count > 0, best };
 }
 
 /**
@@ -203,6 +216,7 @@ export function buildPulseModel(state, options = {}) {
     muscles: buildSessionMuscles(weekLifts),
     streakWeeks: streak.weeks,
     streakAtRisk: streak.atRisk,
+    streakBestWeeks: streak.best,
     delta: {
       text: change === 0
         ? `Level with last week at this point`

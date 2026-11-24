@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMonthlyReport, buildYearReport, reportToText } from '../js/brain/monthly-report.js';
+import { buildPeriodReport, buildCalendarMonthReport, buildYearReport, reportToText } from '../js/brain/monthly-report.js';
 import { addDaysISO, dateKey } from '../js/dates.js';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -33,8 +33,8 @@ function makeState(todayISO = TODAY) {
   };
 }
 
-test('buildMonthlyReport: 28-day totals, deltas, score avg + trend', () => {
-  const r = buildMonthlyReport(makeState(), DAYS, null, NOW);
+test('buildPeriodReport: 28-day totals, deltas, score avg + trend', () => {
+  const r = buildPeriodReport(makeState(), DAYS, null, { windowDays: 28, now: NOW });
   assert.equal(r.hasData, true);
   // The window names what it measures: four weeks (28 days), never "30 days".
   assert.equal(r.window.days, 28);
@@ -54,7 +54,7 @@ test('buildMonthlyReport: 28-day totals, deltas, score avg + trend', () => {
 });
 
 test('reportToText: numbers-first monthly copy', () => {
-  const r = buildMonthlyReport(makeState(), DAYS, null, NOW);
+  const r = buildPeriodReport(makeState(), DAYS, null, { windowDays: 28, now: NOW });
   const txt = reportToText(r, 'km');
   assert.match(txt, /Last 4 weeks on openHybrid: 7 sessions/);
   assert.doesNotMatch(txt, /30[- ]day|Last 30 days/i);
@@ -62,7 +62,7 @@ test('reportToText: numbers-first monthly copy', () => {
   // A report with no window at all falls back to a span-free sentence.
   assert.match(reportToText({ hasData: false }), /Your training report will build as you train/);
   // A real empty 28-day report names its own window.
-  const empty = buildMonthlyReport({ weeks: {} }, DAYS, null, NOW);
+  const empty = buildPeriodReport({ weeks: {} }, DAYS, null, { windowDays: 28, now: NOW });
   assert.match(reportToText(empty, 'km'), /Your 28-day report will build as you train/);
 });
 
@@ -85,7 +85,7 @@ test('sessions count strength plus every run, not unique days', () => {
     },
     settings: { distanceUnit: 'km' },
   };
-  const r = buildMonthlyReport(state, DAYS, null, NOW);
+  const r = buildPeriodReport(state, DAYS, null, { windowDays: 28, now: NOW });
   assert.equal(r.totals.sessions, 3, 'one strength + two runs');
   assert.equal(r.totals.activeDays, 1, 'but one calendar day');
 });
@@ -98,7 +98,7 @@ test('buildYearReport covers 12 months and compares the prior year', () => {
     lifts: { mon: { Old: [{ w: '50', r: '10', c: true }] } },
     runs: {},
   };
-  const month = buildMonthlyReport(state, DAYS, null, NOW);
+  const month = buildPeriodReport(state, DAYS, null, { windowDays: 28, now: NOW });
   const year = buildYearReport(state, DAYS, null, NOW);
   assert.equal(month.totals.sessions, 7);
   assert.equal(year.totals.sessions, 13);
@@ -106,4 +106,51 @@ test('buildYearReport covers 12 months and compares the prior year', () => {
   assert.equal(year.window.label, 'Last 12 months');
   assert.equal(year.window.comparisonWord, 'year');
   assert.match(reportToText(year, 'km'), /Last 12 months on openHybrid: 13 sessions/);
+});
+
+test('the calendar-month report compares the same elapsed part of the prior month', () => {
+  const state = {
+    currentWeek: '1',
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: '2026-07-01' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {} },
+      '2': { dates: { tue: '2026-07-02' }, lifts: { tue: { Bench: [{ w: '80', r: '5', c: true }] } }, runs: {} },
+      '3': { dates: { mon: '2026-06-01' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {} },
+      '4': { dates: { tue: '2026-06-02' }, lifts: { tue: { Bench: [{ w: '80', r: '5', c: true }] } }, runs: {} },
+      // Same prior month, but after the 2nd: must not enter an elapsed-matched comparison.
+      '5': { dates: { sat: '2026-06-20' }, lifts: { sat: { Row: [{ w: '60', r: '8', c: true }] } }, runs: {} },
+    },
+  };
+  const r = buildCalendarMonthReport(state, DAYS, null, new Date('2026-07-02T12:00:00+10:00'));
+  assert.equal(r.window.kind, 'calendar-month');
+  assert.equal(r.window.label, 'July 2026');
+  assert.equal(r.window.days, 2);
+  assert.equal(r.window.comparisonLabel, 'prior month to date');
+  assert.equal(r.totals.sessions, 2);
+  assert.equal(r.deltas.sessions, 0, 'two current sessions vs the first two days of June');
+  const text = reportToText(r, 'km');
+  assert.match(text, /July 2026 on openHybrid: 2 sessions/);
+});
+
+test('a complete calendar month compares against the whole prior month', () => {
+  const state = {
+    currentWeek: '1',
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      '1': { dates: { mon: '2026-07-01' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {} },
+      '2': { dates: { mon: '2026-06-01' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {} },
+      '3': { dates: { tue: '2026-06-30' }, lifts: { tue: { Bench: [{ w: '80', r: '5', c: true }] } }, runs: {} },
+    },
+  };
+  const r = buildCalendarMonthReport(state, DAYS, null, new Date('2026-07-31T12:00:00+10:00'));
+  assert.equal(r.window.days, 31);
+  assert.equal(r.window.comparisonLabel, 'prior month');
+  assert.equal(r.totals.sessions, 1);
+  assert.equal(r.deltas.sessions, -1, 'July has one session; June has two');
+});
+
+test('the calendar-month report names its month even when empty', () => {
+  const r = buildCalendarMonthReport({ weeks: {} }, DAYS, null, new Date('2026-07-02T12:00:00+10:00'));
+  assert.equal(r.hasData, false);
+  assert.match(reportToText(r, 'km'), /Your July 2026 report will build as you train/);
 });

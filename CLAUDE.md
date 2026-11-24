@@ -343,8 +343,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
   run — not slots, so a strength+run day is two sessions. The Training Report
   (`js/brain/monthly-report.js`) uses the same rule through
-  `forEachLoggedDay().sessionCount`, with a 30-day or 12-month window compared
-  against its own prior window. Projections use the
+  `forEachLoggedDay().sessionCount`: the current calendar month compared with the
+  same elapsed part of the prior month, or a trailing 12-month window compared
+  with its own prior window. `reportToText` names the real span. Projections use the
   same dated calendar series for strength and running, with a program-week
   fallback only for legacy undated states. Recovery/Strength current load
   (ATL/CTL/ACWR, monotony, strain, consistency) uses the same dated timeline;
@@ -487,7 +488,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   compatibility window before cleanup.
 - Progress tab (P1 landed): the hub opens on the **Pulse band**
   (`js/analytics/pulse.js` + `views/view-pulse.js`) — the SELECTED calendar week,
-  its streak and its run/walk split, following the shared week navigator so the
+  its current weekly streak, the historical best weekly streak and its run/walk
+  split, following the shared week navigator so the
   band and the navigator can never name different weeks. Sessions are counted as
   sessions (a strength + run day is two); a warm-up-only day is rest; an untrained
   current week keeps the streak alive and labels it at risk. Runs and walks never

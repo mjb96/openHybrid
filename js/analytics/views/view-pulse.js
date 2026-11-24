@@ -120,6 +120,7 @@ export function renderPulse(model, options = {}) {
 
   const streak = model.streakWeeks > 0
     ? `${model.streakWeeks}-week streak${model.streakAtRisk ? ' (not trained yet this week)' : ''}`
+      + (model.streakBestWeeks > model.streakWeeks ? ` · best ${model.streakBestWeeks}` : '')
     : 'No streak yet';
   const adherence = model.adherencePct != null
     ? ` · ${model.completedPlannedDays} of ${model.plannedDaysElapsed} planned days`

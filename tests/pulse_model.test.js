@@ -157,6 +157,7 @@ test('streak counts consecutive trained weeks and flags one at risk', () => {
   const model = buildPulseModel(fixture(), { todayISO: TODAY });
   assert.equal(model.streakWeeks, 2, 'this week and last week');
   assert.equal(model.streakAtRisk, false);
+  assert.equal(model.streakBestWeeks, 2);
 
   // Untrained this week, trained the two before: the run is not lost yet.
   const atRisk = fixture({
@@ -168,7 +169,19 @@ test('streak counts consecutive trained weeks and flags one at risk', () => {
   const risky = buildPulseModel(atRisk, { todayISO: TODAY });
   assert.equal(risky.streakWeeks, 2);
   assert.equal(risky.streakAtRisk, true);
+  assert.equal(risky.streakBestWeeks, 2);
   assert.equal(risky.hasData, false);
+
+  // A gap resets the current run but not the historical best.
+  const gapped = buildPulseModel(fixture({
+    weeks: {
+      '1': { dates: { mon: '2026-11-23' }, lifts: { mon: { Squat: [done(100)] } } },
+      '2': { dates: { mon: '2026-11-09' }, lifts: { mon: { Squat: [done(100)] } } },
+      '3': { dates: { mon: '2026-11-02' }, lifts: { mon: { Squat: [done(100)] } } },
+    },
+  }), { todayISO: TODAY });
+  assert.equal(gapped.streakWeeks, 1);
+  assert.equal(gapped.streakBestWeeks, 2);
 });
 
 test('adherence is "of N planned" for the whole week, and null without a plan', () => {
@@ -193,6 +206,7 @@ test('an empty week is empty, not a row of zeros', () => {
   assert.equal(model.hasData, false);
   assert.equal(model.sessions, 0);
   assert.equal(model.streakWeeks, 0);
+  assert.equal(model.streakBestWeeks, 0);
   assert.equal(model.streakAtRisk, false);
 });
 
