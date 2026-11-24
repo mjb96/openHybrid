@@ -913,6 +913,13 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
+> **Theme colour system — Phase A0 audit landed 25 Nov 2026, awaiting approval.**
+> `docs/audit/theme-colour-audit.md` inventories 3,590 hard-coded colour literals
+> (866 distinct values) across `js/`, `css/`, `index.html`, `manifest.json` and `android/`,
+> records what the default Midnight palette actually resolves to, and proposes the token
+> groups. **Part A (tokens, CSS, UI) has not started**; token work should not begin until the
+> audit and its open product decisions (§12 of the audit) are approved.
+
 ### 14.1 Design stance
 
 Patterns to adopt: a profile card at the top; grouped inset lists; one row =
