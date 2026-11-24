@@ -136,13 +136,13 @@ try {
     await chooser.setFiles({ name: 'progress.png', mimeType: 'image/png', buffer });
     // A picture on its own is a valid entry: Save with no numbers typed.
     await page.click('[data-action="save-measurements-sheet"]');
-    await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'), { timeout: 8000 });
+    await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'), null, { timeout: 8000 });
 
     // The thumbnail must hydrate from IndexedDB, not just exist.
     const hydrated = await page.waitForFunction(() => {
       const img = document.querySelector('[data-band="body"] .pg-photo__img');
       return img && img.getAttribute('src') && img.naturalWidth > 0;
-    }, { timeout: 8000 }).then(() => true).catch(() => false);
+    }, null, { timeout: 8000 }).then(() => true).catch(() => false);
     ok(hydrated, `${width}px: the photo was saved but its thumbnail never loaded`);
     // The tile must be a VIEW control. This was collected and never asserted,
     // so removing `data-photo-view` entirely would have passed.

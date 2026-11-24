@@ -413,6 +413,10 @@ export async function putPhotoBlob(id, blob) {
       tx.objectStore(PHOTOS_STORE).put(blob, id);
       tx.oncomplete = () => { closeQuietly(db); resolve(true); };
       tx.onerror = () => { closeQuietly(db); resolve(false); };
+      // `onerror` is not guaranteed for every aborted transaction (quota,
+      // a version change, an evicted connection). Without this the promise
+      // never settles, so Save stayed disabled behind an open sheet forever.
+      tx.onabort = () => { closeQuietly(db); resolve(false); };
     } catch { closeQuietly(db); resolve(false); }
   });
 }
@@ -429,6 +433,7 @@ export async function getPhotoBlob(id) {
       const req = tx.objectStore(PHOTOS_STORE).get(id);
       req.onsuccess = () => done(req.result);
       req.onerror = () => done(null);
+      tx.onabort = () => done(null);
     } catch { done(null); }
   });
 }
@@ -444,6 +449,7 @@ export async function deletePhotoBlob(id) {
       tx.objectStore(PHOTOS_STORE).delete(id);
       tx.oncomplete = () => { closeQuietly(db); resolve(true); };
       tx.onerror = () => { closeQuietly(db); resolve(false); };
+      tx.onabort = () => { closeQuietly(db); resolve(false); };
     } catch { closeQuietly(db); resolve(false); }
   });
 }
@@ -466,6 +472,7 @@ export async function getAllPhotoBlobs() {
         } else { closeQuietly(db); resolve(out); }
       };
       req.onerror = () => { closeQuietly(db); resolve(out); };
+      tx.onabort = () => { closeQuietly(db); resolve(out); };
     } catch { closeQuietly(db); resolve(out); }
   });
 }

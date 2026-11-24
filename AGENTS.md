@@ -282,6 +282,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   the blob through an INJECTED remover, BYTES FIRST, so a failed delete throws
   with nothing mutated rather than half-deleting an entry (`removePhoto` throws
   for the same reason: `deletePhotoBlob` resolves false and never rejects).
+  Every photo IndexedDB transaction settles on `abort` as well as `error`: an
+  aborted put otherwise left Save waiting behind an open sheet forever (the
+  post-merge photo-browser-check hang).
   The screen is `js/analytics/views/view-measures.js`: `+`, See All ⇄ Entries,
   entry rows, a photo library, and a **Trends** block above the list. It is the
   RECORD; the Body band's strip is a preview — and its add tile opens the same
