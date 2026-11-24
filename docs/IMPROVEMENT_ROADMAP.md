@@ -1077,7 +1077,7 @@ first.
 | --- | --- | --- | --- | --- | --- |
 | HM1 | One-tap start with preview | `home/today-card.js`, `workout/session-preview.js`, `train/train-landing.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | DONE | `sessionExercisePreview` resolves the same `liftTarget` and dated history the cockpit uses; Home renders up to three rows plus a compact collapsed line. `home-today-browser-check` asserts the target and last-time numbers at 320/390/412 px light/dark. Cold start remains 2 taps. |
 | HM2 | Move a day (G1) | none | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | MISSING | No reschedule control, no attribution change and no Undo; date cells only select and recap. |
-| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Volume + same-weekday delta + one sub-line; no session count, sets/PRs are mutually exclusive, and the link opens the legacy Strength screen. |
+| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count now render on separate lines. The card still links to the legacy Strength screen until PG3/PG5 give that content a band home. |
 | HM4 | One strength insight | `home/dashboard-model.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | PARTIAL | Exactly one insight, but it is fasting/load/readiness/streak/bodyweight-driven, not strength-derived, and it is not deload-aware; it can contradict the safety card. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | PARTIAL | Ready/rest/in-progress/completed/unresolved/no-plan/offline-note/past-week empty exist; no explicit first-run state and offline is only a note. |
@@ -1407,6 +1407,13 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H2 HM3: Strength this week states every figure.**
+  - The Home strength card now shows sessions and working sets together, the
+    same-weekday volume delta, the top e1RM change and this week's PR count.
+    Previously sets and PRs were mutually exclusive and sessions were absent.
+  - Still PARTIAL: the card links to the legacy Strength screen until the
+    Progress restructure (PG3/PG5) owns that evidence.
+
 - **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
   - `workout/session-preview.js` is now the one resolver shared by Train and
     Home: it reads the same `liftTarget` and dated history the cockpit uses.
@@ -1544,19 +1551,3 @@ device timing it did not measure.
     gap case. Hub browser contract re-run after the UI changes.
   - **Phase 2 is DONE.** Next: Phase 4 — the routine library’s categories and
     filters (Phase 3 was already complete).
-
-- **2026-11-24 — Phase 1 closed by decision; Phase 2 starts with one-muscle focus.**
-  - **Phase 1 is DONE.** Volume is deliberately not a separate trophy: set
-    volume is weight × reps and is already represented by the load/rep records,
-    while a volume badge would reward adding sets rather than better
-    performance. Detection covers e1RM, holds (duration), carries and reps.
-  - **The Muscles band can focus one muscle.** A native 19-option select (44px,
-    no chip wall) filters the chart, headline, legend and text table to that
-    muscle while keeping its rank and share of credited sets in view. Grouping
-    Week/Month/Year still applies; All muscles restores the six-group + Other
-    stack. The focus is ephemeral and resets on hub entry, like the range.
-  - `tests/muscles_view.test.js` covers the focused chart, rank context, exact
-    table and unknown-key fallback. The Progress-hub browser check now selects a
-    muscle, asserts the focus sticks and resets, at 320/390/412.
-  - Next: P3 (calendar-month wording), P6 (distribution currency) or P10 (year
-    zoom) in Phase 2.
