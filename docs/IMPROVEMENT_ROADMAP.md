@@ -616,6 +616,10 @@ share or backup).
 **Status: CONTINUOUS.** **Goal:** keep the finished surface fast and reachable.
 CP7 runs alongside the active H phase; it is a quality bar, not a gate.
 
+**Landed 2026-11-24:** Week in Review shares the one-canvas PNG from both its
+Overview and Stats tabs (`weeklyReviewShareRows`); the calendar share card
+remains.
+
 **Gate evidence (continuous):** the current tree runs the full node suite,
 typecheck, smoke, precache/workflow gates and 48 real-browser checks. Each
 polish slice adds its own evidence line in the session log.
@@ -848,7 +852,7 @@ inventories and incident post-mortems are in `docs/ROADMAP_ARCHIVE.md`.
 | Exercises | 157 canonical exercises plus ~5,555 catalogue entries, 66 reviewed instruction sets, aliases, filters and details |
 | Progress | One range-driven dashboard of eight bands — Pulse, Balance, Muscles, Main exercises, Endurance, Body, Fasting, Reports — over calendar-week attribution, with Measures (dated weight/body fat/tape/photo entries, a single-site measurement explorer, compare and export) behind Body; exact evidence and the week-scoped detail screens it links into remain |
 | Data | Activity history, activation isolation, export/restore, CSV/FIT import, automatic backups, Android state mirror |
-| Quality | 2,662 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
+| Quality | 2,664 node tests, typecheck, smoke, precache/workflow gates, 48 real-browser checks |
 
 ## 13. Roadmap v2 — active programme (H0–H4)
 
@@ -1263,6 +1267,22 @@ device timing it did not measure.
     CP6's native leftovers move to H8.
   - No product code changed. **H0 — verify and audit** is next.
 
+- **2026-11-24 — Phase 7 starts: the Week in Review shares a real PNG card.**
+  - Overview and Stats both offer **Share week**, drawn by the one share
+    pipeline (`drawProgressCard` → `shareImageCanvas`) from
+    `weeklyReviewShareRows`. The rows are the week's own totals; a historical
+    week omits plan adherence and next-week focus, and a week with no training
+    has no share action at all rather than a card full of zeros.
+  - The browser check opens Review from the Progress footer, switches to
+    Overview and asserts a real `openhybrid-week-YYYY-MM-DD.png` download.
+  - The offline path got two guards after an unresolved-merge-marker `sw.js`
+    (from branch resolution, not product code) made `navigator.serviceWorker.ready`
+    hang until the per-check kill: a precache test now rejects conflict markers
+    in `sw.js`, and the Running check races `.ready` against a 15s failure so a
+    broken worker reports its cause instead of timing out.
+  - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
+    export/import for routine and measurement metadata, large-library checks.
+
 - **2026-11-24 — Phase 6: S2 adaptive trainer landed; only native surfaces remain.**
   - **Onboarding now asks for a typical session length** (30/45/60/75+ min). The
     starter recommender uses it and the existing weekly-frequency answer, so a
@@ -1423,42 +1443,3 @@ device timing it did not measure.
     Measures and Progress-hub browser checks pass at 390/320. Live captures:
     `docs/mockups/measures-trend-390.png` and `measures-trend-320.png`.
   - Next: the gated queue — Phase 0 truth pass then Phase 1 live-PR/keep-awake.
-
-- **2026-11-23 — Measures: adversarial audit, and the eight things green did not mean.**
-  - **A duplicated date silently discarded the athlete's correction.** The readers
-    keep the LAST row for a date (`normalizeWeighIns`/`normalizeMeasurements`), and a
-    JSON restore can create that duplicate, but the writer touched only the FIRST —
-    so a corrected weight was saved where nothing read it, and clearing every field
-    left the date populated. The writer now replaces/removes every row for the date.
-  - **The photo backup had no reachable restore and no reliable export.** `Export
-    photos` sat on a range-scoped band that can be absent, `importPhotosZip` had **no
-    caller at all**, and Settings → Data never had a photo control — so the "only
-    backup path for photo bytes" could be unreachable and could never be restored.
-    Both buttons now live beside the library, and the browser check exports a real
-    zip, deletes a photo, and imports it back.
-  - **A failed blob delete reported success.** `deletePhotoBlob` resolves false and
-    never rejects, so metadata went and the bytes stayed, invisibly. `removePhoto`
-    now throws and keeps BOTH; `deleteMeasureEntry` deletes bytes **before** rows so
-    a throw changes nothing at all instead of half-deleting an entry.
-  - **Edit entry raced the history marker**, the same class that blanked the page on
-    Delete: the viewer closed (queueing `history.back()`) and then opened the sheet
-    (`pushState`). It now hands the dialog over with `replaceManagedModal` — and the
-    check caught the hand-off being wired to a missing import.
-  - **The same tile did two different things.** The Body band's `+` opened the
-    camera directly while Measures' `+` opened the entry — so one tap produced a
-    photo with no context, the exact split this screen exists to close. Both now
-    open the dated entry, and the band's bare file input is gone.
-  - Also: `listPhotos`/import now reject a record whose id disagrees with its date
-    (it could be neither viewed nor deleted, yet the confirm said "deleted"); the
-    `bodyPhotos` privacy switch is honoured on Measures; "Delete measurements" in the
-    sheet now says it is tape-only (it never removed the weigh-in or photo).
-  - **Four tests/checks could not fail** — the audit's most useful finding. The 44px
-    walk skipped any missing control; the replace step asserted `updatedAt > 0`, true
-    before the action; `hasAnything` was a constant; the photo check collected a tile
-    count and never asserted it. All four now assert the real value (the replace
-    compares a SHA-256 of the stored bytes, since the clock is pinned).
-  - Docs corrected where they described features that do not exist (a `mime` field, a
-    `rollupMeta` store, photo share, quota warnings, `js/photos/store.js`).
-  - `npm run verify` green (2,619 tests); all 48 browser checks green (one
-    progress-hub attempt crossed the 180s kill under 3-way load and passed on the
-    built-in retry — that check is 119s on its own, the suite's longest).

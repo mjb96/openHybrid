@@ -5394,3 +5394,42 @@ testable on its own.
     the rail in place, without a cockpit re-render.
 
 Older entries: `docs/ROADMAP_ARCHIVE.md`.
+
+- **2026-11-23 — Measures: adversarial audit, and the eight things green did not mean.**
+  - **A duplicated date silently discarded the athlete's correction.** The readers
+    keep the LAST row for a date (`normalizeWeighIns`/`normalizeMeasurements`), and a
+    JSON restore can create that duplicate, but the writer touched only the FIRST —
+    so a corrected weight was saved where nothing read it, and clearing every field
+    left the date populated. The writer now replaces/removes every row for the date.
+  - **The photo backup had no reachable restore and no reliable export.** `Export
+    photos` sat on a range-scoped band that can be absent, `importPhotosZip` had **no
+    caller at all**, and Settings → Data never had a photo control — so the "only
+    backup path for photo bytes" could be unreachable and could never be restored.
+    Both buttons now live beside the library, and the browser check exports a real
+    zip, deletes a photo, and imports it back.
+  - **A failed blob delete reported success.** `deletePhotoBlob` resolves false and
+    never rejects, so metadata went and the bytes stayed, invisibly. `removePhoto`
+    now throws and keeps BOTH; `deleteMeasureEntry` deletes bytes **before** rows so
+    a throw changes nothing at all instead of half-deleting an entry.
+  - **Edit entry raced the history marker**, the same class that blanked the page on
+    Delete: the viewer closed (queueing `history.back()`) and then opened the sheet
+    (`pushState`). It now hands the dialog over with `replaceManagedModal` — and the
+    check caught the hand-off being wired to a missing import.
+  - **The same tile did two different things.** The Body band's `+` opened the
+    camera directly while Measures' `+` opened the entry — so one tap produced a
+    photo with no context, the exact split this screen exists to close. Both now
+    open the dated entry, and the band's bare file input is gone.
+  - Also: `listPhotos`/import now reject a record whose id disagrees with its date
+    (it could be neither viewed nor deleted, yet the confirm said "deleted"); the
+    `bodyPhotos` privacy switch is honoured on Measures; "Delete measurements" in the
+    sheet now says it is tape-only (it never removed the weigh-in or photo).
+  - **Four tests/checks could not fail** — the audit's most useful finding. The 44px
+    walk skipped any missing control; the replace step asserted `updatedAt > 0`, true
+    before the action; `hasAnything` was a constant; the photo check collected a tile
+    count and never asserted it. All four now assert the real value (the replace
+    compares a SHA-256 of the stored bytes, since the clock is pinned).
+  - Docs corrected where they described features that do not exist (a `mime` field, a
+    `rollupMeta` store, photo share, quota warnings, `js/photos/store.js`).
+  - `npm run verify` green (2,619 tests); all 48 browser checks green (one
+    progress-hub attempt crossed the 180s kill under 3-way load and passed on the
+    built-in retry — that check is 119s on its own, the suite's longest).

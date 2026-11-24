@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  drawProgressCard, monthlyReportShareRows, yearReviewShareRows,
+  drawProgressCard, monthlyReportShareRows, weeklyReviewShareRows, yearReviewShareRows,
 } from '../js/analytics/share-card.js';
 import { buildCalendarMonthReport } from '../js/brain/monthly-report.js';
 import { buildYearInReview } from '../js/brain/year-review.js';
@@ -96,6 +96,36 @@ test('year review rows are the same annual totals the Year in Review prints', ()
   assert.equal(rows[3].value, String(review.totals.workingSets));
   assert.equal(rows[4].value, String(review.totals.prCount));
   assert.equal(rows[5].value, review.bestMonth.label);
+});
+
+test('week review rows keep adherence and focus only on the live week', () => {
+  const state = { settings: { weightUnit: 'kg', distanceUnit: 'km' } };
+  const live = {
+    label: '23–29 Nov',
+    isCurrentWeek: true,
+    weekStart: '2026-11-23',
+    totals: { sessions: 4, volume: 12000, distanceKm: 10, sets: 20, prCount: 2 },
+    consistency: { done: 4, total: 4, pct: 100 },
+    focus: { area: 'Recovery' },
+  };
+  const rows = weeklyReviewShareRows(live, state);
+  assert.deepEqual(rows.map((row) => row.label), [
+    'Sessions', 'Lifted', 'Run', 'e1RM PR lifts', 'Plan adherence', 'Focus',
+  ]);
+  assert.equal(rows[0].value, '4');
+  assert.equal(rows[1].value, '12.0t');
+  assert.equal(rows[2].value, '10 km');
+  assert.equal(rows[4].value, '100%');
+  assert.equal(rows[4].note, '4 of 4 planned');
+
+  const historical = weeklyReviewShareRows({
+    ...live,
+    isCurrentWeek: false,
+    consistency: { done: 4, total: null, pct: null },
+    focus: null,
+  }, state);
+  assert.equal(historical.some((row) => row.label === 'Plan adherence'), false);
+  assert.equal(historical.some((row) => row.label === 'Focus'), false);
 });
 
 test('more than seven rows are capped, and empty values are dropped', () => {

@@ -410,6 +410,19 @@ try {
       const reviewOpen = await page.waitForSelector('#analytics-weekly-review.active', { timeout: 3000 })
         .then(() => true).catch(() => false);
       if (!reviewOpen) failures.push(`${width}px: Week in Review did not open`);
+      await page.click('#analytics-weekly-review [data-an-tab="overview"]').catch(() => {});
+      await page.waitForSelector('#wrevOverviewShareBtn', { timeout: 2000 }).catch(() => {});
+      const weekShare = await page.locator('#wrevOverviewShareBtn').count();
+      if (weekShare !== 1) failures.push(`${width}px: Week in Review has no share action`);
+      else {
+        const [download] = await Promise.all([
+          page.waitForEvent('download', { timeout: 8000 }).catch(() => null),
+          page.click('#wrevOverviewShareBtn'),
+        ]);
+        if (!download || !/^openhybrid-week-\d{4}-\d{2}-\d{2}\.png$/.test(download.suggestedFilename())) {
+          failures.push(`${width}px: the week card did not download (${download?.suggestedFilename?.() || 'none'})`);
+        }
+      }
       await page.evaluate(() => document.querySelector('.bottom-nav [data-target="analytics"]')?.click());
       await page.waitForSelector('#analytics-hub.active .pg-band', { timeout: 4000 }).catch(() => {});
     }
