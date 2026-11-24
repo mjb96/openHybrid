@@ -5610,3 +5610,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     broken worker reports its cause instead of timing out.
   - Next Phase 7 slices: calendar share card, reduced motion/text scaling,
     export/import for routine and measurement metadata, large-library checks.
+
+- **2026-11-24 — Roadmap v2 adopted: Settings/Profile first, strength-first.**
+  - Owner priorities, the H0–H4 phase queue, Settings/Profile IA, Home,
+    Progress restructure, logging/strength analytics, queued H5–H8, the Part H
+    flow measures and the working rules are merged as §13–§21.
+  - Part A hygiene: the stale baseline is replaced by current gaps; DONE phases
+    carry gate-evidence lines (tap counts are explicitly pending); CP/EP phases
+    are renamed; the feature matrix gains a Decision column and `◑ reframed`;
+    CP6's native leftovers move to H8.
+  - No product code changed. **H0 — verify and audit** is next.

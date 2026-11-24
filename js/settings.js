@@ -1544,6 +1544,12 @@ export async function confirmResetAllData() {
     confirmLabel: 'Reset everything', danger: true,
   });
   if (!ok) return;
+  const finalOk = await confirmModal({
+    title: 'Delete everything on this device?',
+    message: 'Second confirmation. Logged training, settings, GPS routes and progress photos will be deleted from this device. A JSON backup is the only way to restore them.',
+    confirmLabel: 'Delete all data', danger: true,
+  });
+  if (!finalOk) return;
   // Stop any pending debounce and block pagehide/visibility flushes from writing
   // the old in-memory state back after the keys are removed. The reload below is
   // the only path out of this state.

@@ -967,7 +967,7 @@ or corrects it.
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist. The JSON export now says progress photos are device-local and outside the file, pointing to Measures → Export photos. No manual last-backup timestamp yet. |
-| ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | One confirm names the losses; no second gate or typed confirmation, reset and delete-all are one action, no per-domain choice. |
+| ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | Two deliberate confirmations now name the losses; cancelling the second preserves state. Reset and delete-all are still one action with no per-domain choice. |
 | ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist; the master switch reads OS permission and stores nothing (S-F5); no planned-day preference. Delivery is G5. |
 
 ### 14.5 Data rules
@@ -1407,6 +1407,12 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H1 ST10: destructive reset gets a second gate.**
+  - Reset now asks twice, with the second dialog naming exactly what is deleted
+    and that a JSON backup is the only restore path. Cancelling the second gate
+    leaves the saved state untouched; the settings browser check proves it.
+  - Still PARTIAL: reset and delete-all are one action with no per-domain choice.
+
 - **2026-11-24 — H1 ST8: an explicit reduced-motion preference.**
   - Appearance now offers System / Reduce / Full. `ui/motion.js` publishes
     `data-reduced-motion` on `<html>`; the CSS hook collapses animation and
@@ -1486,13 +1492,3 @@ device timing it did not measure.
     calculation; the gaps are missing features, dead surfaces and navigation.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
-
-- **2026-11-24 — Roadmap v2 adopted: Settings/Profile first, strength-first.**
-  - Owner priorities, the H0–H4 phase queue, Settings/Profile IA, Home,
-    Progress restructure, logging/strength analytics, queued H5–H8, the Part H
-    flow measures and the working rules are merged as §13–§21.
-  - Part A hygiene: the stale baseline is replaced by current gaps; DONE phases
-    carry gate-evidence lines (tap counts are explicitly pending); CP/EP phases
-    are renamed; the feature matrix gains a Decision column and `◑ reframed`;
-    CP6's native leftovers move to H8.
-  - No product code changed. **H0 — verify and audit** is next.
