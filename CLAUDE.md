@@ -88,6 +88,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `role="group"` of `aria-pressed` buttons (never a fake tablist), clears the
   query on open/close, resets scroll on search and announces no-results with
   `role="status"`; the visible count ignores cards hidden by a module switch.
+  A matching search also marks the exact row (`.settings-search-hit`) and
+  scrolls the panel to it, so the athlete lands on the control, not a card top.
   Training order is Training (units) → Logging (rest tiers/presets/sound,
   progression, previous values, warm-up, plate hints, keep-awake, live-PR
   banners) → Program Week → Equipment

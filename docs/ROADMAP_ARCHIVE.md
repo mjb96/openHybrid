@@ -5526,3 +5526,21 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     gap case. Hub browser contract re-run after the UI changes.
   - **Phase 2 is DONE.** Next: Phase 4 — the routine library’s categories and
     filters (Phase 3 was already complete).
+
+- **2026-11-24 — Phase 4 finished: the routine library gets categories and a filter.**
+  - **Routines can be filed by context.** A fixed vocabulary — at home, travel,
+    dumbbells, band, cardio/HIIT, gym, bodyweight, suspension, other — is optional
+    metadata. The `•••` menu opens a 44px category sheet; the card shows a small
+    category chip; an unknown imported category is stripped without dropping the
+    routine.
+  - **The routine list can be filtered without hiding the library.** A native
+    44px select shows only categories that actually contain routines, filters the
+    flat list and the folder sections, hides folders with no matches while a
+    filter is active, and offers Show all routines when nothing matches. The
+    filter is ephemeral and resets on tab entry.
+  - **It is organisation only.** Categories and filtering never rewrite
+    `state.weeks`, the active program, the program week, folders or logged
+    training. The category sheet and filter are covered by the real routines
+    browser check (set → chip → filter → All) plus store/import tests.
+  - **Phase 4 is DONE.** Next: Phase 5 — the monthly report share card and the
+    Year in Review share image.

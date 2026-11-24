@@ -167,7 +167,17 @@ try {
   // assistive tech. "Light band weight" only exists as the input's aria-label.
   await page.fill('#settingsSearch', 'light band weight');
   ok((await visibleLabel()).includes('Equipment'), 'search matches an accessible name');
+  const hit = page.locator('.settings-search-hit');
+  ok((await hit.count()) === 1, 'search marks one exact row, not the whole card');
+  ok(await hit.evaluate((el) => !!el.querySelector('#settingsBandLight')),
+    'the marked row is the light-band control');
+  ok(await hit.evaluate((el) => {
+    const row = el.getBoundingClientRect();
+    const body = document.querySelector('#settingsPanel .settings-body')?.getBoundingClientRect();
+    return !!body && row.top >= body.top - 1 && row.bottom <= body.bottom + 1;
+  }), 'the marked row is scrolled into view');
   await page.fill('#settingsSearch', '');
+  ok((await page.locator('.settings-search-hit').count()) === 0, 'clearing search clears the row highlight');
 
   // A row switched off with a feature module is invisible, so its words must
   // not return a blank card that looks like a broken search.
