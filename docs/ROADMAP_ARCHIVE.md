@@ -5505,3 +5505,24 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     muscle, asserts the focus sticks and resets, at 320/390/412.
   - Next: P3 (calendar-month wording), P6 (distribution currency) or P10 (year
     zoom) in Phase 2.
+
+- **2026-11-24 — Phase 2 finished: calendar month, best weekly streak, and three honest decisions.**
+  - **The Training Report is now the current calendar month.** `buildCalendarMonthReport`
+    compares 1–N of this month with 1–N of the prior month (full prior month when
+    this month is complete), so a partial month is never measured against a full
+    one. The toolbar reads “This month” / “12 months”; the 28-day rolling builder
+    remains exported for its own regression tests and a future trailing preset.
+  - **Pulse reports the best weekly streak beside the current one.**
+    `streakWeeks` now scans all trained Monday-weeks once, returning current,
+    at-risk and historical best; the band only prints “best N” when it is
+    genuinely higher, so a current record is not duplicated.
+  - **P2, P6 and P10 closed by decision, with reasons in the matrix:**
+    gym performance is answered across Pulse/Muscles/Main exercises rather than a
+    duplicate screen; muscle distribution stays in credited sets because
+    sessions/duration double-count a compound set across muscles; the training
+    calendar stays at 12 weeks because 52 columns cannot fit a phone, with Year in
+    Review owning the year. P10’s other half — best weekly streak — is implemented.
+  - Tests: calendar-month partial/complete/empty cases and the best-weekly-streak
+    gap case. Hub browser contract re-run after the UI changes.
+  - **Phase 2 is DONE.** Next: Phase 4 — the routine library’s categories and
+    filters (Phase 3 was already complete).

@@ -1155,7 +1155,7 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 | PG1 | Inventory | `analytics/views/view-progress-hub.js` | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | DONE | Inventory in §16.7: 22 entries; the five fixed footer links sit outside the existing guard arrays. |
 | PG2 | One home per destination | `analytics/views/view-progress-hub.js`, `progress-landing.js` | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | MISSING | All six footer leaves duplicate a band entry and Review is reachable three ways; the test only checks `domains` + `secondary`. |
 | PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | MISSING | Zero of eight band headers are controls; no Details affordance or band-detail layer exists. |
-| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reports.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | One Review screen with Overview \| Stats and a shared share model; not Week \| Month \| Year. The Year row opens Overview (wrong tab) and Reports duplicates it. |
+| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reports.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | One Review screen with Overview \| Stats and a shared share model; not Week \| Month \| Year. The Reports Year row now routes to Stats (the tab that owns the year); Reports still duplicates the screen. |
 | PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | PARTIAL | Top 5 with last performed, best e1RM, change and PR flag; no search, all-lifts list or stall flag. "Show all" opens legacy Strength. |
 | PG6 | Records row | `strength/records.js`, `set-records.js` | PR table and dated feed (A6) | MISSING | All-time PR machinery exists only inside the per-exercise drilldown; no hub row, PR table or dated feed. |
 | PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | PARTIAL | Per-band detail switches and keyboard reorder exist; default order is not strength-first, Reports is not Reviews, and module-off is not labelled. |
@@ -1221,7 +1221,7 @@ hub entry links to it (legacy deep link only).
 | H-F4 | Quick actions are Weight / Run / History, not empty workout / log a past session / one contextual action. | `index.html`, `home.js` quick-action block | P2 | H2 / HM5 |
 | H-F5 | No explicit first-run Home state; offline is a note inside Today, not a page-level stale signal. | `today-card.js`, `home.js` | P2 | H2 / HM6 |
 | P-F1 | The "one home per destination" guard cannot see the real hub: it checks `domains` + `secondary`, while the five fixed footer links are rendered outside both arrays. Six footer leaves duplicate a band and Review is reachable three ways. | `progress_landing.test.js`, `view-progress-hub.js` | **P1** | H4 / PG2 |
-| P-F2 | "Year in Review" opens Review's Overview tab, which contains no year section; it should open Stats or the new Reviews/Year surface. | `view-reports.js` route, `analytics.js` tab force, `renderReviewOverview` | **P1** | H4 / PG4 |
+| P-F2 | **Fixed 24 Nov:** "Year in Review" now routes to `year-review`, which opens Review's Stats tab where the year section actually lives. The Progress-hub browser check asserts the active tab and visible year container. | `view-reports.js`, `analytics.js`, `progress-hub-browser-check.mjs` | Resolved | H4 / PG4 |
 | P-F3 | Zero of eight band headers drill down; no band-detail layer, no all-lifts index/search/stall flag and no Records row. | `band-kit.js`, `view-exercises.js`, `strength/records.js` | **P1** | H4 / PG3, PG5, PG6 |
 | P-F4 | The hub still computes the retired four-domain dashboard and 12-week series on every render, while reading only `secondary`/`allEmpty`. | `analytics.js` hub render | P2 | H4 / PG9 |
 | P-F5 | Scroll resets to top on every navigation, so Back from a band detail returns to the hub top rather than the band. | `app.js` `scrollTo(0,0)`, `navigation.js` | P2 | H4 / PG8 |
@@ -1407,6 +1407,14 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
+  - The Reports band sent the row to `weekly-review`, which forces Review's
+    Overview tab; the year section lives on Stats. A new `year-review` route
+    selects Stats, and the Progress-hub browser check now opens the row and
+    asserts both the active tab and the visible year container.
+  - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
+    the Reports band still duplicates the screen.
+
 - **2026-11-24 — H2 HM3: Strength this week states every figure.**
   - The Home strength card now shows sessions and working sets together, the
     same-weekday volume delta, the top e1RM change and this week's PR count.
@@ -1530,24 +1538,3 @@ device timing it did not measure.
     browser check (set → chip → filter → All) plus store/import tests.
   - **Phase 4 is DONE.** Next: Phase 5 — the monthly report share card and the
     Year in Review share image.
-
-- **2026-11-24 — Phase 2 finished: calendar month, best weekly streak, and three honest decisions.**
-  - **The Training Report is now the current calendar month.** `buildCalendarMonthReport`
-    compares 1–N of this month with 1–N of the prior month (full prior month when
-    this month is complete), so a partial month is never measured against a full
-    one. The toolbar reads “This month” / “12 months”; the 28-day rolling builder
-    remains exported for its own regression tests and a future trailing preset.
-  - **Pulse reports the best weekly streak beside the current one.**
-    `streakWeeks` now scans all trained Monday-weeks once, returning current,
-    at-risk and historical best; the band only prints “best N” when it is
-    genuinely higher, so a current record is not duplicated.
-  - **P2, P6 and P10 closed by decision, with reasons in the matrix:**
-    gym performance is answered across Pulse/Muscles/Main exercises rather than a
-    duplicate screen; muscle distribution stays in credited sets because
-    sessions/duration double-count a compound set across muscles; the training
-    calendar stays at 12 weeks because 52 columns cannot fit a phone, with Year in
-    Review owning the year. P10’s other half — best weekly streak — is implemented.
-  - Tests: calendar-month partial/complete/empty cases and the best-weekly-streak
-    gap case. Hub browser contract re-run after the UI changes.
-  - **Phase 2 is DONE.** Next: Phase 4 — the routine library’s categories and
-    filters (Phase 3 was already complete).

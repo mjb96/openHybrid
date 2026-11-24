@@ -897,8 +897,11 @@ export function renderAnalytics() {
       // so the tab bar reports back rather than leaving a stale control.
       renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
+    case 'year-review':
     case 'weekly-summary':
     case 'monthly-report':
+      // The year lives on Stats, not Overview. The Reports band used to send
+      // "Year in Review" to the Overview tab, which contains no year section.
       setReviewTab('stats');
       document.getElementById('analytics-weekly-review').classList.add('active');
       renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
