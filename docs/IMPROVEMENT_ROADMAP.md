@@ -960,8 +960,8 @@ or corrects it.
 | --- | --- | --- | --- | --- | --- |
 | ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
 | ST2 | **Declarative settings registry** | new `js/settings/registry.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | MISSING | No per-setting metadata exists; `settings/nav.js` maps card labels to five tabs only. Screens are hand-written HTML and handlers. |
-| ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search now marks the exact matching row and scrolls it into the panel viewport; registry keywords are not wired yet, and Settings remains 2 taps deep (search is tap 3). |
-| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | MISSING | Only Settings entry is the Home avatar; no gear from logger/Progress/Plans/Measures. Muscle priorities wrongly say "set in Settings". |
+| ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search marks the exact matching row and scrolls it into view. Settings is now ONE tap from Home (gear), so search is tap 2; registry keywords and the typed index still land in Phase 6. |
+| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | PARTIAL | Phase 1 added the Home gear and the full-screen `#/settings` route; the Home sliders stays Customize Home. The logger/Progress/Plans/Measures gears and the workout settings sheet are still Phase 6. |
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable. The equipment answer now writes through `applyActiveEquipment` and survives boot (S-F1), and both bodyweight readers use `latestWeighIn` (S-F2). Equipment tier, frequency, session length, focus and height are still not editable; Profile still needs a bodyweight link. |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
@@ -1108,6 +1108,34 @@ dead/duplicate/conflicting list live in
 Phase 1 starts only after approval: navigation + `/settings` route +
 redirects + hidden tab bar + Settings shell. Phase 2 adds the typed registry,
 store, validators and migrations; no control renders before those exist.
+
+### 14.10 Settings & Profile rebuild — Phase 1 (navigation shell)
+
+**Status: DONE for the navigation slice.** No setting was moved or removed; the
+old cards remain inside the route until Phase 4 replaces them.
+
+- **Home header:** the avatar is gone. A 48px gear opens Settings directly; the
+  sliders button still opens **Customize Home** and is the same Home-layout
+  control that will live under Look & Home.
+- **Route:** full-screen `#/settings` with a 48px back chevron labelled **Home**.
+  The hash token is the `/settings` route because the app is a static PWA
+  (GitHub Pages sub-path + Android WebViewAssetLoader); a History-API path
+  cannot be refreshed without a server rewrite. `#/settings/profile` is the
+  Profile sub-page.
+- **Profile:** reached only from the Settings profile card. The old
+  `open-profile` action and `#profile` hash redirect to `#/settings/profile`.
+- **Tab bar:** hidden on Settings and Profile, restored on Home.
+- **Back:** browser/system Back and the chevron pop one level
+  (Profile → Settings → Home) and restore Home's scroll position.
+- **Profile content:** the existing athlete profile renders into the Settings
+  sub-page (`settingsProfileContent`) with its own back control; no second data
+  store.
+
+**Not done yet:** the 13-row IA, registry renderer, search index, validators,
+gym-profile sub-page, contextual workout sheet, deep links into individual
+settings, and visual redesign. Those are Phases 2–6. **Known decision:** the
+brief writes `/settings`; the implemented token is `#/settings` for static
+hosting. Approve the hash or add a server/404 rewrite before Phase 6.
 
 ## 15. Home (H2)
 
@@ -1450,6 +1478,22 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H1 Settings/Profile Phase 1: route shell and Home gear.**
+  - Home header now has a 48px gear that opens a full-screen `#/settings`
+    route; the sliders button remains Customize Home.
+  - Added `#/settings/profile`, reached only from the profile card; legacy
+    `open-profile` and `#profile` redirect there. The bottom tab bar is hidden
+    inside the route and restored on Home.
+  - Back works at both levels, browser/system Back pops the route, and Home's
+    scroll position is restored. Profile renders the existing athlete page
+    into the Settings sub-page, so no data or feature was duplicated.
+  - `js/settings/route.js` is the pure route model; a new
+    `settings-navigation-browser-check` covers 320/390/412, the redirects and
+    the scroll restore. Settings cards remain unchanged pending Phase 4.
+  - Decision: `/settings` is implemented as `#/settings` because the hosted PWA
+    and Android asset origin have no refresh rewrite. Approve the hash or add a
+    server fallback before individual setting deep links (Phase 6).
+
 - **2026-11-25 — H1 Settings/Profile rebuild: Phase 0 audit, awaiting approval.**
   - Inventoried all 48 `settings.*` keys, 3 settings-like root values and the
     Profile page's stored/derived fields with defaults, readers, current UI and
@@ -1549,14 +1593,6 @@ device timing it did not measure.
     asserts it is inside the panel viewport.
   - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
     deep, so the 2-tap acceptance is unmet.
-
-- **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
-  - The Reports band sent the row to `weekly-review`, which forces Review's
-    Overview tab; the year section lives on Stats. A new `year-review` route
-    selects Stats, and the Progress-hub browser check now opens the row and
-    asserts both the active tab and the visible year container.
-  - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
-    the Reports band still duplicates the screen.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

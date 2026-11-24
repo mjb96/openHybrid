@@ -53,9 +53,7 @@ try {
   page.on('pageerror', (error) => errors.push(String(error)));
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('#homeWeekStrip');
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
 
   const visibleLabel = async () => page.evaluate(() => [...document.querySelectorAll('#settingsPanel .settings-section')]
@@ -213,7 +211,8 @@ try {
   // Closing and reopening starts fresh rather than resurrecting a filter.
   await page.fill('#settingsSearch', 'zzzz-no-setting');
   await page.click('#settingsOverlay [data-action="close-settings"]');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.waitForSelector('#settingsOverlay:not(.active)');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
   ok((await page.inputValue('#settingsSearch')) === '', 'reopening settings clears the search');
   ok((await visibleLabel()).includes('Training'), 'reopening settings shows the active destination');

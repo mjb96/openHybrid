@@ -112,9 +112,7 @@ try {
   ok(heights.every((height) => height >= 44), `every hybrid card control is at least 44px (${heights.join(', ')})`);
 
   // ---- Hybrid training off: only hybrid surfaces go ----------------------
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
   await page.click('#settingsTabs [data-settings-tab="training"]');
   const hybridRow = page.locator('.settings-row', { has: page.locator('[data-hybrid-toggle]') });
@@ -143,9 +141,7 @@ try {
   ok(!(await page.locator('#homeBalanceCard').isVisible()), 'the choice survives a reload');
 
   // ---- Hybrid back on, then the Running module gates endurance alone ------
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
   await page.click('#settingsTabs [data-settings-tab="training"]');
   await page.evaluate(() => document.querySelector('[data-hybrid-toggle]')?.click());

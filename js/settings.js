@@ -66,6 +66,7 @@ const _parseRest = (str) => {
 import { showToast } from './state.js';
 import { rearmReminder, notificationsGranted, cancelReminders } from './notifications.js';
 import { confirmModal } from './ui/confirm-modal.js';
+import { renderAthleteProfile } from './athlete-profile.js';
 import { isHealthBridgeAvailable, getHealthAvailability, connectAndSync, syncHealthConnect, describeFieldStatus } from './health/health-bridge.js';
 import { HEALTH_FIELDS, normalizeSyncFields, selectedFieldIds, isSupportedField } from './health/health-fields.js';
 import {
@@ -76,12 +77,18 @@ import {
   importReasonMessage,
 } from './state/import-validate.js';
 import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery, firstMatchingRow } from './settings/nav.js';
+import { SETTINGS_HASH, settingsHashForPage, settingsRouteFromHash } from './settings/route.js';
 import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
 import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
 let _getState;
 let _autoBackupUiRequest = 0;
 let _settingsGroup = 'profile';
+let _settingsRoutePushed = false;
+let _settingsProfilePushed = false;
+let _settingsHashBound = false;
+let _settingsPreviousFocus = null;
+let _settingsReturnScroll = 0;
 
 export function initSettings(getStateFn) {
   _getState = getStateFn;
@@ -90,6 +97,28 @@ export function initSettings(getStateFn) {
   const vEl = document.getElementById('settingsAppVersion');
   if (vEl) vEl.textContent = `openHybrid v${APP_VERSION}`;
   _setupSettingsNavigation();
+  if (!_settingsHashBound && typeof window !== 'undefined') {
+    _settingsHashBound = true;
+    if (typeof history !== 'undefined' && 'scrollRestoration' in history) {
+      try { history.scrollRestoration = 'manual'; } catch { /* best effort */ }
+    }
+    window.addEventListener('hashchange', applySettingsRouteFromHash);
+    document.addEventListener('keydown', (event) => {
+      const overlay = document.getElementById('settingsOverlay');
+      if (!overlay?.classList.contains('active')) return;
+      if (event.key === 'Escape') { event.preventDefault(); closeSettings(); return; }
+      if (event.key !== 'Tab') return;
+      const panel = document.querySelector('#settingsProfilePanel.active, #settingsPanel.active');
+      if (!panel) return;
+      const focusables = [...panel.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => el.getClientRects().length > 0);
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+  }
 }
 
 function _settingsSections() {
@@ -190,31 +219,127 @@ function _applySettingsFilter() {
 }
 
 // ==========================================
-// OPEN / CLOSE
+// ROUTE — /settings and /settings/profile
+//
+// The app is a static PWA (GitHub Pages under a sub-path and an Android
+// WebViewAssetLoader origin), so a History-API path cannot be refreshed without
+// a server rewrite. The route token is therefore kept in the hash and still
+// reads as `/settings`:
+//   #/settings            Settings
+//   #/settings/profile    Profile
+//   #/settings/<page>     a future settings page
+// Legacy `#profile` / `#settings` hashes redirect to the canonical route.
 // ==========================================
-export function openSettings() {
-  const overlay = document.getElementById('settingsOverlay');
-  const panel   = document.getElementById('settingsPanel');
-  if (!overlay || !panel) return;
-  // A stale query would reopen the panel on a filtered list that looks like
-  // missing settings. Every open starts from the active destination.
-  const search = document.getElementById('settingsSearch');
-  if (search) search.value = '';
-  _syncSettingsUI();
-  _setupSettingsNavigation();
-  overlay.classList.add('active');
-  panel.classList.add('active');
-  overlay.removeAttribute('aria-hidden');
+
+const _settingsRouteFromHash = settingsRouteFromHash;
+
+function _homeUrl() {
+  return `${location.pathname}${location.search}`;
 }
 
-export function closeSettings() {
+function _showSettings(page) {
   const overlay = document.getElementById('settingsOverlay');
-  const panel   = document.getElementById('settingsPanel');
+  const panel = document.getElementById('settingsPanel');
+  const profilePanel = document.getElementById('settingsProfilePanel');
+  if (!overlay || !panel || !profilePanel) return;
+
+  if (!overlay.classList.contains('active')) {
+    _settingsPreviousFocus = document.activeElement;
+    _settingsReturnScroll = window.scrollY || 0;
+    overlay.classList.add('active');
+    overlay.removeAttribute('inert');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.documentElement.classList.add('settings-route');
+    document.getElementById('app-root')?.setAttribute('inert', '');
+    document.querySelector('.bottom-nav')?.setAttribute('inert', '');
+  }
+
+  if (page === 'profile') {
+    panel.classList.remove('active');
+    profilePanel.classList.add('active');
+    renderAthleteProfile('settingsProfileContent');
+    requestAnimationFrame(() => {
+      profilePanel.querySelector('[data-action="back-to-settings"]')?.focus?.();
+    });
+  } else {
+    profilePanel.classList.remove('active');
+    panel.classList.add('active');
+    _syncSettingsUI();
+    _setupSettingsNavigation();
+  }
+}
+
+function _hideSettings() {
+  const overlay = document.getElementById('settingsOverlay');
+  const panel = document.getElementById('settingsPanel');
+  const profilePanel = document.getElementById('settingsProfilePanel');
   const search = document.getElementById('settingsSearch');
   if (search) search.value = '';
-  overlay?.classList.remove('active');
   panel?.classList.remove('active');
+  profilePanel?.classList.remove('active');
+  overlay?.classList.remove('active');
   overlay?.setAttribute('aria-hidden', 'true');
+  overlay?.setAttribute('inert', '');
+  document.documentElement.classList.remove('settings-route');
+  document.getElementById('app-root')?.removeAttribute('inert');
+  document.querySelector('.bottom-nav')?.removeAttribute('inert');
+  const restoreY = _settingsReturnScroll || 0;
+  requestAnimationFrame(() => { try { window.scrollTo(0, restoreY); } catch { /* best effort */ } });
+  const previous = _settingsPreviousFocus;
+  _settingsPreviousFocus = null;
+  try { previous?.focus?.(); } catch { /* best effort */ }
+}
+
+/** Apply the current URL to the Settings surfaces. Safe to call repeatedly. */
+export function applySettingsRouteFromHash() {
+  if (typeof window === 'undefined' || typeof location === 'undefined') return;
+  const route = _settingsRouteFromHash(location.hash);
+  if (!route) {
+    if (document.getElementById('settingsOverlay')?.classList.contains('active')) _hideSettings();
+    return;
+  }
+  if (route.legacy) {
+    const canonical = route.page === 'profile' ? `${SETTINGS_HASH}/profile` : SETTINGS_HASH;
+    try { history.replaceState(null, '', canonical); } catch { /* best effort */ }
+  }
+  _showSettings(route.page);
+}
+
+/** Open Settings (or its Profile sub-page) and push a route. */
+export function openSettings(page = '') {
+  const route = settingsHashForPage(page);
+  if (page === 'profile') _settingsProfilePushed = true;
+  _settingsRoutePushed = true;
+  if (location.hash !== route) {
+    try { history.pushState(null, '', route); } catch { location.hash = route; }
+  }
+  _showSettings(page === 'profile' ? 'profile' : '');
+}
+
+/**
+ * Close Settings. The back control pops one route level; a direct deep link
+ * replaces the hash with Home instead of leaving the app.
+ */
+export function closeSettings(options = {}) {
+  const overlay = document.getElementById('settingsOverlay');
+  if (!overlay) return;
+  if (options.replaceHash || !_settingsRoutePushed) {
+    try { history.replaceState(null, '', _homeUrl()); } catch { /* best effort */ }
+    _hideSettings();
+    return;
+  }
+  _hideSettings();
+  try { history.back(); } catch { /* best effort */ }
+}
+
+export function backToSettings() {
+  if (_settingsProfilePushed && location.hash.endsWith('/profile')) {
+    _settingsProfilePushed = false;
+    try { history.back(); } catch { /* best effort */ }
+    return;
+  }
+  try { history.replaceState(null, '', SETTINGS_HASH); } catch { /* best effort */ }
+  _showSettings('');
 }
 
 // ==========================================
@@ -476,7 +601,9 @@ async function _syncAutomaticBackupUI() {
   const disableBtn = document.getElementById('settingsAutoBackupDisableBtn');
   if (!label || !detail) return;
 
+  const profileStatus = document.getElementById('settingsProfileStatus');
   if (!automaticBackupSupported()) {
+    if (profileStatus) profileStatus.textContent = 'All data stays on this phone';
     label.textContent = 'Available in the Android app';
     detail.textContent = 'Manual JSON export remains available in this browser.';
     indicator?.classList.remove('is-on');
@@ -491,6 +618,11 @@ async function _syncAutomaticBackupUI() {
   const status = await getAutomaticBackupStatus();
   if (request !== _autoBackupUiRequest) return;
   const configured = status?.configured === true;
+  if (profileStatus) {
+    profileStatus.textContent = configured
+      ? (status.lastBackupAt ? `Backed up ${_friendlyBackupTime(status.lastBackupAt)}` : 'Automatic backup on')
+      : 'All data stays on this phone';
+  }
   indicator?.classList.toggle('is-on', configured);
   label.textContent = configured ? 'Automatic JSON backup on' : 'Automatic backup not configured';
   detail.textContent = configured

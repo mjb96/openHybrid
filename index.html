@@ -438,7 +438,9 @@
           <button class="home-customize-btn" data-action="open-customize" data-surface="home" aria-label="Customize Home cards">
             <span data-icon="sliders" aria-hidden="true"></span>
           </button>
-          <button class="home-avatar" id="homeAvatar" data-action="open-profile" aria-label="Open your profile">?</button>
+          <button class="home-settings-btn" id="homeSettingsBtn" data-action="open-settings" aria-label="Open Settings">
+            <span data-icon="gear" aria-hidden="true"></span>
+          </button>
         </div>
       </header>
 
@@ -1470,22 +1472,27 @@
   </div>
 
   <!-- Settings Panel -->
-  <div class="settings-overlay" id="settingsOverlay" data-modal-root data-modal-dialog="#settingsPanel" data-modal-close-action="close-settings" inert aria-hidden="true">
-    <div class="settings-panel" id="settingsPanel" role="dialog" aria-label="Settings">
+  <div class="settings-overlay" id="settingsOverlay" aria-hidden="true">
+    <div class="settings-panel" id="settingsPanel" aria-label="Settings">
 
       <div class="settings-header">
-        <div class="settings-profile-hero">
-          <div class="settings-avatar-large settings-avatar-clickable" id="settingsAvatarLarge" data-action="pick-avatar" role="button" aria-label="Change profile photo" tabindex="0">?<div class="settings-avatar-camera-overlay">📷</div></div>
-          <div>
-            <div class="settings-name-display" id="settingsNameDisplay">Athlete</div>
-            <div class="text-xs text-muted mt-1">Tap avatar to change photo</div>
-          </div>
-        </div>
-        <button class="settings-close-btn" data-action="close-settings" aria-label="Close settings">✕</button>
+        <button type="button" class="settings-back-btn" data-action="close-settings" aria-label="Back to Home">
+          <span aria-hidden="true">←</span><span>Home</span>
+        </button>
+        <h1 class="settings-header-title">Settings</h1>
+        <span class="settings-header-spacer" aria-hidden="true"></span>
       </div>
       <input type="file" id="avatarFilePicker" accept="image/*" style="display:none;" aria-hidden="true">
 
       <div class="settings-tools">
+        <div class="settings-profile-card">
+          <div class="settings-avatar-large settings-avatar-clickable" id="settingsAvatarLarge" data-action="pick-avatar" role="button" aria-label="Change profile photo" tabindex="0">?<div class="settings-avatar-camera-overlay">📷</div></div>
+          <button type="button" class="settings-profile-card__open" data-action="open-settings-profile" aria-label="Open Profile">
+            <span class="settings-name-display" id="settingsNameDisplay">Athlete</span>
+            <span class="settings-profile-status" id="settingsProfileStatus">All data stays on this phone</span>
+          </button>
+          <span class="settings-profile-card__chevron" aria-hidden="true">›</span>
+        </div>
         <label class="settings-search">
           <span class="settings-search__icon" data-icon="search" aria-hidden="true"></span>
           <input type="search" id="settingsSearch" placeholder="Search settings" aria-label="Search settings" autocomplete="off">
@@ -1938,6 +1945,19 @@
 
         </div>
 
+      </div>
+    </div>
+
+    <div class="settings-panel settings-profile-panel" id="settingsProfilePanel" aria-label="Profile">
+      <div class="settings-header">
+        <button type="button" class="settings-back-btn" data-action="back-to-settings" aria-label="Back to Settings">
+          <span aria-hidden="true">←</span><span>Settings</span>
+        </button>
+        <h1 class="settings-header-title">Profile</h1>
+        <span class="settings-header-spacer" aria-hidden="true"></span>
+      </div>
+      <div class="settings-body">
+        <div id="settingsProfileContent"></div>
       </div>
     </div>
   </div>

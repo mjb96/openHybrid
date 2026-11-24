@@ -141,7 +141,7 @@ try {
 
   for (const width of WIDTHS) {
     const { context, page } = await appPage(width);
-    await inspect(page, `home ${width}px`, ['.bottom-nav .nav-item', '.home-avatar', '.home-quick-btn[data-action="open-run-logger"]', '.btn-history-link']);
+    await inspect(page, `home ${width}px`, ['.bottom-nav .nav-item', '.home-settings-btn', '.home-quick-btn[data-action="open-run-logger"]', '.btn-history-link']);
     const navLabels = await page.$$eval('.bottom-nav .nav-item', (items) => items.map((item) => item.textContent.trim()));
     check(navLabels.join('|') === 'Home|Train|Progress|Plans',
       `home ${width}px: primary navigation was ${navLabels.join('|')}`);
@@ -161,11 +161,9 @@ try {
     await page.click('#activitiesScreen .subview-back-btn');
     await page.click('#activitiesScreen .subview-back-btn');
 
-    await page.click('.home-avatar');
-    await page.waitForSelector('#view-profile.active');
-    await page.click('#view-profile [data-action="open-settings"]');
+    await page.click('#homeSettingsBtn');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-    await inspect(page, `settings ${width}px`, ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
+    await inspect(page, `settings ${width}px`, ['#settingsOverlay .settings-back-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
     await page.click('#settingsOverlay [data-action="close-settings"]');
     await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
 
@@ -240,9 +238,7 @@ try {
   // file. Exercise the Settings → Data button through the browser path.
   {
     const { context, page } = await appPage(390);
-    await page.click('.home-avatar');
-    await page.waitForSelector('#view-profile.active');
-    await page.click('#view-profile [data-action="open-settings"]');
+    await page.click('#homeSettingsBtn');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
     await page.click('#settingsTabs [data-settings-tab="data"]');
     await page.evaluate(() => {
@@ -258,13 +254,11 @@ try {
   }
 
   const { context, page } = await appPage(360, true);
-  await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-avatar', '.btn-history-link']);
-  await page.click('.home-avatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-settings-btn', '.btn-history-link']);
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
   await page.click('#settingsTabs [data-settings-tab="training"]');
-  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
+  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .settings-back-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
   await page.click('.bottom-nav [data-target="workout"]');

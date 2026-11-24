@@ -534,23 +534,6 @@ export function renderHome() {
     phaseEl.textContent = chip;
   }
 
-  // Home-header avatar → Profile (the avatar is Profile's entry point now that
-  // Profile has left the nav bar). Shows the photo if set, else name initials.
-  const avatarEl = document.getElementById('homeAvatar');
-  if (avatarEl) {
-    const nm = (appState.settings?.name || '').trim();
-    const url = appState.settings?.avatarDataUrl;
-    if (url) {
-      avatarEl.style.backgroundImage = `url("${url}")`;
-      avatarEl.textContent = '';
-      avatarEl.classList.add('home-avatar--img');
-    } else {
-      avatarEl.style.backgroundImage = '';
-      avatarEl.textContent = nm ? nm.split(/\s+/).map(w => w[0].toUpperCase()).slice(0, 2).join('') : '?';
-      avatarEl.classList.remove('home-avatar--img');
-    }
-  }
-
   // Streak freezes (R7): auto-cover an occasional missed day and top up the
   // bank on 7-day tiers — before the model computes the streak below.
   try {

@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 48 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 49 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -109,6 +109,18 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   type, group, default) for every stored setting; `tests/settings_registry.test.js`
   parses `state.js` and fails when a key exists outside it. Screens are still
   hand-written, so the registry is not yet the renderer.
+- Settings routing (§14.10, Phase 1): the Home header's 48px **gear** opens a
+  full-screen Settings route; the avatar is gone. The route token is
+  `#/settings` (the `/settings` path cannot be refreshed on GitHub Pages or the
+  Android WebViewAssetLoader origin without a server rewrite), with
+  `#/settings/profile` for Profile. Profile is reached ONLY from the profile
+  card at the top of Settings; the old `open-profile` action and `#profile`
+  hash redirect there. The bottom tab bar is hidden inside the route and
+  restored on Home; the back chevron, browser Back and Android Back pop one
+  level and Home's scroll position is restored. The Home sliders button remains
+  **Customize Home**, not Settings. `js/settings/route.js` is the pure route
+  model. The old settings cards still render inside the route until Phase 4
+  replaces them with the registry-driven 13-row IA.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can

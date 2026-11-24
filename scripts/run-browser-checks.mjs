@@ -10,6 +10,7 @@ const checks = [
   'scripts/home-today-browser-check.mjs',
   'scripts/customize-browser-check.mjs',
   'scripts/settings-nav-browser-check.mjs',
+  'scripts/settings-navigation-browser-check.mjs',
   'scripts/progress-hub-browser-check.mjs',
   'scripts/photo-browser-check.mjs',
   'scripts/measures-browser-check.mjs',
