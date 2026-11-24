@@ -1460,6 +1460,32 @@ promise. **Parked decisions:** bring-your-own AI coach (breaks the "no new
 network surface" rule if it calls out); cloud sync, accounts, iOS, public
 release (§8, §11).
 
+### 18.5 LiftShift adoption (QUEUED — after the Settings/Profile rebuild)
+
+Local work order: `~/.opencode/plan/openhybrid-liftshift-adoption.md`.
+We take ideas, methods and published numbers from primary sources; every line
+and every word is ours. No attribution entry is needed because nothing is
+derived from their source.
+
+Three commits, in order:
+
+1. **Correct `NOTICE.md`:** the exercisedb entry count is **1,273**, not 1,324
+   (verified: 4,282 openGym + 1,273 exercisedb = 5,555 catalogue entries).
+2. **Retire openGym plan-file import:** delete `js/programs/opengym-plan.js`,
+   its test and browser check; keep `openhybrid-plan` JSON import/export,
+   CSV/FIT history import, Customize/fork and the program builder. The catalogue
+   and CSV importer stay.
+3. **Focus prompts for the training-context export:** a pure
+   `training-context-focus.js` with eight own-wording focuses and an ephemeral
+   sheet opened by the existing export button. No new setting, no static markup,
+   no network surface.
+
+**Parked with a home:** per-lift status and premature-PR detection → A1; rep/RIR
+band mix → A4; rolling per-muscle volume across a training break → A2; 52-week
+heatmap → G4; drop/unilateral half-credit and library replacement → F/G9.
+**Held:** strength balance ratios until a device export shows at least 8 of 13
+pairs populated in a 90-day window.
+
 ## 19. Measuring the bar
 
 Replace the unfalsifiable "on par with Hevy" with these flows, measured as taps
