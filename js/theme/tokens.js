@@ -48,6 +48,47 @@ export const LIGHT_TOKENS = Object.freeze({
   'overlay-scrim': 'rgba(15,23,42,.38)', 'focus-ring': '#0E7490',
 });
 
+/** @param {TokenMap} base @param {TokenMap} overrides */
+function palette(base, overrides) {
+  return Object.freeze({ ...base, ...overrides });
+}
+
+// Alternate dark palettes. Status/data colours are shared; only the surfaces,
+// text and accent change. Mirrors the CSS blocks in css/tokens.css.
+/** @type {TokenMap} */
+export const SLATE_TOKENS = palette(MIDNIGHT_TOKENS, {
+  bg: '#0A0F1A', 'surface-1': '#111827', 'surface-2': '#18202F', 'surface-3': '#212B3D',
+  text: '#F1F5F9', 'text-2': '#B7C3D5', 'text-3': '#8C9AB0',
+  accent: '#38BDF8', 'accent-pressed': '#0EA5E9', 'accent-subtle': 'rgba(56,189,248,.14)',
+  'accent-text': '#7DD3FC', 'overlay-scrim': 'rgba(10,15,26,.78)', 'focus-ring': '#38BDF8',
+});
+
+/** @type {TokenMap} */
+export const FOREST_TOKENS = palette(MIDNIGHT_TOKENS, {
+  bg: '#05100B', 'surface-1': '#0B1912', 'surface-2': '#12241A', 'surface-3': '#1A3023',
+  text: '#EDF7F1', 'text-2': '#B0C7BA', 'text-3': '#88A895', 'text-inverse': '#04231A',
+  accent: '#34D399', 'accent-pressed': '#10B981', 'accent-subtle': 'rgba(52,211,153,.14)',
+  'on-accent': '#04231A', 'accent-text': '#6EE7B7',
+  'overlay-scrim': 'rgba(5,16,11,.78)', 'focus-ring': '#34D399',
+});
+
+/** @type {TokenMap} */
+export const EMBER_TOKENS = palette(MIDNIGHT_TOKENS, {
+  bg: '#120B08', 'surface-1': '#1C120E', 'surface-2': '#271912', 'surface-3': '#331F17',
+  text: '#F7F0EA', 'text-2': '#CDB9AB', 'text-3': '#A88F7F', 'text-inverse': '#2A1204',
+  accent: '#FB923C', 'accent-pressed': '#F97316', 'accent-subtle': 'rgba(251,146,60,.14)',
+  'on-accent': '#2A1204', 'accent-text': '#FDBA74',
+  'overlay-scrim': 'rgba(18,11,8,.78)', 'focus-ring': '#FB923C',
+});
+
+/** Dark palettes by id. Midnight is the fallback for an unknown value. */
+export const PALETTE_TOKENS = Object.freeze({
+  midnight: MIDNIGHT_TOKENS,
+  slate: SLATE_TOKENS,
+  forest: FOREST_TOKENS,
+  ember: EMBER_TOKENS,
+});
+
 export const TOKEN_KEYS = Object.freeze(Object.keys(MIDNIGHT_TOKENS));
 
 /** @param {HTMLElement|null|undefined} root */
@@ -56,8 +97,15 @@ export function activeMode(root) {
 }
 
 /** @param {HTMLElement|null|undefined} root */
+export function activePalette(root) {
+  const id = root?.getAttribute?.('data-palette');
+  return id && PALETTE_TOKENS[id] ? id : 'midnight';
+}
+
+/** @param {HTMLElement|null|undefined} root */
 export function resolveThemeTokens(root) {
-  return activeMode(root) === 'light' ? LIGHT_TOKENS : MIDNIGHT_TOKENS;
+  if (activeMode(root) === 'light') return LIGHT_TOKENS;
+  return PALETTE_TOKENS[activePalette(root)];
 }
 
 /** @param {string} key */
@@ -92,7 +140,7 @@ export function applyThemeTokens(root, tokens) {
   }
   syncThemeColorMeta(map);
   if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('theme:changed', { detail: { mode: activeMode(root), tokens: map } }));
+    window.dispatchEvent(new CustomEvent('theme:changed', { detail: { mode: activeMode(root), palette: activePalette(root), tokens: map } }));
   }
 }
 

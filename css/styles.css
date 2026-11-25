@@ -10862,64 +10862,8 @@ html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
    ========================================================================== */
 :root { --color-lime: #a3e635; }
 
-html[data-theme="dark"][data-palette="midnight"] {
-  --bg-app:         var(--bg);
-  --bg-card:        var(--surface-1);
-  --bg-input:       var(--surface-3);
-  --bg-input-focus: var(--surface-3);
-  --bg-nav:         rgba(7, 10, 18, 0.82);
-  --bg-deep:        #0a0a0a;
-  --text-primary:   var(--text);
-  --text-secondary: var(--text-2);
-  --color-blue:     #0e7490;
-  --color-cyan:     var(--accent);
-  --color-green:    var(--success);
-  --glass-border:   color-mix(in srgb, var(--text-3) 12%, transparent);
-}
-
-html[data-theme="dark"][data-palette="slate"] {
-  --bg-app:         var(--bg);
-  --bg-card:        var(--surface-1);
-  --bg-input:       var(--surface-2);
-  --bg-input-focus: var(--surface-3);
-  --bg-nav:         rgba(6, 9, 17, 0.80);
-  --bg-deep:        var(--bg);
-  --text-primary:   var(--text);
-  --text-secondary: var(--text-2);
-  --color-blue:     var(--info);
-  --color-cyan:     var(--accent);
-  --color-green:    var(--success);
-}
-
-html[data-theme="dark"][data-palette="forest"] {
-  --bg-app:         #06110d;
-  --bg-card:        #0b1a14;
-  --bg-input:       #10241c;
-  --bg-input-focus: #153126;
-  --bg-nav:         rgba(6, 17, 13, 0.84);
-  --bg-deep:        #08150f;
-  --text-primary:   #e6f2ea;
-  --text-secondary: #93b3a3;
-  --color-blue:     #0f766e;
-  --color-cyan:     #2dd4bf;
-  --color-green:    var(--success);
-  --glass-border:   color-mix(in srgb, var(--text-3) 13%, transparent);
-}
-
-html[data-theme="dark"][data-palette="ember"] {
-  --bg-app:         #140d0a;
-  --bg-card:        #1d120e;
-  --bg-input:       #2a1a13;
-  --bg-input-focus: #332017;
-  --bg-nav:         rgba(20, 13, 10, 0.86);
-  --bg-deep:        #180f0b;
-  --text-primary:   #f5ede4;
-  --text-secondary: #bba99b;
-  --color-blue:     #b45309;
-  --color-cyan:     var(--warning);
-  --color-green:    var(--success);
-  --glass-border:   rgba(245, 237, 228, 0.12);
-}
+/* Palette surfaces, text and accents live in css/tokens.css (semantic layer);
+   brand aliases are mapped from them in css/brand-consistency.css. */
 
 /* Home card customization */
 .home-header-actions { display: flex; align-items: center; gap: 8px; }
