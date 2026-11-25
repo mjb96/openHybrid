@@ -372,6 +372,9 @@ function renderHomeInsight(model, state, options = {}) {
   const strength = replaceable ? buildStrengthInsight(state, model, options) : null;
   const insight = chooseHomeInsight(top, strength, options);
   if (!card || !text) return;
+  // One voice for safety: while the overtraining escalation is on screen it owns
+  // the message, so the advisory coach line yields (the briefing does the same).
+  if (options.safetyActive) { card.hidden = true; return; }
   // The coach line belongs to Today's settled state. A past week or a picked
   // day owns the surface instead, so the insight yields rather than describing
   // a different day.

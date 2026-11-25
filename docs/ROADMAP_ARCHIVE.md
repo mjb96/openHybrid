@@ -5751,3 +5751,18 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     search/stall; PG6 a real Records table/feed; PG9’s remaining overview
     concision and scannability test.
 
+- **2026-11-25 — Theme A1/A2: semantic token layer and Midnight baseline.**
+  - Added `css/tokens.css` with primitives, the full semantic set, data/tile
+    scales and personality tokens (radius, borders, elevation, bg-image, label
+    style, fonts, density, motion scale), plus a light semantic block.
+  - Added `js/theme/tokens.js` with `resolveThemeTokens`, `applyThemeTokens` and
+    `useThemeTokens` (redraw hook on `theme:changed`); palette application keeps
+    the semantic layer in sync and system-theme changes re-apply it.
+  - Removed the Slate card gradient/border/glow `!important` pins and the
+    body-wide glow; Home alone carries `--bg-image`. Set meta/manifest/Android
+    status colours to `#070B14`.
+  - Tests: `tests/theme_tokens.test.js` pins the Midnight values, CSS/JS token
+    coverage, both theme vocabularies and the apply/subscribe path.
+  - Next A3: migrate the remaining audited literals (especially charts/canvas),
+    add the contrast matrix and all-theme screenshots. origin/theme-system-audit
+

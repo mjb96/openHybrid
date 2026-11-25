@@ -499,7 +499,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   a planned deload week, else the first stalled lift planned today, with the
   stall decision owned by `computeDiagnosticForLift`); it never replaces a
   warning/caution line and is suppressed while the overtraining card is up,
-  otherwise it falls back to `model.topInsight`. The In Focus cards and their graph module were removed;
+  otherwise it falls back to `model.topInsight`. The coach is advisory only —
+  never a figure another card owns (readiness is Today guidance, weight the
+  bodyweight card, volume/sets the Strength card, plan progress the rail) — and
+  it hides while the overtraining card is on screen; `home_metric_ownership`
+  pins that rule. The In Focus cards and their graph module were removed;
   deep charts live in Progress. Optional cards (week strip, training balance,
   strength this week, endurance this week, bodyweight, coach insight, muscle
   volume) can be hidden from the Home header's Customize sheet:

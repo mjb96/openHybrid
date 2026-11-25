@@ -171,18 +171,18 @@ const GYM_PROGRAM = {
   weeklyVolModifiers: { '2': { sets: 2, reps: 5, intensityLabel: 'Working Sets' } },
 };
 
-test('high readiness surfaces the "go hard" insight when the session is NOT done', () => {
+test('high readiness is owned by the Today card, not the coach', () => {
   const s = highReadinessState([{ w: '100', r: '5', c: true }, { w: '100', r: '5', c: false }]);
   const m = computeDashboardModel(s, DAYS, GYM_PROGRAM, 'mon');
   assert.ok(m.ready.score >= 85, `expected high readiness, got ${m.ready.score}`);
-  assert.match(m.topInsight.text, /primed for a hard session/);
+  assert.doesNotMatch(m.topInsight.text, /readiness|primed for a hard session/i);
 });
 
-test('the "go hard" insight is suppressed once the session is logged', () => {
+test('a logged session never resurrects the readiness line', () => {
   const s = highReadinessState([{ w: '100', r: '5', c: true }, { w: '100', r: '5', c: true }]);
   const m = computeDashboardModel(s, DAYS, GYM_PROGRAM, 'mon');
   assert.equal(m.rec.badge, 'Session Done');
-  assert.doesNotMatch(m.topInsight.text, /primed for a hard session/);
+  assert.doesNotMatch(m.topInsight.text, /readiness|primed for a hard session/i);
 });
 
 test('empty state is safe (no data logged)', () => {
@@ -221,5 +221,6 @@ test('the coach line counts planned sessions, not completed set rows', () => {
   // The set-row percentage is a different unit and may be 100 for one logged
   // set; it must not be presented as "the plan".
   assert.equal(m.week.consistencyPct, 100);
-  assert.match(m.topInsight.text, /1 of 2 planned sessions done/);
+  // The week rail owns plan progress; the coach must not repeat it (HM7).
+  assert.doesNotMatch(m.topInsight.text, /planned sessions?/i);
 });
