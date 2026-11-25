@@ -1457,7 +1457,7 @@ families without an action. Verify what already answers each question.
 | A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js` | Weekly sets per muscle against the volume guide with under/over status and one action | PARTIAL | Weekly credited sets vs MV/MEV/MAV/MRV with zones; no action by design; current-week only and no target band in the range view. |
 | A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js`, `views/view-strength-entity.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | DONE | The exercise drilldown offers 4 weeks / 12 weeks / 6 months / 1 year / all time, and states the e1RM **rate of change per week** for the selected span (first→latest, never fabricated from one point or for holds/carries). ROI and block PR stay as they were; the program-week-indexed ROI is a separate metric, not this chart. `exercise-detail` tests pin the boundaries and the rate; the all-lifts browser check drives the range control. |
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
-| A5 | Session vs last time | `session-recap.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | PARTIAL | Per-lift Last time/Next time/PRs exist; no session-level volume or best-set delta vs the previous session, and it is not routine-aware. |
+| A5 | Session vs last time | `session-recap.js`, `workout/session-comparison.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | DONE | The recap Summary now carries one “vs last time” block: volume (and %), set delta, best-e1RM delta and the session’s PR count. Identity is the routine when the session came from the library, otherwise the same programmed day; only completed working sets count, a future/empty session is never the baseline, and runs are not compared here. `tests/session_comparison.test.js` + the recap test; verified in the History detail. |
 | A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
 | A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js` | Sessions per muscle per week with the same period comparison as sets | PARTIAL | Credited sets and last-trained exist; no sessions-per-muscle-per-week series. |
 | G4 | Year heatmap | `analytics/training-calendar.js`, `profile-stats.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | MISSING | Trailing heatmap only (26-week cap, default 12), shaded by volume/distance; no 52-week time view or day recap. |
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A5: the recap compares the session with last time.**
+  - `js/workout/session-comparison.js` finds the last completed session of the
+    SAME workout — the routine when the session came from the library, otherwise
+    the same programmed day — and compares volume (with %), sets, best e1RM and
+    the current PR count.
+  - The recap Summary shows one “vs last time” block with an up/down tone;
+    per-lift Last time/Next time stays unchanged. Only completed working sets
+    count; a future or empty session is never the baseline; runs are excluded.
+  - Tests: `tests/session_comparison.test.js` and the recap render test; checked
+    in the History detail.
+
 - **2026-11-26 — H4 A3: complete the e1RM trend ranges and rate.**
   - The exercise drilldown now offers 4 weeks, 12 weeks, 6 months, 1 year and
     all time (the old control stopped at 12w/6m/all and normalized anything else
@@ -1727,18 +1738,6 @@ device timing it did not measure.
   - Tests: `tests/week_schedule.test.js` (resolution, free dates, validation,
     undo, attribution), a sanitizer test for imports, and
     `scripts/move-day-browser-check.mjs` (move, rail, Undo, 320px).
-
-- **2026-11-25 — H2 HM4: Home's one insight is strength-derived and safety-aware.**
-  - `js/home/strength-insight.js` picks exactly one line: a planned deload
-    week, else the first stalled lift planned today (the engine's
-    `computeDiagnosticForLift` owns the stall decision, so Home and the cockpit
-    badge cannot disagree), else the existing dashboard insight.
-  - Precedence is explicit: a warning/caution line is never replaced, and the
-    line is suppressed entirely while the overtraining escalation is on screen.
-  - Tests: 8 new unit tests for the deload matcher (a conditional "Deload if
-    stalling" is not a deload week), the day selector, precedence, the build
-    guards and the engine-driven stall. Verified in the real app that a stalled
-    Back Squat surfaces on Home and links to Progress.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

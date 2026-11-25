@@ -5891,3 +5891,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     36 screenshots include per-palette Home/Train/Settings and Look & Home.
   - Verify: node tests, typecheck, precache/workflow/theme guards, smoke.
 
+- **2026-11-25 — H2 HM4: Home's one insight is strength-derived and safety-aware.**
+  - `js/home/strength-insight.js` picks exactly one line: a planned deload
+    week, else the first stalled lift planned today (the engine's
+    `computeDiagnosticForLift` owns the stall decision, so Home and the cockpit
+    badge cannot disagree), else the existing dashboard insight.
+  - Precedence is explicit: a warning/caution line is never replaced, and the
+    line is suppressed entirely while the overtraining escalation is on screen.
+  - Tests: 8 new unit tests for the deload matcher (a conditional "Deload if
+    stalling" is not a deload week), the day selector, precedence, the build
+    guards and the engine-driven stall. Verified in the real app that a stalled
+    Back Squat surfaces on Home and links to Progress.
+
