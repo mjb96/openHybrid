@@ -510,6 +510,9 @@
 .an-segment--three { grid-template-columns:repeat(3,1fr); }
 .an-segment--five { grid-template-columns:repeat(5,1fr); }
 .an-segment--five .an-segment__button { font-size:.64rem; letter-spacing:-.01em; }
+.an-ex-relative { margin:10px 0 4px; color:var(--text-secondary); font-size:.8rem; font-weight:650; }
+.an-ex-relative b { color:var(--text-primary); }
+.an-ex-relative small { color:var(--text-muted); font-size:.7rem; font-weight:600; }
 .an-ex-rate { margin:8px 0 14px; color:var(--text-secondary); font-size:.76rem; font-weight:650; }
 .an-ex-rate > span { color:var(--text-primary); font-weight:800; }
 .an-ex-rate small { color:var(--text-muted); font-size:.68rem; font-weight:600; }

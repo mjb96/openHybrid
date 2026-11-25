@@ -8,7 +8,7 @@ import { getCatalogEntry } from './programs/catalog.js';
 import { allLiftsStats } from './metrics/metrics-strength.js';
 import { isValidWorkingSet, setVolume } from './set-utils.js';
 import { runDaySummary, runSessionsForDay } from './state/run-sessions.js';
-import { addDaysISO, todayKey } from './dates.js';
+import { addDaysISO, daysBetween, localDayKey, todayKey } from './dates.js';
 import { indexSlotsByDate, weekStartOf } from './analytics/weekly-aggregate.js';
 import { collectRunningHistory } from './analytics/running-detail.js';
 import { exercisePerformanceHistory } from './workout/exercise-history.js';
@@ -195,18 +195,29 @@ export function _computeRunningPBs(state, days, history = null) {
 // number or null. Falls back to the most recent per-session bodyWeight entry.
 export function _latestBodyWeight(state) {
   const log = (state.bodyWeightLog || []).filter(e => e && e.date && parseFloat(e.weight) > 0);
-  if (log.length) {
-    const latest = log.reduce((a, b) => (new Date(a.date) > new Date(b.date) ? a : b));
-    return parseFloat(latest.weight);
-  }
-  // Fallback: scan per-session body weights (no reliable date, so just take any).
-  for (const wkData of Object.values(state.weeks || {})) {
-    for (const v of Object.values(wkData?.bodyWeight || {})) {
-      const w = parseFloat(v);
-      if (w > 0) return w;
-    }
-  }
-  return null;
+  if (!log.length) return null;
+  const latest = log.reduce((a, b) => (new Date(a.date) > new Date(b.date) ? a : b));
+  return parseFloat(latest.weight);
+}
+
+/**
+ * A weigh-in recent enough to state a strength-to-bodyweight ratio (A8). The
+ * undated per-session fallback is deliberately NOT used: a ratio needs a real
+ * date, and an old session weight is not today's bodyweight.
+ * @param {any} state
+ * @param {{ now?: Date|string, maxAgeDays?: number }} [options]
+ * @returns {{ weight: number, date: string }|null}
+ */
+export function _recentBodyWeight(state, { now = new Date(), maxAgeDays = 30 } = {}) {
+  const log = (state?.bodyWeightLog || [])
+    .filter((entry) => entry && /^\d{4}-\d{2}-\d{2}$/.test(entry.date) && Number(entry.weight) > 0)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (!log.length) return null;
+  const latest = log[log.length - 1];
+  const today = localDayKey(now);
+  const age = today ? daysBetween(latest.date, today) : null;
+  if (age == null || age < 0 || age > maxAgeDays) return null;
+  return { weight: Number(latest.weight), date: latest.date };
 }
 
 // Body-weight history for the trend chart. Returns the chronologically sorted
@@ -405,11 +416,11 @@ export function _strengthTier(label, ratio) {
 // strength-standard tier. Uses the same robust movement matching as the PR
 // list, so variant names (e.g. "Paused Squat") still count. Returns
 // [{ label, e1rm, ratio, tier }].
-export function _relativeStrength(state, days, bodyWeight) {
+export function _relativeStrength(state, days, bodyWeight, bodyWeightDate = null) {
   if (!bodyWeight || bodyWeight <= 0) return [];
   return _big3PRs(state, days).map(l => {
     const ratio = l.e1rm / bodyWeight;
-    return { label: l.movement, e1rm: l.e1rm, ratio, tier: _strengthTier(l.movement, ratio) };
+    return { label: l.movement, e1rm: l.e1rm, ratio, tier: _strengthTier(l.movement, ratio), bodyWeightDate };
   });
 }
 
@@ -586,12 +597,13 @@ export function _relStrengthBand(items, unit) {
         const color = i.tier?.color || '#c4b5fd';
         return `
         <div class="profile-rs-tile" style="border-color:${color}38;background:linear-gradient(160deg, ${color}22, ${color}07);">
-          <div class="profile-rs-ratio" style="color:${color};">${i.ratio.toFixed(2)}<span class="profile-rs-x">×BW</span></div>
+          <div class="profile-rs-ratio" style="color:${color};">${i.ratio.toFixed(2)}<span class="profile-rs-x">×BW</span><span class="profile-rs-est">est.</span></div>
           <div class="profile-rs-label">${_esc(i.label)}</div>
           <div class="profile-rs-sub" style="color:${color};">${i.tier?.name || ''}</div>
           <div class="profile-rs-e1rm">${Math.round(i.e1rm)}&nbsp;${unit}</div>
         </div>`;
       }).join('')}
+      ${items[0]?.bodyWeightDate ? `<p class="profile-rs-note">Estimate · e1RM divided by the latest weigh-in (${items[0].bodyWeightDate}).</p>` : ''}
     </div>
   `;
 }

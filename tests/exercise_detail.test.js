@@ -123,3 +123,25 @@ test('a hold or a single session has no e1RM rate', () => {
   const one = stateWith([{ date: TODAY, exercise: 'Bench Press', sets: [set(100, 5)] }]);
   assert.equal(buildExerciseDetailModel(one, 'Bench Press', { now: NOW, range: '4w' }).rate, null);
 });
+
+test('relative strength appears for the big three from a recent dated weigh-in (A8)', () => {
+  const state = stateWith([
+    { date: addDaysISO(TODAY, -7), exercise: 'Bench Press', sets: [set(100, 5)] },
+  ]);
+  state.bodyWeightLog = [{ date: addDaysISO(TODAY, -3), weight: 80 }];
+  const model = buildExerciseDetailModel(state, 'Bench Press', { now: NOW, range: '4w' });
+  assert.ok(model.relative, 'a recent weigh-in yields a ratio');
+  assert.equal(model.relative.weight, 80);
+  assert.ok(model.relative.ratio > 1.4 && model.relative.ratio < 1.5);
+
+  state.bodyWeightLog = [{ date: addDaysISO(TODAY, -60), weight: 80 }];
+  assert.equal(buildExerciseDetailModel(state, 'Bench Press', { now: NOW, range: '4w' }).relative, null, 'a stale weigh-in is not current');
+});
+
+test('relative strength is limited to the big three', () => {
+  const state = stateWith([
+    { date: addDaysISO(TODAY, -7), exercise: 'Barbell Row', sets: [set(60, 8)] },
+  ]);
+  state.bodyWeightLog = [{ date: addDaysISO(TODAY, -3), weight: 80 }];
+  assert.equal(buildExerciseDetailModel(state, 'Barbell Row', { now: NOW, range: '4w' }).relative, null);
+});

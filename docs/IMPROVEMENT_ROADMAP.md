@@ -1461,7 +1461,7 @@ families without an action. Verify what already answers each question.
 | A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
 | A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js` | Sessions per muscle per week with the same period comparison as sets | PARTIAL | Credited sets and last-trained exist; no sessions-per-muscle-per-week series. |
 | G4 | Year heatmap | `analytics/training-calendar.js`, `profile-stats.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | MISSING | Trailing heatmap only (26-week cap, default 12), shaded by volume/distance; no 52-week time view or day recap. |
-| A8 | Relative strength | `profile-stats.js`, `athlete-profile.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | PARTIAL | Big-3 e1RM/BW + tier exists; the ratio is unlabeled, has no estimate wording, falls back to an undated session weight, and is not in Progress. |
+| A8 | Relative strength | `profile-stats.js`, `athlete-profile.js`, `exercise-detail.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | DONE | The exercise drilldown states `X.XX× bodyweight (est. · <weight> on <date>)` for the big three, using the latest DATED weigh-in within 30 days and nothing else. The Profile band is labelled `est.` with the weigh-in note, and the undated per-session bodyweight fallback is gone (`_latestBodyWeight`/`_recentBodyWeight`). Tests: `relative_strength.test.js` + exercise-detail cases + the all-lifts browser check. |
 | A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `exercise-detail.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | PARTIAL | Range vocabulary covers bands; strength volume has 4w–all; e1RM stops at 12w/6m/all and the legacy Strength screen is the only 4w–all home. |
 
 **Data rules (unchanged):** Monday-based calendar weeks unless ST7 ships (then
@@ -1629,6 +1629,15 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A8: relative strength is explicit and recent.**
+  - The big-three exercise drilldown states `X.XX× bodyweight`, marked `est.`
+    and naming the weigh-in date; Profile's ratio tiles carry the same `est.`
+    and a note. Both use `_recentBodyWeight` (latest DATED weigh-in ≤30 days).
+  - Removed `_latestBodyWeight`'s undated per-session fallback: an old session
+    weight is not current bodyweight and made the ratio a false claim.
+  - Tests: `tests/relative_strength.test.js`, exercise-detail cases, and the
+    all-lifts browser check's relative-strength assertion.
+
 - **2026-11-26 — H4 A5: the recap compares the session with last time.**
   - `js/workout/session-comparison.js` finds the last completed session of the
     SAME workout — the routine when the session came from the library, otherwise
@@ -1723,21 +1732,6 @@ device timing it did not measure.
     progress.
   - `tests/home_metric_ownership.test.js` fails if the coach repeats any of
     those figures; the Home Today browser check still passes.
-
-- **2026-11-25 — H2 HM2: move a planned day to a free date this week.**
-  - `js/schedule/week.js` adds the one missing model: `state.weekSchedule`
-    (calendar week → day → date). It decides which program day owns a date,
-    which dates are free, and validates/undoes a move without re-deriving
-    history.
-  - Home's week rail, Today card, Train landing and cockpit resolve the
-    scheduled day for a date, so a moved workout appears on its new date and the
-    old weekday reads rest. Logged work keeps its stamped date; analytics are
-    untouched.
-  - Free dates only: occupied and past dates are disabled with a reason, the
-    source date is marked, and nothing is overwritten. Undo is the shared bar.
-  - Tests: `tests/week_schedule.test.js` (resolution, free dates, validation,
-    undo, attribution), a sanitizer test for imports, and
-    `scripts/move-day-browser-check.mjs` (move, rail, Undo, 320px).
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

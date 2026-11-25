@@ -5903,3 +5903,18 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     guards and the engine-driven stall. Verified in the real app that a stalled
     Back Squat surfaces on Home and links to Progress.
 
+- **2026-11-25 — H2 HM2: move a planned day to a free date this week.**
+  - `js/schedule/week.js` adds the one missing model: `state.weekSchedule`
+    (calendar week → day → date). It decides which program day owns a date,
+    which dates are free, and validates/undoes a move without re-deriving
+    history.
+  - Home's week rail, Today card, Train landing and cockpit resolve the
+    scheduled day for a date, so a moved workout appears on its new date and the
+    old weekday reads rest. Logged work keeps its stamped date; analytics are
+    untouched.
+  - Free dates only: occupied and past dates are disabled with a reason, the
+    source date is marked, and nothing is overwritten. Undo is the shared bar.
+  - Tests: `tests/week_schedule.test.js` (resolution, free dates, validation,
+    undo, attribution), a sanitizer test for imports, and
+    `scripts/move-day-browser-check.mjs` (move, rail, Undo, 320px).
+

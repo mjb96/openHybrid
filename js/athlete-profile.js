@@ -60,7 +60,8 @@ export function renderAthleteProfile(targetId = 'profileContent') {
   // Body weight + lifetime totals (drive the hero band and headline stats)
   const bodyWeight    = _latestBodyWeight(state);
   const lifetime      = _lifetimeTotals(state, days);
-  const relStrength   = _relativeStrength(state, days, bodyWeight);
+  const recentWeight  = _recentBodyWeight(state);
+  const relStrength   = _relativeStrength(state, days, recentWeight?.weight ?? bodyWeight, recentWeight?.date ?? null);
 
   // Strength PRs — the big three only (Squat / Bench / Deadlift), best e1RM per
   // movement and robust to variant naming.
@@ -332,7 +333,8 @@ function shareProfileCard() {
   const distUnit = state.settings?.distanceUnit || 'km';
   const bodyWeight = _latestBodyWeight(state);
   const lifetime   = _lifetimeTotals(state, days);
-  const rel        = _relativeStrength(state, days, bodyWeight);
+  const recentWeight = _recentBodyWeight(state);
+  const rel        = _relativeStrength(state, days, recentWeight?.weight ?? null, recentWeight?.date ?? null);
 
   // Background + accent glow
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -467,6 +469,7 @@ import {
   _lifetimeTotals,
   _big3PRs,
   _relativeStrength,
+  _recentBodyWeight,
   _relStrengthBand,
   _runningStats,
   _compactNum,
