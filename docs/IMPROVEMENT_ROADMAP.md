@@ -1275,7 +1275,7 @@ first.
 | HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | PARTIAL | Ready/rest/in-progress/completed/unresolved/no-plan/offline-note/past-week empty exist; no explicit first-run state and offline is only a note. |
-| HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | PARTIAL | The rail/coach plan-done contradiction is fixed: the coach line now counts planned sessions (`planDone`/`planTotal`) like the rail, while the Hybrid Score keeps its set-based consistency. Readiness and weekly volume still have two surfaces; no duplicate-metric guard yet. |
+| HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | DONE | One owner per figure: readiness → the Today card's guidance (and the recovery detail); bodyweight + delta → the bodyweight card; weekly volume, sessions and working sets → the Strength week card; planned sessions → the week rail. The coach is advisory only (fasting, load/ACWR, streak) and hides while the overtraining card is up. `tests/home_metric_ownership.test.js` pins the rule; `home-today-browser-check` still passes. |
 
 **Acceptance:** Home answers "what should I do today?" without scrolling; no
 metric appears twice; hybrid cards stay hidden when Hybrid training is off;
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H2 HM7: one owner per Home metric, with a guard.**
+  - Audited Home: the coach line was restating readiness, bodyweight delta,
+    weekly-volume delta, planned-session progress and working sets that other
+    cards already show. It is now advisory only — fasting, load/ACWR and streak
+    — and hides while the overtraining escalation owns the message.
+  - Readiness has one surface (Today guidance); bodyweight owns its delta; the
+    Strength week card owns volume/sessions/sets; the week rail owns plan
+    progress.
+  - `tests/home_metric_ownership.test.js` fails if the coach repeats any of
+    those figures; the Home Today browser check still passes.
+
 - **2026-11-25 — H2 HM2: move a planned day to a free date this week.**
   - `js/schedule/week.js` adds the one missing model: `state.weekSchedule`
     (calendar week → day → date). It decides which program day owns a date,
@@ -1761,21 +1772,6 @@ device timing it did not measure.
   - Full matrix and 13-row mapping:
     `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
     changed. Next: approval, then Phase 1 navigation.
-
-- **2026-11-25 — Theme A1/A2: semantic token layer and Midnight baseline.**
-  - Added `css/tokens.css` with primitives, the full semantic set, data/tile
-    scales and personality tokens (radius, borders, elevation, bg-image, label
-    style, fonts, density, motion scale), plus a light semantic block.
-  - Added `js/theme/tokens.js` with `resolveThemeTokens`, `applyThemeTokens` and
-    `useThemeTokens` (redraw hook on `theme:changed`); palette application keeps
-    the semantic layer in sync and system-theme changes re-apply it.
-  - Removed the Slate card gradient/border/glow `!important` pins and the
-    body-wide glow; Home alone carries `--bg-image`. Set meta/manifest/Android
-    status colours to `#070B14`.
-  - Tests: `tests/theme_tokens.test.js` pins the Midnight values, CSS/JS token
-    coverage, both theme vocabularies and the apply/subscribe path.
-  - Next A3: migrate the remaining audited literals (especially charts/canvas),
-    add the contrast matrix and all-theme screenshots. origin/theme-system-audit
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

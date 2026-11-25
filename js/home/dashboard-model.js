@@ -359,9 +359,14 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
 // (renderHomeInsight in js/home.js), so it always describes the settled day. It
 // also remains the intended copy source for the morning notification (R3).
 // ---------------------------------------------------------------------------
-function pickTopInsight(m) {
-  // Once today's planned session is logged, don't nudge the athlete to go hard —
-  // the coaching card already acknowledges the session.
+export function pickTopInsight(m) {
+  // ONE OWNER PER METRIC. The coach line is advisory: it must never restate a
+  // figure another Home card already shows (HM7/HY6).
+  //   • readiness      → the Today card's guidance (and the recovery detail)
+  //   • weight/delta   → the bodyweight card
+  //   • weekly volume  → the Strength week card's delta chip
+  //   • planned/sets   → the week rail and the Strength card
+  // What remains is genuinely advisory: safety/load, fasting, streak.
   const sessionDone = m.rec?.badge === 'Session Done';
   if (m.fasting.active) {
     return { text: `Fasting ${Math.floor(m.fasting.hours)}h — ${m.fasting.zone.name}`, tone: 'caution', nav: 'custom:fasting' };
@@ -369,36 +374,20 @@ function pickTopInsight(m) {
   if (m.load.hasData && m.load.acwr >= 1.5) {
     return { text: `Load spiking (ACWR ${m.load.acwr}). Ease off and protect recovery today.`, tone: 'warning', nav: 'training-status' };
   }
-  if (!sessionDone && m.ready.hasData && m.ready.confidence === 'high' && m.ready.score >= 85) {
-    return { text: `Readiness ${m.ready.score} — primed for a hard session or a PR attempt.`, tone: 'positive', nav: 'recovery-score' };
-  }
-  if (m.ready.hasData && m.ready.confidence === 'high' && m.ready.score < 40) {
-    return { text: `Readiness ${m.ready.score} — recovery is suppressed. Keep it easy today.`, tone: 'warning', nav: 'recovery-score' };
-  }
   if (m.load.hasData && m.load.acwr >= 1.3) {
     return { text: `Building load (ACWR ${m.load.acwr}) — hold volume, watch fatigue.`, tone: 'caution', nav: 'training-status' };
-  }
-  if (m.calendarWeek?.volume?.delta && m.calendarWeek.volume.delta.good && m.calendarWeek.volume.delta.dir === 'up') {
-    // Calendar volume, not the program-week slot: imported/archived sessions
-    // belong to the real date and must count toward "this week" momentum.
-    // `delta` is pace-matched, so the copy names the same point last week.
-    return { text: `Weekly volume up ${m.calendarWeek.volume.delta.pctLabel} vs the same point last week — momentum is building.`, tone: 'positive', nav: 'weekly-volume' };
   }
   if (m.streak.current >= 3) {
     return { text: `${m.streak.current}-day training streak — keep it alive.`, tone: 'positive', nav: 'streak' };
   }
-  // Complementary to (not a duplicate of) the coaching card below.
-  if (m.week.planTotal > 0 && m.week.planPct >= 50) {
-    return { text: `${m.week.planDone} of ${m.week.planTotal} planned sessions done — stay on it.`, tone: 'neutral', nav: 'progress' };
+  if (sessionDone) {
+    return { text: 'Session logged — recovery is the next rep.', tone: 'neutral', nav: 'progress' };
   }
-  if (m.bodyweight.hasData && m.bodyweight.delta7 !== null && m.bodyweight.delta7 !== 0) {
-    const dir = m.bodyweight.delta7 < 0 ? 'down' : 'up';
-    return { text: `Body weight ${dir} ${Math.abs(m.bodyweight.delta7)}kg over the last week.`, tone: 'neutral', nav: 'bodyweight' };
-  }
-  if (m.calendarWeek?.sets > 0) {
-    return { text: `${m.calendarWeek.sets} working set${m.calendarWeek.sets === 1 ? '' : 's'} logged this week — keep the rhythm.`, tone: 'neutral', nav: 'weekly-volume' };
-  }
-  return { text: 'Log a few sessions to unlock personalised insights.', tone: 'neutral', nav: 'progress' };
+  // Nothing worth a "because" line: an honest prompt, never a restated metric.
+  const hasData = !!(m.ready?.hasData || (m.calendarWeek?.sets || 0) > 0 || (m.week?.planDone || 0) > 0);
+  return hasData
+    ? { text: 'One session at a time — log how it feels.', tone: 'neutral', nav: 'progress' }
+    : { text: 'Log a few sessions to unlock personalised insights.', tone: 'neutral', nav: 'progress' };
 }
 
 // ---------------------------------------------------------------------------
