@@ -32,6 +32,7 @@ import {
   recordCandidates, recordPreviousValue,
 } from './strength/records.js';
 import { exercisePerformanceHistory } from './workout/exercise-history.js';
+import { buildSessionComparison } from './workout/session-comparison.js';
 
 let _getState = null;
 export function initSessionRecap(getStateFn) { _getState = getStateFn; }
@@ -293,6 +294,18 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
     ? String(wd.notes?.[day] || '').trim()
     : '';
 
+  // A5: session-level comparison with the last time this same workout was done.
+  // Per-lift Last time stays where it is; this answers the bigger question.
+  const bestE1rm = lifts.reduce((max, lift) => Math.max(max, lift.e1rm || 0), 0);
+  const prCount = lifts.reduce((count, lift) => count + (lift.prKinds?.length || 0), 0);
+  const comparison = buildSessionComparison(state, week, day, {
+    dateISO,
+    volume: Math.round(tonnage),
+    sets: workingSets,
+    bestE1rm,
+    prs: prCount,
+  });
+
   // Insights are NOT hand-rolled here — they come from the shared insight
   // engine (see insightsForSession), so there's one source of truth. This
   // builder only assembles the session's factual summary.
@@ -304,6 +317,7 @@ export function buildSessionRecap(state, week, day, sessionId = null, activityKi
     gymCals: gymStats.cals || '', gymTE: gymStats.trainingEffect || gymStats.te || '',
     weightUnit, distanceUnit, hasGymStats,
     lifts, muscles, run: runOut,
+    comparison,
     empty: workingSets === 0 && !runOut && !hasGymStats,
   };
 }
@@ -337,6 +351,25 @@ function fmtPace(secs) {
 }
 
 const ZONE_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#f97316', '#ef4444'];
+function _comparisonLine(r) {
+  const c = r.comparison;
+  if (!c) return '';
+  const unit = r.weightUnit || 'kg';
+  const signed = (value, suffix) => `${value > 0 ? '+' : ''}${value}${suffix}`;
+  const parts = [];
+  parts.push(`${signed(c.volumeDelta, ' ' + unit)} volume${c.volumePct != null ? ` (${signed(c.volumePct, '%')})` : ''}`);
+  if (c.setsDelta !== 0) parts.push(`${signed(c.setsDelta, '')} set${Math.abs(c.setsDelta) === 1 ? '' : 's'}`);
+  if (c.bestDelta != null && c.bestDelta !== 0) parts.push(`best ${signed(c.bestDelta, ' ' + unit)}`);
+  if (c.prs > 0) parts.push(`${c.prs} PR${c.prs === 1 ? '' : 's'}`);
+  const up = c.volumeDelta > 0 || (c.bestDelta != null && c.bestDelta > 0);
+  const down = c.volumeDelta < 0 && (c.bestDelta == null || c.bestDelta <= 0);
+  const tone = up ? 'is-up' : down ? 'is-down' : '';
+  return `<div class="recap-compare ${tone}">
+    <span class="recap-compare__label">vs last time · ${esc(fmtDate(c.previousDate))}</span>
+    <span class="recap-compare__body">${esc(parts.join(' · '))}</span>
+  </div>`;
+}
+
 function _summaryTiles(r) {
   const unit = r.weightUnit || 'kg';
   const distUnit = r.distanceUnit || 'km';
@@ -595,6 +628,7 @@ export function renderSessionRecapHTML(r, insights = [], thresholdSec = null, ta
     // map container read as a broken screen; say so explicitly instead.
     const runHasRoute = !!(r.run && (r.run.splits?.length || r.run.gpsQuality));
     body = `
+      ${_comparisonLine(r)}
       <div class="recap-stats">${_summaryTiles(r)}</div>
       ${r.run && r.run.distKm > 0
         ? (runHasRoute

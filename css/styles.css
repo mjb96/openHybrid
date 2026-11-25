@@ -9537,6 +9537,20 @@ html[data-theme="light"] .activity-filter--active { color: #07566b; }
   background: color-mix(in srgb, var(--c) 16%, transparent);
   border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
 }
+.recap-compare {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.recap-compare.is-up { border-color: color-mix(in srgb, var(--success) 38%, transparent); }
+.recap-compare.is-down { border-color: color-mix(in srgb, var(--warning) 38%, transparent); }
+.recap-compare__label { color: var(--text-3); font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.recap-compare__body { color: var(--text); font-size: 0.8rem; font-weight: 650; line-height: 1.4; }
 .recap-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(88px, 1fr)); gap: 10px; margin-bottom: 8px; }
 .recap-stat { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; text-align: center; }
 .recap-stat__v { display: block; font-size: 1.12rem; font-weight: 800; color: var(--text-primary); }

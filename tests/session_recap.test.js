@@ -403,3 +403,24 @@ test('the workout note is escaped, never injected as HTML', () => {
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(html, /<img src=x onerror/);
 });
+
+test('the recap compares the session with the last time the same workout was done (A5)', () => {
+  const previous = {
+    programId: 'p', dates: { mon: '2026-07-01' },
+    lifts: { mon: { Squat: [{ w: 100, r: 5, c: true }] } }, runs: {},
+  };
+  const current = {
+    programId: 'p', dates: { mon: '2026-07-08' },
+    lifts: { mon: { Squat: [{ w: 110, r: 5, c: true }, { w: 110, r: 5, c: true }] } }, runs: {},
+  };
+  const state = { weeks: { '0': previous, '1': current } };
+  const recap = buildSessionRecap(state, '1', 'mon');
+  assert.ok(recap.comparison, 'a previous same-day session exists');
+  assert.equal(recap.comparison.previousDate, '2026-07-01');
+  assert.equal(recap.comparison.previousSets, 1);
+  assert.ok(recap.comparison.volumeDelta > 0);
+
+  const html = renderSessionRecapHTML(recap, [], null, 'summary');
+  assert.match(html, /vs last time/);
+  assert.match(html, /volume/);
+});
