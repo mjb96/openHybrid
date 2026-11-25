@@ -941,7 +941,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   without importing workout.js back and creating a cycle. They are FUNCTIONS, not
   live bindings — so `if (!getState)` is always true and a readiness check must
   use `workoutContextReady()`.
-- Workout cockpit: in-session **exercise swap** (`js/workout/substitutions.js` +
+- Workout cockpit: every exercise card states one line of WHY under the target
+  (`workout/target-why.js`: the engine's stall/fatigue message, the progression
+  rationale, a first-performance baseline, or the program prescription), never
+  inventing a reason or repeating the diagnostic twice. In-session **exercise swap** (`js/workout/substitutions.js` +
   pure `applyExerciseSwap` in `workout-order.js`; re-keys the sets array to preserve
   target+logged data), per-side **plate math** (`js/workout/plates.js`), swipe
   between days (`neighborDay`). `+ Drop` (`appendDropSetRow`) appends a separate

@@ -5782,3 +5782,19 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
     changed. Next: approval, then Phase 1 navigation.
 
+- **2026-11-25 — H1 Settings/Profile Phase 1: route shell and Home gear.**
+  - Home header now has a 48px gear that opens a full-screen `#/settings`
+    route; the sliders button remains Customize Home.
+  - Added `#/settings/profile`, reached only from the profile card; legacy
+    `open-profile` and `#profile` redirect there. The bottom tab bar is hidden
+    inside the route and restored on Home.
+  - Back works at both levels, browser/system Back pops the route, and Home's
+    scroll position is restored. Profile renders the existing athlete page
+    into the Settings sub-page, so no data or feature was duplicated.
+  - `js/settings/route.js` is the pure route model; a new
+    `settings-navigation-browser-check` covers 320/390/412, the redirects and
+    the scroll restore. Settings cards remain unchanged pending Phase 4.
+  - Decision: `/settings` is implemented as `#/settings` because the hosted PWA
+    and Android asset origin have no refresh rewrite. Approve the hash or add a
+    server fallback before individual setting deep links (Phase 6).
+
