@@ -10,8 +10,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 import {
-  LIGHT_TOKENS, MIDNIGHT_TOKENS, TOKEN_KEYS, applyThemeTokens, resolveThemeTokens, useThemeTokens,
+  EMBER_TOKENS, FOREST_TOKENS, LIGHT_TOKENS, MIDNIGHT_TOKENS, PALETTE_TOKENS, SLATE_TOKENS,
+  TOKEN_KEYS, applyThemeTokens, activePalette, resolveThemeTokens, useThemeTokens,
 } from '../js/theme/tokens.js';
+import { PALETTES } from '../js/theme.js';
 
 const CSS = readFileSync(new URL('../css/tokens.css', import.meta.url), 'utf8');
 
@@ -34,6 +36,27 @@ test('every JS token has a CSS custom property in both themes', () => {
 
 test('light and dark expose the same token vocabulary', () => {
   assert.deepEqual(Object.keys(LIGHT_TOKENS).sort(), Object.keys(MIDNIGHT_TOKENS).sort());
+  for (const tokens of [SLATE_TOKENS, FOREST_TOKENS, EMBER_TOKENS]) {
+    assert.deepEqual(Object.keys(tokens).sort(), Object.keys(MIDNIGHT_TOKENS).sort());
+  }
+});
+
+test('every palette id has tokens and a CSS block, and light ignores palette', () => {
+  assert.deepEqual(Object.keys(PALETTE_TOKENS).sort(), PALETTES.map((p) => p.id).sort());
+  for (const id of Object.keys(PALETTE_TOKENS)) {
+    if (id !== 'midnight') {
+      assert.ok(CSS.includes(`html[data-theme="dark"][data-palette="${id}"]`), `${id} has no CSS block`);
+    }
+    const dom = new JSDOM(`<!doctype html><html data-theme="dark" data-palette="${id}"></html>`);
+    const root = dom.window.document.documentElement;
+    assert.equal(activePalette(root), id);
+    assert.equal(resolveThemeTokens(root).bg, PALETTE_TOKENS[id].bg);
+    root.setAttribute('data-theme', 'light');
+    assert.equal(resolveThemeTokens(root)['surface-1'], '#FFFFFF');
+  }
+  assert.equal(PALETTE_TOKENS.midnight.bg, '#060606');
+  assert.notEqual(PALETTE_TOKENS.slate.bg, PALETTE_TOKENS.forest.bg);
+  assert.notEqual(PALETTE_TOKENS.forest.bg, PALETTE_TOKENS.ember.bg);
 });
 
 test('applyThemeTokens writes the layer and useThemeTokens reacts', () => {

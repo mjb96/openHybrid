@@ -3,7 +3,7 @@
 // =============================================================================
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { LIGHT_TOKENS, MIDNIGHT_TOKENS } from '../js/theme/tokens.js';
+import { EMBER_TOKENS, FOREST_TOKENS, LIGHT_TOKENS, MIDNIGHT_TOKENS, SLATE_TOKENS } from '../js/theme/tokens.js';
 
 const luminance = (hex) => {
   const raw = String(hex).replace('#', '');
@@ -33,7 +33,7 @@ const CHECKS = [
   ['focus-ring', 'bg', 3],
 ];
 
-for (const [name, tokens] of [['Midnight', MIDNIGHT_TOKENS], ['Light', LIGHT_TOKENS]]) {
+for (const [name, tokens] of [['Midnight', MIDNIGHT_TOKENS], ['Slate', SLATE_TOKENS], ['Forest', FOREST_TOKENS], ['Ember', EMBER_TOKENS], ['Light', LIGHT_TOKENS]]) {
   test(`${name} semantic pairs meet WCAG AA`, () => {
     for (const [fg, bg, min] of CHECKS) {
       const ratio = contrast(tokens[fg], tokens[bg]);

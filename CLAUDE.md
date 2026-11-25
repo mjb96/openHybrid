@@ -430,11 +430,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   personality) and `js/theme/tokens.js` is the resolved read path for
   charts/canvas (`useThemeTokens` subscribes to `theme:changed`). Components
   consume semantic tokens (`bg`, `surface-1..3`, `text`, `accent`, `data-*`,
-  `tile-*`), never literals; A3 is migrating the remaining legacy literals.
-  Midnight is
-  the icon-derived default for dark/system profiles (schema v10 seeds it), with
-  Slate/Forest/Ember alternatives. Light keeps its own variable block. The
-  Settings palette buttons persist `settings.palette`.
+  `tile-*`), never literals; the literal ratchet in `npm run verify` keeps the
+  remaining ones from growing. Midnight is the icon-derived default for
+  dark/system profiles (schema v10 seeds it), with Slate/Forest/Ember
+  alternatives. Every palette is a full semantic block in `css/tokens.css`
+  plus an identical JS map (`PALETTE_TOKENS`); only surfaces, text and accent
+  differ — status and data colours stay constant. Light is its own palette and
+  ignores the choice (the palette is remembered for dark mode). Settings →
+  Look & Home persists `settings.palette`.
 - Exercise catalogue: the original 157 are `CORE_EXERCISES`; `js/exercises/opengym-catalogue.js`
   adds ~5,555 openGym catalogue **metadata** entries (names/ids/muscles/equipment; no imported instructions, descriptions or media) imported by
   `scripts/import-opengym-catalogue.mjs`. `OPENGYM_ID_NAMES` resolves plan-file ids.

@@ -44,6 +44,7 @@
   --text-inverse: #04202a;
   --accent: var(--p-cyan-400);
   --accent-pressed: var(--p-cyan-500);
+  --accent-rgb: 34, 211, 238;
   --accent-subtle: rgba(34, 211, 238, 0.14);
   --on-accent: #04202a;
   --accent-text: var(--p-cyan-400);
@@ -95,6 +96,69 @@
   --motion-scale: 1;
 }
 
+
+/* --- Alternate dark palettes -------------------------------------------------
+   Only the semantic layer changes: status/data colours stay constant, and light
+   mode keeps its own palette (a palette choice is remembered for dark mode).
+   The JS token maps in js/theme/tokens.js carry the same values for canvas.
+   ---------------------------------------------------------------------------- */
+html[data-theme="dark"][data-palette="slate"] {
+  --bg: #0a0f1a;
+  --surface-1: #111827;
+  --surface-2: #18202f;
+  --surface-3: #212b3d;
+  --text: #f1f5f9;
+  --text-2: #b7c3d5;
+  --text-3: #8c9ab0;
+  --text-inverse: #04202a;
+  --accent: #38bdf8;
+  --accent-pressed: #0ea5e9;
+  --accent-rgb: 56, 189, 248;
+  --accent-subtle: rgba(56, 189, 248, 0.14);
+  --on-accent: #04202a;
+  --accent-text: #7dd3fc;
+  --overlay-scrim: rgba(10, 15, 26, 0.78);
+  --focus-ring: #38bdf8;
+}
+
+html[data-theme="dark"][data-palette="forest"] {
+  --bg: #05100b;
+  --surface-1: #0b1912;
+  --surface-2: #12241a;
+  --surface-3: #1a3023;
+  --text: #edf7f1;
+  --text-2: #b0c7ba;
+  --text-3: #88a895;
+  --text-inverse: #04231a;
+  --accent: #34d399;
+  --accent-pressed: #10b981;
+  --accent-rgb: 52, 211, 153;
+  --accent-subtle: rgba(52, 211, 153, 0.14);
+  --on-accent: #04231a;
+  --accent-text: #6ee7b7;
+  --overlay-scrim: rgba(5, 16, 11, 0.78);
+  --focus-ring: #34d399;
+}
+
+html[data-theme="dark"][data-palette="ember"] {
+  --bg: #120b08;
+  --surface-1: #1c120e;
+  --surface-2: #271912;
+  --surface-3: #331f17;
+  --text: #f7f0ea;
+  --text-2: #cdb9ab;
+  --text-3: #a88f7f;
+  --text-inverse: #2a1204;
+  --accent: #fb923c;
+  --accent-pressed: #f97316;
+  --accent-rgb: 251, 146, 60;
+  --accent-subtle: rgba(251, 146, 60, 0.14);
+  --on-accent: #2a1204;
+  --accent-text: #fdba74;
+  --overlay-scrim: rgba(18, 11, 8, 0.78);
+  --focus-ring: #fb923c;
+}
+
 html[data-theme="light"] {
   --bg: #f0f4f8;
   --surface-1: #ffffff;
@@ -108,6 +172,7 @@ html[data-theme="light"] {
   --text-inverse: #ffffff;
   --accent: #0e7490;
   --accent-pressed: #155e75;
+  --accent-rgb: 14, 116, 144;
   --accent-subtle: rgba(14, 116, 144, 0.12);
   --on-accent: #ffffff;
   --accent-text: #155e75;

@@ -86,6 +86,34 @@ try {
     await page.evaluate(() => document.querySelector('#setSheet [data-action="close-set-sheet"]')?.click());
     await context.close();
   }
+
+  // Alternate dark palettes: the surfaces, text and accent change; the layout
+  // and the light theme do not.
+  for (const palette of ['slate', 'forest', 'ember']) {
+    const context = await createBrowserContext(browser, { viewport: { width: 390, height: 900 }, colorScheme: 'dark' });
+    await context.addInitScript(([k, v]) => localStorage.setItem(k, v), ['hybrid_engine_v2_state', JSON.stringify({ ...state, settings: { ...state.settings, theme: 'dark', palette } })]);
+    await context.addInitScript(pinClock, Date.parse('2026-11-25T09:00:00+11:00'));
+    const page = await context.newPage();
+    await page.goto(base, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(500);
+    await page.locator('button', { hasText: 'NOT YET' }).click().catch(() => {});
+    await page.waitForTimeout(250);
+    await shot(page, `home-${palette}-dark-390`);
+    await page.evaluate(() => document.querySelector('.bottom-nav [data-target="workout"]')?.click());
+    await page.waitForSelector('#view-workout.active');
+    await page.waitForTimeout(450);
+    await shot(page, `train-${palette}-dark-390`);
+    await page.evaluate(() => document.querySelector('.bottom-nav [data-target="home"]')?.click());
+    await page.waitForSelector('#view-home.active');
+    await page.click('#homeSettingsBtn');
+    await page.waitForSelector('#settingsOverlay.active');
+    await page.waitForTimeout(350);
+    await shot(page, `settings-${palette}-dark-390`);
+    await page.locator('#settingsPageHost .s-row', { hasText: 'Look & Home' }).first().click();
+    await page.waitForTimeout(400);
+    await shot(page, `look-${palette}-dark-390`);
+    await context.close();
+  }
 } finally {
   await browser.close(); server.close();
 }

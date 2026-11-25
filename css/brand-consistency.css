@@ -32,41 +32,50 @@
   --accent-indigo: var(--brand-cobalt-strong);
 }
 
-/* Midnight is the icon palette. Brand-consistency.css loads last, so the
-   palette must re-declare the brand tokens here or the old cobalt wins. */
-html[data-theme="dark"][data-palette="midnight"] {
+/* The brand layer loads last, so it re-declares the legacy aliases from the
+   semantic tokens. One block covers every dark palette; only the palette's
+   semantic values differ, and js/theme/tokens.js mirrors them for canvas. */
+html[data-theme="dark"] {
   --brand-midnight: var(--bg);
   --brand-gunmetal: var(--surface-1);
   --brand-raised: var(--surface-3);
   --brand-cobalt: var(--accent);
   --brand-cobalt-strong: var(--accent-pressed);
-  --brand-cobalt-rgb: 34, 211, 238;
-  --brand-ice: #67e8f9;
-  --brand-ice-soft: #cffafe;
+  --brand-cobalt-rgb: var(--accent-rgb);
+  --brand-ice: var(--accent-text);
+  --brand-ice-soft: var(--accent-text);
   --brand-steel: var(--text-2);
-  --brand-burnt-orange: #a3e635;
+  --brand-burnt-orange: var(--data-3);
   --brand-gradient: linear-gradient(135deg, var(--accent), var(--accent-pressed));
   --bg-app: var(--bg);
   --bg-card: var(--surface-1);
   --bg-input: var(--surface-3);
   --bg-input-focus: var(--surface-3);
-  --bg-deep: #0a0a0a;
+  --bg-deep: var(--bg);
   --color-blue: var(--accent);
   --color-indigo: var(--accent-pressed);
-  --color-orange: #a3e635;
+  --color-orange: var(--data-3);
   --accent-blue: var(--accent);
   --accent-indigo: var(--accent-pressed);
 }
 
+/* Midnight keeps its pastel-cyan nav ink and the lime "today" accent. */
+html[data-theme="dark"][data-palette="midnight"] {
+  --brand-ice: #67e8f9;
+  --brand-ice-soft: #cffafe;
+  --brand-burnt-orange: #a3e635;
+  --color-orange: #a3e635;
+}
+
 /* Light mode of the same default palette: cobalt has no place in a cyan/teal
    brand, so the brand tokens follow the light semantic accent instead. */
-html[data-theme="light"][data-palette="midnight"] {
+html[data-theme="light"] {
   --brand-midnight: var(--bg);
   --brand-gunmetal: var(--surface-1);
   --brand-raised: var(--surface-3);
   --brand-cobalt: var(--accent);
   --brand-cobalt-strong: var(--accent-pressed);
-  --brand-cobalt-rgb: 14, 116, 144;
+  --brand-cobalt-rgb: var(--accent-rgb);
   --brand-ice: var(--accent-text);
   --brand-ice-soft: var(--accent-text);
   --brand-steel: var(--text-2);
@@ -86,13 +95,13 @@ html[data-theme="light"][data-palette="midnight"] {
 
 /* Cyan is bright: use dark ink, not white, for the primary CTA and selected
    pills so the icon palette keeps accessible contrast. */
-html[data-theme="dark"][data-palette="midnight"] #homePrimaryCta.btn-green,
-html[data-theme="dark"][data-palette="midnight"] #startWorkoutBtn.btn-green,
-html[data-theme="dark"][data-palette="midnight"] .ob-cta,
-html[data-theme="dark"][data-palette="midnight"] .day-pill.active,
-html[data-theme="dark"][data-palette="midnight"] .set-load-choice__btn.active,
-html[data-theme="dark"][data-palette="midnight"] .an-tab--active,
-html[data-theme="dark"][data-palette="midnight"] .detail-cta-btn:not(.detail-cta-btn--active):not(.detail-cta-btn--completed) {
+html[data-theme="dark"] #homePrimaryCta.btn-green,
+html[data-theme="dark"] #startWorkoutBtn.btn-green,
+html[data-theme="dark"] .ob-cta,
+html[data-theme="dark"] .day-pill.active,
+html[data-theme="dark"] .set-load-choice__btn.active,
+html[data-theme="dark"] .an-tab--active,
+html[data-theme="dark"] .detail-cta-btn:not(.detail-cta-btn--active):not(.detail-cta-btn--completed) {
   color: var(--on-accent) !important;
   box-shadow: 0 6px 22px color-mix(in srgb, var(--accent) 22%, transparent) !important;
 }

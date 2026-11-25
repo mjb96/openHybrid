@@ -173,11 +173,21 @@ const screens = [
   }],
 ];
 
+// Every mode and every dark palette: a palette that re-points a surface but
+// not the text on top of it is exactly how white-on-white ships.
+const runs = [
+  { label: 'light', theme: 'light', palette: 'midnight' },
+  { label: 'midnight', theme: 'dark', palette: 'midnight' },
+  { label: 'slate', theme: 'dark', palette: 'slate' },
+  { label: 'forest', theme: 'dark', palette: 'forest' },
+  { label: 'ember', theme: 'dark', palette: 'ember' },
+];
+
 try {
-  for (const theme of ['light', 'dark']) {
-    const context = await createBrowserContext(browser, { viewport: { width: 390, height: 900 }, colorScheme: theme });
+  for (const run of runs) {
+    const context = await createBrowserContext(browser, { viewport: { width: 390, height: 900 }, colorScheme: run.theme });
     await context.addInitScript(([key, value]) => localStorage.setItem(key, value),
-      ['hybrid_engine_v2_state', JSON.stringify({ ...state, settings: { ...state.settings, theme } })]);
+      ['hybrid_engine_v2_state', JSON.stringify({ ...state, settings: { ...state.settings, theme: run.theme, palette: run.palette } })]);
     await context.addInitScript(pinClock, Date.parse('2026-11-25T09:00:00+11:00'));
     const page = await context.newPage();
     await page.goto(base, { waitUntil: 'networkidle' });
@@ -189,7 +199,7 @@ try {
       await page.waitForTimeout(450);
       const bad = await page.evaluate(auditVisibleText);
       for (const row of bad) {
-        failures.push(`${theme}/${name}: ${row.ratio}:1 ${row.fg} on ${row.bg} — ${row.selector} “${row.text}”`);
+        failures.push(`${run.label}/${name}: ${row.ratio}:1 ${row.fg} on ${row.bg} — ${row.selector} “${row.text}”`);
       }
     }
     await context.close();
@@ -204,4 +214,4 @@ if (failures.length) {
   for (const failure of [...new Set(failures)]) console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log('theme-visibility-check: PASS — no invisible text on Home, Train, Progress, Plans, Settings or Profile in light or dark.');
+console.log('theme-visibility-check: PASS — no invisible text on Home, Train, Progress, Plans, Settings or Profile in light, Midnight and every alternate palette.');
