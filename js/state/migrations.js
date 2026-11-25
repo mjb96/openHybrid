@@ -420,9 +420,19 @@ const MIGRATIONS = [
   (state) => {
     if (!Array.isArray(state.progressPhotos)) state.progressPhotos = [];
   },
+
+  // v16 → v17: optional Profile fields. They are additive and null by default;
+  // no current calculation fabricates a value from them.
+  (state) => {
+    if (!state.settings || typeof state.settings !== 'object' || Array.isArray(state.settings)) state.settings = {};
+    if (!('heightCm' in state.settings)) state.settings.heightCm = null;
+    if (!('birthDate' in state.settings)) state.settings.birthDate = null;
+    if (!('sex' in state.settings)) state.settings.sex = null;
+    if (!('trainingStartDate' in state.settings)) state.settings.trainingStartDate = null;
+  },
 ];
 
-export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 16
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 17
 
 /** Error raised when a state upgrade cannot safely commit. */
 export class StateMigrationError extends Error {
@@ -548,6 +558,24 @@ function validateStep(state, version) {
   if (version === 14) {
     if (!Array.isArray(state.routines)) throw new Error('Routine library must be an array');
     if (!Array.isArray(state.libraryFolders)) throw new Error('Routine folders must be an array');
+  }
+}
+
+/**
+ * Keep the pre-migration bytes beside the live blob. A failed or surprising
+ * upgrade must leave the user's original document recoverable; this is the
+ * migration counterpart of the import backup.
+ * @param {Storage|null|undefined} storage
+ * @param {string} storageKey
+ * @param {string|null|undefined} raw
+ */
+export function snapshotBeforeMigration(storage, storageKey, raw) {
+  if (!storage || !raw) return false;
+  try {
+    storage.setItem(`${storageKey}_pre_migration`, raw);
+    return true;
+  } catch {
+    return false;
   }
 }
 

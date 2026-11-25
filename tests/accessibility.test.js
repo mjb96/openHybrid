@@ -68,19 +68,15 @@ test('the native hidden contract wins over component display rules', () => {
     'dynamic hidden controls must not be resurfaced by .btn display rules');
 });
 
-test('every settings switch has an accessible name and keeps its 42×24 track', () => {
-  const blocks = [...HTML.matchAll(/<label class="settings-switch">([\s\S]*?)<\/label>/g)].map((m) => m[1]);
-  assert.ok(blocks.length >= 9, `expected the settings switches, found ${blocks.length}`);
-  for (const block of blocks) {
-    const input = block.match(/<input\b[^>]*>/)?.[0];
-    assert.ok(input, `settings switch has no input: ${block.slice(0, 80)}`);
-    const aria = input.match(/\baria-label="([^"]+)"/)?.[1]?.trim();
-    const id = input.match(/\bid="([^"]+)"/)?.[1];
-    const labelled = id ? new RegExp(`<label\\b[^>]*\\bfor="${id}"`).test(HTML) : false;
-    assert.ok(aria || labelled, `settings switch has no accessible name: ${input}`);
-  }
-  assert.match(CSS, /\.settings-switch-track\s*\{[^}]*width:\s*42px;[^}]*height:\s*24px;/s,
+test('the settings switch component keeps an accessible name and a 42×24 track', () => {
+  const components = readFileSync(new URL('../js/settings/components.js', import.meta.url), 'utf8');
+  assert.match(components, /aria-label="\$\{escapeHTML\(input\.label\)\}"/, 'toggleControl must name the input');
+  assert.match(components, /data-setting-key="\$\{escapeHTML\(input\.key\)\}"/, 'toggleControl must carry the registry key');
+  const settingsCss = readFileSync(new URL('../css/settings.css', import.meta.url), 'utf8');
+  assert.match(settingsCss, /\.s-switch__track\s*\{[^}]*width:\s*42px;[^}]*height:\s*24px;/s,
     'the switch paint must stay 42×24; only the label hit area grows');
+  assert.match(settingsCss, /\.s-switch\s*\{[^}]*min-width:\s*48px;[^}]*min-height:\s*48px;/s,
+    'the switch hit area is 48px');
 });
 
 test('.hc-data-toggle is a 44px target with centred content', () => {

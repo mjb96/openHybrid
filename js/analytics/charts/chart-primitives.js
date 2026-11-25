@@ -33,8 +33,8 @@ export function linearGradientV(id, colorTop, opTop, colorBot, opBot) {
 export function gridLines(ticks, toY, PAD_L, W, PAD_R, fmt) {
   return ticks.map(val => {
     const y = toY(val);
-    return `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
-    <text x="${PAD_L - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.45)">${fmt ? fmt(val) : val}</text>`;
+    return `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 8%, transparent)" stroke-width="1"/>
+    <text x="${PAD_L - 6}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="color-mix(in srgb, var(--text) 45%, transparent)">${fmt ? fmt(val) : val}</text>`;
   }).join('');
 }
 
@@ -46,7 +46,7 @@ export function xAxisLabels(labels, toX, y, options = {}) {
     const isHL = i === highlightIdx;
     return `<text x="${toX(i).toFixed(1)}" y="${y}" text-anchor="middle" font-size="${fontSize}"
       font-weight="${isHL ? 700 : 500}"
-      fill="${isHL ? '#60a5fa' : 'rgba(255,255,255,0.55)'}">${label}</text>`;
+      fill="${isHL ? 'var(--info)' : 'color-mix(in srgb, var(--text) 55%, transparent)'}">${label}</text>`;
   }).join('');
 }
 
@@ -59,14 +59,14 @@ export function areaFill(smoothPath, pts, baseY, gradId) {
 }
 
 // Dot series with optional highlight.
-export function dotSeries(pts, color, r = 4, stroke = '#0d1117', strokeW = 1.5) {
+export function dotSeries(pts, color, r = 4, stroke = 'var(--surface-1)', strokeW = 1.5) {
   return pts.map(([cx, cy]) =>
     `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r}" fill="${color}" stroke="${stroke}" stroke-width="${strokeW}"/>`
   ).join('');
 }
 
 // Horizontal reference line with label.
-export function refLine(y, PAD_L, W, PAD_R, label, color = '#f59e0b', dashed = true) {
+export function refLine(y, PAD_L, W, PAD_R, label, color = 'var(--warning)', dashed = true) {
   const dash = dashed ? 'stroke-dasharray="5,3"' : '';
   return `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="${color}" stroke-width="1.5" ${dash} opacity="0.85"/>
     <text x="${W - PAD_R}" y="${(y - 4).toFixed(1)}" text-anchor="end" font-size="9" fill="${color}">${label}</text>`;
@@ -80,7 +80,7 @@ export function shadedBand(y1, y2, PAD_L, W, PAD_R, color, opacity = 0.12) {
 }
 
 // Trend line path (dashed) from regression array.
-export function trendLinePath(trendArr, toX, toY, n, color = 'rgba(255,255,255,0.3)') {
+export function trendLinePath(trendArr, toX, toY, n, color = 'color-mix(in srgb, var(--text) 30%, transparent)') {
   const pts = trendArr
     .slice(0, n)
     .map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`)
@@ -90,7 +90,7 @@ export function trendLinePath(trendArr, toX, toY, n, color = 'rgba(255,255,255,0
 }
 
 // Rolling average line path (solid, semi-transparent).
-export function rollingAvgPath(avgArr, toX, toY, color = 'rgba(255,255,255,0.6)') {
+export function rollingAvgPath(avgArr, toX, toY, color = 'color-mix(in srgb, var(--text) 60%, transparent)') {
   const nonZero = avgArr
     .map((v, i) => ({ v, i }))
     .filter(p => p.v > 0);
@@ -103,13 +103,13 @@ export function rollingAvgPath(avgArr, toX, toY, color = 'rgba(255,255,255,0.6)'
 export function deltaBadge(pct, inverse = false) {
   if (pct === null || !isFinite(pct)) return '';
   const positive = inverse ? pct < 0 : pct > 0;
-  const color = positive ? '#10b981' : (pct === 0 ? 'rgba(255,255,255,0.4)' : '#ef4444');
+  const color = positive ? 'var(--success)' : (pct === 0 ? 'color-mix(in srgb, var(--text) 40%, transparent)' : 'var(--danger)');
   const arrow = pct > 0 ? '↑' : (pct < 0 ? '↓' : '→');
   return `<span style="color:${color};font-size:0.75rem;font-weight:700;">${arrow} ${Math.abs(pct).toFixed(0)}%</span>`;
 }
 
 // Stat card HTML: primary value + optional delta + sub-label + status.
-export function statCard({ label, value, unit = '', delta = null, sub = '', color = '#3b82f6', status = '', inverseDelta = false, action = '', context = '', entity = '', entityName = '', parentContext = '', preserveWeek = false, metricId = '' }) {
+export function statCard({ label, value, unit = '', delta = null, sub = '', color = 'var(--data-1)', status = '', inverseDelta = false, action = '', context = '', entity = '', entityName = '', parentContext = '', preserveWeek = false, metricId = '' }) {
   const deltaHtml = delta !== null
     ? `<div class="mt-1">${deltaBadge(delta, inverseDelta)}<span class="text-xs text-muted ml-1">${sub}</span></div>`
     : (sub ? `<div class="text-xs text-muted mt-1">${sub}</div>` : '');

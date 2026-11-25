@@ -22,7 +22,7 @@ test('the bodyweight graph draws daily points, a 7-day average and a goal line',
   assert.match(html, /7d avg/);
   assert.match(html, /Goal 80 kg/);
   assert.match(html, /2026-11-19 · 83\.5 kg/);
-  assert.match(html, /stroke="#f59e0b"/);
+  assert.match(html, /stroke="var\(--warning\)"/);
 });
 
 test('one weigh-in or none gets a useful message, not an empty chart', () => {

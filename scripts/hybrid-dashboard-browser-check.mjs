@@ -112,13 +112,11 @@ try {
   ok(heights.every((height) => height >= 44), `every hybrid card control is at least 44px (${heights.join(', ')})`);
 
   // ---- Hybrid training off: only hybrid surfaces go ----------------------
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  const hybridRow = page.locator('.settings-row', { has: page.locator('[data-hybrid-toggle]') });
-  await hybridRow.locator('.settings-switch').click();
+  await page.click('[data-action="open-settings-page"][data-context="once.modules"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="hybridTraining"]') }).click();
   await page.waitForFunction(() => document.documentElement.dataset.hybrid === 'off');
 
   // Settings is a full-screen overlay; Home is not on screen while it is open,
@@ -127,6 +125,8 @@ try {
   ok(stored.settings?.hybridTraining === false, 'the Hybrid preference is persisted');
   ok(stored.settings?.modules?.running !== false, 'turning Hybrid off does NOT rewrite the Running module');
 
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.click('.nav-item[data-target="home"]');
   await page.waitForSelector('#view-home.active');
@@ -143,17 +143,17 @@ try {
   ok(!(await page.locator('#homeBalanceCard').isVisible()), 'the choice survives a reload');
 
   // ---- Hybrid back on, then the Running module gates endurance alone ------
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  await page.evaluate(() => document.querySelector('[data-hybrid-toggle]')?.click());
+  await page.click('[data-action="open-settings-page"][data-context="once.modules"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="hybridTraining"]') }).click();
   await page.waitForFunction(() => document.documentElement.dataset.hybrid === 'on');
 
-  const runningRow = page.locator('.settings-row', { has: page.locator('[data-module-toggle="running"]') });
-  await runningRow.locator('.settings-switch').click();
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="modules.running"]') }).click();
   await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'off');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.click('.nav-item[data-target="home"]');
   await page.waitForSelector('#view-home.active');

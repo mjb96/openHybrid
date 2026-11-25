@@ -132,7 +132,7 @@ export function renderProgramCard(program, size = 'small', reason = '') {
         <div class="prog-card-name">${escapeHtml(program.name)}</div>
         ${authorHTML}
         <div class="prog-card-meta">
-          <span class="prog-card-category" style="color: ${accentColor}">${escapeHtml(categoryLabel)}</span>
+          <span class="prog-card-category"><i class="prog-card-cat-dot" style="background: ${accentColor}" aria-hidden="true"></i>${escapeHtml(categoryLabel)}</span>
           <span class="prog-card-sep">·</span>
           <span>${durationLabel}</span>
           ${!wod && program.sessionsPerWeek ? `<span class="prog-card-sep">·</span><span>${program.sessionsPerWeek}×/wk</span>` : ''}
@@ -247,8 +247,11 @@ export function renderProgramCardNode(program, size = 'small', reason = '') {
   meta.className = 'prog-card-meta';
   const category = document.createElement('span');
   category.className = 'prog-card-category';
-  category.style.color = accentColor;
-  category.textContent = categoryLabel;
+  const categoryDot = document.createElement('i');
+  categoryDot.className = 'prog-card-cat-dot';
+  categoryDot.setAttribute('aria-hidden', 'true');
+  categoryDot.style.background = accentColor;
+  category.append(categoryDot, categoryLabel);
   meta.append(category, Object.assign(document.createElement('span'), { className: 'prog-card-sep', textContent: '·' }), Object.assign(document.createElement('span'), { textContent: durationLabel }));
   if (!wod && program.sessionsPerWeek) {
     meta.append(Object.assign(document.createElement('span'), { className: 'prog-card-sep', textContent: '·' }), Object.assign(document.createElement('span'), { textContent: `${program.sessionsPerWeek}×/wk` }));

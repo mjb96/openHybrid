@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { MIDNIGHT_TOKENS, LIGHT_TOKENS } from '../js/theme/tokens.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WIDTHS = [320, 360, 390, 412];
@@ -26,23 +27,11 @@ function contrast(foreground, background) {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-const css = await readFile(path.join(ROOT, 'css/styles.css'), 'utf8');
-const rootBlock = css.match(/:root\s*\{([\s\S]*?)\}/)?.[1] || '';
-const lightBlock = css.match(/html\[data-theme="light"\]\s*\{([\s\S]*?)\}/)?.[1] || '';
-const token = (block, name) => block.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`))?.[1];
-for (const [theme, block, surfaces] of [
-  ['dark', rootBlock, ['bg-app', 'bg-card']],
-  ['light', lightBlock, ['bg-app', 'bg-card']],
-]) {
-  for (const textName of ['text-secondary', 'text-muted', 'text-faint']) {
-    for (const surfaceName of surfaces) {
-      const foreground = token(block, textName);
-      const background = token(block, surfaceName);
-      check(Boolean(foreground && background), `${theme}: unresolved ${textName}/${surfaceName} contrast token`);
-      if (foreground && background) {
-        const ratio = contrast(foreground, background);
-        check(ratio >= 4.5, `${theme}: ${textName} on ${surfaceName} is ${ratio.toFixed(2)}:1 (needs 4.5:1)`);
-      }
+for (const [theme, tokens] of [['dark', MIDNIGHT_TOKENS], ['light', LIGHT_TOKENS]]) {
+  for (const textName of ['text-2', 'text-3']) {
+    for (const surfaceName of ['bg', 'surface-1']) {
+      const ratio = contrast(tokens[textName], tokens[surfaceName]);
+      check(ratio >= 4.5, `${theme}: ${textName} on ${surfaceName} is ${ratio.toFixed(2)}:1 (needs 4.5:1)`);
     }
   }
 }
@@ -141,7 +130,7 @@ try {
 
   for (const width of WIDTHS) {
     const { context, page } = await appPage(width);
-    await inspect(page, `home ${width}px`, ['.bottom-nav .nav-item', '.home-avatar', '.home-quick-btn[data-action="open-run-logger"]', '.btn-history-link']);
+    await inspect(page, `home ${width}px`, ['.bottom-nav .nav-item', '.home-settings-btn', '.home-quick-btn[data-action="open-run-logger"]', '.btn-history-link']);
     const navLabels = await page.$$eval('.bottom-nav .nav-item', (items) => items.map((item) => item.textContent.trim()));
     check(navLabels.join('|') === 'Home|Train|Progress|Plans',
       `home ${width}px: primary navigation was ${navLabels.join('|')}`);
@@ -161,11 +150,9 @@ try {
     await page.click('#activitiesScreen .subview-back-btn');
     await page.click('#activitiesScreen .subview-back-btn');
 
-    await page.click('.home-avatar');
-    await page.waitForSelector('#view-profile.active');
-    await page.click('#view-profile [data-action="open-settings"]');
+    await page.click('#homeSettingsBtn');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-    await inspect(page, `settings ${width}px`, ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
+    await inspect(page, `settings ${width}px`, ['#settingsOverlay .s-back', '#settingsOverlay .s-row', '#settingsOverlay .s-search input', '#settingsOverlay .s-switch', '#settingsOverlay .s-action', '#settingsOverlay .s-input']);
     await page.click('#settingsOverlay [data-action="close-settings"]');
     await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
 
@@ -240,11 +227,10 @@ try {
   // file. Exercise the Settings → Data button through the browser path.
   {
     const { context, page } = await appPage(390);
-    await page.click('.home-avatar');
-    await page.waitForSelector('#view-profile.active');
-    await page.click('#view-profile [data-action="open-settings"]');
+    await page.click('#homeSettingsBtn');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-    await page.click('#settingsTabs [data-settings-tab="data"]');
+    await page.click('#settingsOverlay [data-action="open-settings-page"][data-context="data.backup"]');
+    await page.waitForSelector('#settingsPageHost [data-action="export-training-context"]');
     await page.evaluate(() => {
       try { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); } catch (_) {}
     });
@@ -258,13 +244,14 @@ try {
   }
 
   const { context, page } = await appPage(360, true);
-  await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-avatar', '.btn-history-link']);
-  await page.click('.home-avatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-settings-btn', '.btn-history-link']);
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .settings-close-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
+  await page.click('#settingsOverlay [data-action="open-settings-page"][data-context="training.workout"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .s-back', '#settingsOverlay .s-row', '#settingsOverlay .s-switch', '#settingsOverlay .s-action', '#settingsOverlay .s-input']);
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
   await page.click('.bottom-nav [data-target="workout"]');

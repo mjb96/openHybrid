@@ -80,10 +80,10 @@ try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('#homeWeekStrip');
 
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
+  await page.click('[data-action="open-settings-page"][data-context="data.backup"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
   ok(await page.locator('#settingsFitFiles[multiple]').count() === 1, 'Settings exposes a multi-file FIT picker');
 
   await page.setInputFiles('#settingsExternalCsvFile', csvPath);

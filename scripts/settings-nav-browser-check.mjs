@@ -1,6 +1,9 @@
 // =============================================================================
-// SETTINGS NAVIGATION BROWSER CHECK
-// Verifies the Appearance-style sub-pages, global search and empty result state.
+// SETTINGS PAGES BROWSER CHECK — Phase 4
+//
+// The new IA: 13 pushed pages, one search index, live summaries and the
+// existing side-effect owners. Covers navigation, search, units conversion,
+// module gating, rest tiers, equipment, data and Health Connect.
 // =============================================================================
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
@@ -26,16 +29,16 @@ const server = createServer(async (req, res) => {
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
 const state = {
-  schemaVersion: 12, currentWeek: '1', activeProgramId: 'hybrid_engine', activeActivationId: 'act_set',
+  schemaVersion: 16, currentWeek: '1', activeProgramId: 'hybrid_engine', activeActivationId: 'act_set',
   weekStartedAt: '2026-11-16',
-  activations: [{ id: 'act_set', programId: 'hybrid_engine', startWeek: 1, status: 'active', startedAt: '2026-10-26' }],
   settings: {
     name: 'Browser', theme: 'dark', palette: 'midnight', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon', onboardingComplete: true,
-    fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentTier: 'gym',
+    fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentTier: 'gym', reducedMotion: 'system',
     equipment: { barbell: true, rack: true, dumbbells: true, cables: true, pullupBar: true },
-    bandWeights: { L: 10, M: 20, H: 30 }, equipmentProfiles: [],
+    bandWeights: { L: 10, M: 20, H: 30 }, equipmentProfiles: [], restPeriods: { warmup: 45, compound: 180, accessory: 120, isolation: 90 },
   },
-  customPrograms: [], weeks: { '1': { activationId: 'act_set', programId: 'hybrid_engine', dates: { mon: '2026-11-16' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {}, sessionStatus: {}, sessionSummary: {}, runSessions: {}, liftOrder: {}, liftMeta: {}, notes: {}, gymRpe: {}, bodyWeight: {}, gymStats: {} } },
+  customPrograms: [],
+  weeks: { '1': { activationId: 'act_set', programId: 'hybrid_engine', dates: { mon: '2026-11-16' }, lifts: { mon: { Squat: [{ w: '100', r: '5', c: true }] } }, runs: {}, sessionStatus: {}, sessionSummary: {}, runSessions: {}, liftOrder: {}, liftMeta: {}, notes: {}, gymRpe: {}, bodyWeight: {}, gymStats: {} } },
   bodyWeightLog: [], wellnessLog: [], healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
   programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
   hybridScore: { history: [], xp: 0, lastRecordedDate: null }, loadMetrics: { atl: 0, ctl: 0 },
@@ -44,6 +47,10 @@ const state = {
 const browser = await chromium.launch({ headless: true, executablePath });
 const failures = [];
 const ok = (condition, label) => { if (condition) console.log(`  ok · ${label}`); else { failures.push(label); console.error(`FAIL: ${label}`); } };
+const openPage = async (page, id) => {
+  await page.click(`[data-action="open-settings-page"][data-context="${id}"]`);
+  await page.waitForSelector('#settingsPageHost .s-page');
+};
 try {
   const context = await createBrowserContext(browser, { viewport: { width: 390, height: 844 }, timezoneId: 'Australia/Sydney' });
   await context.addInitScript(([key, value]) => localStorage.setItem(key, value), ['hybrid_engine_v2_state', JSON.stringify(state)]);
@@ -53,176 +60,37 @@ try {
   page.on('pageerror', (error) => errors.push(String(error)));
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('#homeWeekStrip');
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
 
-  const visibleLabel = async () => page.evaluate(() => [...document.querySelectorAll('#settingsPanel .settings-section')]
-    .filter((section) => !section.hidden)
-    .map((section) => section.querySelector('.settings-section-label')?.textContent?.trim()));
-  ok((await visibleLabel()).includes('Profile'), 'Profile is the default settings page');
-  ok(!(await visibleLabel()).includes('Training'), 'Training is hidden on the Profile page');
+  const home = await page.evaluate(() => ({
+    groups: [...document.querySelectorAll('#settingsPageHost .s-group__label')].map((el) => el.textContent.trim()),
+    pages: [...document.querySelectorAll('#settingsPageHost [data-action="open-settings-page"]')].map((el) => el.getAttribute('data-context')),
+    tabs: document.querySelectorAll('#settingsTabs').length,
+    profile: !!document.querySelector('#settingsPageHost [data-action="open-settings-profile"]'),
+    search: !!document.querySelector('#settingsSearch'),
+  }));
+  ok(home.groups.join('|') === 'Training|Set once|Connections|Data|About', `top-level groups (${home.groups.join('|')})`);
+  ok(home.pages.length === 13, `13 top-level pages (${home.pages.length})`);
+  ok(home.tabs === 0, 'no filter tabs remain');
+  ok(home.profile && home.search, 'profile card and search are present');
 
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  ok((await visibleLabel()).includes('Training'), 'Training tab shows Training');
-  ok(!(await visibleLabel()).includes('Profile'), 'Training tab hides Profile');
-
-  // Logging settings used to be hidden power-user markup buried inside the
-  // Training card. They are now a first-class card in a fixed order, so a
-  // setting cannot drift back into an unrelated group.
-  ok((await visibleLabel()).includes('Logging'), 'Training tab shows the Logging card');
-  ok((await visibleLabel()).join('|') === 'Training|Logging|Program Week|Equipment|Modules',
-    `Training cards are ordered Units → Logging → Program → Equipment → Modules (got ${(await visibleLabel()).join('|')})`);
-  const hintsCard = await page.locator('#settingsShowPlateHints').evaluate((el) => (
-    el.closest('.settings-section')?.querySelector('.settings-section-label')?.textContent?.trim()
-  ));
-  ok(hintsCard === 'Logging', 'plate hints live in the Logging card');
-
-  const photoHint = await page.textContent('#settingsPhotoBackupHint').catch(() => '');
-  ok(/not.*inside this JSON file/i.test(photoHint), 'the JSON export says photos are not included');
-  ok(/Measures/.test(photoHint), 'the photo hint names where the separate backup lives');
-
-  // The filters are buttons in a group, not a tablist: there are no tabpanels,
-  // no aria-controls and no arrow-key contract to honour.
-  ok((await page.getAttribute('#settingsTabs', 'role')) === 'group', 'settings filters expose role="group"');
-  ok((await page.locator('#settingsTabs [role="tab"]').count()) === 0, 'no fake tab roles remain');
-  ok((await page.getAttribute('#settingsTabs [data-settings-tab="training"]', 'aria-pressed')) === 'true',
-    'the active filter reports aria-pressed=true');
-  ok((await page.getAttribute('#settingsTabs [data-settings-tab="profile"]', 'aria-pressed')) === 'false',
-    'an inactive filter reports aria-pressed=false');
-  ok((await page.locator('[data-action="rest-preset"].active').getAttribute('data-preset')) === 'hypertrophy',
-    'the default rest tiers show Standard as active');
-
-  ok(await page.locator('#settingsRestWarmup').isVisible(), 'warm-up rest tier is visible');
-  ok(await page.locator('#settingsRestCompound').isVisible(), 'compound rest tier is visible');
-  ok(await page.locator('#settingsRestAccessory').isVisible(), 'accessory rest tier is visible');
-  ok(await page.locator('#settingsRestIsolation').isVisible(), 'isolation rest tier is visible');
-  ok(await page.locator('#settingsRestAlertSound').isVisible(), 'rest alert sound toggle is visible');
-  ok(await page.locator('#settingsRestAlertVolume').isVisible(), 'rest alert volume is visible');
-  ok(await page.locator('[data-action="set-progression"][data-kg="2.5"]').isVisible(), 'progression step is visible');
-  ok(await page.locator('[data-action="set-previous-scope"][data-scope="program"]').isVisible(), 'previous-values scope is visible');
-
-  await page.click('[data-action="rest-preset"][data-preset="efficient"]');
-  ok((await page.inputValue('#settingsRestCompound')) === '2:00', 'rest preset updates the compound tier');
-  ok((await page.inputValue('#settingsRestWarmup')) === '0:30', 'rest preset updates the warm-up tier');
-  ok(await page.locator('[data-action="rest-preset"][data-preset="efficient"]').evaluate((el) => el.classList.contains('active')),
-    'the applied preset shows as active');
-  await page.fill('#settingsRestCompound', '2:15');
-  await page.locator('#settingsRestCompound').press('Tab');
-  ok((await page.locator('[data-action="rest-preset"].active').count()) === 0,
-    'custom rests leave no preset falsely active');
-  await page.click('[data-action="rest-preset"][data-preset="hypertrophy"]');
-  await page.click('[data-action="set-previous-scope"][data-scope="program"]');
-  ok(await page.locator('[data-action="set-previous-scope"][data-scope="program"]').evaluate((el) => el.classList.contains('active')), 'previous-values scope persists its active state');
-
-  // Threshold pace is a running baseline, not free text: a typo must be
-  // rejected without rewriting the stored seconds.
-  const storedThresholdPace = () => page.evaluate(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.thresholdPaceSeconds);
-  await page.fill('#settingsThresholdPace', '4.30');
-  await page.locator('#settingsThresholdPace').press('Tab');
-  ok((await page.textContent('#sysToast')) === 'Enter pace as mm:ss', 'a dotted pace shows the mm:ss error');
-  const invalidPace = await storedThresholdPace();
-  ok(invalidPace === null || invalidPace === undefined, 'invalid pace leaves the stored value untouched');
-  await page.fill('#settingsThresholdPace', '4:30');
-  await page.locator('#settingsThresholdPace').press('Tab');
-  ok((await storedThresholdPace()) === 270, '4:30 stores 270 seconds');
-  ok((await page.textContent('#sysToast')) === 'Threshold pace saved', 'a valid pace confirms the save');
-
-  // Fasting stage nudges are a real, persisted toggle under Notifications, and
-  // the module switch gates both the control and the delivery path.
-  await page.click('#settingsTabs [data-settings-tab="health"]');
-  const nudgeRow = page.locator('.settings-row', { has: page.locator('#settingsNotifFastingStage') });
-  ok(await page.locator('#settingsNotifFastingStage').isChecked(), 'fasting stage nudges default on');
-  await nudgeRow.locator('.settings-switch').click();
-  const nudgeStored = await page.evaluate(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.notifFastingStage);
-  ok(nudgeStored === false, 'the fasting stage nudge preference is stored');
-
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  const fastingModuleSwitch = page.locator('.settings-row', { has: page.locator('[data-module-toggle="fasting"]') }).locator('.settings-switch');
-  await fastingModuleSwitch.click();
-  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'off');
-  await page.click('#settingsTabs [data-settings-tab="health"]');
-  ok(!(await page.locator('#settingsNotifFastingStage').isVisible()), 'the fasting nudge toggle hides with its module');
-  const gated = await page.evaluate(async () => {
-    const { maybePushFastingNudge } = await import('./js/fasting/fasting-nudge.js');
-    return maybePushFastingNudge({
-      settings: { modules: { fasting: false }, notifFastingStage: true },
-      fastingSession: { active: true, startTime: new Date(Date.now() - 13 * 3600e3).toISOString(), goal: 16, history: [] },
-    }, { notifyFn: () => {}, granted: true, saveFn: () => {} });
-  });
-  ok(gated === null, 'a disabled Fasting module cannot fire a nudge');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  await fastingModuleSwitch.click();
-  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'on');
-  await page.click('#settingsTabs [data-settings-tab="health"]');
-  await nudgeRow.locator('.settings-switch').click();
-  ok(await page.locator('#settingsNotifFastingStage').isChecked(), 'the fasting nudge toggle can be restored');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-
+  // Search finds a setting, opens its page and pulses the exact row.
   await page.fill('#settingsSearch', 'theme');
-  const searchLabels = await visibleLabel();
-  ok(searchLabels.includes('Appearance'), 'search finds Appearance');
-  ok(!searchLabels.includes('Training'), 'search hides non-matching groups');
-  ok((await page.locator('#settingsTabs [aria-pressed="true"]').count()) === 0,
-    'a search does not claim a filter is active');
-
-  // Matching is by words the athlete can see OR that the control exposes to
-  // assistive tech. "Light band weight" only exists as the input's aria-label.
-  await page.fill('#settingsSearch', 'light band weight');
-  ok((await visibleLabel()).includes('Equipment'), 'search matches an accessible name');
-  const hit = page.locator('.settings-search-hit');
-  ok((await hit.count()) === 1, 'search marks one exact row, not the whole card');
-  ok(await hit.evaluate((el) => !!el.querySelector('#settingsBandLight')),
-    'the marked row is the light-band control');
-  ok(await hit.evaluate((el) => {
-    const row = el.getBoundingClientRect();
-    const body = document.querySelector('#settingsPanel .settings-body')?.getBoundingClientRect();
-    return !!body && row.top >= body.top - 1 && row.bottom <= body.bottom + 1;
-  }), 'the marked row is scrolled into view');
-  await page.fill('#settingsSearch', '');
-  ok((await page.locator('.settings-search-hit').count()) === 0, 'clearing search clears the row highlight');
-
-  // A row switched off with a feature module is invisible, so its words must
-  // not return a blank card that looks like a broken search.
-  const runningModule = page.locator('.settings-row', { has: page.locator('[data-module-toggle="running"]') }).locator('.settings-switch');
-  await runningModule.click();
-  await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'off');
-  await page.fill('#settingsSearch', 'threshold pace');
-  ok(await page.locator('#settingsNoResults').isVisible(),
-    'a module-disabled row cannot suppress the no-results explanation');
-  ok((await page.locator('#settingsPanel .settings-section:not([hidden])').count()) === 0,
-    'a module-off-only term leaves no blank card visible');
-  await page.fill('#settingsSearch', '');
-  await runningModule.click();
-  await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'on');
-
-  await page.evaluate(() => { document.querySelector('#settingsPanel .settings-body').scrollTop = 600; });
+  const results = await page.locator('[data-action="open-settings-result"]').count();
+  ok(results >= 1, 'search returns settings results');
+  await page.fill('#settingsSearch', 'thm');
+  ok(await page.locator('[data-action="open-settings-result"][data-context="theme"]').count() === 1, 'search is fuzzy across labels');
   await page.fill('#settingsSearch', 'theme');
-  ok((await page.evaluate(() => document.querySelector('#settingsPanel .settings-body').scrollTop)) === 0,
-    'typing a search resets the panel scroll');
+  await page.click('[data-action="open-settings-result"][data-context="theme"]');
+  await page.waitForFunction(() => location.hash.startsWith('#/settings/look-home'));
+  ok(await page.locator('#settingsPageHost [data-setting-key="theme"]').count() >= 1, 'search result opens Look & Home on Theme');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
 
-  await page.fill('#settingsSearch', 'zzzz-no-setting');
-  ok(await page.locator('#settingsNoResults').isVisible(), 'no-results state is shown');
-  ok((await page.getAttribute('#settingsNoResults', 'role')) === 'status', 'no-results is announced as a status');
-
-  await page.fill('#settingsSearch', '');
-  ok((await visibleLabel()).includes('Training'), 'clearing search returns to the active tab');
-  ok(await page.locator('#settingsNoResults').isHidden(), 'no-results state is hidden again');
-
-  // Closing and reopening starts fresh rather than resurrecting a filter.
-  await page.fill('#settingsSearch', 'zzzz-no-setting');
-  await page.click('#settingsOverlay [data-action="close-settings"]');
-  await page.click('#view-profile [data-action="open-settings"]');
-  await page.waitForSelector('#settingsOverlay.active');
-  ok((await page.inputValue('#settingsSearch')) === '', 'reopening settings clears the search');
-  ok((await visibleLabel()).includes('Training'), 'reopening settings shows the active destination');
-  ok((await page.locator('#settingsNoResults').isHidden()), 'reopening settings hides the stale no-results state');
-
-  // Changing the weight unit converts stored weights instead of relabelling
-  // history: a 100 kg squat must read 220.5 lb after the switch (S-F4).
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  await page.click('[data-action="set-unit"][data-unit="lbs"]');
+  // Units conversion keeps history in sync.
+  await openPage(page, 'once.units');
+  await page.click('[data-setting-segment="weightUnit"][data-value="lbs"]');
   await page.waitForSelector('.cmodal__btn--ok');
   await page.click('.cmodal__btn--ok');
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'lbs');
@@ -230,38 +98,113 @@ try {
     const saved = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
     return { unit: saved.settings?.weightUnit, weight: saved.weeks?.['1']?.lifts?.mon?.Squat?.[0]?.w };
   });
-  ok(converted.unit === 'lbs', 'weight unit switch persists lbs');
-  ok(converted.weight === '220.5', `stored 100 kg becomes 220.5 lb (got ${converted.weight})`);
+  ok(converted.unit === 'lbs' && Number(converted.weight) === 220.5, `100 kg becomes 220.5 lb (${converted.weight})`);
 
-// Motion is a real preference: reduce must publish the CSS hook and persist.
-  await page.click('#settingsTabs [data-settings-tab="appearance"]');
-  await page.click('[data-action="set-reduced-motion"][data-motion="reduce"]');
-  const motion = await page.evaluate(() => ({
-    effective: document.documentElement.dataset.reducedMotion,
-    pref: document.documentElement.dataset.reducedMotionPref,
-    stored: JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.reducedMotion,
+  // Threshold pace rejects a typo and stores a valid mm:ss.
+  await page.fill('#settingsThresholdPace', '4.30');
+  await page.locator('#settingsThresholdPace').press('Tab');
+  ok((await page.textContent('#sysToast')) === 'Enter pace as mm:ss', 'invalid threshold pace is refused');
+  await page.fill('#settingsThresholdPace', '4:30');
+  await page.locator('#settingsThresholdPace').press('Tab');
+  ok(await page.evaluate(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.thresholdPaceSeconds) === 270, '4:30 stores 270 s');
+
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+
+  // Rest tiers: presets and a custom value still reach the existing owner.
+  await openPage(page, 'training.timers');
+  await page.click('[data-action="rest-preset"][data-preset="efficient"]');
+  ok((await page.inputValue('#settingsRestCompound')) === '2:00', 'rest preset updates the compound tier');
+  await page.fill('#settingsRestCompound', '2:15');
+  await page.locator('#settingsRestCompound').press('Tab');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.restPeriods?.compound === 135);
+
+  // Module gating hides the related row and the notification.
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await openPage(page, 'once.modules');
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="modules.fasting"]') }).click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'off');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await openPage(page, 'training.reminders');
+  ok(await page.locator('input[data-setting-key="notifFastingStage"]').count() === 0, 'fasting nudge hides with its module');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await openPage(page, 'once.modules');
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="modules.fasting"]') }).click();
+  await page.waitForFunction(() => document.documentElement.dataset.moduleFasting === 'on');
+
+  // Equipment page renders the profile, kit, plates and bands controls.
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await openPage(page, 'once.equipment');
+  const equipment = await page.evaluate(() => ({
+    profile: !!document.querySelector('#settingsEquipmentProfile'),
+    plates: !!document.querySelector('#settingsPlates'),
+    bands: !!document.querySelector('#settingsBandLight'),
+    kit: document.querySelectorAll('[data-equipment]').length,
+    overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   }));
-  ok(motion.effective === 'reduce' && motion.pref === 'reduce', 'Reduce publishes the reduced-motion hook');
-  ok(motion.stored === 'reduce', 'Reduce persists as the stored motion preference');
-  await page.click('[data-action="set-reduced-motion"][data-motion="system"]');
-  ok((await page.evaluate(() => document.documentElement.dataset.reducedMotionPref)) === 'system',
-    'System restores the OS-following preference');
+  ok(equipment.profile && equipment.plates && equipment.bands, 'equipment profile, plates and bands render');
+  ok(equipment.kit >= 9, 'all equipment switches render');
+  ok(!equipment.overflow, 'equipment page does not overflow');
 
-  // Destructive reset needs two deliberate confirmations; cancelling the
-  // second one must leave the device state untouched.
-  await page.click('#settingsTabs [data-settings-tab="data"]');
-  await page.click('[data-action="reset-all-data"]');
-  await page.waitForSelector('.cmodal__btn--danger');
-  await page.click('.cmodal__btn--danger');
-  await page.waitForFunction(() => /Delete everything/i.test(document.querySelector('.cmodal__title')?.textContent || ''));
-  ok(true, 'reset asks for a second confirmation');
-  await page.click('.cmodal__btn--cancel');
-  await page.waitForSelector('.cmodal', { state: 'detached' });
-  ok(await page.evaluate(() => !!localStorage.getItem('hybrid_engine_v2_state')),
-    'cancelling the second reset gate preserves the saved state');
+  // Data & backup exposes every export/import action, storage and danger.
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await openPage(page, 'data.backup');
+  const dataActions = await page.evaluate(() => [...document.querySelectorAll('#settingsPageHost [data-action]')].map((el) => el.getAttribute('data-action')));
+  for (const action of ['auto-backup-folder', 'export-data', 'export-training-context', 'export-csv', 'import-data', 'import-external-csv', 'import-fit-files', 'reset-all-data']) {
+    ok(dataActions.includes(action), `Data & backup has ${action}`);
+  }
+  ok(await page.locator('#settingsPageHost #settingsImportFile').count() === 1, 'the import file input exists');
+
+  // Integrations page has Health Connect controls.
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await openPage(page, 'connections.integrations');
+  ok(await page.locator('#settingsStepGoal').count() === 1, 'Health Connect step goal renders');
+  ok(await page.locator('[data-hc-field="steps"]').count() === 1, 'Health Connect sync fields render');
+
+  // Search no-results is announced, and closing/reopening clears it.
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await page.fill('#settingsSearch', 'zzzz-no-setting');
+  const empty = await page.locator('#settingsPageHost .s-empty').textContent();
+  ok(/No settings match/.test(empty || ''), 'no-results state is shown');
+  await page.click('#settingsOverlay [data-action="close-settings"]');
+  await page.waitForSelector('#settingsOverlay:not(.active)');
+  await page.click('#homeSettingsBtn');
+  await page.waitForSelector('#settingsOverlay.active');
+  ok((await page.inputValue('#settingsSearch')) === '', 'reopening Settings clears search');
 
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
+
+  // Narrow/wide + opposite theme: the same page contract, no overflow.
+  for (const [width, theme] of [[320, 'light'], [412, 'dark']]) {
+    const ctx = await createBrowserContext(browser, { viewport: { width, height: 844 }, timezoneId: 'Australia/Sydney', colorScheme: theme });
+    await ctx.addInitScript(([key, value]) => localStorage.setItem(key, value), ['hybrid_engine_v2_state', JSON.stringify({ ...state, settings: { ...state.settings, theme } })]);
+    await ctx.addInitScript(pinClock, Date.parse('2026-11-20T09:00:00+11:00'));
+    const p2 = await ctx.newPage();
+    const errs = [];
+    p2.on('pageerror', (error) => errs.push(String(error)));
+    await p2.goto(base, { waitUntil: 'networkidle' });
+    await p2.click('#homeSettingsBtn');
+    await p2.waitForSelector('#settingsOverlay.active');
+    for (const id of ['training.workout', 'once.look', 'once.equipment']) {
+      await p2.click(`[data-action="open-settings-page"][data-context="${id}"]`);
+      await p2.waitForSelector('#settingsPageHost .s-page');
+      const overflow = await p2.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+      const rows = await p2.locator('#settingsPageHost .s-row').count();
+      ok(!overflow && rows > 0, `${width}px/${theme} ${id}: rows render without overflow`);
+      await p2.click('#settingsPageHost .s-back');
+      await p2.waitForSelector('#settingsPageHost .s-home');
+    }
+    ok(errs.length === 0, `${width}px/${theme}: no page errors`);
+    await ctx.close();
+  }
 } finally {
   await browser.close();
   await new Promise((resolve) => server.close(resolve));
@@ -271,4 +214,4 @@ if (failures.length) {
   for (const failure of failures) console.error(`  - ${failure}`);
   process.exit(1);
 }
-console.log('\nsettings-nav-browser-check: PASS — sub-pages, search and empty state.');
+console.log('\nsettings-nav-browser-check: PASS — 13 pages, search, units, modules and data.');

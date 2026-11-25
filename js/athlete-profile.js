@@ -18,6 +18,7 @@ import { buildRunningMetricDetail, collectRunningHistory } from './analytics/run
 const PROFILE_OVERVIEW_IDS = ['progression', 'program', 'summary'];
 const PROFILE_STATS_IDS = ['performance', 'thisweek', 'heatmap', 'bodyweight', 'health', 'sessions', 'completed'];
 let _profileTab = 'overview';
+let _profileTargetId = 'profileContent';
 
 let _getState  = null;
 let _getDays   = null;
@@ -32,8 +33,9 @@ export function initAthleteProfile(getStateFn, getDaysFn, saveStateFn) {
 
 // ── Main render ───────────────────────────────────────────────────────────────
 
-export function renderAthleteProfile() {
-  const container = document.getElementById('profileContent');
+export function renderAthleteProfile(targetId = 'profileContent') {
+  _profileTargetId = targetId;
+  const container = document.getElementById(targetId);
   if (!container || !_getState) return;
 
   const state = _getState();
@@ -305,7 +307,7 @@ export function renderAthleteProfile() {
   container.innerHTML = heroHTML + body + `<div style="height: 80px;"></div>`;
 
   if (!isNewAthlete) {
-    mountScreenTabs('profileContent', (tab) => { _profileTab = tab; renderAthleteProfile(); });
+    mountScreenTabs(targetId, (tab) => { _profileTab = tab; renderAthleteProfile(targetId); });
   }
 }
 
@@ -545,7 +547,7 @@ export function handleProfileAction(action, el) {
 
     document.getElementById('prGoalModal')?.classList.remove('active');
     if (_saveState) _saveState(true);
-    renderAthleteProfile();
+    renderAthleteProfile(_profileTargetId);
     return;
   }
 

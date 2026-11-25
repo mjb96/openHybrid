@@ -40,6 +40,8 @@ const CORE = [
   './css/hybrid-score.css',
   './css/programs.css',
   './css/progress.css',
+  './css/settings.css',
+  './css/tokens.css',
   './css/styles.css',
   './js/vendor/leaflet/leaflet.js',
   './js/vendor/leaflet/leaflet.css',

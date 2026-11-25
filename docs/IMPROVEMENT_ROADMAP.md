@@ -913,6 +913,33 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
+> **Theme colour system — A3 complete and the default palette approved 25 Nov 2026.**
+> The A0 audit (`docs/audit/theme-colour-audit.md`) inventoried 3,590 literals.
+> A1/A2 shipped the three-layer token system: `css/tokens.css` (primitives →
+> semantic → personality) and `js/theme/tokens.js` (`resolveThemeTokens`,
+> `applyThemeTokens`, `useThemeTokens` with `theme:changed`).
+> **A3** applies it. Surfaces, text, borders, overlays, accents and data colours
+> in the shipped CSS are now tokens or `color-mix` over tokens; the old indigo
+> brand accent is gone (cyan/teal is the accent, and `--domain-strength` keeps
+> the periwinkle labels), and 415 colour fallbacks were removed. Every chart
+> module is literal-free — series, grids, axes, goal lines and dots read the
+> semantic layer, so a chart flips with the theme. The in-app celebration canvas
+> resolves tokens with `resolveThemeTokens`; exported share cards keep a fixed
+> dark brand palette on purpose (they are art, not UI).
+> Light mode is repaired, not just re-tinted: the legacy `--text-inverse` alias
+> collision (white text on white sheets), `color-scheme: light`, the light brand
+> block, light nav/gradients and the UA button face on nav items are fixed, and
+> `theme-color` is synced from the resolved token at runtime.
+> **Guard rails:** `scripts/theme-literal-check.mjs` is a ratchet in
+> `npm run verify` — **1,750 literals remain across 57 files** (down from 3,590),
+> mostly shadow stacks, one-off light overrides and the deliberately branded
+> share art; no file may exceed its recorded ceiling.
+> `tests/theme_contrast.test.js` pins WCAG AA for both modes.
+> `scripts/theme-screenshots.mjs` writes the matrix (Home, Train, cockpit, active
+> session, per-set sheet, Progress, Plans, Settings, Profile at 390 dark/light and
+> 320 dark) to `docs/screenshots/theme-*.png`. Open: Part B themes (Slate/Forest/
+> Ember), and the remaining 1,750 literals.
+
 ### 14.1 Design stance
 
 Patterns to adopt: a profile card at the top; grouped inset lists; one row =
@@ -959,15 +986,15 @@ or corrects it.
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
-| ST2 | **Declarative settings registry** | new `js/settings/registry.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | MISSING | No per-setting metadata exists; `settings/nav.js` maps card labels to five tabs only. Screens are hand-written HTML and handlers. |
-| ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search now marks the exact matching row and scrolls it into the panel viewport; registry keywords are not wired yet, and Settings remains 2 taps deep (search is tap 3). |
-| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | MISSING | Only Settings entry is the Home avatar; no gear from logger/Progress/Plans/Measures. Muscle priorities wrongly say "set in Settings". |
-| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable. The equipment answer now writes through `applyActiveEquipment` and survives boot (S-F1), and both bodyweight readers use `latestWeighIn` (S-F2). Equipment tier, frequency, session length, focus and height are still not editable; Profile still needs a bodyweight link. |
+| ST2 | **Declarative settings registry** | `js/settings/registry.js`, `js/settings/store.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | DONE | 65 descriptors now render the 13 Settings pages and profile editor through `js/settings/render.js` and `js/settings/components.js`; search and summaries read the same registry; `js/settings/store.js` validates writes, batches, resets and syncs. The registry test gates every stored key and default. |
+| ST3 | **Settings search** | `js/settings/render.js`, `js/settings/registry.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | DONE | Search is one field under the profile card. It matches registry labels and keywords, tolerates an in-order subsequence ("thm" → Theme), shows the section › page path, and selecting opens the page and pulses the exact row. Settings is tap 1 from Home. |
+| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | PARTIAL | Phase 1 added the Home gear and the full-screen `#/settings` route; the Home sliders stays Customize Home. The logger/Progress/Plans/Measures gears and the workout settings sheet are still Phase 6. |
+| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | DONE | Profile now leads with editable Identity, Body metrics (weigh-in, height, DOB, sex, target/rate) and Training goal groups, with links to weight history and Measures. Schema v17 adds the optional fields as null; the weigh-in writes the canonical `bodyWeightLog` and stays in sync with Home. |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist. The JSON export now says progress photos are device-local and outside the file, pointing to Measures → Export photos. No manual last-backup timestamp yet. |
-| ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | PARTIAL | Two deliberate confirmations now name the losses; cancelling the second preserves state. Reset and delete-all are still one action with no per-domain choice. |
+| ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | DONE | Delete-all now requires typing DELETE after the first confirmation; the Data page shows every export beside it. Simple pages have a confirmed Reset to defaults with an Undo snackbar; Units is excluded so a reset cannot relabel history without conversion. |
 | ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist. The master switch is now `settings.notificationsEnabled` and survives reload (S-F5); no planned-day preference yet. Delivery is G5. |
 
 ### 14.5 Data rules
@@ -1067,6 +1094,167 @@ P0 and must be closed before H1's acceptance is claimed.
 | S-F3 | "Week starts on" already splits the app: Home/History/bodyweight honour Sunday, every Progress analytic and `startOfProgramWeek` hardcodes Monday, and changing it refreshes nothing. | `js/analytics/weekly-aggregate.js`, `pulse.js`, `muscles.js`, `hybrid-balance.js`, `dates.js`; no refresh dispatch | **P1** | H1 / ST7; one calendar-week owner + tests |
 | S-F4 | **Fixed 24 Nov (#321):** the kg↔lb switch converts stored sets, bodyweight, goals, PR targets and prescriptions after a confirmation and a localStorage recovery copy. Canonical display-only units remain a later migration. | `metrics/weight-unit.js`, `settings.js`, `settings-nav-browser-check.mjs` | Resolved | H1 / ST6 |
 | S-F5 | **Fixed 24 Nov (#319):** `settings.notificationsEnabled` is the persisted master switch; a granted OS permission alone never arms reminders, and switching off cancels the native alarm. | `state.js`, `notifications.js`, `settings.js`, `tests/notifications.test.js` | Resolved | H1 / ST11 |
+
+### 14.9 Settings & Profile rebuild — Phase 0 audit (25 Nov 2026)
+
+**Status: AWAITING APPROVAL — no UI has been written.** The full setting-by-setting
+matrix, entry-point audit, proposed 13-row IA, profile-field map and
+dead/duplicate/conflicting list live in
+`docs/audit/settings-profile-rebuild-audit.md`.
+
+- **48 settings keys** under `settings.*` all map to a page; 3 settings-like root
+  values (`thresholdPaceSeconds`, `prGoals`, `healthConnect.stepGoal`) need a
+  registry descriptor that can point outside `settings`.
+- **Entry points:** Home avatar → Profile → gear → Settings modal. The Home
+  sliders button opens **Customize Home**, not Settings. No `/settings` or
+  `/profile` URL exists, no PWA shortcut, no cockpit gear and no browser back
+  through Profile.
+- **Dead stores:** `settings.recoveryFeel` (write-only), `state.profileSections`
+  (never read), `state.dashboardTiles` (legacy Home-layout store beside
+  `settings.ui.home`). `weeklyFrequency`/`sessionMinutes` are written by
+  onboarding and read nowhere.
+- **Duplicates/conflicts:** `defaultBodyWeight` vs `bodyWeightLog`;
+  `fastingDefault` vs `fastingSession.goal`; `equipmentTier` not re-derived;
+  `equipment`/`bandWeights` projections; theme+palette will migrate in Part B;
+  the requested module vocabulary (strength/running/analytics/wellness) does
+  not match the stored `running`/`fasting`/`health`/`recovery` switch ids.
+- **Missing for the requested IA:** height/DOB/sex/training-start fields,
+  date/time/number/pace formats, last-backup timestamp, Watches, AI Coach and
+  Strava. No current calculation uses height/sex/DOB, so storing them would be
+  display-only until a formula exists.
+- **Proposed top level (13 rows + profile card + search):** Training (Workout,
+  Timer alerts, Plan & schedule, Reminders) · Set once (Units & language,
+  Equipment, Look & Home, Modules) · Connections (Watches, Integrations, AI
+  Coach) · Data & backup · About.
+- **Decisions requested:** remove/revive the four dead stores; where
+  `fastingDefault` lives; whether PR goals live on Profile or Workout; add
+  height/DOB/sex now or later; add format keys now or defer; show or omit
+  Watches/AI Coach/Strava; derive equipment tier; confirm the pushed-route tab
+  bar behaviour.
+
+Phase 1 starts only after approval: navigation + `/settings` route +
+redirects + hidden tab bar + Settings shell. Phase 2 adds the typed registry,
+store, validators and migrations; no control renders before those exist.
+
+### 14.10 Settings & Profile rebuild — Phase 1 (navigation shell)
+
+**Status: DONE for the navigation slice.** No setting was moved or removed; the
+old cards remain inside the route until Phase 4 replaces them.
+
+- **Home header:** the avatar is gone. A 48px gear opens Settings directly; the
+  sliders button still opens **Customize Home** and is the same Home-layout
+  control that will live under Look & Home.
+- **Route:** full-screen `#/settings` with a 48px back chevron labelled **Home**.
+  The hash token is the `/settings` route because the app is a static PWA
+  (GitHub Pages sub-path + Android WebViewAssetLoader); a History-API path
+  cannot be refreshed without a server rewrite. `#/settings/profile` is the
+  Profile sub-page.
+- **Profile:** reached only from the Settings profile card. The old
+  `open-profile` action and `#profile` hash redirect to `#/settings/profile`.
+- **Tab bar:** hidden on Settings and Profile, restored on Home.
+- **Back:** browser/system Back and the chevron pop one level
+  (Profile → Settings → Home) and restore Home's scroll position.
+- **Profile content:** the existing athlete profile renders into the Settings
+  sub-page (`settingsProfileContent`) with its own back control; no second data
+  store.
+
+**Not done yet:** the 13-row IA, registry renderer, search index, validators,
+gym-profile sub-page, contextual workout sheet, deep links into individual
+settings, and visual redesign. Those are Phases 2–6. **Known decision:** the
+brief writes `/settings`; the implemented token is `#/settings` for static
+hosting. Approve the hash or add a server/404 rewrite before Phase 6.
+
+### 14.11 Settings & Profile rebuild — Phase 2 (registry + store)
+
+**Status: DONE for the registry/store/migration slice.** No card was rewritten
+and no stored key was deleted.
+
+- **Registry:** `js/settings/registry.js` now has **57 descriptors** covering all
+  48 `settings.*` keys, the three settings-like root paths
+  (`thresholdPaceSeconds`, `prGoals`, `healthConnect.stepGoal`) and the three
+  legacy stores (`recoveryFeel`, `profileSections`, `dashboardTiles`, marked
+  `deprecated`). Every renderable entry has a section/page in the 13-row IA,
+  keywords, type/default and a summary formatter; entries may declare
+  `visibleWhen` and `enabledWhen` with a one-line disabled reason.
+- **Store:** `js/settings/store.js` is the validated write path: `get`, `set`,
+  `setMany` (atomic), selector `subscribe` by key/page/section, `describe`
+  (value/visible/enabled/reason/summary), `resetPage` with a returned undo
+  snapshot, `restore`, and `snapshot`. Writes persist through the existing
+  `saveStateToLocalStorage`. Cross-tab `storage` events copy registered setting
+  values only — never training history — into the live state.
+- **Migrations:** `snapshotBeforeMigration` writes the exact pre-upgrade bytes
+  to `<state>_pre_migration` before any ordered migration runs. Import already
+  writes its `<state>_backup` before replacing live data.
+- **Tests:** `tests/settings_store.test.js` covers validation-before-mutation,
+  atomic batches, root paths, selector subscriptions, reset/undo, cross-tab
+  isolation and the migration snapshot. The registry test now asserts every
+  default passes its validator and every summary is throw-free. `npm test`
+  passes 2,709 tests.
+- **Not done yet:** the existing cards still write `appState` directly; Phase 4
+  switches them to the store. The remaining Phase 0 decisions (dead-store
+  removals, `fastingDefault` home, PR-goal home, optional personal fields,
+  format keys, Watches/AI Coach/Strava, equipment-tier derivation) are still
+  open.
+
+### 14.12 Settings & Profile rebuild — Phase 3 (shared components)
+
+**Status: DONE for the component layer.** No page was rebuilt; Phase 4 composes
+these components into the 13-row IA.
+
+- `js/settings/components.js` is the one builder set: `settingsPage`,
+  `settingsGroup`, `settingsRow`, `toggleControl`, `segmentedControl`,
+  `stepperControl`, `sliderRow`, `timeControl`, `textControl`, `selectList`,
+  `pickerSheet`, `dangerRow` and `mountCollapsingTitle`.
+- Rows are 64px with a 36px rounded-square icon tile, inset hairline dividers,
+  a one-line truncated summary, a chevron only for drill-downs, and an explicit
+  disabled reason. Toggles keep a 48px hit area around a 42×24 track; segmented
+  options are 44px; steppers, inputs, time fields and the back control are 48px.
+- `css/settings.css` uses the app's existing semantic tokens only (no hex/rgb),
+  is linked in `index.html` and hand-listed in the precache CORE set.
+- `tests/settings_components.test.js` pins structure, escaping, accessible
+  names, the disabled contract and the no-literal-colour rule. A new
+  `settings-components-browser-check` renders the real module at 320/390/412 in
+  light/dark, measures every target and proves the title collapses.
+- **Not done yet:** no user-facing page uses the components; Phase 4 replaces
+  the legacy cards. The Phase 0 decisions remain open.
+
+### 14.13 Settings & Profile rebuild — Phases 4–8 (pages, profile, links, data)
+
+**Status: implemented and browser-checked.** The legacy cards are gone; the
+Settings route now renders the 13-row IA from the registry and shared components.
+
+- **Top level:** profile card, instant search and the five groups (Training,
+  Set once, Connections, Data, About) → 13 pushed pages.
+- **Pages:** Workout, Timer alerts, Plan & schedule, Reminders, Units &
+  language, Equipment, Look & Home, Modules, Integrations, Data & backup,
+  Watches, AI Coach and About. Rows use live summaries and dependency rules;
+  equipment, Health Connect and backup actions keep their existing owners.
+- **Profile (Phase 5):** the existing athlete page now leads with editable
+  Identity, Body metrics and Training goal groups (name, weigh-in, height, DOB,
+  sex, target/rate, goal/experience) plus links to weight history and Measures.
+  Schema v17 adds those optional fields as null; nothing is estimated.
+- **Search + links (Phase 6):** search matches labels/keywords across the
+  registry, shows the page path and opens the exact setting with a pulse.
+  `#/settings/<page>/<anchor>` restores the page and row on refresh. The active
+  workout has a 48px gear that opens a workout settings sheet (rest timer, plate
+  hints, warm-up, keep-awake, PR banners, active gym) and returns with the
+  session intact.
+- **Equipment (Phase 7):** multiple profiles with kit, bar/plates, pair counts,
+  dumbbells, machine stacks and bands; one active profile, switchable from the
+  workout sheet. Per-exercise rest overrides show Default vs Custom with a
+  one-tap revert; other exercise defaults remain editable from the exercise card.
+  Each simple page ends with a confirmed **Reset to defaults** and an Undo
+  snackbar; Units is excluded because a unit reset must go through conversion.
+- **Data & backup (Phase 8):** export JSON/CSV/context, import backup/CSV/FIT,
+  auto-backup status, storage used, and a typed `DELETE` confirmation for the
+  danger zone. Import still writes its pre-import backup and migrations keep the
+  pre-migration snapshot.
+- **Evidence:** `settings-nav-browser-check` covers every page, search, units,
+  module gating, equipment, data and Health Connect; `settings-navigation`
+  covers routes/back/scroll; `settings-contextual` covers deep links and the
+  workout sheet; `settings-components` measures the component contract.
+- **Remaining:** visual snapshot matrix and the final a11y/contrast pass for the
+  full theme engine (Part B), plus the Phase 0 dead-store removal decisions.
 
 ## 15. Home (H2)
 
@@ -1337,6 +1525,32 @@ promise. **Parked decisions:** bring-your-own AI coach (breaks the "no new
 network surface" rule if it calls out); cloud sync, accounts, iOS, public
 release (§8, §11).
 
+### 18.5 LiftShift adoption (QUEUED — after the Settings/Profile rebuild)
+
+Local work order: `~/.opencode/plan/openhybrid-liftshift-adoption.md`.
+We take ideas, methods and published numbers from primary sources; every line
+and every word is ours. No attribution entry is needed because nothing is
+derived from their source.
+
+Three commits, in order:
+
+1. **Correct `NOTICE.md`:** the exercisedb entry count is **1,273**, not 1,324
+   (verified: 4,282 openGym + 1,273 exercisedb = 5,555 catalogue entries).
+2. **Retire openGym plan-file import:** delete `js/programs/opengym-plan.js`,
+   its test and browser check; keep `openhybrid-plan` JSON import/export,
+   CSV/FIT history import, Customize/fork and the program builder. The catalogue
+   and CSV importer stay.
+3. **Focus prompts for the training-context export:** a pure
+   `training-context-focus.js` with eight own-wording focuses and an ephemeral
+   sheet opened by the existing export button. No new setting, no static markup,
+   no network surface.
+
+**Parked with a home:** per-lift status and premature-PR detection → A1; rep/RIR
+band mix → A4; rolling per-muscle volume across a training break → A2; 52-week
+heatmap → G4; drop/unilateral half-credit and library replacement → F/G9.
+**Held:** strength balance ratios until a device export shows at least 8 of 13
+pairs populated in a 90-day window.
+
 ## 19. Measuring the bar
 
 Replace the unfalsifiable "on par with Hevy" with these flows, measured as taps
@@ -1409,6 +1623,105 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — Theme A3: semantic colour applied, contrast and screenshot matrix.**
+  - Replaced literal surfaces/text/borders/accents/overlays across the CSS with
+    semantic tokens or `color-mix` over them, removed 415 colour fallbacks, and
+    migrated the old indigo brand accent to the approved cyan/teal one (strength
+    labels keep `--domain-strength`).
+  - Removed every colour literal from the chart modules: series, grids, axes,
+    goal lines, dot rings and legends now read CSS tokens, so charts follow the
+    active theme. The celebration overlay/confetti read `resolveThemeTokens`.
+  - Fixed real light-mode defects: the `--text-inverse` alias collision (white
+    titles on white sheets), missing `color-scheme: light`, the UA button face
+    behind the nav, light gradients/nav, and `theme-color` now syncs from the
+    resolved token (the meta cannot read a variable).
+  - Fixed the latent safe-area bug: `--safe-top/-bottom` referenced undefined
+    `--app-safe-*`, which pushed the fixed bottom nav 225px off-screen.
+  - Owner review: dark surfaces are now neutral ink greys (bg `#060606`,
+    surface-1 `#111111`) instead of navy; the body glows, navy card/sheet
+    gradients and the remaining cobalt uses are gone. Light mode is unchanged.
+    The owner approved this pair as the default (25 Nov 2026).
+  - Added `tests/theme_contrast.test.js` (AA pairs in both modes),
+    `scripts/theme-literal-check.mjs` as a `verify` ratchet (3,590 → 1,750
+    literals, no file above its ceiling) and `scripts/theme-screenshots.mjs`
+    with the 27-image matrix. `core-ergonomics-check` now reads the token
+    constants instead of scraping `styles.css`, and the new
+    `theme-visibility-browser-check` fails on rendered text that matches its
+    surface (it caught the programme-card category label on a white card).
+  - Verify: 2,729 tests, typecheck, precache, workflow and theme guards, smoke;
+    51/51 existing browser checks plus the new visibility check.
+
+- **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
+  - Added `js/settings/components.js` (page/group/row, toggle, segmented,
+    stepper, slider, time, text, select list, picker and danger) and
+    `css/settings.css` using existing semantic tokens only.
+  - Rows are 64px, icon tiles 36px, toggle hit areas 48px, segmented 44px,
+    inputs/steppers/back controls 48px; summaries truncate and disabled rows
+    state a reason.
+  - Added unit tests plus a real-browser component probe at 320/390/412 in
+    light/dark, including the collapsing title. No page has been switched to the
+    components yet; Phase 4 does that.
+  - 2,718 tests pass; the browser suite grows to 50 checks.
+
+- **2026-11-25 — H1 Settings/Profile Phase 2: registry, store and migration snapshot.**
+  - Expanded `js/settings/registry.js` to 57 descriptors with section/page,
+    validators, keywords, visibility/enablement rules and summary formatters.
+    Root settings and deprecated legacy stores are registered rather than hidden.
+  - Added `js/settings/store.js`: validated atomic writes, selector
+    subscriptions, page reset with undo data, snapshots and cross-tab setting
+    sync that never touches training history.
+  - Added `snapshotBeforeMigration`, called before ordered migrations; import
+    already keeps its pre-import backup.
+  - Tests: 2,709 pass, including new store tests and default/summary registry
+    gates. Existing cards still write directly until Phase 4.
+
+- **2026-11-25 — H1 Settings/Profile Phase 1: route shell and Home gear.**
+  - Home header now has a 48px gear that opens a full-screen `#/settings`
+    route; the sliders button remains Customize Home.
+  - Added `#/settings/profile`, reached only from the profile card; legacy
+    `open-profile` and `#profile` redirect there. The bottom tab bar is hidden
+    inside the route and restored on Home.
+  - Back works at both levels, browser/system Back pops the route, and Home's
+    scroll position is restored. Profile renders the existing athlete page
+    into the Settings sub-page, so no data or feature was duplicated.
+  - `js/settings/route.js` is the pure route model; a new
+    `settings-navigation-browser-check` covers 320/390/412, the redirects and
+    the scroll restore. Settings cards remain unchanged pending Phase 4.
+  - Decision: `/settings` is implemented as `#/settings` because the hosted PWA
+    and Android asset origin have no refresh rewrite. Approve the hash or add a
+    server fallback before individual setting deep links (Phase 6).
+
+- **2026-11-25 — H1 Settings/Profile rebuild: Phase 0 audit, awaiting approval.**
+  - Inventoried all 48 `settings.*` keys, 3 settings-like root values and the
+    Profile page's stored/derived fields with defaults, readers, current UI and
+    proposed page.
+  - Audited every entry point: Home avatar → Profile → Settings modal; the Home
+    sliders control is Customize Home; no URL route, PWA shortcut, cockpit gear
+    or browser-back path through Profile.
+  - Flagged dead stores (`recoveryFeel`, `profileSections`, `dashboardTiles`,
+    `weeklyFrequency`/`sessionMinutes`), duplicates (`defaultBodyWeight` vs the
+    weigh-in log, two fasting lengths, projected equipment fields) and missing
+    IA fields (height/DOB/sex/training start, formats, backup timestamp,
+    Watches/AI Coach/Strava).
+  - Full matrix and 13-row mapping:
+    `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
+    changed. Next: approval, then Phase 1 navigation.
+
+- **2026-11-25 — Theme A1/A2: semantic token layer and Midnight baseline.**
+  - Added `css/tokens.css` with primitives, the full semantic set, data/tile
+    scales and personality tokens (radius, borders, elevation, bg-image, label
+    style, fonts, density, motion scale), plus a light semantic block.
+  - Added `js/theme/tokens.js` with `resolveThemeTokens`, `applyThemeTokens` and
+    `useThemeTokens` (redraw hook on `theme:changed`); palette application keeps
+    the semantic layer in sync and system-theme changes re-apply it.
+  - Removed the Slate card gradient/border/glow `!important` pins and the
+    body-wide glow; Home alone carries `--bg-image`. Set meta/manifest/Android
+    status colours to `#070B14`.
+  - Tests: `tests/theme_tokens.test.js` pins the Midnight values, CSS/JS token
+    coverage, both theme vocabularies and the apply/subscribe path.
+  - Next A3: migrate the remaining audited literals (especially charts/canvas),
+    add the contrast matrix and all-theme screenshots. origin/theme-system-audit
+
 - **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
   - One registry (`js/analytics/progress-sections.js`) now declares every
     section and detail: id, label, subtitle, module gate, default order and
@@ -1437,6 +1750,7 @@ device timing it did not measure.
   - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
     search/stall; PG6 a real Records table/feed; PG9’s remaining overview
     concision and scannability test.
+
 - **2026-11-24 — H1 P0 closed: #319 and #321 merged.**
   - Onboarding equipment now survives boot; back-dated weigh-ins no longer
     become current; the notification master switch persists.
@@ -1458,55 +1772,6 @@ device timing it did not measure.
   - The settings browser check clicks Reduce, asserts the hook and the stored
     preference, then restores System.
   - Still PARTIAL: no text size, haptics, demo size or sounds group.
-
-- **2026-11-24 — H4 A1: the stall evidence is no longer dead code.**
-  - `buildExerciseCard` now renders `diagnostic.message` under the target, so a
-    PROGRESS CHECK badge states the 3-session span, the missed target and the
-    hold/recovery action instead of leaving the athlete to guess.
-  - Tests pin the stalled line and the empty-message case.
-  - Still PARTIAL: no analytics surface lists stalled lifts.
-
-- **2026-11-24 — H2 HM7: the plan-done copy counts sessions, not set rows.**
-  - The week rail said "1/5 done" while the coach line said "100% of this
-    week's plan done" from completed stored set rows. The coach line now uses
-    `planDone`/`planTotal` from the program's planned days, the same unit as the
-    rail; the Hybrid Score keeps the set-based consistency value it needs.
-  - `tests/dashboard_model.test.js` pins a one-of-two-sessions fixture where the
-    set percentage is 100 but the plan line says "1 of 2 planned sessions done".
-  - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
-    is no duplicate-metric guard.
-
-- **2026-11-24 — H1 ST9: the JSON export says what it does not carry.**
-  - The Data & Backups card now states that progress photos stay on the device
-    and are not inside the JSON file, with the separate Measures → Export photos
-    path named in the same hint.
-  - The settings browser check asserts the exclusion and the named backup path.
-  - Still PARTIAL: there is no manual-export "last backup" timestamp.
-
-- **2026-11-24 — H1 ST3: settings search opens the row, not just the card.**
-  - `firstMatchingRow` finds the exact `.settings-row`, band grid or hint that
-    matched, and the Settings filter highlights it and scrolls the panel to it.
-    The highlight clears with the query.
-  - The settings browser check searches by an accessible name only ("light band
-    weight"), asserts one marked row containing the light-band control, and
-    asserts it is inside the panel viewport.
-  - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
-    deep, so the 2-tap acceptance is unmet.
-
-- **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
-  - The Reports band sent the row to `weekly-review`, which forces Review's
-    Overview tab; the year section lives on Stats. A new `year-review` route
-    selects Stats, and the Progress-hub browser check now opens the row and
-    asserts both the active tab and the visible year container.
-  - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
-    the Reports band still duplicates the screen.
-
-- **2026-11-24 — H2 HM3: Strength this week states every figure.**
-  - The Home strength card now shows sessions and working sets together, the
-    same-weekday volume delta, the top e1RM change and this week's PR count.
-    Previously sets and PRs were mutually exclusive and sessions were absent.
-  - Still PARTIAL: the card links to the legacy Strength screen until the
-    Progress restructure (PG3/PG5) owns that evidence.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

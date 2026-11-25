@@ -8,6 +8,7 @@
 //
 // The palette lives on <html data-palette="…">; CSS owns the actual colours.
 // =============================================================================
+import { applyThemeTokens } from './theme/tokens.js';
 
 export const PALETTES = Object.freeze([
   { id: 'midnight', label: 'Midnight', note: 'Icon palette — navy, steel, cyan' },
@@ -25,11 +26,14 @@ export function normalizePalette(value) {
 }
 
 /**
- * @param {{ dataset?: DOMStringMap }|null} root
+ * @param {HTMLElement|null} root
  * @param {unknown} value
  */
 export function applyPalette(root, value) {
   const id = normalizePalette(value);
   if (root?.dataset) root.dataset.palette = id;
+  // Keep the semantic layer in sync; the default Midnight/light tokens are the
+  // only ones shipped in Part A.
+  applyThemeTokens(root);
   return id;
 }

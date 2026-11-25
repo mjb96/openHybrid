@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 48 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 52 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -105,10 +105,42 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `settings.notificationsEnabled` is the persisted master reminder preference:
   a granted OS permission alone never arms a reminder, and switching it off
   cancels the native alarm (S-F5).
-  `js/settings/registry.js` is the declarative descriptor list (key, label,
-  type, group, default) for every stored setting; `tests/settings_registry.test.js`
-  parses `state.js` and fails when a key exists outside it. Screens are still
-  hand-written, so the registry is not yet the renderer.
+  `js/settings/registry.js` is the declarative descriptor list for every stored
+  setting — key/path, section/page in the 13-row IA, label, type, default,
+  validator, keywords, visible/enabled rules and summary formatter. It covers all
+  48 `settings.*` keys, the settings-like root paths and deprecated legacy
+  stores. `js/settings/store.js` is the validated write path: `set`/`setMany`
+  (atomic), selector `subscribe` by key/page/section, `describe`, `resetPage`
+  with an undo snapshot, and cross-tab sync that copies registered settings only
+  (never training history). Writes persist through the existing
+  `saveStateToLocalStorage`; screens are still hand-written and write directly
+  until Phase 4, so the registry is not yet the renderer.
+  `tests/settings_registry.test.js` fails when a stored key is outside the
+  registry or a default fails its validator; `tests/settings_store.test.js`
+  pins validation-before-mutation, atomic batches and cross-tab isolation.
+- Settings components (§14.12, Phase 3): `js/settings/components.js` is the ONE
+  builder set for pages/groups/rows and every control (toggle, segmented,
+  stepper, slider, time, text, select list, picker, danger). Rows are 64px with
+  a 36px icon tile and inset dividers; controls are 44/48px. `css/settings.css`
+  uses existing semantic tokens only and is in the precache CORE list. Pages
+  must compose these builders; Phase 4 switches the legacy cards to them.
+- Settings routing (§14.10, Phase 1): the Home header's 48px **gear** opens a
+  full-screen Settings route; the avatar is gone. The route token is
+  `#/settings` (the `/settings` path cannot be refreshed on GitHub Pages or the
+  Android WebViewAssetLoader origin without a server rewrite), with
+  `#/settings/profile` for Profile. Profile is reached ONLY from the profile
+  card at the top of Settings; the old `open-profile` action and `#profile`
+  hash redirect there. The bottom tab bar is hidden inside the route and
+  restored on Home; the back chevron, browser Back and Android Back pop one
+  level and Home's scroll position is restored. The Home sliders button remains
+  **Customize Home**, not Settings. `js/settings/route.js` is the pure route
+  model. The route renders the registry-driven 13-row IA through
+  `js/settings/render.js`: profile card + search + Training/Set once/Connections/
+  Data/About pages; the legacy cards are gone. Profile is editable (name,
+  weigh-in, height/DOB/sex, goals) and schema v17 seeds those optional fields
+  null. Search opens the exact setting, setting anchors survive refresh, and the
+  active workout's gear opens a settings sheet that returns with the session
+  intact. The bottom tab bar stays hidden throughout.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can
@@ -393,7 +425,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `computeDiagnosticForLift(..., { progressionStyle })` forwards it to
   `suggestProgression`, and the program editor's Progression tab exposes the
   choice. RPE/fatigue/cut/stall holds still take precedence in every style.
-- Themes: `js/theme.js` owns the palette id; CSS owns the colours. Midnight is
+- Themes: `js/theme.js` owns the palette id; CSS owns the colours.
+  `css/tokens.css` is the three-layer colour system (primitives → semantic →
+  personality) and `js/theme/tokens.js` is the resolved read path for
+  charts/canvas (`useThemeTokens` subscribes to `theme:changed`). Components
+  consume semantic tokens (`bg`, `surface-1..3`, `text`, `accent`, `data-*`,
+  `tile-*`), never literals; A3 is migrating the remaining legacy literals.
+  Midnight is
   the icon-derived default for dark/system profiles (schema v10 seeds it), with
   Slate/Forest/Ember alternatives. Light keeps its own variable block. The
   Settings palette buttons persist `settings.palette`.

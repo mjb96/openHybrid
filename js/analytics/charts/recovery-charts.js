@@ -16,7 +16,7 @@ function formatDate(dateStr) {
 function renderTrendChart({ container, series, label, color, valueLabel, yMin, yMax, goodIsHigh = true, refValue = null, refLabel = '', baselineValue = null, baselineLabel = '', optimalBand = null }) {
   if (!container) return;
   if (!series || series.length < 2) {
-    container.innerHTML = `<p style="color:rgba(255,255,255,0.5);font-size:0.85rem;padding:8px 0;">Log ${label.toLowerCase()} data to see trends.</p>`;
+    container.innerHTML = `<p style="color:color-mix(in srgb, var(--text) 50%, transparent);font-size:0.85rem;padding:8px 0;">Log ${label.toLowerCase()} data to see trends.</p>`;
     return;
   }
 
@@ -44,7 +44,7 @@ function renderTrendChart({ container, series, label, color, valueLabel, yMin, y
   // Optimal zone shading (drawn before data lines)
   let optBandSvg = '';
   if (optimalBand && optimalBand.max > minV && optimalBand.min < maxV) {
-    const bandColor = optimalBand.color || '#10b981';
+    const bandColor = optimalBand.color || 'var(--success)';
     const y1 = toY(Math.min(optimalBand.max, maxV));
     const y2 = toY(Math.max(optimalBand.min, minV));
     optBandSvg = shadedBand(y1, y2, PL, W, PR, bandColor, 0.08);
@@ -57,13 +57,13 @@ function renderTrendChart({ container, series, label, color, valueLabel, yMin, y
     const maPts  = maSeries.map((e, i) => e.ma7 > 0 ? [toX(i), toY(e.ma7)] : null).filter(Boolean);
     const maSmooth = maPts.length >= 2 ? bezierPath(maPts) : '';
     maLine = maSmooth
-      ? `<path d="${maSmooth}" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-dasharray="5,3" stroke-linecap="round"/>`
+      ? `<path d="${maSmooth}" fill="none" stroke="color-mix(in srgb, var(--text) 65%, transparent)" stroke-width="2" stroke-dasharray="5,3" stroke-linecap="round"/>`
       : '';
   }
 
   // Reference line (target — solid)
   const refSvg = (refValue !== null && refValue >= minV && refValue <= maxV * 1.1)
-    ? refLine(toY(refValue), PL, W, PR, refLabel || refValue.toString(), 'rgba(255,255,255,0.4)', true)
+    ? refLine(toY(refValue), PL, W, PR, refLabel || refValue.toString(), 'color-mix(in srgb, var(--text) 40%, transparent)', true)
     : '';
 
   // Baseline line (personal average — lighter dashed)
@@ -78,14 +78,14 @@ function renderTrendChart({ container, series, label, color, valueLabel, yMin, y
   let xLbl = '';
   labels.forEach((lbl, i) => {
     if (i % step !== 0) return;
-    xLbl += `<text x="${toX(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.55)">${lbl}</text>`;
+    xLbl += `<text x="${toX(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="color-mix(in srgb, var(--text) 55%, transparent)">${lbl}</text>`;
   });
 
   const ticks = [0.25, 0.5, 0.75, 1].map(p => minV + p * range);
   const grid  = gridLines(ticks, toY, PL, W, PR, v => Math.round(v));
 
   const legend = `<text x="${PL}" y="11" font-size="9" fill="${color}">${valueLabel || label}</text>
-    ${maSeries.length >= 2 ? `<text x="${PL + 120}" y="11" font-size="9" fill="rgba(255,255,255,0.55)">- - 7d avg</text>` : ''}`;
+    ${maSeries.length >= 2 ? `<text x="${PL + 120}" y="11" font-size="9" fill="color-mix(in srgb, var(--text) 55%, transparent)">- - 7d avg</text>` : ''}`;
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${defs}${grid}${optBandSvg}${refSvg}${baselineSvg}${area}${line}${maLine}${dots}${xLbl}${legend}</svg>`;
 }
@@ -96,7 +96,7 @@ export function renderSleepTrendChart(container, sleepData, baseline = null) {
     container,
     series:        sleepData,
     label:         'Sleep',
-    color:         '#818cf8',
+    color:         'var(--domain-strength)',
     valueLabel:    'Sleep (hours)',
     yMin:          0,
     yMax:          12,
@@ -105,7 +105,7 @@ export function renderSleepTrendChart(container, sleepData, baseline = null) {
     goodIsHigh:    true,
     baselineValue: baseline,
     baselineLabel: baseline ? `28d avg ${baseline.toFixed(1)}h` : '',
-    optimalBand:   { min: 7, max: 9, color: '#818cf8' },
+    optimalBand:   { min: 7, max: 9, color: 'var(--domain-strength)' },
   });
 }
 
@@ -115,7 +115,7 @@ export function renderHRVTrendChart(container, hrvData, baseline = null) {
     container,
     series:        hrvData,
     label:         'HRV (RMSSD)',
-    color:         '#10b981',
+    color:         'var(--success)',
     valueLabel:    'HRV — RMSSD (ms)',
     goodIsHigh:    true,
     baselineValue: baseline,
@@ -129,7 +129,7 @@ export function renderRestingHRTrendChart(container, rhrData, baseline = null) {
     container,
     series:        rhrData,
     label:         'Resting HR',
-    color:         '#ef4444',
+    color:         'var(--danger)',
     valueLabel:    'Resting HR (bpm)',
     goodIsHigh:    false,
     baselineValue: baseline,
@@ -145,14 +145,14 @@ export function renderRecoveryScoreTrendChart(container, recovScores) {
     container,
     series,
     label:       'Recovery Score',
-    color:       '#3b82f6',
+    color:       'var(--data-1)',
     valueLabel:  'Daily Recovery Score (0–100)',
     yMin:        0,
     yMax:        100,
     refValue:    70,
     refLabel:    '70 Threshold',
     goodIsHigh:  true,
-    optimalBand: { min: 70, max: 100, color: '#10b981' },
+    optimalBand: { min: 70, max: 100, color: 'var(--success)' },
   });
 }
 
@@ -162,7 +162,7 @@ export function renderMoodTrendChart(container, moodData) {
     container,
     series: moodData,
     label: 'Mood',
-    color: '#f59e0b',
+    color: 'var(--warning)',
     valueLabel: 'Mood (1–5)',
     yMin: 0,
     yMax: 5,
@@ -176,7 +176,7 @@ export function renderSorenessTrendChart(container, sorenessData) {
     container,
     series: sorenessData,
     label: 'Soreness',
-    color: '#f97316',
+    color: 'var(--data-3)',
     valueLabel: 'Soreness (1–5) — lower is better',
     yMin: 0,
     yMax: 5,
@@ -201,14 +201,14 @@ export function renderReadinessRingLarge(container, score, status, color) {
   container.innerHTML = `
     <div class="flex-col flex-center">
       <svg viewBox="0 0 140 140" style="width:140px;height:140px;">
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="12"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="color-mix(in srgb, var(--text) 8%, transparent)" stroke-width="12"/>
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="12"
           stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
           stroke-dashoffset="${(circ * 0.25).toFixed(2)}"
           stroke-linecap="round"
           transform="rotate(-90 ${cx} ${cy})"/>
         <text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="28" font-weight="800" fill="${color}">${score}</text>
-        <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">${status}</text>
+        <text x="${cx}" y="${cy + 12}" text-anchor="middle" font-size="10" fill="color-mix(in srgb, var(--text) 60%, transparent)">${status}</text>
       </svg>
     </div>`;
 }

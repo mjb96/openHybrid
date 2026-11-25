@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-hc507432ee829';
+const CACHE_NAME = 'openhybrid-v122-h762f1ff13be7';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -26,7 +26,9 @@ const REQUIRED_ASSETS = [
   "./css/hybrid-score.css",
   "./css/programs.css",
   "./css/progress.css",
+  "./css/settings.css",
   "./css/styles.css",
+  "./css/tokens.css",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
@@ -261,8 +263,13 @@ const REQUIRED_ASSETS = [
   "./js/session-recap.js",
   "./js/set-utils.js",
   "./js/settings.js",
+  "./js/settings/components.js",
   "./js/settings/nav.js",
+  "./js/settings/registry.js",
+  "./js/settings/render.js",
   "./js/settings/rest-presets.js",
+  "./js/settings/route.js",
+  "./js/settings/store.js",
   "./js/share/workout-share.js",
   "./js/state.js",
   "./js/state/activation-identity.js",
@@ -285,6 +292,7 @@ const REQUIRED_ASSETS = [
   "./js/sw-reload.js",
   "./js/templates.js",
   "./js/theme.js",
+  "./js/theme/tokens.js",
   "./js/timers.js",
   "./js/toast.js",
   "./js/train/train-landing.js",

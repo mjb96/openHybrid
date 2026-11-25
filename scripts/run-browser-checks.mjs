@@ -7,9 +7,15 @@ const checks = [
   // regression that hides controls under the status bar surfaces before the
   // slower feature checks run.
   'scripts/safe-area-browser-check.mjs',
+  // Theme-wide: proves no rendered text is the same colour as its surface in
+  // either mode before the slower feature checks run.
+  'scripts/theme-visibility-browser-check.mjs',
   'scripts/home-today-browser-check.mjs',
   'scripts/customize-browser-check.mjs',
   'scripts/settings-nav-browser-check.mjs',
+  'scripts/settings-navigation-browser-check.mjs',
+  'scripts/settings-components-browser-check.mjs',
+  'scripts/settings-contextual-browser-check.mjs',
   'scripts/progress-hub-browser-check.mjs',
   'scripts/photo-browser-check.mjs',
   'scripts/measures-browser-check.mjs',

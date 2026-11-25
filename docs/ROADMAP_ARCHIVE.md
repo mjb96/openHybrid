@@ -5621,6 +5621,47 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     CP6's native leftovers move to H8.
   - No product code changed. **H0 — verify and audit** is next.
 
+- **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
+  - The Reports band sent the row to `weekly-review`, which forces Review's
+    Overview tab; the year section lives on Stats. A new `year-review` route
+    selects Stats, and the Progress-hub browser check now opens the row and
+    asserts both the active tab and the visible year container.
+  - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
+    the Reports band still duplicates the screen.
+
+- **2026-11-24 — H1 ST3: settings search opens the row, not just the card.**
+  - `firstMatchingRow` finds the exact `.settings-row`, band grid or hint that
+    matched, and the Settings filter highlights it and scrolls the panel to it.
+    The highlight clears with the query.
+  - The settings browser check searches by an accessible name only ("light band
+    weight"), asserts one marked row containing the light-band control, and
+    asserts it is inside the panel viewport.
+  - Still PARTIAL: registry keywords are not wired and Settings is still 2 taps
+    deep, so the 2-tap acceptance is unmet.
+
+- **2026-11-24 — H1 ST9: the JSON export says what it does not carry.**
+  - The Data & Backups card now states that progress photos stay on the device
+    and are not inside the JSON file, with the separate Measures → Export photos
+    path named in the same hint.
+  - The settings browser check asserts the exclusion and the named backup path.
+  - Still PARTIAL: there is no manual-export "last backup" timestamp.
+
+- **2026-11-24 — H2 HM7: the plan-done copy counts sessions, not set rows.**
+  - The week rail said "1/5 done" while the coach line said "100% of this
+    week's plan done" from completed stored set rows. The coach line now uses
+    `planDone`/`planTotal` from the program's planned days, the same unit as the
+    rail; the Hybrid Score keeps the set-based consistency value it needs.
+  - `tests/dashboard_model.test.js` pins a one-of-two-sessions fixture where the
+    set percentage is 100 but the plan line says "1 of 2 planned sessions done".
+  - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
+    is no duplicate-metric guard. origin/theme-system-audit
+- **2026-11-24 — H2 HM3: Strength this week states every figure.**
+  - The Home strength card now shows sessions and working sets together, the
+    same-weekday volume delta, the top e1RM change and this week's PR count.
+    Previously sets and PRs were mutually exclusive and sessions were absent.
+  - Still PARTIAL: the card links to the legacy Strength screen until the
+    Progress restructure (PG3/PG5) owns that evidence.
+
 - **2026-11-24 — H2 HM1: Home's Today card previews the work, not just the title.**
   - `workout/session-preview.js` is now the one resolver shared by Train and
     Home: it reads the same `liftTarget` and dated history the cockpit uses.
@@ -5643,4 +5684,19 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     calculation; the gaps are missing features, dead surfaces and navigation.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+
+- **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
+  - The Reports band sent the row to `weekly-review`, which forces Review's
+    Overview tab; the year section lives on Stats. A new `year-review` route
+    selects Stats, and the Progress-hub browser check now opens the row and
+    asserts both the active tab and the visible year container.
+  - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
+    the Reports band still duplicates the screen. origin/theme-system-audit
+
+- **2026-11-24 — H4 A1: the stall evidence is no longer dead code.**
+  - `buildExerciseCard` now renders `diagnostic.message` under the target, so a
+    PROGRESS CHECK badge states the 3-session span, the missed target and the
+    hold/recovery action instead of leaving the athlete to guess.
+  - Tests pin the stalled line and the empty-message case.
+  - Still PARTIAL: no analytics surface lists stalled lifts.
 

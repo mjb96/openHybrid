@@ -199,25 +199,19 @@ try {
       }
     }
 
-    // Profile lives behind the avatar, which is precisely the control that was
-    // occluded — so reaching it at all is part of the contract.
-    await page.evaluate(() => {
-      const avatar = document.querySelector('#view-home [data-action="open-profile"], .home-avatar, .profile-avatar-btn');
-      if (avatar) /** @type {HTMLElement} */ (avatar).click();
-    });
-    await page.waitForTimeout(400);
-    const profileOffenders = await page.evaluate(OCCLUSION_PROBE, INSET);
-    console.log(`${width}px/${theme} profile: occluded=${profileOffenders.length}`);
-    if (profileOffenders.length) {
-      failures.push(`${width}px/${theme} profile: ${profileOffenders.length} control(s) under the status bar: ${JSON.stringify(profileOffenders.slice(0, 4))}`);
+    // Settings is the Home gear's destination, and the header is precisely
+    // the surface that must clear the status bar.
+    await page.evaluate(() => document.querySelector('#homeSettingsBtn')?.click());
+    await page.waitForSelector('#settingsOverlay.active', { timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(300);
+    const settingsOffenders = await page.evaluate(OCCLUSION_PROBE, INSET);
+    console.log(`${width}px/${theme} settings: occluded=${settingsOffenders.length}`);
+    if (settingsOffenders.length) {
+      failures.push(`${width}px/${theme} settings: ${settingsOffenders.length} control(s) under the status bar: ${JSON.stringify(settingsOffenders.slice(0, 4))}`);
     }
 
     // Settings is a scrolling panel: its last row must clear the gesture bar,
     // so the bottom padding has to include the same published inset.
-    await page.evaluate(() => {
-      document.querySelector('#view-profile [data-action="open-settings"]')?.click();
-    });
-    await page.waitForSelector('#settingsOverlay.active', { timeout: 5000 }).catch(() => {});
     const settingsPad = await page.$eval('.settings-body', (el) => parseFloat(getComputedStyle(el).paddingBottom));
     console.log(`${width}px/${theme} settings body: padBottom=${settingsPad}`);
     if (Math.abs(settingsPad - (40 + INSET)) > 0.5) {

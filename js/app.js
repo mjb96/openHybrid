@@ -80,7 +80,7 @@ import { initGarminRunImport, initGarminGymImport } from './garmin.js';
 import { initRunLogger, openRunLogger, closeRunLogger, saveManualRun } from './run-logger.js';
 import { initOnboarding, shouldShowOnboarding, startOnboarding, handleOnboardingAction } from './onboarding.js';
 import {
-  initSettings, openSettings, closeSettings,
+  initSettings, openSettings, closeSettings, backToSettings, applySettingsRouteFromHash,
   saveName, saveBodyWeight, setWeightUnit,
   setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, setReducedMotion, stepCurrentWeek, setAutoAdvanceWeek,
   exportData, exportTrainingContext, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
@@ -205,6 +205,11 @@ function syncPrimaryNavigation(targetViewID) {
 }
 
 export function switchGlobalAppTab(targetViewID, options = {}) {
+  // Profile is no longer a tab: it is a sub-page of the Settings route.
+  if (targetViewID === 'profile') { openSettings('profile'); return; }
+  if (document.documentElement.classList.contains('settings-route')) {
+    closeSettings({ replaceHash: true });
+  }
   if (activeTab === 'workout' && !options.skipWorkoutCommit) {
     try { commitWorkoutUIState(); } catch(e) { console.warn(e); }
   }
@@ -1863,6 +1868,8 @@ document.addEventListener('click', (e) => {
   
   // Settings
   else if (action === 'open-settings') openSettings();
+  else if (action === 'open-settings-profile') openSettings('profile');
+  else if (action === 'back-to-settings') backToSettings();
   else if (action === 'close-settings') closeSettings();
   else if (e.target.id === 'settingsOverlay') closeSettings();
   else if (action === 'set-unit') setWeightUnit(target.getAttribute('data-unit'));
@@ -1911,7 +1918,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'qs-run')  { toggleQuickStart(false); startQuickActivity('run'); }
   else if (action === 'qs-walk') { toggleQuickStart(false); startQuickActivity('walk'); }
   else if (action === 'qs-fast') { toggleQuickStart(false); openFastingDetail(); }
-  else if (action === 'open-profile') { switchGlobalAppTab('profile'); }
+  else if (action === 'open-profile') { openSettings('profile'); }
 
   // GPS Tracker
   else if (action === 'quick-activity') { startQuickActivity(target.getAttribute('data-type')); }
@@ -2617,6 +2624,7 @@ async function bootstrapApp() {
     verifyWeekStorageSchema(appState.currentWeek);
     setCockpitActiveDay(currentDay);
     switchGlobalAppTab(currentTab);
+    applySettingsRouteFromHash();
     checkActiveTimerOnLoad(activeWorkoutTimerKey());
     window._hybridGetProgram = () => getProgramById(appState.activeProgramId);
     applySettingsOnBoot(appState);

@@ -21,8 +21,9 @@ const server = createServer(async (req, res) => {
     const rel = (req.url || '/') === '/' ? 'index.html' : decodeURIComponent((req.url || '').split('?')[0]).replace(/^\//, '');
     const file = path.resolve(ROOT, rel);
     if (!file.startsWith(`${ROOT}${path.sep}`) && file !== path.join(ROOT, 'index.html')) throw new Error('unsafe');
+    const body = await readFile(file);
     res.writeHead(200, { 'content-type': MIME[path.extname(rel)] || 'application/octet-stream' });
-    res.end(await readFile(file));
+    res.end(body);
   } catch { res.writeHead(404); res.end('not found'); }
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -66,16 +67,16 @@ try {
   const runQuick = page.locator('#homeQuickActions [data-action="open-run-logger"]');
   ok(await runQuick.isVisible(), 'Running module is visible by default');
 
-  await page.click('#homeAvatar');
-  await page.waitForSelector('#view-profile.active');
-  await page.click('#view-profile [data-action="open-settings"]');
+  await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  const runningRow = page.locator('.settings-row', { has: page.locator('[data-module-toggle="running"]') });
-  await runningRow.locator('.settings-switch').click();
+  await page.click('[data-action="open-settings-page"][data-context="once.modules"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="modules.running"]') }).click();
   await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'off');
   ok(!(await runQuick.isVisible()), 'turning Running off hides the Home run action');
 
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.click('.nav-item[data-target="analytics"]');
   await page.waitForSelector('#view-analytics.active');
