@@ -26,7 +26,7 @@ import { renderHomeBodyweight } from './home/bodyweight-card.js';
 import { renderHomeHybrid } from './home/hybrid-dashboard.js';
 import { reportHandledError, renderSafely } from './monitoring/report-error.js';
 import { addDaysISO, startOfProgramWeek, todayKey } from './dates.js';
-import { movableDay, scheduledDayForDate, undoMove } from './schedule/week.js';
+import { isMovedAway, movableDay, scheduledDayForDate, undoMove } from './schedule/week.js';
 import { openMoveDaySheet } from './home/move-day-sheet.js';
 import { showUndo } from './ui/undo-bar.js';
 import { buildVolumeGuideModel, hasExplicitMusclePriorities } from './analytics/volume-guide.js';
@@ -552,8 +552,14 @@ export function renderHome() {
   const DEFAULT_DAYS = _getDays();
 
   const activeProgram = getProgramById(appState.activeProgramId);
-  // The scheduled day, not the weekday: a moved workout owns today (HM2).
-  const homeDay = scheduledDayForDate(appState, activeProgram, todayKey())?.day || todayProgramDay();
+  // The scheduled day, not the weekday: a moved workout owns today. If today's
+  // own plan was moved away, the day is rest rather than the old weekday plan.
+  const todayISO = todayKey();
+  const todayWeekStart = startOfProgramWeek(todayISO);
+  const weekdayToday = todayProgramDay();
+  const scheduledToday = scheduledDayForDate(appState, activeProgram, todayISO);
+  const homeDay = scheduledToday?.day || weekdayToday;
+  const todayMovedAway = !scheduledToday && !!todayWeekStart && isMovedAway(appState, weekdayToday, todayWeekStart);
   const wk = appState?.currentWeek || "1";
 
   const headlineEl = document.getElementById('homeWeekBlockIndicator');
@@ -676,6 +682,7 @@ export function renderHome() {
         briefing,
         score: scoreResult,
         todayDay: homeDay,
+        noSession: todayMovedAway,
         offline: typeof navigator !== 'undefined' && navigator.onLine === false,
       });
       const expanded = isTodayCardCollapsible(card) && _todayCardExpanded;

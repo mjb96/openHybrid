@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  applyMove, hasPlan, moveOptions, movableDay, scheduledDateFor, scheduledDayForDate, undoMove,
+  applyMove, hasPlan, isMovedAway, moveOptions, movableDay, scheduledDateFor, scheduledDayForDate, undoMove,
 } from '../js/schedule/week.js';
 
 const TODAY = '2026-11-25'; // Wednesday
@@ -116,4 +116,12 @@ test('hasPlan treats a REST/recovery run label as no plan', () => {
   assert.equal(hasPlan({ days: { mon: { lifts: [], runs: 'Rest' } } }, 'mon'), false);
   assert.equal(hasPlan({ days: { mon: { lifts: [], runs: 'Recovery walk' } } }, 'mon'), false);
   assert.equal(hasPlan({ days: { mon: { lifts: [], runs: 'Easy 5 km' } } }, 'mon'), true);
+});
+
+test('a moved-away day reports that its weekday is now rest', () => {
+  const s = state();
+  assert.equal(isMovedAway(s, 'wed', WEEK), false);
+  applyMove(s, program, 'wed', '2026-11-27', { today: TODAY });
+  assert.equal(isMovedAway(s, 'wed', WEEK), true);
+  assert.equal(isMovedAway(s, 'thu', WEEK), false);
 });

@@ -165,13 +165,13 @@ function baseModel({ state, program, model, briefing, score, now, offline, tz, t
 /**
  * @param {{
  *  state:any, program?:any, model?:any, briefing?:any, score?:any,
- *  now?:Date, offline?:boolean, tz?:string, todayDay?:string
+ *  now?:Date, offline?:boolean, tz?:string, todayDay?:string, noSession?:boolean
  * }} options
  */
 export function buildTodayCardModel(options) {
   const {
     state, program = null, model = null, briefing = null, score = null,
-    now = new Date(), offline = false, tz = undefined, todayDay = null,
+    now = new Date(), offline = false, tz = undefined, todayDay = null, noSession = false,
   } = options;
   const todayISO = dateKey(now, tz);
   const card = baseModel({ state, program, model, briefing, score, now, offline, tz, todayDay });
@@ -322,6 +322,18 @@ export function buildTodayCardModel(options) {
   }
 
   if (card.calendarRunNote) card.meta += ' · run already logged today';
+
+  // The day's plan was moved elsewhere; today itself is rest (HM2).
+  if (noSession) {
+    card.state = 'rest';
+    card.tone = 'rest';
+    card.eyebrow = 'Recovery day';
+    card.meta = `${card.dayLabel} · Week ${weekKey}`;
+    card.guidance = firstSentence(model?.rec?.advice, 'Your workout moved to another day. Recover now, or choose another workout.');
+    card.primary = { action: 'open-wellness-checkin', label: 'Log wellness check-in' };
+    card.secondary = { action: 'open-program-workout-picker', label: 'Choose another workout' };
+    return card;
+  }
 
   if (todaySession.planned.isRest) {
     card.state = 'rest';

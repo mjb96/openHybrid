@@ -85,6 +85,17 @@ function weekdayFor(dateISO) {
 }
 
 /**
+ * True when this day's plan was moved to another date (its weekday is now rest).
+ * @param {any} state
+ * @param {string} day
+ * @param {string} weekStartISO
+ */
+export function isMovedAway(state, day, weekStartISO) {
+  const moved = weekMoves(state, weekStartISO)[day];
+  return !!moved && moved !== defaultDateFor(weekStartISO, day);
+}
+
+/**
  * Which planned day owns a calendar date, after moves.
  * @param {any} state
  * @param {any} program

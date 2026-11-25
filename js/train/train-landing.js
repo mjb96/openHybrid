@@ -22,8 +22,8 @@ import { buildTodayCardModel } from '../home/today-card.js';
 import { buildHomeWeekStrip } from '../home/week-strip.js';
 import { buildActivityHistory } from '../activities/model.js';
 import { moduleEnabled } from '../modules.js';
-import { localDayKey } from '../dates.js';
-import { scheduledDayForDate } from '../schedule/week.js';
+import { localDayKey, startOfProgramWeek, todayProgramDay } from '../dates.js';
+import { isMovedAway, scheduledDayForDate } from '../schedule/week.js';
 import { sessionExercisePreview } from '../workout/session-preview.js';
 
 export { sessionExercisePreview };
@@ -82,9 +82,13 @@ export function buildTrainLanding(options) {
     days = DAY_KEYS } = options || {};
 
   const todayISO = localDayKey(now, tz);
-  // A moved workout owns today's date; otherwise this is the weekday template.
-  const todayDay = scheduledDayForDate(state, program, todayISO)?.day || null;
-  const today = buildTodayCardModel({ state, program, model, briefing, score, now, offline, tz, todayDay });
+  // A moved workout owns today's date; a plan moved away leaves today at rest.
+  const weekday = todayProgramDay(now, tz);
+  const weekStart = startOfProgramWeek(todayISO);
+  const scheduledToday = scheduledDayForDate(state, program, todayISO);
+  const todayDay = scheduledToday?.day || null;
+  const noSession = !scheduledToday && !!weekStart && isMovedAway(state, weekday, weekStart);
+  const today = buildTodayCardModel({ state, program, model, briefing, score, now, offline, tz, todayDay, noSession });
   const week = buildHomeWeekStrip({ state, program, days, today: todayISO });
   const recent = recentActivities(state, recentLimit)
     .filter((row) => !['run', 'walk', 'ride'].includes(row.kind) || moduleEnabled(state, 'running'));
