@@ -1455,7 +1455,7 @@ families without an action. Verify what already answers each question.
 | --- | --- | --- | --- | --- | --- |
 | A1 | Stall detection | `engine.js`, `templates.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | PARTIAL | The cockpit now renders the evidence/action message under the target, so a PROGRESS CHECK badge explains itself. No analytics surface lists stalls yet. |
 | A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js` | Weekly sets per muscle against the volume guide with under/over status and one action | PARTIAL | Weekly credited sets vs MV/MEV/MAV/MRV with zones; no action by design; current-week only and no target band in the range view. |
-| A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | PARTIAL | ROI, block PR and rolling-4 exist; the e1RM chart stops at 12w/6m/all (no 4w/1y) and ROI is program-week indexed. |
+| A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js`, `views/view-strength-entity.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | DONE | The exercise drilldown offers 4 weeks / 12 weeks / 6 months / 1 year / all time, and states the e1RM **rate of change per week** for the selected span (first→latest, never fabricated from one point or for holds/carries). ROI and block PR stay as they were; the program-week-indexed ROI is a separate metric, not this chart. `exercise-detail` tests pin the boundaries and the rate; the all-lifts browser check drives the range control. |
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
 | A5 | Session vs last time | `session-recap.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | PARTIAL | Per-lift Last time/Next time/PRs exist; no session-level volume or best-set delta vs the previous session, and it is not routine-aware. |
 | A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A3: complete the e1RM trend ranges and rate.**
+  - The exercise drilldown now offers 4 weeks, 12 weeks, 6 months, 1 year and
+    all time (the old control stopped at 12w/6m/all and normalized anything else
+    back to 12 weeks).
+  - A weekly **rate of change** is stated for e1RM trends: first→latest over the
+    selected span, withheld for a single point and for holds/carries so no
+    precision is invented.
+  - Tests: range boundaries and rate direction/withholding in
+    `exercise_detail.test.js`; the all-lifts browser check asserts the five
+    ranges and the rate line.
+
 - **2026-11-26 — H4 PG6/A6: one Records table and dated PR feed.**
   - The Main exercises band's “Records →” now opens a dedicated sheet: all-time
     best e1RM per lift (date + PR count) and a newest-first dated feed.
@@ -1728,22 +1739,6 @@ device timing it did not measure.
     stalling" is not a deload week), the day selector, precedence, the build
     guards and the engine-driven stall. Verified in the real app that a stalled
     Back Squat surfaces on Home and links to Progress.
-
-- **2026-11-25 — Theme Part B: Slate, Forest and Ember palettes.**
-  - Each palette is a full semantic block in `css/tokens.css` plus an identical
-    `PALETTE_TOKENS` map in `js/theme/tokens.js`; `activePalette` /
-    `resolveThemeTokens` read `data-palette`. Only surfaces, text and accent
-    change — status and data colours are shared.
-  - The brand layer now derives every dark palette from the semantic accent
-    (`--brand-cobalt-rgb` comes from `--accent-rgb`); Midnight keeps its pastel
-    nav ink and lime "today" accent. The duplicate palette overrides in
-    `styles.css` were removed so there is one source.
-  - Light ignores the palette (pinned by a test) and the choice is remembered
-    for dark; Settings → Look & Home selects it and applies immediately.
-  - Guards: palette vocabulary/CSS-block test, AA contrast for all five modes,
-    and the visibility check now audits light, Midnight and every palette.
-    36 screenshots include per-palette Home/Train/Settings and Look & Home.
-  - Verify: node tests, typecheck, precache/workflow/theme guards, smoke.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
