@@ -1272,7 +1272,7 @@ first.
 | HM1 | One-tap start with preview | `home/today-card.js`, `workout/session-preview.js`, `train/train-landing.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | DONE | `sessionExercisePreview` resolves the same `liftTarget` and dated history the cockpit uses; Home renders up to three rows plus a compact collapsed line. `home-today-browser-check` asserts the target and last-time numbers at 320/390/412 px light/dark. Cold start remains 2 taps. |
 | HM2 | Move a day (G1) | none | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | MISSING | No reschedule control, no attribution change and no Undo; date cells only select and recap. |
 | HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count now render on separate lines. The card still links to the legacy Strength screen until PG3/PG5 give that content a band home. |
-| HM4 | One strength insight | `home/dashboard-model.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | PARTIAL | Exactly one insight, but it is fasting/load/readiness/streak/bodyweight-driven, not strength-derived, and it is not deload-aware; it can contradict the safety card. |
+| HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | PARTIAL | Ready/rest/in-progress/completed/unresolved/no-plan/offline-note/past-week empty exist; no explicit first-run state and offline is only a note. |
 | HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | PARTIAL | The rail/coach plan-done contradiction is fixed: the coach line now counts planned sessions (`planDone`/`planTotal`) like the rail, while the Hybrid Score keeps its set-based consistency. Readiness and weekly volume still have two surfaces; no duplicate-metric guard yet. |
@@ -1629,6 +1629,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H2 HM4: Home's one insight is strength-derived and safety-aware.**
+  - `js/home/strength-insight.js` picks exactly one line: a planned deload
+    week, else the first stalled lift planned today (the engine's
+    `computeDiagnosticForLift` owns the stall decision, so Home and the cockpit
+    badge cannot disagree), else the existing dashboard insight.
+  - Precedence is explicit: a warning/caution line is never replaced, and the
+    line is suppressed entirely while the overtraining escalation is on screen.
+  - Tests: 8 new unit tests for the deload matcher (a conditional "Deload if
+    stalling" is not a deload week), the day selector, precedence, the build
+    guards and the engine-driven stall. Verified in the real app that a stalled
+    Back Squat surfaces on Home and links to Progress.
+
 - **2026-11-25 — Theme Part B: Slate, Forest and Ember palettes.**
   - Each palette is a full semantic block in `css/tokens.css` plus an identical
     `PALETTE_TOKENS` map in `js/theme/tokens.js`; `activePalette` /
@@ -1778,14 +1790,6 @@ device timing it did not measure.
   - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
     search/stall; PG6 a real Records table/feed; PG9’s remaining overview
     concision and scannability test.
-
-- **2026-11-24 — H1 P0 closed: #319 and #321 merged.**
-  - Onboarding equipment now survives boot; back-dated weigh-ins no longer
-    become current; the notification master switch persists.
-  - The kg↔lb switch converts stored sets, bodyweight, goals, PR targets and
-    prescriptions after a confirmation and a localStorage recovery copy.
-  - S-F1, S-F2, S-F4 and S-F5 are Resolved. ST5/ST6/ST11 remain PARTIAL for the
-    wider Profile and Units work, not these defects.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

@@ -16,6 +16,7 @@ import { pushOvertrainingWarning, pushFastingStageNudge } from './notifications.
 import { reconcileStreakFreezes } from './brain/streak.js';
 import { shouldSuggestDeload } from './engine.js';
 import { computeDashboardModel } from './home/dashboard-model.js';
+import { buildStrengthInsight, chooseHomeInsight } from './home/strength-insight.js';
 import { initFastingCard } from './home/fasting-card.js';
 import { setHTML } from './ui/render.js';
 import { escapeHtml } from './util.js';
@@ -357,10 +358,16 @@ function renderHomeWeek(appState, activeProgram) {
   if (nextBtn) nextBtn.disabled = _homeWeekOffset >= 0;
 }
 
-function renderHomeInsight(model, state) {
+function renderHomeInsight(model, state, options = {}) {
   const card = document.getElementById('homeInsightCard');
   const text = document.getElementById('homeInsightText');
-  const insight = model?.topInsight;
+  // HM4: a strength "because" line may replace a generic insight, but never a
+  // warning, and never while the overtraining escalation is on screen. Skip the
+  // diagnostic scan entirely when the line would be discarded anyway.
+  const top = model?.topInsight;
+  const replaceable = !top || (top.tone !== 'warning' && top.tone !== 'caution');
+  const strength = replaceable ? buildStrengthInsight(state, model, options) : null;
+  const insight = chooseHomeInsight(top, strength, options);
   if (!card || !text) return;
   // The coach line belongs to Today's settled state. A past week or a picked
   // day owns the surface instead, so the insight yields rather than describing
@@ -623,7 +630,7 @@ export function renderHome() {
   }
   // After the Today mount: a selected date with no recap is cleared above, so
   // the guard here sees the settled surface.
-  renderHomeInsight(model, appState);
+  renderHomeInsight(model, appState, { safetyActive: overtrainingActive, selectedDay: homeDay });
   renderHomeSupportingSignals(appState, model);
   renderHomeVolumeGuide(appState, activeProgram);
 
