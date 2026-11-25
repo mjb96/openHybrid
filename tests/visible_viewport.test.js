@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { JSDOM } from 'jsdom';
 import {
   visibleViewportHeight, applyVisibleViewportHeight,
   clearVisibleViewportHeight, trackVisibleViewport,
+  revealDelta, trackFocusVisibility,
 } from '../js/ui/visible-viewport.js';
 
 // A minimal window/document double: enough surface for the helper to read a
@@ -12,6 +14,7 @@ function makeWindow({ innerHeight = 844, visualHeight = null } = {}) {
   const documentElement = {
     style: {
       setProperty: (k, v) => props.set(k, v),
+      getPropertyValue: (k) => props.get(k) || '',
       removeProperty: (k) => props.delete(k),
     },
   };
@@ -76,4 +79,26 @@ test('trackVisibleViewport is a safe no-op without a window', () => {
   const teardown = trackVisibleViewport(undefined);
   assert.equal(typeof teardown, 'function');
   assert.doesNotThrow(teardown);
+});
+
+test('revealDelta keeps a focused field clear of the keyboard', () => {
+  const viewport = { top: 0, height: 400 };
+  assert.equal(revealDelta({ top: 380, bottom: 430 }, viewport, 16), 46);
+  assert.equal(revealDelta({ top: -20, bottom: 30 }, viewport, 16), -36);
+  assert.equal(revealDelta({ top: 100, bottom: 140 }, viewport, 16), 0);
+  assert.equal(revealDelta(null, viewport), 0);
+});
+
+test('numeric fields get enterkeyhint when focused (LG2)', () => {
+  const dom = new JSDOM('<input id="weight" inputmode="decimal"><input id="name" inputmode="text">');
+  const win = dom.window;
+  win.scrollBy = () => {};
+  const stop = trackFocusVisibility(win);
+  const weight = win.document.getElementById('weight');
+  const name = win.document.getElementById('name');
+  weight.dispatchEvent(new win.Event('focusin', { bubbles: true }));
+  name.dispatchEvent(new win.Event('focusin', { bubbles: true }));
+  assert.equal(weight.getAttribute('enterkeyhint'), 'done');
+  assert.equal(name.getAttribute('enterkeyhint'), null, 'text fields keep their keyboard action');
+  stop();
 });

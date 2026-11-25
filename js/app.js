@@ -42,6 +42,7 @@ import {
 import { confirmModal, multilineTextPromptModal, textPromptModal } from './ui/confirm-modal.js';
 import { paintIcons, icon as svgIcon } from './ui/icons.js';
 import { closeManagedModal, initModalStack, openManagedModal, requestCloseTopModal } from './ui/modal-stack.js';
+import { trackFocusVisibility, trackVisibleViewport } from './ui/visible-viewport.js';
 import { initSentry } from './monitoring/sentry.js';
 import { applyModuleVisibility } from './modules.js';
 import { SENTRY_DSN, SENTRY_RELEASE } from './monitoring/sentry-config.js';
@@ -2592,6 +2593,11 @@ async function bootstrapApp() {
     initSentry(SENTRY_DSN, SENTRY_RELEASE);   // errors only; scrubbed before egress
     paintIcons(document);                     // fill [data-icon] chrome (nav + hub) with the SVG set
     initModalStack(document);
+    // LG2: one app-lifetime tracker for the real visible height and one
+    // delegated focus handler, so sheets and every numeric field clear the
+    // on-screen keyboard. No caller may clear these.
+    trackVisibleViewport(window);
+    trackFocusVisibility(window);
     initOfflineIndicator();
     initSessionRecap(() => appState);
     initAutomaticBackups(() => appState);

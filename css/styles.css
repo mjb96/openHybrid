@@ -10711,7 +10711,7 @@ html[data-theme="light"] .bw-ms-trend .bw-site-dot { fill: #155e75; }
    than expanding inside the row. Every control is a 44px target and every
    segment states the CURRENT stored value.
    ========================================================================== */
-.set-sheet { max-height: 88vh; overflow-y: auto; overflow-x: auto; overscroll-behavior: contain; }
+.set-sheet { max-height: 88vh; max-height: min(88vh, calc(var(--visible-viewport-height, 100dvh) - 24px)); overflow-y: auto; overflow-x: auto; overscroll-behavior: contain; }
 .set-sheet-sub {
   margin: -4px 0 12px; color: var(--text-secondary);
   font-size: 0.72rem; font-weight: 650; line-height: 1.4;
