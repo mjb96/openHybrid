@@ -5714,3 +5714,11 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     preference, then restores System.
   - Still PARTIAL: no text size, haptics, demo size or sounds group.
 
+- **2026-11-24 — H1 P0 closed: #319 and #321 merged.**
+  - Onboarding equipment now survives boot; back-dated weigh-ins no longer
+    become current; the notification master switch persists.
+  - The kg↔lb switch converts stored sets, bodyweight, goals, PR targets and
+    prescriptions after a confirmation and a localStorage recovery copy.
+  - S-F1, S-F2, S-F4 and S-F5 are Resolved. ST5/ST6/ST11 remain PARTIAL for the
+    wider Profile and Units work, not these defects.
+
