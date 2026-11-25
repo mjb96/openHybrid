@@ -5766,3 +5766,19 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Next A3: migrate the remaining audited literals (especially charts/canvas),
     add the contrast matrix and all-theme screenshots. origin/theme-system-audit
 
+- **2026-11-25 — H1 Settings/Profile rebuild: Phase 0 audit, awaiting approval.**
+  - Inventoried all 48 `settings.*` keys, 3 settings-like root values and the
+    Profile page's stored/derived fields with defaults, readers, current UI and
+    proposed page.
+  - Audited every entry point: Home avatar → Profile → Settings modal; the Home
+    sliders control is Customize Home; no URL route, PWA shortcut, cockpit gear
+    or browser-back path through Profile.
+  - Flagged dead stores (`recoveryFeel`, `profileSections`, `dashboardTiles`,
+    `weeklyFrequency`/`sessionMinutes`), duplicates (`defaultBodyWeight` vs the
+    weigh-in log, two fasting lengths, projected equipment fields) and missing
+    IA fields (height/DOB/sex/training start, formats, backup timestamp,
+    Watches/AI Coach/Strava).
+  - Full matrix and 13-row mapping:
+    `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
+    changed. Next: approval, then Phase 1 navigation.
+

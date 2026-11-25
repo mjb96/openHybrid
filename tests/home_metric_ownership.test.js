@@ -58,7 +58,13 @@ test('data with no story gets an honest prompt, not an invented metric', () => {
 
 test('the Today card remains the one readiness surface', () => {
   const card = buildTodayCardModel({
-    state: { currentWeek: '1', activeProgramId: 'test', weeks: { '1': { dates: {}, lifts: {}, runs: {}, runSessions: {}, gymStats: {}, sessionStatus: {} } } },
+    state: {
+      currentWeek: '1', activeProgramId: 'test',
+      weeks: {
+        '0': { lifts: { mon: { 'Bench Press': [{ w: '80', r: '5', c: true }] } }, runs: {}, runSessions: {}, gymStats: {} },
+        '1': { dates: {}, lifts: {}, runs: {}, runSessions: {}, gymStats: {}, sessionStatus: {} },
+      },
+    },
     program: { name: 'Test', days: { mon: { title: 'Push', lifts: ['Bench Press'], runs: 'Rest' }, sun: { lifts: [], runs: 'Rest' } } },
     model: { ready: { hasData: true, score: 78 }, rec: { badge: 'Productive', headline: 'On track' } },
     now: new Date('2026-08-03T09:00:00+10:00'),

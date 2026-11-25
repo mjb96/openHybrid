@@ -101,10 +101,37 @@ function calendarCompletedToday(state, program, todayISO, activeWeekKey) {
   return { date: todayISO, slots, summary };
 }
 
+/**
+ * True once any completed training exists anywhere in the state. Home uses this
+ * only to give a brand-new athlete an honest "first session" state; it never
+ * hides the plan or changes the action.
+ * @param {any} state
+ */
+function hasTrainingHistory(state) {
+  for (const week of Object.values(state?.weeks || {})) {
+    for (const day of Object.values(week?.lifts || {})) {
+      if (!day || typeof day !== 'object') continue;
+      for (const sets of Object.values(day)) {
+        if (Array.isArray(sets) && sets.some((set) => set?.c)) return true;
+      }
+    }
+    if (week?.runSessions && Object.values(week.runSessions).some((runs) => Array.isArray(runs) && runs.length > 0)) return true;
+    for (const stats of Object.values(week?.gymStats || {})) {
+      if (stats && (Number(stats.time) > 0 || Number(stats.cals) > 0)) return true;
+    }
+  }
+  return false;
+}
+
 function readinessGuidance(model, fallback) {
   const ready = model?.ready;
   const rec = model?.rec || {};
   if (ready?.hasData && ready.score != null) {
+    // Partial data is a distinct state: say the read is rough instead of
+    // presenting a one-signal score as settled (HM6).
+    if (ready.confidence === 'low') {
+      return `Readiness ${ready.score} · limited signal — add a check-in for a sharper read.`;
+    }
     const coaching = rec.badge === 'Getting Started'
       ? 'Keep the plan simple and log how it feels.'
       : (rec.headline || fallback);
@@ -348,6 +375,10 @@ export function buildTodayCardModel(options) {
 
   card.preview = sessionExercisePreview(state, program, card.day);
   card.guidance = readinessGuidance(model, 'Follow the planned session and log how it feels.');
+  if (!hasTrainingHistory(state)) {
+    card.eyebrow = 'First session';
+    card.guidance = 'This first session sets your baseline — use a comfortable load and log how it feels.';
+  }
   card.primary = { action: 'select-program-workout', day: card.day, label: 'Start workout' };
   card.secondary = { action: 'open-program-workout-picker', label: 'Choose another workout' };
   return card;
@@ -435,12 +466,12 @@ export function todayCardHTML(card, options = {}) {
       ${previewCompact}
       ${toggle}
     </div>
+    ${offline}
     ${summary}
     <div class="today-card__detail" id="homeTodayCardDetail">
       ${preview ? `<ul class="today-card__preview" aria-label="Today's lifts">${preview}</ul>` : ''}
       <p class="today-card__guidance">${esc(card.guidance)}</p>
       ${move}
-      ${offline}
     </div>
     <div class="today-card__actions">
       <button id="homePrimaryCta" class="today-card__primary btn-action-block btn-green" ${actionAttrs(card.primary)}>${esc(card.primary?.label || 'Continue')}</button>
