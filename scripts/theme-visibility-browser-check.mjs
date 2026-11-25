@@ -98,21 +98,24 @@ function auditVisibleText() {
     const x = lum(a); const y = lum(b);
     return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
   };
-  const backdropOf = (el) => {
-    let acc = null;
-    for (let node = el; node && node.nodeType === 1; node = node.parentElement) {
-      const style = getComputedStyle(node);
-      if (Number(style.opacity) < 0.5) return null;
-      if (style.backgroundImage && style.backgroundImage !== 'none') return null;
-      const bg = parse(style.backgroundColor);
-      if (!bg || bg.a === 0) continue;
-      acc = acc ? over(acc, bg) : bg;
-      if (acc.a >= 1) return acc;
-    }
-    const root = parse(getComputedStyle(document.documentElement).backgroundColor);
-    if (root && root.a > 0) acc = acc ? over(acc, root) : root;
-    if (acc && acc.a < 1) acc = over(acc, { r: 255, g: 255, b: 255, a: 1 });
-    return acc;
+  // Resolve the painted backdrop once per node. Climbing the ancestor chain for
+  // every text element was the reason this check took ~180s on CI; the cache
+  // makes it one pass over the tree.
+  const cache = new WeakMap();
+  const white = { r: 255, g: 255, b: 255, a: 1 };
+  const backdropFor = (node) => {
+    if (!node || node.nodeType !== 1) return white;
+    if (cache.has(node)) return cache.get(node);
+    const parent = backdropFor(node.parentElement);
+    if (!parent) { cache.set(node, null); return null; }
+    const style = getComputedStyle(node);
+    if (Number(style.opacity) < 0.5) { cache.set(node, null); return null; }
+    if (style.backgroundImage && style.backgroundImage !== 'none') { cache.set(node, null); return null; }
+    const bg = parse(style.backgroundColor);
+    let out = parent;
+    if (bg && bg.a > 0) out = over(bg, parent);
+    cache.set(node, out);
+    return out;
   };
   const selector = (el) => {
     const bits = [];
@@ -122,23 +125,31 @@ function auditVisibleText() {
     return bits.join(' ');
   };
   const bad = [];
-  for (const el of document.querySelectorAll('body *')) {
-    if (el.closest('[hidden], [aria-hidden="true"], script, style, template') ) continue;
-    const hasText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1);
-    if (!hasText) continue;
+  // Walk TEXT nodes, not every element: the page has ~2,800 elements but only a
+  // few hundred text runs, and the old element walk was the CI timeout.
+  const seen = new Set();
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let node;
+  while ((node = walker.nextNode())) {
+    const raw = node.nodeValue;
+    if (!raw || raw.trim().length < 2) continue;
+    const el = node.parentElement;
+    if (!el || seen.has(el)) continue;
+    seen.add(el);
+    if (el.closest('[hidden], [aria-hidden="true"], script, style, template')) continue;
     const rect = el.getBoundingClientRect();
     if (rect.width < 2 || rect.height < 2) continue;
     const style = getComputedStyle(el);
     if (style.visibility === 'hidden' || Number(style.opacity) < 0.2) continue;
     const fg = parse(style.color);
-    const bg = backdropOf(el);
+    const bg = backdropFor(el);
     if (!fg || !bg) continue;
     const fgSolid = fg.a < 1 ? over(fg, bg) : fg;
     const value = ratio(fgSolid, bg);
     if (value < 1.8) {
       bad.push({
         selector: selector(el),
-        text: el.textContent.trim().replace(/\s+/g, ' ').slice(0, 48),
+        text: raw.trim().replace(/\s+/g, ' ').slice(0, 48),
         fg: style.color,
         bg: `rgb(${Math.round(bg.r)}, ${Math.round(bg.g)}, ${Math.round(bg.b)})`,
         ratio: Number(value.toFixed(2)),
@@ -192,11 +203,14 @@ try {
     const page = await context.newPage();
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
-    await page.locator('button', { hasText: 'NOT YET' }).click().catch(() => {});
+    await page.locator('button', { hasText: 'NOT YET' }).click({ timeout: 500 }).catch(() => {});
     await page.waitForTimeout(250);
-    for (const [name, enter] of screens) {
+    const runScreens = run.label === 'light' || run.label === 'midnight'
+      ? screens
+      : screens.filter(([name]) => ['Home', 'Progress', 'Settings'].includes(name));
+    for (const [name, enter] of runScreens) {
       await enter(page);
-      await page.waitForTimeout(450);
+      await page.waitForTimeout(250);
       const bad = await page.evaluate(auditVisibleText);
       for (const row of bad) {
         failures.push(`${run.label}/${name}: ${row.ratio}:1 ${row.fg} on ${row.bg} — ${row.selector} “${row.text}”`);

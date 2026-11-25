@@ -44,7 +44,7 @@ try {
     const page = await context.newPage();
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
-    await page.locator('button', { hasText: 'NOT YET' }).click().catch(() => {});
+    await page.locator('button', { hasText: 'NOT YET' }).click({ timeout: 500 }).catch(() => {});
     await page.waitForTimeout(250);
     await shot(page, `home-${theme}-${width}`);
     await page.evaluate(() => document.querySelector('.bottom-nav [data-target="workout"]')?.click());
@@ -96,7 +96,7 @@ try {
     const page = await context.newPage();
     await page.goto(base, { waitUntil: 'networkidle' });
     await page.waitForTimeout(500);
-    await page.locator('button', { hasText: 'NOT YET' }).click().catch(() => {});
+    await page.locator('button', { hasText: 'NOT YET' }).click({ timeout: 500 }).catch(() => {});
     await page.waitForTimeout(250);
     await shot(page, `home-${palette}-dark-390`);
     await page.evaluate(() => document.querySelector('.bottom-nav [data-target="workout"]')?.click());
