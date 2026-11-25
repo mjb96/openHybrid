@@ -5875,3 +5875,19 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     reads `data-setting-key` and compares the dataset value, so no user string
     reaches a selector.
 
+- **2026-11-25 — Theme Part B: Slate, Forest and Ember palettes.**
+  - Each palette is a full semantic block in `css/tokens.css` plus an identical
+    `PALETTE_TOKENS` map in `js/theme/tokens.js`; `activePalette` /
+    `resolveThemeTokens` read `data-palette`. Only surfaces, text and accent
+    change — status and data colours are shared.
+  - The brand layer now derives every dark palette from the semantic accent
+    (`--brand-cobalt-rgb` comes from `--accent-rgb`); Midnight keeps its pastel
+    nav ink and lime "today" accent. The duplicate palette overrides in
+    `styles.css` were removed so there is one source.
+  - Light ignores the palette (pinned by a test) and the choice is remembered
+    for dark; Settings → Look & Home selects it and applies immediately.
+  - Guards: palette vocabulary/CSS-block test, AA contrast for all five modes,
+    and the visibility check now audits light, Midnight and every palette.
+    36 screenshots include per-palette Home/Train/Settings and Look & Home.
+  - Verify: node tests, typecheck, precache/workflow/theme guards, smoke.
+

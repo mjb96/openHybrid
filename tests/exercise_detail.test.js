@@ -84,3 +84,42 @@ test('range filters the series but PRs compare against all earlier history', () 
   assert.equal(all.sessions.length, 2);
   assert.equal(all.sessions[1].isPr, false, 'the original 100kg baseline is not a PR');
 });
+
+test('4-week and 1-year ranges exist and cut at the right boundary', () => {
+  const state = stateWith([
+    { date: addDaysISO(TODAY, -200), exercise: 'Bench Press', sets: [set(75, 5)] },
+    { date: addDaysISO(TODAY, -21), exercise: 'Bench Press', sets: [set(80, 5)] },
+    { date: addDaysISO(TODAY, -14), exercise: 'Bench Press', sets: [set(82.5, 5)] },
+    { date: addDaysISO(TODAY, -7), exercise: 'Bench Press', sets: [set(85, 5)] },
+  ]);
+  const four = buildExerciseDetailModel(state, 'Bench Press', { now: NOW, range: '4w' });
+  assert.equal(four.sessions.length, 3, 'the 200-day session is outside 4 weeks');
+  const year = buildExerciseDetailModel(state, 'Bench Press', { now: NOW, range: '1y' });
+  assert.equal(year.sessions.length, 4);
+  const twelve = buildExerciseDetailModel(state, 'Bench Press', { now: NOW, range: '12w' });
+  assert.equal(twelve.sessions.length, 3, 'the 200-day session is outside 12 weeks');
+});
+
+test('the e1RM trend reports a weekly rate of change', () => {
+  const state = stateWith([
+    { date: addDaysISO(TODAY, -14), exercise: 'Bench Press', sets: [set(100, 5)] },
+    { date: addDaysISO(TODAY, -7), exercise: 'Bench Press', sets: [set(102.5, 5)] },
+    { date: TODAY, exercise: 'Bench Press', sets: [set(105, 5)] },
+  ]);
+  const model = buildExerciseDetailModel(state, 'Bench Press', { now: NOW, range: '4w' });
+  assert.ok(model.rate, 'a two-point trend has a rate');
+  assert.equal(model.rate.direction, 'up');
+  assert.match(model.rate.text, /^\+.*kg\/week$/);
+  assert.equal(model.rate.weeks, 2);
+});
+
+test('a hold or a single session has no e1RM rate', () => {
+  const hold = stateWith([
+    { date: addDaysISO(TODAY, -14), exercise: 'Plank', sets: [{ mode: 'time', sec: 45, w: '20', c: true }] },
+    { date: TODAY, exercise: 'Plank', sets: [{ mode: 'time', sec: 60, w: '20', c: true }] },
+  ]);
+  assert.equal(buildExerciseDetailModel(hold, 'Plank', { now: NOW, range: '4w' }).rate, null);
+
+  const one = stateWith([{ date: TODAY, exercise: 'Bench Press', sets: [set(100, 5)] }]);
+  assert.equal(buildExerciseDetailModel(one, 'Bench Press', { now: NOW, range: '4w' }).rate, null);
+});

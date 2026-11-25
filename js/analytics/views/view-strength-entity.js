@@ -14,6 +14,7 @@ import { resolveProgramForState } from '../../state.js';
 import { formatWeekRange } from '../../dates.js';
 
 /** @type {'12w'|'6m'|'all'} */
+/** @type {'4w'|'12w'|'6m'|'1y'|'all'} */
 let _exerciseRange = '12w';
 
 const fmtDate = (iso) => {
@@ -162,7 +163,7 @@ export function renderExerciseDetail(state, entity = {}) {
   const cards = model.hasData ? exerciseStatCards(model) : [];
 
   root.innerHTML = `<header class="an-detail-head"><div><span class="an-detail-kicker">Exercise analytics</span><h2>${esc(name)}</h2></div></header>
-    <nav class="an-segment an-segment--three" aria-label="Exercise history range">${rangeButton('12w', '12 weeks')}${rangeButton('6m', '6 months')}${rangeButton('all', 'All time')}</nav>
+    <nav class="an-segment an-segment--five" aria-label="Exercise history range">${rangeButton('4w', '4 wk')}${rangeButton('12w', '12 wk')}${rangeButton('6m', '6 mo')}${rangeButton('1y', '1 yr')}${rangeButton('all', 'All')}</nav>
     ${!model.hasData ? '<div class="an-empty-state"><strong>No completed history in this range</strong><span>Try a longer range or complete a working set for this exercise.</span></div>' : `
       <article class="an-ex-hero">
         <span class="an-ex-hero__k">Latest session · ${esc(model.latest.dateLabel)}</span>
@@ -173,6 +174,7 @@ export function renderExerciseDetail(state, entity = {}) {
         ${cards.map(([label, value]) => `<article><span>${esc(label)}</span><strong>${esc(value)}</strong></article>`).join('')}
       </section>
       ${exerciseChartHTML(model)}
+      ${model.rate ? `<p class="an-ex-rate"><span>Trend</span> ${esc(model.rate.text)} <small>across ${model.rate.weeks} week${model.rate.weeks === 1 ? '' : 's'} in range</small></p>` : ''}
       ${setRecordsHTML(model)}
       <section class="an-volume-panel"><div class="an-volume-panel__head"><h3>Session history</h3><span>Tap a session for exact evidence</span></div>
         <div class="an-evidence-list">${model.sessions.map((row) => `<button class="an-evidence-row" data-action="open-activity-detail" data-activity-id="${esc(row.activityId)}">
@@ -188,7 +190,7 @@ export function renderExerciseDetail(state, entity = {}) {
 
   root.querySelectorAll('[data-exercise-range]').forEach(button => button.addEventListener('click', () => {
     const next = button.getAttribute('data-exercise-range');
-    _exerciseRange = next === '6m' || next === 'all' ? next : '12w';
+    _exerciseRange = ['4w', '12w', '6m', '1y', 'all'].includes(String(next)) ? /** @type {any} */ (next) : '12w';
     renderExerciseDetail(state, entity);
   }));
 }

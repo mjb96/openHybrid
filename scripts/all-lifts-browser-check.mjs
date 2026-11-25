@@ -86,6 +86,18 @@ try {
   }));
   check(!detail.sheet, 'the sheet closes when a lift opens');
   check(detail.active === 'analytics-strength-entity', `the exercise drilldown opens (${detail.active})`);
+
+  // A3: the drilldown offers 4 weeks through all time and states a weekly trend.
+  const ranges = await page.evaluate(() => [...document.querySelectorAll('[data-exercise-range]')].map((el) => el.getAttribute('data-exercise-range')));
+  check(ranges.join(',') === '4w,12w,6m,1y,all', `the trend has every range (${ranges.join(',')})`);
+  await page.click('[data-exercise-range="1y"]');
+  await page.waitForTimeout(300);
+  const trend = await page.evaluate(() => ({
+    active: document.querySelector('[data-exercise-range].is-active')?.getAttribute('data-exercise-range'),
+    rate: document.querySelector('.an-ex-rate')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+  }));
+  check(trend.active === '1y', 'the 1-year range selects');
+  check(/Trend/.test(trend.rate) && /week/.test(trend.rate), `the weekly rate is stated (${trend.rate})`);
   check(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 } finally {

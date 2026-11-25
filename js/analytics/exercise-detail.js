@@ -13,12 +13,13 @@ import {
   bestRecordForSession, isRecord, mergeRecordBests, recordCandidates,
 } from '../strength/records.js';
 import { addDaysISO, localDayKey } from './weekly-aggregate.js';
+import { daysBetween } from '../dates.js';
 import { buildSetRecords } from '../strength/set-records.js';
 import {
   SET_MODE, formatDistance, formatDuration, isRepSet, setModeOf, setVolume,
 } from '../set-utils.js';
 
-const RANGE_DAYS = { '12w': 84, '6m': 183, all: null };
+const RANGE_DAYS = { '4w': 28, '12w': 84, '6m': 183, '1y': 365, all: null };
 const fmtd = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
 function shapeOfSets(sets) {
@@ -60,10 +61,10 @@ function topForShape(shape, sets, exerciseName, unit) {
  *
  * @param {any} state
  * @param {string} exerciseName
- * @param {{ range?: '12w'|'6m'|'all', now?: Date }} [opts]
+ * @param {{ range?: '4w'|'12w'|'6m'|'1y'|'all', now?: Date }} [opts]
  */
 export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
-  const range = opts.range === '6m' || opts.range === 'all' ? opts.range : '12w';
+  const range = ['4w', '12w', '6m', '1y', 'all'].includes(String(opts.range)) ? opts.range : '12w';
   const today = localDayKey(opts.now || new Date());
   const span = RANGE_DAYS[range];
   const cutoff = span ? addDaysISO(today, -span) : null;
@@ -159,6 +160,10 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     }
   }
 
+  const chartKind = latestShape === SET_MODE.TIME ? 'time'
+    : latestShape === SET_MODE.DISTANCE ? 'distance'
+      : visible.some((row) => row.e1rm > 0) ? 'e1rm'
+        : visible.some((row) => row.top.weight > 0) ? 'weight' : 'reps';
   const series = visible
     .slice()
     .reverse()
@@ -170,6 +175,26 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
         : (row.e1rm || row.top.weight || row.top.reps),
       isPr: row.isPr,
     }));
+
+  // A3: rate of change for the e1RM trend. First→latest over the selected span,
+  // reported per week; never fabricated for a single point or for holds/carries.
+  let rate = null;
+  if (chartKind === 'e1rm' && series.length >= 2) {
+    const firstPoint = series[0];
+    const lastPoint = series[series.length - 1];
+    const days = daysBetween(firstPoint.date, lastPoint.date);
+    const weeks = days != null ? days / 7 : null;
+    if (weeks != null && weeks >= 0.5 && lastPoint.value > 0 && firstPoint.value > 0) {
+      const perWeek = (lastPoint.value - firstPoint.value) / weeks;
+      const rounded = Math.round(perWeek * 10) / 10;
+      rate = {
+        perWeek: rounded,
+        weeks: Math.max(1, Math.round(weeks)),
+        direction: rounded > 0 ? 'up' : rounded < 0 ? 'down' : 'same',
+        text: rounded === 0 ? 'steady' : `${rounded > 0 ? '+' : ''}${rounded} ${unit}/week`,
+      };
+    }
+  }
 
   const bestText = best
     ? latestShape === SET_MODE.TIME ? `${best.top.weight > 0 ? `${best.top.weight}${unit} · ` : ''}${formatDuration(best.top.sec)}`
@@ -189,13 +214,11 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     latest,
     previous,
     change,
+    rate,
     totals,
     setRecords,
     chart: {
-      kind: latestShape === SET_MODE.TIME ? 'time'
-        : latestShape === SET_MODE.DISTANCE ? 'distance'
-          : visible.some((row) => row.e1rm > 0) ? 'e1rm'
-            : visible.some((row) => row.top.weight > 0) ? 'weight' : 'reps',
+      kind: chartKind,
       unit: latestShape === SET_MODE.TIME ? 'seconds'
         : latestShape === SET_MODE.DISTANCE ? 'metres'
           : visible.some((row) => row.e1rm > 0 || row.top.weight > 0) ? unit : 'reps',
