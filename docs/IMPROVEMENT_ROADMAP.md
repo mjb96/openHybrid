@@ -1271,7 +1271,7 @@ first.
 | --- | --- | --- | --- | --- | --- |
 | HM1 | One-tap start with preview | `home/today-card.js`, `workout/session-preview.js`, `train/train-landing.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | DONE | `sessionExercisePreview` resolves the same `liftTarget` and dated history the cockpit uses; Home renders up to three rows plus a compact collapsed line. `home-today-browser-check` asserts the target and last-time numbers at 320/390/412 px light/dark. Cold start remains 2 taps. |
 | HM2 | Move a day (G1) | `schedule/week.js`, `home/week-strip.js`, `home/move-day-sheet.js` | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | DONE | Free dates only in the current calendar week: `state.weekSchedule[weekStart][day] = date` moves the plan; Home/Train/cockpit resolve the scheduled day for a date; the old weekday reads rest, occupied/past dates are disabled with a reason, and the shared undo bar restores the override. Logged work keeps its stamped date. Logic and UI are covered by `tests/week_schedule.test.js` and `scripts/move-day-browser-check.mjs` (390/320). Replace/keep-both for an occupied target stays with G3. |
-| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count now render on separate lines. The card still links to the legacy Strength screen until PG3/PG5 give that content a band home. |
+| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count render on separate lines. PG5 now provides the all-lifts index; the card still links to the legacy Strength screen — rewiring it to the exercises band/sheet is the next HM3 slice. |
 | HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | DONE | Ready/rest/in-progress/completed/unresolved/no-plan/past-week empty were already distinct. Added an explicit **first session** state (no completed work anywhere), moved the offline note into the card head so it is visible while collapsed, and made a one-signal readiness read say "limited signal" instead of presenting it as settled. `home_today_card` tests pin all three; Home Today browser check passes. |
@@ -1352,7 +1352,7 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 | PG2 | One home per destination | `analytics/views/view-progress-hub.js`, `progress-landing.js` | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | DONE | `js/analytics/progress-sections.js` is the one registry; the footer and "More detail" list are gone. Reviews is one Week \| Month \| Year row, History is the header icon, and `tests/progress_registry_guard.test.js` fails on any unregistered section/destination. |
 | PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | DONE | Every band with a detail renders its whole header as a 44px "Details ›" control; the detail inherits the range (header chip) and Back scrolls to the originating band (`data-band-origin`). The browser check asserts the chip and the restored position. |
 | PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reviews.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | The hub now has ONE Reviews row (Week \| Month \| Year, all legacy route ids) and the Reports band is deleted. The screen itself is still Overview \| Stats rather than a merged Week \| Month \| Year surface. |
-| PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | PARTIAL | Top 5 with last performed, best e1RM, change and PR flag; no search, all-lifts list or stall flag. The band header and its “All lifts” switch open the legacy Strength screen. |
+| PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js`, `analytics/all-lifts-sheet.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | DONE | “All N lifts” opens a searchable sheet over the SAME rows the band built: name, sessions, best e1RM, window change, last performed, PR badge and a **flat** badge (≥3 sessions with no e1RM improvement in the selected range — a window fact, not the engine's per-program PROGRESS CHECK). Search filters live with an honest “N of M” count, and a row opens the existing exercise drilldown. `tests/all_lifts.test.js` + `scripts/all-lifts-browser-check.mjs`. |
 | PG6 | Records row | `strength/records.js`, `set-records.js` | PR table and dated feed (A6) | PARTIAL | The Main exercises band now has a labelled “Records” switch that opens Strength’s Stats tab, but there is still no dedicated PR table or dated feed. |
 | PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | DONE | Default order is Pulse → Main exercises → Muscles → Body → Reviews, then Balance/Endurance/Fasting. Customize reads the registry for top-level rows and indented detail switches, keeps the reorder column at one x, and disables module-off rows with "module off" copy. Saved old orders preserve their position (`reports` → `reviews`). |
 | PG8 | Navigation contract | `analytics/navigation.js`, `analytics.js` | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | DONE | Band-origin Back returns to and scrolls to the originating band; every detail shows the inherited `Progress · <range>` chip; the last band still clears the fixed nav. The browser check asserts all three. |
@@ -1629,6 +1629,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 PG5: the searchable all-lifts index.**
+  - The Main exercises band's “All N lifts” now opens a searchable sheet built
+    from the SAME rows the band already produced (no metric re-derived): name,
+    sessions, best e1RM, window change, last performed, PR and a flat flag.
+  - The flat flag is a window fact — three or more sessions with no e1RM
+    improvement in the selected range — and is deliberately distinct from the
+    engine's per-program PROGRESS CHECK stall.
+  - Search filters live with an honest `N of M` count; a row opens the existing
+    exercise drilldown. PG5 unblocks HM3's link target.
+  - Tests: `tests/all_lifts.test.js`; `scripts/all-lifts-browser-check.mjs`
+    (55 checks).
+
 - **2026-11-26 — H3 LG2: logging fields clear the on-screen keyboard.**
   - The visible viewport is tracked once for the app lifetime; the per-set
     sheet is capped by `min(88vh, var(--visible-viewport-height) - 24px)`.
@@ -1746,18 +1758,6 @@ device timing it did not measure.
     surface (it caught the programme-card category label on a white card).
   - Verify: 2,729 tests, typecheck, precache, workflow and theme guards, smoke;
     51/51 existing browser checks plus the new visibility check.
-
-- **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
-  - Added `js/settings/components.js` (page/group/row, toggle, segmented,
-    stepper, slider, time, text, select list, picker and danger) and
-    `css/settings.css` using existing semantic tokens only.
-  - Rows are 64px, icon tiles 36px, toggle hit areas 48px, segmented 44px,
-    inputs/steppers/back controls 48px; summaries truncate and disabled rows
-    state a reason.
-  - Added unit tests plus a real-browser component probe at 320/390/412 in
-    light/dark, including the collapsing title. No page has been switched to the
-    components yet; Phase 4 does that.
-  - 2,718 tests pass; the browser suite grows to 50 checks.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

@@ -10943,6 +10943,81 @@ html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
   .move-sheet, .move-sheet__backdrop { transition: none; }
 }
 
+
+/* ==========================================================================
+   ALL LIFTS (PG5) — the searchable index behind Main exercises
+   ========================================================================== */
+.all-lifts__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: var(--overlay-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.all-lifts__backdrop.active { opacity: 1; pointer-events: auto; }
+.all-lifts-sheet {
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  max-height: min(92dvh, calc(var(--visible-viewport-height, 100dvh) - 12px));
+  padding: 14px 16px calc(12px + var(--safe-bottom));
+  overflow: hidden;
+}
+.all-lifts__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.all-lifts__eyebrow { margin: 0 0 2px; color: var(--text-3); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.all-lifts__title { margin: 0; color: var(--text); font-size: 1.1rem; }
+.all-lifts__search { display: block; margin: 12px 0 6px; }
+.all-lifts__search input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+}
+.all-lifts__count { margin: 0 0 6px; color: var(--text-3); font-size: 0.68rem; font-weight: 700; }
+.all-lifts__list { list-style: none; margin: 0; padding: 0 0 8px; overflow-y: auto; overscroll-behavior: contain; }
+.all-lifts__row + .all-lifts__row { border-top: 1px solid var(--divider); }
+.all-lifts__hit {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.all-lifts__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.all-lifts__name { display: inline-flex; align-items: center; gap: 6px; font-weight: 750; }
+.all-lifts__delta { color: var(--text-2); font-size: 0.74rem; font-weight: 700; }
+.all-lifts__meta { color: var(--text-3); font-size: 0.72rem; }
+.all-lifts__badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.all-lifts__badge--pr { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+.all-lifts__badge--flat { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.all-lifts__empty { margin: 18px 4px; color: var(--text-2); font-size: 0.84rem; }
+@media (prefers-reduced-motion: reduce) {
+  .all-lifts__backdrop { transition: none; }
+}
+
 /* Home card customization */
 .home-header-actions { display: flex; align-items: center; gap: 8px; }
 .home-customize-btn {

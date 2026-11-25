@@ -19,6 +19,7 @@ const checks = [
   'scripts/settings-scroll-browser-check.mjs',
   'scripts/settings-contextual-browser-check.mjs',
   'scripts/progress-hub-browser-check.mjs',
+  'scripts/all-lifts-browser-check.mjs',
   'scripts/photo-browser-check.mjs',
   'scripts/measures-browser-check.mjs',
   'scripts/module-toggles-browser-check.mjs',
