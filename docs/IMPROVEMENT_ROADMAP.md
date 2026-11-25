@@ -959,10 +959,10 @@ or corrects it.
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
-| ST2 | **Declarative settings registry** | `js/settings/registry.js`, `js/settings/store.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | PARTIAL | Phase 2 expanded the registry to 57 descriptors (48 settings keys, root paths, deprecated stores) with section/page, validator, keywords, visible/enabled rules and summaries. `js/settings/store.js` validates writes, persists, batches, resets and syncs settings across tabs. The hand-written cards still render/write directly until Phase 4. |
+| ST2 | **Declarative settings registry** | `js/settings/registry.js`, `js/settings/store.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | DONE | 65 descriptors now render the 13 Settings pages and profile editor through `js/settings/render.js` and `js/settings/components.js`; search and summaries read the same registry; `js/settings/store.js` validates writes, batches, resets and syncs. The registry test gates every stored key and default. |
 | ST3 | **Settings search** | `settings/nav.js`, `settings.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | PARTIAL | Card filter, no-results status and module-hidden exclusion exist. Search marks the exact matching row and scrolls it into view. Settings is now ONE tap from Home (gear), so search is tap 2; registry keywords and the typed index still land in Phase 6. |
 | ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | PARTIAL | Phase 1 added the Home gear and the full-screen `#/settings` route; the Home sliders stays Customize Home. The logger/Progress/Plans/Measures gears and the workout settings sheet are still Phase 6. |
-| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | PARTIAL | Name/goal/level/weight goal editable. The equipment answer now writes through `applyActiveEquipment` and survives boot (S-F1), and both bodyweight readers use `latestWeighIn` (S-F2). Equipment tier, frequency, session length, focus and height are still not editable; Profile still needs a bodyweight link. |
+| ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | DONE | Profile now leads with editable Identity, Body metrics (weigh-in, height, DOB, sex, target/rate) and Training goal groups, with links to weight history and Measures. Schema v17 adds the optional fields as null; the weigh-in writes the canonical `bodyWeightLog` and stays in sync with Home. |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
@@ -1190,6 +1190,44 @@ these components into the 13-row IA.
   light/dark, measures every target and proves the title collapses.
 - **Not done yet:** no user-facing page uses the components; Phase 4 replaces
   the legacy cards. The Phase 0 decisions remain open.
+
+### 14.13 Settings & Profile rebuild — Phases 4–8 (pages, profile, links, data)
+
+**Status: implemented and browser-checked.** The legacy cards are gone; the
+Settings route now renders the 13-row IA from the registry and shared components.
+
+- **Top level:** profile card, instant search and the five groups (Training,
+  Set once, Connections, Data, About) → 13 pushed pages.
+- **Pages:** Workout, Timer alerts, Plan & schedule, Reminders, Units &
+  language, Equipment, Look & Home, Modules, Integrations, Data & backup,
+  Watches, AI Coach and About. Rows use live summaries and dependency rules;
+  equipment, Health Connect and backup actions keep their existing owners.
+- **Profile (Phase 5):** the existing athlete page now leads with editable
+  Identity, Body metrics and Training goal groups (name, weigh-in, height, DOB,
+  sex, target/rate, goal/experience) plus links to weight history and Measures.
+  Schema v17 adds those optional fields as null; nothing is estimated.
+- **Search + links (Phase 6):** search matches labels/keywords across the
+  registry, shows the page path and opens the exact setting with a pulse.
+  `#/settings/<page>/<anchor>` restores the page and row on refresh. The active
+  workout has a 48px gear that opens a workout settings sheet (rest timer, plate
+  hints, warm-up, keep-awake, PR banners, active gym) and returns with the
+  session intact.
+- **Equipment (Phase 7):** multiple profiles with kit, bar/plates, pair counts,
+  dumbbells, machine stacks and bands; one active profile, switchable from the
+  workout sheet. Per-exercise rest overrides show Default vs Custom with a
+  one-tap revert; other exercise defaults remain editable from the exercise card.
+  Each simple page ends with a confirmed **Reset to defaults** and an Undo
+  snackbar; Units is excluded because a unit reset must go through conversion.
+- **Data & backup (Phase 8):** export JSON/CSV/context, import backup/CSV/FIT,
+  auto-backup status, storage used, and a typed `DELETE` confirmation for the
+  danger zone. Import still writes its pre-import backup and migrations keep the
+  pre-migration snapshot.
+- **Evidence:** `settings-nav-browser-check` covers every page, search, units,
+  module gating, equipment, data and Health Connect; `settings-navigation`
+  covers routes/back/scroll; `settings-contextual` covers deep links and the
+  workout sheet; `settings-components` measures the component contract.
+- **Remaining:** visual snapshot matrix and the final a11y/contrast pass for the
+  full theme engine (Part B), plus the Phase 0 dead-store removal decisions.
 
 ## 15. Home (H2)
 
@@ -1558,6 +1596,23 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H1 Settings/Profile Phases 4–8: 13 pages, Profile, links and data.**
+  - Replaced the legacy settings cards with the registry-driven 13-row IA and
+    shared components: top-level profile card/search, Workout, Timer alerts,
+    Plan & schedule, Reminders, Units, Equipment, Look & Home, Modules,
+    Integrations, Data & backup, Watches, AI Coach and About.
+  - Added the editable Profile groups (identity, body metrics, goals) and schema
+    v17 optional fields (`heightCm`, `birthDate`, `sex`, `trainingStartDate`).
+  - Search opens the exact setting with a pulse; setting-level deep links and a
+    refresh restore work. Added the active-workout settings gear/sheet and the
+    active-gym switch.
+  - Equipment keeps multiple profiles/plates/bands; per-exercise rest overrides
+    show Default/Custom with one-tap revert. Data page exposes all exports,
+    imports, auto-backup, storage used and typed DELETE confirmation.
+  - New browser checks cover pages, deep links and the workout sheet; the suite
+    is 51 checks. Remaining: final visual matrix/a11y pass and the Phase 0
+    dead-store decisions.
+
 - **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
   - Added `js/settings/components.js` (page/group/row, toggle, segmented,
     stepper, slider, time, text, select list, picker and danger) and
@@ -1670,16 +1725,6 @@ device timing it did not measure.
     hold/recovery action instead of leaving the athlete to guess.
   - Tests pin the stalled line and the empty-message case.
   - Still PARTIAL: no analytics surface lists stalled lifts.
-
-- **2026-11-24 — H2 HM7: the plan-done copy counts sessions, not set rows.**
-  - The week rail said "1/5 done" while the coach line said "100% of this
-    week's plan done" from completed stored set rows. The coach line now uses
-    `planDone`/`planTotal` from the program's planned days, the same unit as the
-    rail; the Hybrid Score keeps the set-based consistency value it needs.
-  - `tests/dashboard_model.test.js` pins a one-of-two-sessions fixture where the
-    set percentage is 100 but the plan line says "1 of 2 planned sessions done".
-  - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
-    is no duplicate-metric guard.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

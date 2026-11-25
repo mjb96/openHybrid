@@ -82,7 +82,8 @@ try {
 
   await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
+  await page.click('[data-action="open-settings-page"][data-context="once.equipment"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
 
   const select = page.locator('#settingsEquipmentProfile');
   const nameInput = page.locator('#settingsEquipmentProfileName');
@@ -90,8 +91,6 @@ try {
   const bands = page.locator('[data-equipment="bands"]');
   const plateBar = page.locator('#settingsPlateBar');
   const platesInput = page.locator('#settingsPlates');
-  const plateHints = page.locator('#settingsShowPlateHints');
-  const autoWarmup = page.locator('#settingsAutoWarmup');
 
   ok((await select.locator('option').allTextContents()).join('|') === 'Commercial gym|Home', 'both profiles are listed');
   ok((await select.inputValue()) === 'eqp_gym', 'the stored active profile is selected');
@@ -100,17 +99,6 @@ try {
   ok(!(await bands.isChecked()), 'commercial gym has bands unchecked');
   ok((await plateBar.inputValue()) === '20', 'the gym bar weight is shown');
   ok((await platesInput.inputValue()) === '25, 20, 15, 10, 5, 2.5, 1.25', 'the gym plate set is shown');
-  ok(!(await plateHints.isChecked()), 'plate hints are off by default');
-  await page.click('#settingsTabs [data-settings-tab="appearance"]');
-  ok((await page.evaluate(() => document.documentElement.dataset.palette)) === 'midnight', 'Midnight is the default palette');
-  await page.click('[data-action="set-palette"][data-palette="forest"]');
-  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.settings?.palette === 'forest', STORAGE_KEY);
-  ok((await page.evaluate(() => document.documentElement.dataset.palette)) === 'forest', 'palette changes apply live');
-  await page.click('[data-action="set-palette"][data-palette="midnight"]');
-  ok((await page.evaluate(() => document.documentElement.dataset.palette)) === 'midnight', 'palette can be changed back');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-
-  ok(!(await autoWarmup.isChecked()), 'auto warm-up ramp is off by default');
 
   await select.selectOption('eqp_home');
   await page.waitForFunction(() => document.getElementById('settingsEquipmentProfileName')?.value === 'Home');
@@ -121,14 +109,32 @@ try {
   ok((await plateBar.inputValue()) === '15', 'switching profiles loads that gym bar weight');
   ok((await platesInput.inputValue()) === '20, 10, 5, 2.5', 'switching profiles loads that gym plate set');
 
-  await page.click('#unitLbsBtn');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
+  await page.click('[data-action="open-settings-page"][data-context="once.units"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.click('[data-setting-segment="weightUnit"][data-value="lbs"]');
   await page.waitForSelector('.cmodal__btn--ok');
   await page.click('.cmodal__btn--ok');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'lbs');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
+  await page.click('[data-action="open-settings-page"][data-context="once.equipment"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
   await page.waitForFunction(() => document.getElementById('settingsPlateBar')?.value === '35');
   ok((await platesInput.inputValue()) === '45, 25, 10', 'the lb setup is stored separately');
-  await page.click('#unitKgBtn');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
+  await page.click('[data-action="open-settings-page"][data-context="once.units"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.click('[data-setting-segment="weightUnit"][data-value="kg"]');
   await page.waitForSelector('.cmodal__btn--ok');
   await page.click('.cmodal__btn--ok');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'kg');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
+  await page.click('[data-action="open-settings-page"][data-context="once.equipment"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
   await page.waitForFunction(() => document.getElementById('settingsPlateBar')?.value === '15');
   ok((await platesInput.inputValue()) === '20, 10, 5, 2.5', 'switching back restores the kg setup');
 
@@ -176,14 +182,6 @@ try {
     return !home?.machineStacks?.leg_press;
   }, STORAGE_KEY);
   ok(!(await page.locator('#settingsStackList').textContent()).includes('Leg Press'), 'machine stack can be removed');
-  const hintRow = page.locator('.settings-row', { has: plateHints });
-  await hintRow.locator('.settings-switch').click();
-  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.settings?.showPlateHints === true, STORAGE_KEY);
-  ok(await plateHints.isChecked(), 'plate hints can be enabled');
-  await autoWarmup.click();
-  await page.waitForFunction((key) => JSON.parse(localStorage.getItem(key) || '{}')?.settings?.autoWarmupRamp === true, STORAGE_KEY);
-  ok(await autoWarmup.isChecked(), 'auto warm-up ramp can be enabled');
-
   await nameInput.fill('Garage');
   await nameInput.press('Tab');
   await page.waitForFunction(() => [...document.querySelectorAll('#settingsEquipmentProfile option')].some((o) => o.textContent === 'Garage'));
@@ -209,7 +207,6 @@ try {
   ok(stored?.settings?.equipmentProfiles?.length === 2, 'profile changes are persisted');
   ok(stored?.settings?.equipmentProfiles?.some((p) => p.name === 'Garage'), 'the rename is persisted');
   ok(stored?.settings?.equipment?.cables === true, 'the active kit is projected into the legacy equipment field');
-  ok(stored?.settings?.showPlateHints === true, 'the plate-hint preference is persisted');
   const garage = stored?.settings?.equipmentProfiles?.find((p) => p.name === 'Garage');
   ok(garage?.plateSetup?.kg?.plates?.length === 3, 'the edited plate set is persisted');
 

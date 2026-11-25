@@ -44,6 +44,7 @@ function iconTile(name, tone = 'blue') {
  *   disabledReason?: string,
  *   ariaLabel?: string,
  *   id?: string,
+ *   settingKey?: string,
  * }} row
  */
 export function settingsRow(row) {
@@ -65,6 +66,7 @@ export function settingsRow(row) {
   const common = [
     `class="${classes.join(' ')}"`,
     row.id ? `id="${escapeHTML(row.id)}"` : '',
+    row.settingKey ? `data-setting-key="${escapeHTML(row.settingKey)}"` : '',
     row.disabled ? 'aria-disabled="true"' : '',
     row.ariaLabel ? `aria-label="${escapeHTML(row.ariaLabel)}"` : '',
   ].filter(Boolean).join(' ');
@@ -72,7 +74,7 @@ export function settingsRow(row) {
     ${copy}${value}${control}${chevron}`;
 
   if (row.href) {
-    return `<a ${common} href="${escapeHTML(row.href)}">${body}</a>`;
+    return `<a ${common} href="${escapeHTML(row.href)}" target="_blank" rel="noopener noreferrer">${body}</a>`;
   }
   if (row.action || row.nav) {
     return `<button type="button" ${common}${row.action ? ` data-action="${escapeHTML(row.action)}"` : ''}${row.context ? ` data-context="${escapeHTML(row.context)}"` : ''}>${body}</button>`;
@@ -163,10 +165,10 @@ export function sliderRow(input) {
 }
 
 /**
- * @param {{ key: string, label: string, value: string, disabled?: boolean }} input
+ * @param {{ key: string, label: string, value: string, disabled?: boolean, id?: string }} input
  */
 export function timeControl(input) {
-  return `<input class="s-time" type="time" data-setting-time="${escapeHTML(input.key)}" value="${escapeHTML(input.value)}" aria-label="${escapeHTML(input.label)}" ${input.disabled ? 'disabled' : ''}>`;
+  return `<input${input.id ? ` id="${escapeHTML(input.id)}"` : ''} class="s-time" type="time"${input.id ? '' : ` data-setting-time="${escapeHTML(input.key)}"`} value="${escapeHTML(input.value)}" aria-label="${escapeHTML(input.label)}" ${input.disabled ? 'disabled' : ''}>`;
 }
 
 /**
@@ -230,7 +232,7 @@ export function dangerRow(row) {
 /**
  * Collapse a large page title after its body scrolls. Pure DOM helper so pages
  * do not each write a scroll listener.
- * @param {HTMLElement|null} page
+ * @param {Element|null} page
  */
 export function mountCollapsingTitle(page) {
   const body = page?.querySelector('.s-page__body');

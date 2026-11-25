@@ -65,7 +65,7 @@ const _parseRest = (str) => {
 };
 import { showToast } from './state.js';
 import { rearmReminder, notificationsGranted, cancelReminders } from './notifications.js';
-import { confirmModal } from './ui/confirm-modal.js';
+import { confirmModal, textPromptModal } from './ui/confirm-modal.js';
 import { renderAthleteProfile } from './athlete-profile.js';
 import { isHealthBridgeAvailable, getHealthAvailability, connectAndSync, syncHealthConnect, describeFieldStatus } from './health/health-bridge.js';
 import { HEALTH_FIELDS, normalizeSyncFields, selectedFieldIds, isSupportedField } from './health/health-fields.js';
@@ -78,7 +78,10 @@ import {
 } from './state/import-validate.js';
 import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery, firstMatchingRow } from './settings/nav.js';
 import { SETTINGS_HASH, settingsHashForPage, settingsRouteFromHash } from './settings/route.js';
-import { configureSettingsStore } from './settings/store.js';
+import { configureSettingsStore, settingsStore } from './settings/store.js';
+import { profileSettingsHTML, renderSettingsHome, renderSettingsPage, workoutSettingsHTML } from './settings/render.js';
+import { openManagedModal, closeManagedModal } from './ui/modal-stack.js';
+import { settingAnchor, settingsEntry, settingsEntryByAnchor, settingsPageById, settingsPageForRoute } from './settings/registry.js';
 import { REST_PRESETS, restPresetFor } from './settings/rest-presets.js';
 import { DEFAULT_REST_TIERS } from './workout/rest-duration.js';
 
@@ -90,6 +93,129 @@ let _settingsProfilePushed = false;
 let _settingsHashBound = false;
 let _settingsPreviousFocus = null;
 let _settingsReturnScroll = 0;
+
+function _applyResetEffects(page) {
+  const state = _getState?.();
+  if (!state) return;
+  if (page === 'once.look') {
+    _applyTheme(state.settings.theme || 'dark');
+    applyPalette(document.documentElement, normalizePalette(state.settings.palette));
+    applyMotionPreference(normalizeMotionPreference(state.settings.reducedMotion));
+  } else if (page === 'once.modules') {
+    applyModuleVisibility(state);
+    document.dispatchEvent(new CustomEvent('app:modules-changed', { detail: { reset: true } }));
+  } else if (page === 'training.reminders') {
+    if (state.settings.notificationsEnabled) rearmReminder();
+    else cancelReminders();
+  } else if (page === 'training.timers') {
+    setRestTiers(state.settings.restPeriods || DEFAULT_REST_TIERS);
+    setRestAlertConfig({ sound: state.settings.restAlertSound !== false, volume: state.settings.restAlertVolume ?? 0.4 });
+  }
+}
+
+function _showUndoToast(message, onUndo) {
+  document.getElementById('settingsUndoToast')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'settingsUndoToast';
+  toast.className = 's-undo';
+  toast.setAttribute('role', 'status');
+  toast.innerHTML = `<span>${message}</span><button type="button" class="s-undo__btn">Undo</button>`;
+  const close = () => toast.remove();
+  toast.querySelector('.s-undo__btn')?.addEventListener('click', () => { close(); onUndo(); });
+  document.body.appendChild(toast);
+  setTimeout(close, 6000);
+}
+
+function _currentSettingsRoute() {
+  if (typeof location === 'undefined') return '';
+  return _settingsRouteFromHash(location.hash)?.page || '';
+}
+
+function _refreshSettingsSurface() {
+  const route = _currentSettingsRoute();
+  if (route) _showSettings(route);
+  else {
+    const host = document.getElementById('settingsPageHost');
+    const state = _getState?.();
+    const store = settingsStore();
+    if (host && state && store) renderSettingsHome(host, state, store, document.getElementById('settingsSearch')?.value || '');
+  }
+}
+
+function _openSettingResult(key) {
+  const entry = settingsEntry(key);
+  const page = entry ? settingsPageById(entry.page) : null;
+  if (!entry || !page) return;
+  openSettings(page.route, settingAnchor(entry));
+}
+
+/**
+ * Apply one registered change. Existing setters remain the owners of side
+ * effects (theme application, unit conversion, timers, notifications); the
+ * fallback writes through the validated store.
+ * @param {string} key
+ * @param {any} value
+ */
+function _applySettingControl(key, value) {
+  if (!settingsEntry(key)) return;
+  const done = () => { _refreshSettingsSurface(); };
+  switch (key) {
+    case 'weightUnit': void setWeightUnit(value).then(done, done); return;
+    case 'distanceUnit': setDistanceUnit(value); done(); return;
+    case 'theme': setTheme(value); done(); return;
+    case 'palette': setPalette(value); done(); return;
+    case 'reducedMotion': setReducedMotion(value); done(); return;
+    case 'fitnessGoal': setFitnessGoal(value); done(); return;
+    case 'weightGoal': setWeightGoal(value); done(); return;
+    case 'fitnessLevel': setFitnessLevel(value); done(); return;
+    case 'weekStartDay': setWeekStartDay(value); done(); return;
+    case 'fastingDefault': setFastingDefault(value); done(); return;
+    case 'notificationsEnabled': setNotificationsEnabled(value); done(); return;
+    case 'notifWeeklySummary': setNotifToggle('weeklySummary', value); done(); return;
+    case 'notifStreak': setNotifToggle('streak', value); done(); return;
+    case 'notifMissedWorkout': setNotifToggle('missed', value); done(); return;
+    case 'notifFastingStage': setNotifToggle('fasting', value); done(); return;
+    case 'restTimerEnabled': setRestTimerEnabledSetting(value); done(); return;
+    case 'restAlertSound': setRestAlertSoundSetting(value); done(); return;
+    case 'restAlertVolume': setRestAlertVolumeSetting(value); done(); return;
+    case 'showPlateHints': setShowPlateHints(value); done(); return;
+    case 'autoWarmupRamp': setAutoWarmupRamp(value); done(); return;
+    case 'keepAwake': setKeepAwake(value); done(); return;
+    case 'livePR': setLivePR(value); done(); return;
+    case 'progressionIncrement': setProgressionIncrement(value); done(); return;
+    case 'previousValuesScope': setPreviousValuesScope(value); done(); return;
+    case 'autoAdvanceWeek': setAutoAdvanceWeek(value); done(); return;
+    case 'hybridTraining': toggleHybridTraining(value); done(); return;
+    case 'modules.running': toggleModule('running', value); done(); return;
+    case 'modules.fasting': toggleModule('fasting', value); done(); return;
+    case 'modules.health': toggleModule('health', value); done(); return;
+    case 'modules.recovery': toggleModule('recovery', value); done(); return;
+    default:
+      try { settingsStore()?.set(key, value); done(); }
+      catch (error) { showToast(error instanceof Error ? error.message : 'That setting could not be saved', true); }
+  }
+}
+
+export function openWorkoutSettings() {
+  const sheet = document.getElementById('workoutSettingsSheet');
+  const host = document.getElementById('workoutSettingsContent');
+  const state = _getState?.();
+  const store = settingsStore();
+  if (!sheet || !host || !state || !store) return;
+  host.innerHTML = workoutSettingsHTML(state, store);
+  sheet.classList.add('active');
+  sheet.removeAttribute('inert');
+  sheet.setAttribute('aria-hidden', 'false');
+  openManagedModal(sheet, { initialFocus: '[data-action="close-workout-settings"]' });
+}
+
+export function closeWorkoutSettings() {
+  const sheet = document.getElementById('workoutSettingsSheet');
+  if (!sheet) return;
+  sheet.classList.remove('active');
+  sheet.setAttribute('aria-hidden', 'true');
+  closeManagedModal(sheet);
+}
 
 export function initSettings(getStateFn) {
   _getState = getStateFn;
@@ -113,6 +239,105 @@ export function initSettings(getStateFn) {
       try { history.scrollRestoration = 'manual'; } catch { /* best effort */ }
     }
     window.addEventListener('hashchange', applySettingsRouteFromHash);
+    document.addEventListener('click', (event) => {
+      const target = event.target instanceof Element ? event.target.closest('[data-setting-segment], [data-setting-step], [data-action="open-settings-page"], [data-action="open-settings-result"], [data-action="open-workout-settings"], [data-action="close-workout-settings"], [data-action="reset-rest-override"], [data-action="reset-settings-page"], [data-action="open-customize"]') : null;
+      if (!target) return;
+      if (target.hasAttribute('data-setting-segment')) {
+        const key = target.getAttribute('data-setting-segment') || '';
+        const entry = settingsEntry(key);
+        const raw = target.getAttribute('data-value') || '';
+        const value = entry?.type === 'number' ? Number(raw) : raw;
+        _applySettingControl(key, value);
+        return;
+      }
+      if (target.hasAttribute('data-setting-step')) {
+        const key = target.getAttribute('data-setting-step') || '';
+        const entry = settingsEntry(key);
+        const direction = Number(target.getAttribute('data-direction')) === 1 ? 1 : -1;
+        const current = Number(settingsStore()?.get(key) ?? entry?.default ?? 0);
+        let next = current + direction * (entry?.step || 1);
+        if (entry?.key === 'restAlertVolume') next = Math.round((Number(settingsStore()?.get(key) ?? 0.4) * 100) + direction * 5);
+        if (entry?.min != null) next = Math.max(entry.min, next);
+        if (entry?.max != null) next = Math.min(entry.max, next);
+        _applySettingControl(key, entry?.key === 'restAlertVolume' ? next / 100 : next);
+        return;
+      }
+      if (target.getAttribute('data-action') === 'open-settings-page') {
+        const page = target.getAttribute('data-context') || '';
+        if (page) openSettings(page);
+        return;
+      }
+      if (target.getAttribute('data-action') === 'reset-settings-page') {
+        const page = target.getAttribute('data-page') || '';
+        confirmModal({ title: 'Reset this page?', message: 'Every setting on this page returns to its default. Logged training is untouched.', confirmLabel: 'Reset page', danger: true })
+          .then((confirmed) => {
+            if (!confirmed) return;
+            const result = settingsStore()?.resetPage(page);
+            if (!result) return;
+            _applyResetEffects(page);
+            _refreshSettingsSurface();
+            _showUndoToast(`${result.changed.length} setting${result.changed.length === 1 ? '' : 's'} reset`, () => {
+              settingsStore()?.restore(result.before);
+              _applyResetEffects(page);
+              _refreshSettingsSurface();
+            });
+          });
+        return;
+      }
+      if (target.getAttribute('data-action') === 'reset-rest-override') {
+        const lift = target.getAttribute('data-lift') || '';
+        const state = _getState?.();
+        if (state && lift) {
+          delete state.settings.restOverrides[lift];
+          setRestOverrides(state.settings.restOverrides);
+          saveStateToLocalStorage(true);
+          _refreshSettingsSurface();
+        }
+        return;
+      }
+      if (target.getAttribute('data-action') === 'open-workout-settings') { openWorkoutSettings(); return; }
+      if (target.getAttribute('data-action') === 'close-workout-settings') { closeWorkoutSettings(); return; }
+      if (target.getAttribute('data-action') === 'open-settings-result') {
+        _openSettingResult(target.getAttribute('data-context') || '');
+      }
+    });
+
+    document.addEventListener('change', (event) => {
+      const el = event.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.id === 'workoutEquipmentProfile') { selectEquipmentProfile(el.value); return; }
+      const toggleKey = el.getAttribute('data-setting-key');
+      if (toggleKey && el.type === 'checkbox') { _applySettingControl(toggleKey, el.checked); return; }
+      const radioKey = el.getAttribute('data-setting-radio');
+      if (radioKey && el.type === 'radio') { _applySettingControl(radioKey, el.value); return; }
+      const textKey = el.getAttribute('data-setting-text');
+      if (textKey) {
+        const entry = settingsEntry(textKey);
+        _applySettingControl(textKey, entry?.type === 'number' ? Number(el.value) : el.value);
+      }
+    });
+
+    document.addEventListener('input', (event) => {
+      const el = event.target;
+      if (!(el instanceof HTMLInputElement)) return;
+      if (el.id === 'settingsSearch') {
+        const host = document.getElementById('settingsPageHost');
+        const state = _getState?.();
+        const store = settingsStore();
+        if (host && state && store) {
+          renderSettingsHome(host, state, store, el.value);
+          const next = document.getElementById('settingsSearch');
+          if (next) { next.focus(); next.setSelectionRange(next.value.length, next.value.length); }
+        }
+        return;
+      }
+      const sliderKey = el.getAttribute('data-setting-slider');
+      if (sliderKey) {
+        const entry = settingsEntry(sliderKey);
+        _applySettingControl(sliderKey, entry?.key === 'restAlertVolume' ? Number(el.value) / 100 : Number(el.value));
+      }
+    });
+
     document.addEventListener('keydown', (event) => {
       const overlay = document.getElementById('settingsOverlay');
       if (!overlay?.classList.contains('active')) return;
@@ -247,7 +472,7 @@ function _homeUrl() {
   return `${location.pathname}${location.search}`;
 }
 
-function _showSettings(page) {
+function _showSettings(page, anchor = '') {
   const overlay = document.getElementById('settingsOverlay');
   const panel = document.getElementById('settingsPanel');
   const profilePanel = document.getElementById('settingsProfilePanel');
@@ -267,15 +492,41 @@ function _showSettings(page) {
   if (page === 'profile') {
     panel.classList.remove('active');
     profilePanel.classList.add('active');
+    const rootHeader = document.getElementById('settingsRootHeader');
+    if (rootHeader) rootHeader.hidden = true;
     renderAthleteProfile('settingsProfileContent');
+    const profileHost = document.getElementById('settingsProfileContent');
+    const profileState = _getState?.();
+    if (profileHost && profileState) {
+      profileHost.insertAdjacentHTML('afterbegin', profileSettingsHTML(profileState, settingsStore()));
+    }
     requestAnimationFrame(() => {
       profilePanel.querySelector('[data-action="back-to-settings"]')?.focus?.();
     });
   } else {
     profilePanel.classList.remove('active');
     panel.classList.add('active');
+    const rootHeader = document.getElementById('settingsRootHeader');
+    if (rootHeader) rootHeader.hidden = !!(page && settingsPageForRoute(page));
+    const host = document.getElementById('settingsPageHost');
+    const state = _getState?.();
+    const store = settingsStore();
+    if (host && state && store) {
+      if (page) renderSettingsPage(host, page, state, store);
+      else renderSettingsHome(host, state, store, document.getElementById('settingsSearch')?.value || '');
+    }
+    if (host) host.scrollTop = 0;
     _syncSettingsUI();
     _setupSettingsNavigation();
+    if (anchor) {
+      setTimeout(() => {
+        const target = document.querySelector(`#settingsPageHost [data-setting-key="${String(anchor).replace(/"/g, '\\"')}"]`);
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('is-pulse');
+        setTimeout(() => target.classList.remove('is-pulse'), 1200);
+      }, 60);
+    }
   }
 }
 
@@ -312,18 +563,21 @@ export function applySettingsRouteFromHash() {
     const canonical = route.page === 'profile' ? `${SETTINGS_HASH}/profile` : SETTINGS_HASH;
     try { history.replaceState(null, '', canonical); } catch { /* best effort */ }
   }
-  _showSettings(route.page);
+  _showSettings(route.page, route.rest?.[0] || '');
 }
 
 /** Open Settings (or its Profile sub-page) and push a route. */
-export function openSettings(page = '') {
-  const route = settingsHashForPage(page);
-  if (page === 'profile') _settingsProfilePushed = true;
+export function openSettings(page = '', anchor = '') {
+  const isProfile = page === 'profile';
+  const target = isProfile ? 'profile' : (settingsPageById(page)?.route || page);
+  const baseRoute = settingsHashForPage(target);
+  const route = anchor ? `${baseRoute}/${anchor}` : baseRoute;
+  if (isProfile) _settingsProfilePushed = true;
   _settingsRoutePushed = true;
   if (location.hash !== route) {
     try { history.pushState(null, '', route); } catch { location.hash = route; }
   }
-  _showSettings(page === 'profile' ? 'profile' : '');
+  _showSettings(isProfile ? 'profile' : target, anchor);
 }
 
 /**
@@ -343,7 +597,8 @@ export function closeSettings(options = {}) {
 }
 
 export function backToSettings() {
-  if (_settingsProfilePushed && location.hash.endsWith('/profile')) {
+  if (location.hash === SETTINGS_HASH) return;
+  if (_settingsRoutePushed) {
     _settingsProfilePushed = false;
     try { history.back(); } catch { /* best effort */ }
     return;
@@ -1738,12 +1993,15 @@ export async function confirmResetAllData() {
     confirmLabel: 'Reset everything', danger: true,
   });
   if (!ok) return;
-  const finalOk = await confirmModal({
-    title: 'Delete everything on this device?',
-    message: 'Second confirmation. Logged training, settings, GPS routes and progress photos will be deleted from this device. A JSON backup is the only way to restore them.',
-    confirmLabel: 'Delete all data', danger: true,
+  const typed = await textPromptModal({
+    title: 'Type DELETE to confirm',
+    message: 'Logged training, settings, GPS routes and progress photos will be deleted from this device. A JSON backup is the only way to restore them. Export one first if you have not already.',
+    label: 'Confirmation word',
+    placeholder: 'DELETE',
+    confirmLabel: 'Delete all data',
+    maxLength: 12,
   });
-  if (!finalOk) return;
+  if (String(typed || '').trim().toUpperCase() !== 'DELETE') return;
   // Stop any pending debounce and block pagehide/visibility flushes from writing
   // the old in-memory state back after the keys are removed. The reload below is
   // the only path out of this state.

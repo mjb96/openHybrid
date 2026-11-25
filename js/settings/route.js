@@ -31,5 +31,7 @@ export function settingsRouteFromHash(hash) {
 
 /** @param {string} [page] */
 export function settingsHashForPage(page = '') {
-  return page === 'profile' ? `${SETTINGS_HASH}/profile` : SETTINGS_HASH;
+  if (!page) return SETTINGS_HASH;
+  if (page === 'profile') return `${SETTINGS_HASH}/profile`;
+  return `${SETTINGS_HASH}/${page}`;
 }

@@ -82,6 +82,8 @@ try {
 
   await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
+  await page.click('[data-action="open-settings-page"][data-context="data.backup"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
   ok(await page.locator('#settingsFitFiles[multiple]').count() === 1, 'Settings exposes a multi-file FIT picker');
 
   await page.setInputFiles('#settingsExternalCsvFile', csvPath);

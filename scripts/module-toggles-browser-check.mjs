@@ -69,12 +69,14 @@ try {
 
   await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  const runningRow = page.locator('.settings-row', { has: page.locator('[data-module-toggle="running"]') });
-  await runningRow.locator('.settings-switch').click();
+  await page.click('[data-action="open-settings-page"][data-context="once.modules"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="modules.running"]') }).click();
   await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'off');
   ok(!(await runQuick.isVisible()), 'turning Running off hides the Home run action');
 
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.click('.nav-item[data-target="analytics"]');
   await page.waitForSelector('#view-analytics.active');

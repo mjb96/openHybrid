@@ -34,7 +34,9 @@ test('anything else is not a Settings route', () => {
   }
 });
 
-test('canonical hashes round-trip', () => {
+test('canonical hashes round-trip, including pushed pages', () => {
   assert.equal(settingsHashForPage(), '#/settings');
   assert.equal(settingsHashForPage('profile'), '#/settings/profile');
+  assert.equal(settingsHashForPage('workout'), '#/settings/workout');
+  assert.equal(settingsHashForPage('look-home'), '#/settings/look-home');
 });

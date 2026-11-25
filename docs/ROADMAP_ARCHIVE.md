@@ -5646,6 +5646,16 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - The settings browser check asserts the exclusion and the named backup path.
   - Still PARTIAL: there is no manual-export "last backup" timestamp.
 
+- **2026-11-24 — H2 HM7: the plan-done copy counts sessions, not set rows.**
+  - The week rail said "1/5 done" while the coach line said "100% of this
+    week's plan done" from completed stored set rows. The coach line now uses
+    `planDone`/`planTotal` from the program's planned days, the same unit as the
+    rail; the Hybrid Score keeps the set-based consistency value it needs.
+  - `tests/dashboard_model.test.js` pins a one-of-two-sessions fixture where the
+    set percentage is 100 but the plan line says "1 of 2 planned sessions done".
+  - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
+    is no duplicate-metric guard.
+
 - **2026-11-24 — H2 HM3: Strength this week states every figure.**
   - The Home strength card now shows sessions and working sets together, the
     same-weekday volume delta, the top e1RM change and this week's PR count.

@@ -55,10 +55,10 @@ test('NOTICE carries the Apache-2.0 body-map attribution and licence copy', () =
 });
 
 test('Settings exposes the AGPL source link for network users', () => {
-  const html = read('index.html');
-  assert.match(html, /href="https:\/\/github\.com\/mjb96\/openHybrid"/);
-  assert.match(html, /GitHub · AGPL-3\.0/);
-  assert.match(html, /rel="noopener noreferrer"/);
+  const renderer = read('js/settings/render.js');
+  assert.match(renderer, /https:\/\/github\.com\/mjb96\/openHybrid/);
+  assert.match(renderer, /GitHub · AGPL-3\.0/);
+  assert.match(renderer, /Licences/);
 });
 
 

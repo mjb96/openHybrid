@@ -35,6 +35,7 @@ import { DEFAULT_REST_TIERS } from '../workout/rest-duration.js';
  *   page: string,
  *   default: unknown,
  *   keywords: string[],
+ *   anchor?: string,
  *   footer?: string,
  *   choices?: ReadonlyArray<string|number>,
  *   min?: number,
@@ -70,6 +71,10 @@ export const SETTINGS_REGISTRY = freeze([
   { key: 'defaultBodyWeight', label: 'Body weight', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, keywords: ['bodyweight', 'mass', 'weight'], summary: (s) => numberUnit(s?.settings?.defaultBodyWeight, s?.settings?.weightUnit || 'kg') },
   { key: 'targetWeight', label: 'Target weight', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, keywords: ['goal', 'bodyweight', 'target'], summary: (s) => numberUnit(s?.settings?.targetWeight, s?.settings?.weightUnit || 'kg') },
   { key: 'rateGoal', label: 'Weight rate goal', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: -2, max: 2, step: 0.05, keywords: ['goal', 'rate', 'bodyweight'], summary: (s) => s?.settings?.rateGoal == null ? '' : `${s.settings.rateGoal} ${s?.settings?.weightUnit || 'kg'}/wk` },
+  { key: 'heightCm', label: 'Height', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 50, max: 300, step: 0.1, keywords: ['height', 'body'], summary: (s) => s?.settings?.heightCm ? `${s.settings.heightCm} cm` : '' },
+  { key: 'birthDate', label: 'Date of birth', type: 'text', group: 'profile', section: 'profile', page: 'profile.body', default: null, keywords: ['birth', 'dob', 'age'], footer: 'Optional. Stored only for future calculations; nothing currently derives from it.', summary: (s) => s?.settings?.birthDate || '' },
+  { key: 'sex', label: 'Sex', type: 'select', group: 'profile', section: 'profile', page: 'profile.body', default: null, choices: ['female', 'male', 'other', 'prefer_not_to_say'], keywords: ['sex', 'gender'], footer: 'Optional. Used for calculations only, never displayed publicly.', summary: (s) => s?.settings?.sex ? titleCase(String(s.settings.sex).replace(/_/g, ' ')) : '' },
+  { key: 'trainingStartDate', label: 'Training start', type: 'text', group: 'profile', section: 'profile', page: 'profile.training-goal', default: null, keywords: ['start', 'member', 'training'], summary: (s) => s?.settings?.trainingStartDate || '' },
   { key: 'prGoals', path: 'prGoals', storage: 'root', label: 'Lift targets', type: 'object', group: 'profile', section: 'profile', page: 'profile.training-goal', default: {}, keywords: ['pr', 'goal', 'target', 'lift'], summary: (s) => `${Object.keys(s?.prGoals || {}).length} targets` },
   { key: 'weeklyFrequency', label: 'Training days per week', type: 'select', group: 'profile', section: 'training', page: 'training.schedule', default: 'some', choices: ['low', 'some', 'high', 'daily'], keywords: ['frequency', 'schedule', 'days'], summary: (s) => titleCase(s?.settings?.weeklyFrequency || 'some') },
   { key: 'sessionMinutes', label: 'Typical session length', type: 'number', group: 'profile', section: 'training', page: 'training.schedule', default: 45, choices: [30, 45, 60, 90], min: 15, max: 240, step: 5, keywords: ['time', 'minutes', 'length'], summary: (s) => `${s?.settings?.sessionMinutes || 45} min` },
@@ -84,7 +89,7 @@ export const SETTINGS_REGISTRY = freeze([
   { key: 'autoWarmupRamp', label: 'Warm-up ramp', type: 'toggle', group: 'training', section: 'training', page: 'training.workout', default: false, keywords: ['warmup', 'ramp'], summary: (s) => on(s, 'autoWarmupRamp') ? 'On' : 'Off' },
   { key: 'restPeriods', label: 'Rest tiers', type: 'object', group: 'training', section: 'training', page: 'training.timers', default: DEFAULT_REST_TIERS, keywords: ['rest', 'timer', 'tiers'], summary: () => 'Default tiers' },
   { key: 'restOverrides', label: 'Remembered rests', type: 'object', group: 'training', section: 'training', page: 'training.workout', default: {}, keywords: ['rest', 'exercise', 'override'], summary: (s) => `${Object.keys(s?.settings?.restOverrides || {}).length} lifts` },
-  { key: 'restTimerEnabled', label: 'Rest timer', type: 'toggle', group: 'training', section: 'training', page: 'training.workout', default: true, keywords: ['rest', 'timer'], summary: (s) => on(s, 'restTimerEnabled') ? 'On' : 'Off' },
+  { key: 'restTimerEnabled', anchor: 'rest-timer', label: 'Rest timer', type: 'toggle', group: 'training', section: 'training', page: 'training.workout', default: true, keywords: ['rest', 'timer'], summary: (s) => on(s, 'restTimerEnabled') ? 'On' : 'Off' },
   { key: 'restAlertSound', label: 'Rest alert sound', type: 'toggle', group: 'appearance', section: 'training', page: 'training.timers', default: true, keywords: ['sound', 'rest', 'alert'], enabledWhen: (s) => ({ ok: on(s, 'restTimerEnabled'), reason: 'Turn the rest timer on first.' }), summary: (s) => on(s, 'restAlertSound') ? 'On' : 'Off' },
   { key: 'restAlertVolume', label: 'Rest alert volume', type: 'number', group: 'appearance', section: 'training', page: 'training.timers', default: 0.4, min: 0, max: 1, step: 0.05, keywords: ['sound', 'volume', 'rest'], enabledWhen: (s) => ({ ok: on(s, 'restTimerEnabled') && on(s, 'restAlertSound'), reason: 'Turn the rest timer and sound on first.' }), summary: (s) => `${Math.round((Number(s?.settings?.restAlertVolume) || 0) * 100)}%` },
   { key: 'exercisePrefs', label: 'Exercise preferences', type: 'object', group: 'training', section: 'training', page: 'training.workout', default: {}, keywords: ['notes', 'rest', 'shape', 'load', 'exercise'], summary: (s) => `${Object.keys(s?.settings?.exercisePrefs || {}).length} lifts` },
@@ -122,6 +127,10 @@ export const SETTINGS_REGISTRY = freeze([
   { key: 'ui', label: 'Home and Progress layout', type: 'object', group: 'appearance', section: 'once', page: 'once.look', default: {}, keywords: ['customize', 'hidden', 'order', 'home layout'], summary: () => 'Customized' },
   { key: 'hybridTraining', label: 'Hybrid presentation', type: 'toggle', group: 'training', section: 'once', page: 'once.modules', default: true, keywords: ['running', 'strength', 'balance', 'hybrid'], summary: (s) => hybridTrainingEnabled(s) ? 'On' : 'Off' },
   { key: 'modules', label: 'Feature modules', type: 'object', group: 'training', section: 'once', page: 'once.modules', default: {}, keywords: ['running', 'fasting', 'health', 'recovery', 'modules'], summary: (s) => `${['running', 'fasting', 'health', 'recovery'].filter((id) => moduleOn(s, id)).length} of 4 on` },
+  { key: 'modules.running', path: 'settings.modules.running', label: 'Running & GPS', type: 'toggle', group: 'training', section: 'once', page: 'once.modules', default: true, keywords: ['running', 'gps', 'module'], summary: (s) => moduleOn(s, 'running') ? 'On' : 'Off' },
+  { key: 'modules.fasting', path: 'settings.modules.fasting', label: 'Fasting', type: 'toggle', group: 'training', section: 'once', page: 'once.modules', default: true, keywords: ['fasting', 'module'], summary: (s) => moduleOn(s, 'fasting') ? 'On' : 'Off' },
+  { key: 'modules.health', path: 'settings.modules.health', label: 'Health Connect', type: 'toggle', group: 'training', section: 'once', page: 'once.modules', default: true, keywords: ['health', 'connect', 'module'], summary: (s) => moduleOn(s, 'health') ? 'On' : 'Off' },
+  { key: 'modules.recovery', path: 'settings.modules.recovery', label: 'Recovery & Load', type: 'toggle', group: 'training', section: 'once', page: 'once.modules', default: true, keywords: ['recovery', 'load', 'module'], summary: (s) => moduleOn(s, 'recovery') ? 'On' : 'Off' },
 
   // ── Root settings-like values ─────────────────────────────────────────────
   { key: 'healthConnect.connected', path: 'healthConnect.connected', storage: 'root', label: 'Health Connect', type: 'toggle', group: 'health', section: 'connections', page: 'connections.integrations', default: false, keywords: ['health connect', 'android', 'integration'], summary: (s) => s?.healthConnect?.connected ? 'Connected' : 'Not connected' },
@@ -156,6 +165,45 @@ export const NON_SETTINGS_STATE_KEYS = Object.freeze([
   'prGoals',
 ]);
 
+/**
+ * Top-level Settings rows and their pushed pages. `route` is the hash segment
+ * after #/settings/; `page` is the registry page id.
+ * @type {ReadonlyArray<{id:string, label:string, route:string, section:string}>}
+ */
+export const SETTINGS_PAGES = Object.freeze([
+  { id: 'training.workout', label: 'Workout', route: 'workout', section: 'training' },
+  { id: 'training.timers', label: 'Timer alerts', route: 'timer-alerts', section: 'training' },
+  { id: 'training.schedule', label: 'Plan & schedule', route: 'plan-schedule', section: 'training' },
+  { id: 'training.reminders', label: 'Reminders', route: 'reminders', section: 'training' },
+  { id: 'once.units', label: 'Units & language', route: 'units', section: 'once' },
+  { id: 'once.equipment', label: 'Equipment', route: 'equipment', section: 'once' },
+  { id: 'once.look', label: 'Look & Home', route: 'look-home', section: 'once' },
+  { id: 'once.modules', label: 'Modules', route: 'modules', section: 'once' },
+  { id: 'connections.watches', label: 'Watches', route: 'watches', section: 'connections' },
+  { id: 'connections.integrations', label: 'Integrations', route: 'integrations', section: 'connections' },
+  { id: 'connections.coach', label: 'AI Coach', route: 'ai-coach', section: 'connections' },
+  { id: 'data.backup', label: 'Data & backup', route: 'data', section: 'data' },
+  { id: 'about', label: 'About', route: 'about', section: 'about' },
+]);
+
+const PAGE_BY_ROUTE = new Map(SETTINGS_PAGES.map((page) => [page.route, page]));
+const PAGE_BY_ID = new Map(SETTINGS_PAGES.map((page) => [page.id, page]));
+
+/** @param {string} route */
+export function settingsPageForRoute(route) {
+  return PAGE_BY_ROUTE.get(String(route || '')) || null;
+}
+
+/** @param {string} id */
+export function settingsPageById(id) {
+  return PAGE_BY_ID.get(String(id || '')) || null;
+}
+
+/** @param {string} section */
+export function settingsPagesForSection(section) {
+  return SETTINGS_PAGES.filter((page) => page.section === section);
+}
+
 /** @param {string} key */
 export function settingsEntry(key) {
   const resolved = SETTINGS_KEY_ALIASES[String(key || '')] || String(key || '');
@@ -184,6 +232,17 @@ export function settingsForPage(page) {
 /** @param {Iterable<string>} keys */
 export function missingSettingsKeys(keys) {
   return [...keys].filter((key) => !BY_KEY.has(key) && !RETIRED_SETTINGS_KEYS.includes(key));
+}
+
+/** Stable deep-link anchor for one setting. */
+export function settingAnchor(entry) {
+  return entry.anchor || String(entry.key).replace(/([a-z0-9])([A-Z])/g, '$1-$2').replace(/\./g, '-').toLowerCase();
+}
+
+/** @param {string} anchor */
+export function settingsEntryByAnchor(anchor) {
+  const needle = String(anchor || '').toLowerCase();
+  return SETTINGS_REGISTRY.find((entry) => settingAnchor(entry) === needle) || null;
 }
 
 /** @param {SettingsEntry} entry */
@@ -220,6 +279,7 @@ export function validateSettingValue(entry, value) {
   const isNullish = value === null || value === undefined;
   switch (entry.type) {
     case 'text':
+      if (isNullish && entry.default === null) return { ok: true };
       if (typeof value !== 'string') return { ok: false, reason: 'Must be text.' };
       if (entry.key === 'name' && value.length > 40) return { ok: false, reason: 'Keep the name under 40 characters.' };
       return { ok: true };

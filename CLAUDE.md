@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 50 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 51 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -134,8 +134,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   restored on Home; the back chevron, browser Back and Android Back pop one
   level and Home's scroll position is restored. The Home sliders button remains
   **Customize Home**, not Settings. `js/settings/route.js` is the pure route
-  model. The old settings cards still render inside the route until Phase 4
-  replaces them with the registry-driven 13-row IA.
+  model. The route renders the registry-driven 13-row IA through
+  `js/settings/render.js`: profile card + search + Training/Set once/Connections/
+  Data/About pages; the legacy cards are gone. Profile is editable (name,
+  weigh-in, height/DOB/sex, goals) and schema v17 seeds those optional fields
+  null. Search opens the exact setting, setting anchors survive refresh, and the
+  active workout's gear opens a settings sheet that returns with the session
+  intact. The bottom tab bar stays hidden throughout.
 - Saved activity editing: `js/workout/edit-saved.js` edits a finished strength
   workout through a lossless DRAFT (weights, reps, holds, carries, notes) or a
   run's distance/time/HR/notes. Cancel never touches stored state. Strength can

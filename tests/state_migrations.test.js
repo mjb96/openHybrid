@@ -139,6 +139,17 @@ test('v12 seeds Home/Progress card preferences without hiding anything', () => {
   assert.equal(new Set(state.settings.ui.progress.order).size, state.settings.ui.progress.order.length);
 });
 
+test('v17 seeds optional profile fields without inventing values', () => {
+  const state = { schemaVersion: 16, settings: { name: 'Alex' }, weekStartedAt: '2026-11-16' };
+  migrateState(state);
+  assert.equal(state.schemaVersion, CURRENT_SCHEMA_VERSION);
+  assert.equal(state.settings.heightCm, null);
+  assert.equal(state.settings.birthDate, null);
+  assert.equal(state.settings.sex, null);
+  assert.equal(state.settings.trainingStartDate, null);
+  assert.equal(state.settings.name, 'Alex');
+});
+
 test('v13 seeds an empty measurement log and a unit from the weight choice', () => {
   const pounds = { schemaVersion: 12, settings: { weightUnit: 'lbs' }, weekStartedAt: '2026-11-16' };
   migrateState(pounds);

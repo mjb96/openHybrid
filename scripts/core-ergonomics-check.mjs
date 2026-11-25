@@ -163,7 +163,7 @@ try {
 
     await page.click('#homeSettingsBtn');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-    await inspect(page, `settings ${width}px`, ['#settingsOverlay .settings-back-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
+    await inspect(page, `settings ${width}px`, ['#settingsOverlay .s-back', '#settingsOverlay .s-row', '#settingsOverlay .s-search input', '#settingsOverlay .s-switch', '#settingsOverlay .s-action', '#settingsOverlay .s-input']);
     await page.click('#settingsOverlay [data-action="close-settings"]');
     await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
 
@@ -240,7 +240,8 @@ try {
     const { context, page } = await appPage(390);
     await page.click('#homeSettingsBtn');
     await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-    await page.click('#settingsTabs [data-settings-tab="data"]');
+    await page.click('#settingsOverlay [data-action="open-settings-page"][data-context="data.backup"]');
+    await page.waitForSelector('#settingsPageHost [data-action="export-training-context"]');
     await page.evaluate(() => {
       try { Object.defineProperty(window, 'showSaveFilePicker', { value: undefined, configurable: true }); } catch (_) {}
     });
@@ -257,8 +258,11 @@ try {
   await inspect(page, 'home 360px @200% text', ['.bottom-nav .nav-item', '.home-settings-btn', '.btn-history-link']);
   await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay[aria-hidden="false"]');
-  await page.click('#settingsTabs [data-settings-tab="training"]');
-  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .settings-back-btn', '#settingsOverlay .settings-toggle-btn', '#settingsOverlay .settings-action-btn', '#settingsOverlay .settings-input', '#settingsOverlay .settings-switch', '#settingsOverlay .hc-data-toggle']);
+  await page.click('#settingsOverlay [data-action="open-settings-page"][data-context="training.workout"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await inspect(page, 'settings 360px @200% text', ['#settingsOverlay .s-back', '#settingsOverlay .s-row', '#settingsOverlay .s-switch', '#settingsOverlay .s-action', '#settingsOverlay .s-input']);
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
   await page.waitForFunction(() => document.getElementById('settingsOverlay')?.getAttribute('aria-hidden') === 'true');
   await page.click('.bottom-nav [data-target="workout"]');

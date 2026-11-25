@@ -19,6 +19,7 @@ import {
   sectionMatchesQuery,
   firstMatchingRow,
 } from '../js/settings/nav.js';
+import { SETTINGS_PAGES, settingsPageForRoute } from '../js/settings/registry.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const HTML = readFileSync(path.join(ROOT, 'index.html'), 'utf8');
@@ -68,17 +69,14 @@ test('search opens the exact row, not merely the card', () => {
   assert.equal(firstMatchingRow(section, 'missing'), null);
 });
 
-test('every top-level section in index.html maps to a real tab', () => {
-  const tabIds = new Set(SETTINGS_TABS.map((tab) => tab.id));
-  const labels = topLevelSectionLabels();
-  assert.ok(labels.length >= 10, `expected the settings panel cards, got ${labels.length}`);
-  for (const label of labels) {
-    assert.ok(label, 'a top-level settings card has no label');
-    assert.ok(Object.hasOwn(SETTINGS_GROUP_BY_LABEL, label),
-      `top-level settings card "${label}" has no SETTINGS_GROUP_BY_LABEL entry`);
-  }
-  for (const [label, group] of Object.entries(SETTINGS_GROUP_BY_LABEL)) {
-    assert.ok(tabIds.has(group), `card "${label}" maps to unknown tab "${group}"`);
+test('the 13 top-level pages are unique and every route resolves', () => {
+  assert.equal(SETTINGS_PAGES.length, 13);
+  assert.equal(new Set(SETTINGS_PAGES.map((page) => page.id)).size, 13);
+  assert.equal(new Set(SETTINGS_PAGES.map((page) => page.route)).size, 13);
+  for (const page of SETTINGS_PAGES) {
+    assert.ok(page.label.trim(), `${page.id} has no label`);
+    assert.ok(['training', 'once', 'connections', 'data', 'about'].includes(page.section), `${page.id} has an unknown section`);
+    assert.equal(settingsPageForRoute(page.route)?.id, page.id);
   }
 });
 
