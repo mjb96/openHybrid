@@ -1274,7 +1274,7 @@ first.
 | HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count now render on separate lines. The card still links to the legacy Strength screen until PG3/PG5 give that content a band home. |
 | HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
-| HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | PARTIAL | Ready/rest/in-progress/completed/unresolved/no-plan/offline-note/past-week empty exist; no explicit first-run state and offline is only a note. |
+| HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | DONE | Ready/rest/in-progress/completed/unresolved/no-plan/past-week empty were already distinct. Added an explicit **first session** state (no completed work anywhere), moved the offline note into the card head so it is visible while collapsed, and made a one-signal readiness read say "limited signal" instead of presenting it as settled. `home_today_card` tests pin all three; Home Today browser check passes. |
 | HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | DONE | One owner per figure: readiness → the Today card's guidance (and the recovery detail); bodyweight + delta → the bodyweight card; weekly volume, sessions and working sets → the Strength week card; planned sessions → the week rail. The coach is advisory only (fasting, load/ACWR, streak) and hides while the overtraining card is up. `tests/home_metric_ownership.test.js` pins the rule; `home-today-browser-check` still passes. |
 
 **Acceptance:** Home answers "what should I do today?" without scrolling; no
@@ -1629,6 +1629,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H2 HM6: honest first-session, offline and partial-data states.**
+  - A brand-new athlete (no completed work anywhere) gets a `First session`
+    eyebrow and a baseline-setting line; one completed set removes it.
+  - The offline reassurance moved from the collapsed detail into the card head,
+    so it is visible on the compact row.
+  - A one-signal readiness score reads as `limited signal — add a check-in for a
+    sharper read` rather than a settled number. Rest / no plan / unresolved /
+    completed / past-week states were already distinct.
+  - Tests: four new `home_today_card` cases; Home Today browser check passes.
+
 - **2026-11-25 — H2 HM7: one owner per Home metric, with a guard.**
   - Audited Home: the coach line was restating readiness, bodyweight delta,
     weekly-volume delta, planned-session progress and working sets that other
@@ -1756,22 +1766,6 @@ device timing it did not measure.
   - Decision: `/settings` is implemented as `#/settings` because the hosted PWA
     and Android asset origin have no refresh rewrite. Approve the hash or add a
     server fallback before individual setting deep links (Phase 6).
-
-- **2026-11-25 — H1 Settings/Profile rebuild: Phase 0 audit, awaiting approval.**
-  - Inventoried all 48 `settings.*` keys, 3 settings-like root values and the
-    Profile page's stored/derived fields with defaults, readers, current UI and
-    proposed page.
-  - Audited every entry point: Home avatar → Profile → Settings modal; the Home
-    sliders control is Customize Home; no URL route, PWA shortcut, cockpit gear
-    or browser-back path through Profile.
-  - Flagged dead stores (`recoveryFeel`, `profileSections`, `dashboardTiles`,
-    `weeklyFrequency`/`sessionMinutes`), duplicates (`defaultBodyWeight` vs the
-    weigh-in log, two fasting lengths, projected equipment fields) and missing
-    IA fields (height/DOB/sex/training start, formats, backup timestamp,
-    Watches/AI Coach/Strava).
-  - Full matrix and 13-row mapping:
-    `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
-    changed. Next: approval, then Phase 1 navigation.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

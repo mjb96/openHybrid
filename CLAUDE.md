@@ -468,7 +468,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/home/today-card.js`). A fresh `ready` day collapses Today to one compact
   row but KEEPS `#homePrimaryCta` visible; tapping today's date cell or the row
   expands the guidance, and `isTodayCardCollapsible` keeps in-progress/
-  completed/rest/no-plan/unresolved states fully open. The ready card previews
+  completed/rest/no-plan/unresolved states fully open.
+  States stay honest: a no-history athlete gets a `First session` state, the
+  offline note sits in the visible head, and a one-signal readiness read says
+  `limited signal`. The ready card previews
   up to three lifts with the same target and last-time numbers the cockpit
   resolves through `workout/session-preview.js` (shared with Train); the compact
   row carries a one-line version. Hiding "This week" in

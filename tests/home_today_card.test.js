@@ -339,3 +339,46 @@ test('a day whose plan moved away is rest, not the old weekday plan', () => {
   assert.equal(card.tone, 'rest');
   assert.deepEqual(card.primary, { action: 'open-wellness-checkin', label: 'Log wellness check-in' });
 });
+
+test('a brand-new athlete gets an explicit first-session state', () => {
+  const fresh = state();
+  fresh.weeks['1'].lifts = {};
+  const card = buildTodayCardModel({
+    state: fresh, program: PROGRAM, model, now: MONDAY, tz: DISPLAY_TZ,
+  });
+  assert.equal(card.state, 'ready');
+  assert.equal(card.eyebrow, 'First session');
+  assert.match(card.guidance, /sets your baseline/);
+  assert.deepEqual(card.primary, { action: 'select-program-workout', day: 'mon', label: 'Start workout' });
+});
+
+test('one completed set removes the first-session label', () => {
+  const started = state();
+  started.weeks['1'].lifts.mon = {
+    'Bench Press': [{ w: '80', r: '5', c: true, tr: 5 }],
+  };
+  const card = buildTodayCardModel({
+    state: started, program: PROGRAM, model, now: MONDAY, tz: DISPLAY_TZ,
+  });
+  assert.notEqual(card.eyebrow, 'First session');
+});
+
+test('a one-signal readiness read says it is limited instead of settled', () => {
+  const started = state();
+  started.weeks['0'] = { lifts: { mon: { 'Bench Press': [{ w: '80', r: '5', c: true, tr: 5 }] } }, runs: {}, runSessions: {}, gymStats: {} };
+  const card = buildTodayCardModel({
+    state: started, program: PROGRAM, now: MONDAY, tz: DISPLAY_TZ,
+    model: { ready: { hasData: true, score: 55, confidence: 'low' }, rec: { badge: 'Productive', headline: 'On track' } },
+  });
+  assert.match(card.guidance, /limited signal/);
+  assert.match(card.guidance, /sharper read/);
+});
+
+test('the offline note is visible in the card head, not only the detail', () => {
+  const card = buildTodayCardModel({
+    state: state(), program: PROGRAM, model, now: MONDAY, offline: true, tz: DISPLAY_TZ,
+  });
+  const html = todayCardHTML(card);
+  const head = html.slice(html.indexOf('today-card__head'), html.indexOf('today-card__detail'));
+  assert.match(head, /logging still saves on this device/);
+});
