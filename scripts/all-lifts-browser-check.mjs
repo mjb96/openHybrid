@@ -32,7 +32,7 @@ const state = {
   schemaVersion: 17, currentWeek: '4', activeProgramId: 'hybrid_engine', activeActivationId: 'act', weekStartedAt: '2026-11-23',
   settings: { name: 'Alex', theme: 'dark', palette: 'midnight', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon', onboardingComplete: true, fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentProfiles: [], restPeriods: {} },
   weeks: { ...weeks, '4': { activationId: 'act', programId: 'hybrid_engine', dates: {}, lifts: {}, gymStats: {}, runSessions: {} } },
-  bodyWeightLog: [], bodyMeasurements: [],
+  bodyWeightLog: [{ date: '2026-11-23', weight: 78 }], bodyMeasurements: [],
   programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
   healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
   hybridScore: { history: [], xp: 0 }, loadMetrics: { atl: 0, ctl: 0 },
@@ -98,6 +98,8 @@ try {
   }));
   check(trend.active === '1y', 'the 1-year range selects');
   check(/Trend/.test(trend.rate) && /week/.test(trend.rate), `the weekly rate is stated (${trend.rate})`);
+  const relative = await page.evaluate(() => document.querySelector('.an-ex-relative')?.textContent?.replace(/\s+/g, ' ').trim() || '');
+  check(/× bodyweight/.test(relative) && /est\./.test(relative), `relative strength is labelled as an estimate (${relative})`);
   check(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 } finally {

@@ -11,7 +11,7 @@ import { VOLUME_LANDMARKS, zoneLabel, classifyVolume } from '../calculations/vol
 import { esc } from './screen-kit.js';
 import { buildVolumeGuideModel, musclePriorityLabel, muscleVolumeCorridor } from '../volume-guide.js';
 import { resolveProgramForState } from '../../state.js';
-import { formatWeekRange } from '../../dates.js';
+import { formatDayMonthShort, formatWeekRange } from '../../dates.js';
 
 /** @type {'12w'|'6m'|'all'} */
 /** @type {'4w'|'12w'|'6m'|'1y'|'all'} */
@@ -170,6 +170,7 @@ export function renderExerciseDetail(state, entity = {}) {
         <strong class="an-ex-hero__v">${esc(model.latest.top.text)}</strong>
         <span class="an-ex-hero__sub">${model.change ? `<b class="${comparisonTone}">${model.change.direction === 'up' ? '↑' : model.change.direction === 'down' ? '↓' : '='} ${esc(model.change.text)}</b>` : 'First session in this range'} · ${model.latest.sets} working set${model.latest.sets === 1 ? '' : 's'}</span>
       </article>
+      ${model.relative ? `<p class="an-ex-relative">Relative strength <b>${model.relative.ratio.toFixed(2)}× bodyweight</b> <small>(est. · ${model.relative.weight} ${esc(model.unit)} on ${esc(formatDayMonthShort(model.relative.date))})</small></p>` : ''}
       <section class="an-volume-summary an-ex-summary" aria-label="Exercise summary">
         ${cards.map(([label, value]) => `<article><span>${esc(label)}</span><strong>${esc(value)}</strong></article>`).join('')}
       </section>

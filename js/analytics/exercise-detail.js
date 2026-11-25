@@ -15,6 +15,8 @@ import {
 import { addDaysISO, localDayKey } from './weekly-aggregate.js';
 import { daysBetween } from '../dates.js';
 import { buildSetRecords } from '../strength/set-records.js';
+import { normalizeWeighIns } from '../metrics/bodyweight.js';
+import { resolveExercise } from '../exercises/catalog.js';
 import {
   SET_MODE, formatDistance, formatDuration, isRepSet, setModeOf, setVolume,
 } from '../set-utils.js';
@@ -196,6 +198,24 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     }
   }
 
+  // A8: relative strength for the big three, only from a RECENT dated weigh-in.
+  // The e1RM is an estimate, and the ratio inherits that; an old or undated
+  // bodyweight would make the number a false claim.
+  const BIG3 = new Set(['back_squat', 'barbell_bench_press', 'conventional_deadlift']);
+  let relative = null;
+  if (BIG3.has(resolveExercise(exerciseName)?.id) && latest?.e1rm > 0) {
+    const weighIns = normalizeWeighIns(state?.bodyWeightLog);
+    const weighIn = weighIns[weighIns.length - 1];
+    const age = weighIn ? daysBetween(weighIn.date, today) : null;
+    if (weighIn && age != null && age >= 0 && age <= 30) {
+      relative = {
+        ratio: Math.round((latest.e1rm / weighIn.weight) * 100) / 100,
+        weight: weighIn.weight,
+        date: weighIn.date,
+      };
+    }
+  }
+
   const bestText = best
     ? latestShape === SET_MODE.TIME ? `${best.top.weight > 0 ? `${best.top.weight}${unit} · ` : ''}${formatDuration(best.top.sec)}`
       : latestShape === SET_MODE.DISTANCE ? `${best.top.weight > 0 ? `${best.top.weight}${unit} · ` : ''}${formatDistance(best.top.dist)}m`
@@ -215,6 +235,7 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     previous,
     change,
     rate,
+    relative,
     totals,
     setRecords,
     chart: {
