@@ -16,6 +16,7 @@ const checks = [
   'scripts/settings-nav-browser-check.mjs',
   'scripts/settings-navigation-browser-check.mjs',
   'scripts/settings-components-browser-check.mjs',
+  'scripts/settings-scroll-browser-check.mjs',
   'scripts/settings-contextual-browser-check.mjs',
   'scripts/progress-hub-browser-check.mjs',
   'scripts/photo-browser-check.mjs',

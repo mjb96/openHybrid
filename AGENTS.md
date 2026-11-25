@@ -98,6 +98,12 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   → Modules. `.settings-switch` is a 44px hit area around the unchanged 42×24
   track, every switch has an accessible name, `.hc-data-toggle` is a 44px row,
   and `.settings-body` pads with `--safe-bottom` after the env() fallback.
+  `.settings-body` is the ONE scroller for the panel: `.s-page__body` grows with
+  its content and must NOT declare its own `overflow-y` — a nested scroll
+  container with `overscroll-behavior: contain` swallowed every wheel/touch
+  gesture and froze all 13 detail pages while programmatic `scrollTop` still
+  worked. `scripts/settings-scroll-browser-check.mjs` drives a REAL wheel at
+  390/320 to keep it that way.
   Threshold pace accepts strict `mm:ss` (60–3600 s) or legacy seconds and leaves
   the stored value untouched on invalid input. `tests/settings_wiring.test.js`
   ratchets the STATIC settings input/select/textarea ids to a handler (not

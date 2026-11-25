@@ -232,13 +232,24 @@ export function dangerRow(row) {
 /**
  * Collapse a large page title after its body scrolls. Pure DOM helper so pages
  * do not each write a scroll listener.
+ *
+ * The page body GROWS with its content, so it is not the scroller: the panel
+ * host (.settings-body) is. Listening to the body meant `is-scrolled` never
+ * became true and the title never collapsed.
  * @param {Element|null} page
  */
 export function mountCollapsingTitle(page) {
   const body = page?.querySelector('.s-page__body');
   if (!page || !body) return () => {};
-  const onScroll = () => page.classList.toggle('is-scrolled', body.scrollTop > 8);
-  body.addEventListener('scroll', onScroll, { passive: true });
+  /** @type {Element|null} */
+  let scroller = body.parentElement;
+  while (scroller && scroller !== document.body) {
+    if (/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) break;
+    scroller = scroller.parentElement;
+  }
+  if (!scroller || scroller === document.body) return () => {};
+  const onScroll = () => page.classList.toggle('is-scrolled', scroller.scrollTop > 8);
+  scroller.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
-  return () => body.removeEventListener('scroll', onScroll);
+  return () => scroller.removeEventListener('scroll', onScroll);
 }

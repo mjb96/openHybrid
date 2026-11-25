@@ -58,9 +58,12 @@
 
 .s-page__body {
   flex: 1;
-  overflow-y: auto;
+  /* The panel's .settings-body is the ONE scroller. This element grows with its
+     content, so `overflow-y: auto` made it a scroll container with nothing to
+     scroll — and `overscroll-behavior: contain` then swallowed every wheel/touch
+     gesture instead of chaining it to the host. Every Settings detail page was
+     frozen mid-list on a phone. Keep it non-scrolling. */
   padding: 12px 16px calc(32px + var(--safe-bottom));
-  overscroll-behavior: contain;
 }
 .s-page__intro,
 .s-page__footer,
