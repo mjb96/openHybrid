@@ -521,7 +521,11 @@ function _showSettings(page, anchor = '') {
     _setupSettingsNavigation();
     if (anchor) {
       setTimeout(() => {
-        const target = document.querySelector(`#settingsPageHost [data-setting-key="${String(anchor).replace(/"/g, '\\"')}"]`);
+        // Compare the dataset value instead of building a selector from it:
+        // no interpolation means no escaping bug (CodeQL js/incomplete-sanitization).
+        const key = String(anchor);
+        const target = [...document.querySelectorAll('#settingsPageHost [data-setting-key]')]
+          .find((el) => el.dataset.settingKey === key);
         if (!target) return;
         target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         target.classList.add('is-pulse');
