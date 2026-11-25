@@ -74,6 +74,7 @@ export function renderExercises(model, options = {}) {
       detail: progressDetailFor('exercises'),
       eyebrow: 'Main exercises',
       title: 'Main exercises',
+      value: 'No lifts',
       sub: model.range?.spanLabel,
       body: stateBlock('empty', {
         message: 'Log the same lift a few times and its progress appears here.',

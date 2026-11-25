@@ -58,6 +58,7 @@ export function renderBody(model, options = {}) {
       detail: progressDetailFor('body'),
       eyebrow: 'Body',
       title: 'Body',
+      value: 'No entries',
       sub: model.range?.spanLabel,
       body: stateBlock('empty', {
         message: 'No weigh-ins or measurements yet.',

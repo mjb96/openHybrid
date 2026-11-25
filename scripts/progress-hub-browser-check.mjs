@@ -244,8 +244,9 @@ try {
       const bands = [...section.querySelectorAll('.pg-band')];
       return {
         bands: bands.map((band) => band.getAttribute('data-band')),
-        // Every band must carry a headline value and no empty chart shell.
-        // Reports is a link list, not a measurement: it has no headline to show.
+        // Every measured band must carry a headline value and no empty chart
+        // shell. Reviews is a Week | Month | Year row, not a measurement, so it
+        // is the one band with no headline to show.
         values: bands
           // Reviews is a Week | Month | Year row, not a measurement: it has no
           // headline to show (Pulse, and every data band, do).
@@ -290,8 +291,10 @@ try {
     });
     console.log(`Progress hub ${width}px/${theme}:`, JSON.stringify(seen, null, 0));
 
-    // The bands ARE Progress now. Pulse and Balance lead, and nothing renders
-    // without something to say except Pulse (whose empty state is the answer).
+    // The bands ARE Progress now. Once an athlete has logged anything, every
+    // enabled and visible band renders — a band with nothing in this range says
+    // so in place instead of vanishing, so a Customize switch can never look
+    // broken. Only a fully empty profile falls back to Pulse + Reviews.
     if (seen.bands[0] !== 'pulse') failures.push(`${width}px: Progress does not open on Pulse (${seen.bands.join(',')})`);
     if (!seen.bands.includes('muscles')) failures.push(`${width}px: no Muscles band despite logged working sets`);
     if (seen.bands.length > 8) failures.push(`${width}px: more bands than the catalogue allows`);

@@ -45,6 +45,9 @@ export function renderBalance(model, options = {}) {
       id: 'balance',
       eyebrow: 'Balance',
       title: 'Balance',
+      // A visible band always answers its question, even when the answer is
+      // "nothing to split yet" — a blank headline looked like a broken card.
+      value: !model.hasStrength && !model.hasEndurance ? 'No training' : 'No split',
       sub: model.range?.spanLabel,
       body: stateBlock('empty', { message }),
     });

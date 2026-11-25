@@ -127,14 +127,17 @@ export function buildProgressDashboard(state, options = {}) {
   const availability = {};
   /** @type {Array<{ id: BandId, collapsed: boolean, model?: any, error?: string }>} */
   const bands = [];
-  // A band that can actually appear. Distinct from "not hidden": a visible band
-  // with no data for this range is not something to show either.
+  // A band that actually reaches the surface: enabled, not hidden, and either it
+  // has data, it is an always-show band, or the athlete has SOMETHING logged.
   let renderableCount = 0;
 
   // Render order follows the athlete's saved order, then catalogue order for
   // anything missing (a band added in a later release).
   const byId = new Map(BAND_DEFINITIONS.map((def) => [def.id, def]));
   const order = ui.progress.order.filter((id) => byId.has(id));
+
+  /** Built models, rendered in a second pass once we know what the athlete has. */
+  const built = [];
 
   for (const id of order) {
     const def = byId.get(id);
@@ -169,16 +172,33 @@ export function buildProgressDashboard(state, options = {}) {
       });
       const hasData = !!model?.hasData;
       availability[id] = { hasData, moduleOff: false, hidden: isHidden };
-      // A band with nothing to say does not render — unless its empty state is
-      // the answer (Pulse) or it is a static link row (Reports).
-      if (!isHidden && (hasData || def.alwaysShow)) {
-        bands.push({ id, collapsed: isCollapsed(id, focus), model });
-        renderableCount += 1;
-      }
+      built.push({ id, def, isHidden, model, hasData });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       availability[id] = { hasData: false, moduleOff: false, hidden: isHidden, error: message };
-      if (!isHidden) bands.push({ id, collapsed: false, error: message });
+      built.push({ id, def, isHidden, error: message });
+    }
+  }
+
+  // The toggle contract: once an athlete has logged ANYTHING, every enabled and
+  // visible band renders — a band with nothing in THIS range states that in
+  // place instead of vanishing, so a Customize switch can never look broken.
+  // A completely empty profile still gets the single honest empty lead plus
+  // Pulse/Reviews, not eight empty cards. (Two passes: "has the athlete logged
+  // anything?" is only knowable after every model is built.)
+  // `alwaysShow` bands (Pulse, Reviews) report hasData by design, so they must
+  // not count as "this athlete has logged something".
+  const anyData = built.some((entry) => entry.hasData && !entry.def.alwaysShow);
+  for (const entry of built) {
+    if (entry.isHidden) continue;
+    if (entry.error) {
+      bands.push({ id: entry.id, collapsed: false, error: entry.error });
+      renderableCount += 1;
+      continue;
+    }
+    if (entry.hasData || entry.def.alwaysShow || anyData) {
+      bands.push({ id: entry.id, collapsed: isCollapsed(entry.id, focus), model: entry.model });
+      renderableCount += 1;
     }
   }
 

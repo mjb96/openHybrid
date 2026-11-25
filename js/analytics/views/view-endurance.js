@@ -88,6 +88,7 @@ export function renderEndurance(model, options = {}) {
       detail: progressDetailFor('endurance'),
       eyebrow: 'Endurance',
       title: 'Endurance',
+      value: 'No runs',
       sub: model.range?.spanLabel,
       body: stateBlock('empty', {
         message: 'No runs in this period.',

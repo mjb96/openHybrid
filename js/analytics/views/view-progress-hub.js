@@ -75,7 +75,7 @@ function headerActions(extras) {
         <p>A part-finished period is compared only with the same elapsed days of the previous one, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
       </div>
     </details>
-    ${(extras.bands || []).length ? '<button type="button" class="hub-customize-btn" data-action="share-progress" aria-label="Share a summary of this page">Share</button>' : ''}
+    ${(extras.bands || []).some((entry) => entry && entry.id !== 'reviews' && entry.model?.hasData) ? '<button type="button" class="hub-customize-btn" data-action="share-progress" aria-label="Share a summary of this page">Share</button>' : ''}
     <button type="button" class="hub-customize-btn" data-action="open-customize" data-surface="progress" aria-label="Customize Progress cards">Customize</button>
   </div>`;
 }
