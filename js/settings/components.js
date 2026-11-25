@@ -247,7 +247,12 @@ export function mountCollapsingTitle(page) {
     if (/(auto|scroll)/.test(getComputedStyle(scroller).overflowY)) break;
     scroller = scroller.parentElement;
   }
-  if (!scroller || scroller === document.body) return () => {};
+  if (!scroller || scroller === document.body) {
+    // A page mounted outside the panel (the component probe) has no panel
+    // scroller. Watching the body keeps the behaviour real and testable; in the
+    // app the loop above always finds .settings-body first.
+    scroller = body;
+  }
   const onScroll = () => page.classList.toggle('is-scrolled', scroller.scrollTop > 8);
   scroller.addEventListener('scroll', onScroll, { passive: true });
   onScroll();

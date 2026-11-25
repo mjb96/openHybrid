@@ -40,6 +40,7 @@ export function renderFastingBand(model, options = {}) {
       detail: progressDetailFor('fasting'),
       eyebrow: 'Fasting',
       title: 'Fasting',
+      value: 'No fasts',
       sub: model.range?.spanLabel,
       body: stateBlock('empty', {
         message: 'No completed fasts in this period.',

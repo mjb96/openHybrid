@@ -294,6 +294,12 @@ async function shareProgressSummary() {
   const rows = [];
   for (const band of progressDashboard.bands) {
     const model = band.model || {};
+    // A band with nothing in this range now renders an honest empty state on
+    // the hub, but it has no number to share. Sharing "undefined %" would be a
+    // fabricated statistic in an image the athlete sends to someone else.
+    if (!model.hasData) continue;
+    // Reviews is a Week | Month | Year row, not a measurement.
+    if (band.id === 'reviews') continue;
     if (band.id === 'pulse') rows.push({ bandId: 'pulse', value: `${model.sessions || 0} sessions`, note: `${model.streakWeeks || 0}-week streak` });
     if (band.id === 'balance') rows.push({ bandId: 'balance', value: `${model.strengthSharePct}% strength`, note: `${model.enduranceSharePct}% endurance` });
     if (band.id === 'muscles') rows.push({ bandId: 'muscles', value: `${model.totalSets} sets`, note: `${model.muscles?.length || 0} muscles` });
@@ -302,6 +308,7 @@ async function shareProgressSummary() {
     if (band.id === 'body') rows.push({ bandId: 'body', value: model.weight?.latest ? `${model.weight.latest} ${model.unit}` : '—', note: model.weight?.change == null ? '' : `${model.weight.change > 0 ? '+' : ''}${model.weight.change} ${model.unit}` });
     if (band.id === 'fasting') rows.push({ bandId: 'fasting', value: `${model.averageHours} h average`, note: `${model.adherencePct}% met goal` });
   }
+  if (!rows.length) return;
 
   const { shareProgressCard } = await import('./analytics/share-card.js');
   await shareProgressCard(rows, {

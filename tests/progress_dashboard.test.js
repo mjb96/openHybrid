@@ -28,9 +28,9 @@ function trainedState(overrides = {}) {
 
 const ctx = { todayISO: TODAY };
 
-test('a trained athlete gets Pulse and Muscles, each with a real model', () => {
+test('a trained athlete gets every enabled band, and the empty ones say so', () => {
   const model = buildProgressDashboard(trainedState(), ctx);
-  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'muscles', 'reviews']);
+  assert.deepEqual(model.bands.map((band) => band.id), ['pulse', 'exercises', 'muscles', 'body', 'reviews', 'balance', 'endurance', 'fasting']);
   const pulse = model.bands.find((band) => band.id === 'pulse');
   assert.equal(pulse.model.sessions, 1);
   assert.equal(model.availability.pulse.hasData, true);
@@ -38,19 +38,19 @@ test('a trained athlete gets Pulse and Muscles, each with a real model', () => {
   assert.ok(model.previous, 'a comparable previous window exists');
 });
 
-test('bands that are declared but not built never reach the surface', () => {
+test('a band that is declared but not built never reaches the surface', () => {
   const model = buildProgressDashboard(trainedState(), ctx);
   const ids = model.bands.map((band) => band.id);
-  assert.ok(!ids.includes('balance'), 'Balance has nothing to say yet');
   assert.ok(ids.includes('muscles'), 'Muscles is built now');
+  // Balance IS built, so a strength-only athlete sees its honest empty state
+  // rather than the band disappearing between visits.
+  assert.equal(model.availability.balance.pending, undefined);
+  assert.equal(model.availability.balance.hasData, false);
+  assert.ok(ids.includes('balance'), 'a built band renders its empty state');
   // Every band is built now.
   assert.equal(model.availability.fasting.pending, undefined, 'fasting is built now');
   assert.equal(model.availability.body.pending, undefined, 'body is built now');
   assert.equal(model.availability.endurance.hasData, false, 'no runs in the fixture');
-  // Balance IS built, but a strength-only fixture gives it nothing to say, so
-  // it reports no data rather than pending and never reaches the surface.
-  assert.equal(model.availability.balance.pending, undefined);
-  assert.equal(model.availability.balance.hasData, false);
 });
 
 test('a hidden band is absent from the surface but still reported', () => {

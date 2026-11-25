@@ -78,16 +78,17 @@ test('a capped weekly chart keeps the NEWEST buckets', () => {
   assert.equal(model.buckets.at(-1).key, newest, 'the most recent week must be charted');
 });
 
-test('a visible band with no data is not silently blank', () => {
+test('a visible band with no data renders its empty state, never silently blank', () => {
   const state = {
     settings: {
-      ui: { progress: { hidden: ['pulse', 'balance', 'muscles', 'exercises', 'body', 'fasting', 'reports'] } },
+      ui: { progress: { hidden: ['pulse', 'balance', 'muscles', 'exercises', 'body', 'fasting', 'reviews'] } },
     },
     // Strength data exists, but the only visible band is Endurance with no runs.
     weeks: { '1': { dates: { mon: '2026-11-23' }, lifts: { mon: { 'Bench Press': [done(100)] } } } },
   };
   const model = buildProgressDashboard(state, { todayISO: '2026-11-24' });
   assert.equal(model.visibleCount, 1, 'Endurance is not hidden');
-  assert.equal(model.renderableCount, 0, 'but it has nothing to show');
-  assert.deepEqual(model.bands, []);
+  assert.equal(model.renderableCount, 1, 'it renders its honest empty state');
+  assert.deepEqual(model.bands.map((b) => b.id), ['endurance']);
+  assert.equal(model.bands[0].model.hasData, false);
 });

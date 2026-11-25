@@ -599,10 +599,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   rows for every band. `js/analytics/progress-dashboard.js` composes bands and
   keeps three answers distinct — hidden by the athlete, module off, no data yet —
   and renders a throwing band as an error instead of blanking the tab. Customize
-  is the eight bands (`pulse, balance, muscles, exercises, endurance, body,
-  fasting, reports`); `PROGRESS_CARD_ALIASES` maps the pre-band ids so saved
-  choices survive the rename, nothing is pinned, and the last visible card cannot
-  be hidden. **Stylesheets are hand-listed in `scripts/gen-precache.mjs` CORE and
+  is the eight registered sections (`pulse, exercises, muscles, body, reviews,
+  balance, endurance, fasting`); `PROGRESS_CARD_ALIASES` maps the pre-band ids so
+  saved choices survive the rename, nothing is pinned, and the last visible card
+  cannot be hidden. **Stylesheets are hand-listed in `scripts/gen-precache.mjs` CORE and
   are not discovered by the module graph** — `tests/precache_manifest.test.js`
   now scans `<link>` as well as `<script src>`, so a new sheet cannot ship
   uncached and render unstyled offline. Design and work order:
@@ -616,8 +616,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   unrated walk would count like a hard session, so
   `dailyLoadBreakdownTimeline` reports `walkLoad`/`walkMin` and both Balance and
   Home's hybrid card subtract them; the excluded time is still displayed. A
-  one-modality window renders an explanation, never a 100 % bar. The composer's
-  `alwaysShow` flag means only Pulse and Reports render without data. The range
+  one-modality window renders an explanation, never a 100 % bar. **The toggle
+  contract:** once an athlete has logged anything, EVERY enabled and visible band
+  renders, and a band with nothing in the selected range says so in place
+  (`No fasts`, `No runs`, `No sets`… ) instead of vanishing — a Customize switch
+  must never look broken. `alwaysShow` (Pulse, Reviews) is the only rule for a
+  completely empty profile, which keeps the single empty lead plus those two,
+  never eight empty cards. The range
   bar (30D/3M/1Y/All) and the All/Strength/Endurance filter are ephemeral module
   state driven by one delegated listener (`data-pg-range` / `data-pg-focus`) —
   never persisted, because a remembered mode silently hides half the dashboard.

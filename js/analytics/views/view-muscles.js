@@ -188,6 +188,7 @@ export function renderMuscles(model, options = {}) {
       detail: progressDetailFor('muscles'),
       eyebrow: 'Muscles',
       title: 'Muscles',
+      value: 'No sets',
       sub: model.range?.spanLabel,
       body: stateBlock('empty', {
         message: 'No working sets in this period yet.',

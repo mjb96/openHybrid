@@ -1761,5 +1761,24 @@ device timing it did not measure.
   - Tests: 2,709 pass, including new store tests and default/summary registry
     gates. Existing cards still write directly until Phase 4.
 
+- **2026-11-25 — Progress: every enabled band renders (toggle contract).**
+  - A Customize switch looked broken: the composer only pushed a band when its
+    model had data (except Pulse/Reviews), so enabling Fasting or Endurance
+    showed nothing until that band happened to have a value in the selected range.
+  - The composer now builds every model and decides in a second pass. Once the
+    athlete has logged anything, every enabled and visible band renders; a band
+    with nothing in THIS range states it in place (`No fasts`, `No runs`,
+    `No sets`, `No split`, `No lifts`, `No entries`). A completely empty profile
+    keeps the single honest empty lead plus Pulse/Reviews, never eight cards.
+  - The share card skips data-less bands (it could have shared “undefined %
+    strength”) and the Share button only appears when something is shareable.
+  - Evidence: 2,741 tests (the composer contract test was updated, not deleted),
+    typecheck, smoke and `progress-hub-browser-check` at 320/390/412 px plus the
+    empty-profile case.
+  - Same branch: every Settings detail page was frozen because `.s-page__body`
+    declared `overflow-y:auto` + `overscroll-behavior:contain` with no overflow
+    of its own. `.settings-body` is the one scroller now, and
+    `scripts/settings-scroll-browser-check.mjs` drives a REAL wheel at 390/320.
+
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
