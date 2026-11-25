@@ -11,6 +11,7 @@ const checks = [
   // either mode before the slower feature checks run.
   'scripts/theme-visibility-browser-check.mjs',
   'scripts/home-today-browser-check.mjs',
+  'scripts/move-day-browser-check.mjs',
   'scripts/customize-browser-check.mjs',
   'scripts/settings-nav-browser-check.mjs',
   'scripts/settings-navigation-browser-check.mjs',

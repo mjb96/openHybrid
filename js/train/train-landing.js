@@ -23,6 +23,7 @@ import { buildHomeWeekStrip } from '../home/week-strip.js';
 import { buildActivityHistory } from '../activities/model.js';
 import { moduleEnabled } from '../modules.js';
 import { localDayKey } from '../dates.js';
+import { scheduledDayForDate } from '../schedule/week.js';
 import { sessionExercisePreview } from '../workout/session-preview.js';
 
 export { sessionExercisePreview };
@@ -80,8 +81,10 @@ export function buildTrainLanding(options) {
     now = new Date(), tz = undefined, offline = false, recentLimit = 3,
     days = DAY_KEYS } = options || {};
 
-  const today = buildTodayCardModel({ state, program, model, briefing, score, now, offline, tz });
   const todayISO = localDayKey(now, tz);
+  // A moved workout owns today's date; otherwise this is the weekday template.
+  const todayDay = scheduledDayForDate(state, program, todayISO)?.day || null;
+  const today = buildTodayCardModel({ state, program, model, briefing, score, now, offline, tz, todayDay });
   const week = buildHomeWeekStrip({ state, program, days, today: todayISO });
   const recent = recentActivities(state, recentLimit)
     .filter((row) => !['run', 'walk', 'ride'].includes(row.kind) || moduleEnabled(state, 'running'));

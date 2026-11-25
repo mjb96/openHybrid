@@ -10865,6 +10865,84 @@ html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
 /* Palette surfaces, text and accents live in css/tokens.css (semantic layer);
    brand aliases are mapped from them in css/brand-consistency.css. */
 
+
+/* ==========================================================================
+   MOVE A DAY (HM2) — free dates only
+   ========================================================================== */
+.today-card__link {
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+.move-sheet__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: var(--overlay-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.move-sheet__backdrop.active { opacity: 1; pointer-events: auto; }
+.move-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 14px 16px calc(16px + var(--safe-bottom));
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-default);
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--elevation-3);
+  transform: translateY(100%);
+  transition: transform 0.24s ease;
+}
+.move-sheet.active { transform: translateY(0); }
+.move-sheet__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.move-sheet__eyebrow {
+  margin: 0 0 2px;
+  color: var(--text-3);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.move-sheet__title { margin: 0; color: var(--text); font-size: 1.05rem; }
+.move-sheet__intro { margin: 8px 0 12px; color: var(--text-2); font-size: 0.8rem; line-height: 1.45; }
+.move-sheet__list { display: flex; flex-direction: column; gap: 6px; }
+.move-sheet__option {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 52px;
+  padding: 10px 14px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.move-sheet__option:disabled { opacity: 0.55; cursor: default; }
+.move-sheet__option-day { font-size: 0.9rem; font-weight: 750; }
+.move-sheet__option-date { color: var(--text-2); font-size: 0.78rem; }
+.move-sheet__option-reason { grid-column: 1 / -1; color: var(--text-3); font-size: 0.7rem; }
+@media (prefers-reduced-motion: reduce) {
+  .move-sheet, .move-sheet__backdrop { transition: none; }
+}
+
 /* Home card customization */
 .home-header-actions { display: flex; align-items: center; gap: 8px; }
 .home-customize-btn {

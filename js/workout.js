@@ -45,6 +45,7 @@ import { resolveExercise } from './exercises/catalog.js';
 import { deleteMapFromDB } from './db.js';
 import { hapticTick, hapticSuccess } from './haptics.js';
 import { dateKey } from './dates.js';
+import { scheduledDayForDate } from './schedule/week.js';
 import { isInternalLiftId, UNKNOWN_LIFT_NAME } from './state/lift-id.js';
 import { computeDashboardModel } from './home/dashboard-model.js';
 import { generateRecommendation } from './brain/recommendations.js';
@@ -696,8 +697,11 @@ export function renderWorkout() {
   const oneOff = activeOneOffSession(appState);
   const homeBlueprint = oneOffBlueprint(appState,
     activeProgram?.days?.[selectedDay] || { lifts: [], runs: "Rest" });
-  const todayProgramDay = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
-  const movedContext = oneOff ? null : rescheduledWorkoutContext(activeProgram, selectedDay, todayProgramDay);
+  const weekdayToday = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+  // A moved plan owns today's date; the notice compares the opened slot with the
+  // slot that is actually scheduled for today (HM2).
+  const scheduledToday = scheduledDayForDate(appState, activeProgram, dateKey())?.day || weekdayToday;
+  const movedContext = oneOff ? null : rescheduledWorkoutContext(activeProgram, selectedDay, scheduledToday);
   const cockpitTitle = document.getElementById('cockpitWorkoutTitle');
   const cockpitDayBadge = document.getElementById('cockpitDayBadge');
   const scheduleContext = document.getElementById('cockpitScheduleContext');
@@ -778,7 +782,7 @@ export function renderWorkout() {
     daySelectorBar.hidden = !!oneOff;
     const pills = daySelectorBar.querySelectorAll('.day-pill');
     const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-    const todayKey = todayProgramDay;
+    const todayKey = scheduledToday;
     pills.forEach((pill, idx) => {
       const dayKey = days[idx];
       const dayData = activeProgram.days?.[dayKey];

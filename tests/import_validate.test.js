@@ -216,3 +216,15 @@ test('import preview reports replacement counts and backup warning honestly', ()
   assert.match(message, /replaces the data currently on this device/);
   assert.match(message, /local backup is created first/);
 });
+
+test('a week schedule is reduced to known days and ISO dates', () => {
+  const clean = sanitizeImportedState({
+    ...okState(),
+    weekSchedule: {
+      '2026-11-23': { thu: '2026-11-29', x: '2026-11-29', fri: 'tomorrow' },
+      'not-a-week': { thu: '2026-11-29' },
+      bad: 42,
+    },
+  });
+  assert.deepEqual(clean.weekSchedule, { '2026-11-23': { thu: '2026-11-29' } });
+});

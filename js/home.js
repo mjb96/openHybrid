@@ -21,11 +21,14 @@ import { initFastingCard } from './home/fasting-card.js';
 import { setHTML } from './ui/render.js';
 import { escapeHtml } from './util.js';
 import { buildHomeWeekStrip } from './home/week-strip.js';
-import { HOME_WEEK_HISTORY, buildDayRecap, buildPastWeekView, dayRecapHTML, weekOffsetLabel, weekRecapHTML } from './home/week-view.js';
+import { HOME_WEEK_HISTORY, buildDayRecap, buildPastWeekView, dayRecapHTML, plannedDayHTML, weekOffsetLabel, weekRecapHTML } from './home/week-view.js';
 import { renderHomeBodyweight } from './home/bodyweight-card.js';
 import { renderHomeHybrid } from './home/hybrid-dashboard.js';
 import { reportHandledError, renderSafely } from './monitoring/report-error.js';
-import { addDaysISO, todayKey } from './dates.js';
+import { addDaysISO, startOfProgramWeek, todayKey } from './dates.js';
+import { movableDay, scheduledDayForDate, undoMove } from './schedule/week.js';
+import { openMoveDaySheet } from './home/move-day-sheet.js';
+import { showUndo } from './ui/undo-bar.js';
 import { buildVolumeGuideModel, hasExplicitMusclePriorities } from './analytics/volume-guide.js';
 import { moduleEnabled } from './modules.js';
 
@@ -88,9 +91,9 @@ export function answerCoachOnHome(intent) {
   if (!el) return;
   try {
     const appState = _getState();
-    const selectedDay = todayProgramDay();
     const days = _getDays();
     const activeProgram = getProgramById(appState.activeProgramId);
+    const selectedDay = scheduledDayForDate(appState, activeProgram, todayKey())?.day || todayProgramDay();
     const model = computeDashboardModel(appState, days, activeProgram, selectedDay);
     const score = computeHybridScore(model, appState, days, activeProgram);
     let risk = null;
@@ -315,7 +318,7 @@ function renderHomeWeek(appState, activeProgram) {
   const cells = pastView ? pastView.cells : strip.days;
 
   host.innerHTML = cells.map((cell) => {
-    const disabled = !cell.date || (cell.date && cell.date > today);
+    const disabled = !cell.date;
     const classes = ['home-week-day', `home-week-day--${cell.status}`];
     if (cell.isToday) classes.push('is-today');
     if (cell.date && cell.date === _homeSelectedDate) classes.push('is-selected');
@@ -431,6 +434,35 @@ function _setHomeWeekOffset(offset) {
 }
 
 document.addEventListener('click', (e) => {
+  const move = e.target.closest?.('[data-action="move-day"]');
+  if (move) {
+    e.preventDefault();
+    const appState = _getState();
+    const program = getProgramById(appState?.activeProgramId);
+    const day = move.getAttribute('data-day');
+    if (!appState || !program || !day) return;
+    openMoveDaySheet({
+      state: appState,
+      program,
+      day,
+      isDateLogged: (date) => !!buildDayRecap(appState, date, undefined, getProgramById)?.hasData,
+      onMoved: (result, date) => {
+        saveStateToLocalStorage(true);
+        _homeSelectedDate = null;
+        renderHome();
+        const [y, m, d] = String(date).split('-').map(Number);
+        const label = new Date(Date.UTC(y, m - 1, d, 12))
+          .toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+          .replace(',', '');
+        showUndo(`Workout moved to ${label}`, () => {
+          undoMove(appState, result.day, result.weekStart, result.previous);
+          saveStateToLocalStorage(true);
+          renderHome();
+        });
+      },
+    });
+    return;
+  }
   const nav = e.target.closest?.('[data-action="home-week-prev"], [data-action="home-week-next"], [data-action="home-week-today"], [data-action="home-week-recap"], [data-action="home-open-day-activity"]');
   if (nav) {
     e.preventDefault();
@@ -475,12 +507,13 @@ document.addEventListener('click', (e) => {
     return;
   }
 
-  // A completed day opens its own recap in the week surface. Nothing in the
-  // rail navigates away; the recap's explicit Open full activity does.
-  if (!cell.classList.contains('home-week-day--done')) return;
+  // A completed day opens its recap; a planned future day opens its plan so the
+  // athlete can move it. Neither navigates away from Home.
+  const state = _getState();
+  const program = getProgramById(state?.activeProgramId);
   const cached = _lastPastWeekView?.cells.find((entry) => entry.date === date)?.recap;
-  const recap = cached || buildDayRecap(_getState(), date, undefined, getProgramById);
-  if (!recap?.hasData) return;
+  const recap = cached || buildDayRecap(state, date, undefined, getProgramById);
+  if (!recap?.hasData && !scheduledDayForDate(state, program, date)) return;
   _homeSelectedDate = date;
   renderHome();
   document.getElementById('homeTodayCard')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -516,10 +549,11 @@ export function renderHome() {
   applyHomeCardVisibility(appState);
   // Home is a calendar-today surface. The cockpit's selected day is navigation
   // state and may point at a session the athlete merely previewed.
-  const homeDay = todayProgramDay();
-  const DEFAULT_DAYS = _getDays(); 
+  const DEFAULT_DAYS = _getDays();
 
   const activeProgram = getProgramById(appState.activeProgramId);
+  // The scheduled day, not the weekday: a moved workout owns today (HM2).
+  const homeDay = scheduledDayForDate(appState, activeProgram, todayKey())?.day || todayProgramDay();
   const wk = appState?.currentWeek || "1";
 
   const headlineEl = document.getElementById('homeWeekBlockIndicator');
@@ -595,15 +629,35 @@ export function renderHome() {
       _todayCardExpanded = false;
     }
     let selectedRecap = null;
+    let selectedPlan = null;
     if (_homeSelectedDate) {
       const cached = _lastPastWeekView?.cells.find((entry) => entry.date === _homeSelectedDate)?.recap;
       selectedRecap = cached || buildDayRecap(appState, _homeSelectedDate, undefined, getProgramById);
-      if (!selectedRecap?.hasData) _homeSelectedDate = null;
+      if (!selectedRecap?.hasData) {
+        // A planned but unlogged day is not a recap: show the plan and the one
+        // action that changes it (HM2). Today stays the Today decision.
+        const scheduled = scheduledDayForDate(appState, activeProgram, _homeSelectedDate);
+        if (scheduled && _homeSelectedDate !== todayKey()) selectedPlan = scheduled;
+        else _homeSelectedDate = null;
+      }
     }
     if (selectedRecap?.hasData) {
       setHTML(todayMount, dayRecapHTML({ date: _homeSelectedDate, recap: selectedRecap }, {
         weightUnit: appState.settings?.weightUnit,
         distanceUnit: appState.settings?.distanceUnit,
+        backAction: _homeWeekOffset < 0 ? 'home-week-recap' : 'home-week-today',
+        backLabel: _homeWeekOffset < 0 ? '← Back to week' : '← Back to today',
+      }));
+      _syncTodayCardToggle(null, false);
+    } else if (selectedPlan) {
+      const blueprint = activeProgram?.days?.[selectedPlan.day] || {};
+      setHTML(todayMount, plannedDayHTML({
+        date: _homeSelectedDate,
+        day: selectedPlan.day,
+        title: blueprint.title,
+        lifts: blueprint.lifts,
+        runs: blueprint.runs,
+      }, {
         backAction: _homeWeekOffset < 0 ? 'home-week-recap' : 'home-week-today',
         backLabel: _homeWeekOffset < 0 ? '← Back to week' : '← Back to today',
       }));
@@ -621,10 +675,13 @@ export function renderHome() {
         model,
         briefing,
         score: scoreResult,
+        todayDay: homeDay,
         offline: typeof navigator !== 'undefined' && navigator.onLine === false,
       });
       const expanded = isTodayCardCollapsible(card) && _todayCardExpanded;
-      setHTML(todayMount, todayCardHTML(card, { expanded }));
+      const weekStart = startOfProgramWeek(todayKey());
+      const canMove = !!weekStart && movableDay(appState, activeProgram, homeDay, weekStart).ok;
+      setHTML(todayMount, todayCardHTML(card, { expanded, canMove, moveDay: homeDay }));
       _syncTodayCardToggle(card, expanded);
     }
   }
