@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-hc507432ee829';
+const CACHE_NAME = 'openhybrid-v122-h5dda329928d6';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -27,6 +27,7 @@ const REQUIRED_ASSETS = [
   "./css/programs.css",
   "./css/progress.css",
   "./css/styles.css",
+  "./css/tokens.css",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
@@ -285,6 +286,7 @@ const REQUIRED_ASSETS = [
   "./js/sw-reload.js",
   "./js/templates.js",
   "./js/theme.js",
+  "./js/theme/tokens.js",
   "./js/timers.js",
   "./js/toast.js",
   "./js/train/train-landing.js",

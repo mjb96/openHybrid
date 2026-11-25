@@ -913,12 +913,16 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
-> **Theme colour system — Phase A0 audit landed 25 Nov 2026, awaiting approval.**
-> `docs/audit/theme-colour-audit.md` inventories 3,590 hard-coded colour literals
-> (866 distinct values) across `js/`, `css/`, `index.html`, `manifest.json` and `android/`,
-> records what the default Midnight palette actually resolves to, and proposes the token
-> groups. **Part A (tokens, CSS, UI) has not started**; token work should not begin until the
-> audit and its open product decisions (§12 of the audit) are approved.
+> **Theme colour system — A1/A2 landed 25 Nov 2026; A3 literal migration remains.**
+> The A0 audit (`docs/audit/theme-colour-audit.md`) inventories 3,590 literals.
+> A1 now ships the three-layer token system: `css/tokens.css` (primitives →
+> semantic → personality tokens) and `js/theme/tokens.js` (`resolveThemeTokens`,
+> `applyThemeTokens`, `useThemeTokens` with a `theme:changed` subscription).
+> The approved Midnight/light semantic values are published, the Slate card pins
+> and body-wide glows are gone, cards use `surface-1`/`divider`/`elevation-1`,
+> and meta/manifest/Android bars start at `#070B14`. **A3** (replacing the
+> remaining audited literals, chart/canvas colour reads and the screenshot matrix)
+> is still open.
 
 ### 14.1 Design stance
 
@@ -1416,6 +1420,21 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — Theme A1/A2: semantic token layer and Midnight baseline.**
+  - Added `css/tokens.css` with primitives, the full semantic set, data/tile
+    scales and personality tokens (radius, borders, elevation, bg-image, label
+    style, fonts, density, motion scale), plus a light semantic block.
+  - Added `js/theme/tokens.js` with `resolveThemeTokens`, `applyThemeTokens` and
+    `useThemeTokens` (redraw hook on `theme:changed`); palette application keeps
+    the semantic layer in sync and system-theme changes re-apply it.
+  - Removed the Slate card gradient/border/glow `!important` pins and the
+    body-wide glow; Home alone carries `--bg-image`. Set meta/manifest/Android
+    status colours to `#070B14`.
+  - Tests: `tests/theme_tokens.test.js` pins the Midnight values, CSS/JS token
+    coverage, both theme vocabularies and the apply/subscribe path.
+  - Next A3: migrate the remaining audited literals (especially charts/canvas),
+    add the contrast matrix and all-theme screenshots.
+
 - **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
   - One registry (`js/analytics/progress-sections.js`) now declares every
     section and detail: id, label, subtitle, module gate, default order and
@@ -1507,13 +1526,6 @@ device timing it did not measure.
     asserts both the active tab and the visible year container.
   - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
     the Reports band still duplicates the screen.
-
-- **2026-11-24 — H2 HM3: Strength this week states every figure.**
-  - The Home strength card now shows sessions and working sets together, the
-    same-weekday volume delta, the top e1RM change and this week's PR count.
-    Previously sets and PRs were mutually exclusive and sessions were absent.
-  - Still PARTIAL: the card links to the legacy Strength screen until the
-    Progress restructure (PG3/PG5) owns that evidence.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

@@ -24,6 +24,7 @@ import { convertStoredWeights, normalizeWeightUnit } from './metrics/weight-unit
 import { computeExercisePRs } from './engine.js';
 import { latestWeighIn } from './metrics/bodyweight.js';
 import { applyPalette, normalizePalette } from './theme.js';
+import { applyThemeTokens } from './theme/tokens.js';
 import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
 import {
@@ -714,6 +715,7 @@ function _applyTheme(mode) {
   } else {
     document.documentElement.dataset.theme = mode;
   }
+  applyThemeTokens(document.documentElement);
 }
 
 export function setPalette(id) {
@@ -1830,6 +1832,7 @@ export function applySettingsOnBoot(appState) {
     window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
       if (_getState?.()?.settings?.theme === 'system') {
         document.documentElement.dataset.theme = e.matches ? 'dark' : 'light';
+        applyThemeTokens(document.documentElement);
       }
     });
   }

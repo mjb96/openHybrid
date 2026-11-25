@@ -1,0 +1,147 @@
+/* ==========================================================================
+   THEME TOKENS — layered colour and personality tokens.
+   Primitives are raw values; components consume ONLY the semantic layer.
+   Loaded after the legacy sheets so the semantic layer wins without changing
+   the existing palette blocks yet (Part B owns extra themes).
+   ========================================================================== */
+
+:root {
+  /* --- Primitive palette (raw, never used by components) --- */
+  --p-navy-950: #070b14;
+  --p-navy-900: #0f1624;
+  --p-navy-850: #161f31;
+  --p-navy-800: #1d2840;
+  --p-slate-100: #eef2f8;
+  --p-slate-300: #a3aec2;
+  --p-slate-500: #7584a0;
+  --p-cyan-400: #22d3ee;
+  --p-cyan-500: #06b6d4;
+  --p-green-400: #34d399;
+  --p-amber-400: #fbbf24;
+  --p-red-400: #f87171;
+  --p-blue-400: #60a5fa;
+  --p-indigo-400: #7c8cff;
+  --p-orange-400: #ff9f5a;
+  --p-blue-500: #4c8df6;
+  --p-green-500: #34c77b;
+  --p-orange-500: #f59a3d;
+  --p-red-500: #ef5a6f;
+  --p-purple-500: #9b7bf2;
+  --p-pink-500: #e873b9;
+  --p-teal-500: #2bb8b0;
+  --p-slate-400: #7d8799;
+
+  /* --- Semantic colour: Midnight --- */
+  --bg: var(--p-navy-950);
+  --surface-1: var(--p-navy-900);
+  --surface-2: var(--p-navy-850);
+  --surface-3: var(--p-navy-800);
+  --divider: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --text: var(--p-slate-100);
+  --text-2: var(--p-slate-300);
+  --text-3: var(--p-slate-500);
+  --text-inverse: #04202a;
+  --accent: var(--p-cyan-400);
+  --accent-pressed: var(--p-cyan-500);
+  --accent-subtle: rgba(34, 211, 238, 0.14);
+  --on-accent: #04202a;
+  --accent-text: var(--p-cyan-400);
+  --success: var(--p-green-400);
+  --success-subtle: rgba(52, 211, 153, 0.14);
+  --warning: var(--p-amber-400);
+  --warning-subtle: rgba(251, 191, 36, 0.14);
+  --danger: var(--p-red-400);
+  --danger-subtle: rgba(248, 113, 113, 0.14);
+  --info: var(--p-blue-400);
+  --info-subtle: rgba(96, 165, 250, 0.14);
+  --domain-strength: var(--p-indigo-400);
+  --domain-endurance: var(--p-orange-400);
+  --domain-recovery: var(--p-green-400);
+  --data-1: #4c8df6;
+  --data-2: #34c77b;
+  --data-3: #f59a3d;
+  --data-4: #ef5a6f;
+  --data-5: #9b7bf2;
+  --data-6: #e873b9;
+  --data-7: #2bb8b0;
+  --data-8: #7d8799;
+  --tile-1: #4c8df6;
+  --tile-2: #34c77b;
+  --tile-3: #f59a3d;
+  --tile-4: #ef5a6f;
+  --tile-5: #9b7bf2;
+  --tile-6: #e873b9;
+  --tile-7: #2bb8b0;
+  --tile-8: #7d8799;
+  --overlay-scrim: rgba(7, 11, 20, 0.72);
+  --focus-ring: var(--p-cyan-400);
+
+  /* --- Personality --- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --border-width: 1px;
+  --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.22);
+  --elevation-2: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --elevation-3: 0 18px 48px rgba(0, 0, 0, 0.44);
+  --bg-image: radial-gradient(ellipse at 82% 0%, rgba(34, 211, 238, 0.10), transparent 52%);
+  --label-style: uppercase;
+  --label-spacing: 0.1em;
+  --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --density: 1;
+  --motion-scale: 1;
+}
+
+html[data-theme="light"] {
+  --bg: #f0f4f8;
+  --surface-1: #ffffff;
+  --surface-2: #f4f7fb;
+  --surface-3: #e4eaf2;
+  --divider: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --text: #0f172a;
+  --text-2: #475569;
+  --text-3: #526176;
+  --text-inverse: #ffffff;
+  --accent: #0e7490;
+  --accent-pressed: #155e75;
+  --accent-subtle: rgba(14, 116, 144, 0.12);
+  --on-accent: #ffffff;
+  --accent-text: #155e75;
+  --success: #047857;
+  --success-subtle: rgba(4, 120, 87, 0.10);
+  --warning: #b45309;
+  --warning-subtle: rgba(180, 83, 9, 0.10);
+  --danger: #b91c1c;
+  --danger-subtle: rgba(185, 28, 28, 0.10);
+  --info: #1d4ed8;
+  --info-subtle: rgba(29, 78, 216, 0.10);
+  --domain-strength: #4338ca;
+  --domain-endurance: #c2410c;
+  --domain-recovery: #047857;
+  --data-1: #1d4ed8;
+  --data-2: #047857;
+  --data-3: #b45309;
+  --data-4: #b91c1c;
+  --data-5: #6d28d9;
+  --data-6: #be185d;
+  --data-7: #0f766e;
+  --data-8: #475569;
+  --tile-1: #1d4ed8;
+  --tile-2: #047857;
+  --tile-3: #b45309;
+  --tile-4: #b91c1c;
+  --tile-5: #6d28d9;
+  --tile-6: #be185d;
+  --tile-7: #0f766e;
+  --tile-8: #475569;
+  --overlay-scrim: rgba(15, 23, 42, 0.38);
+  --focus-ring: #0e7490;
+  --elevation-1: 0 1px 3px rgba(15, 23, 42, 0.08);
+  --elevation-2: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --elevation-3: 0 18px 48px rgba(15, 23, 42, 0.16);
+  --bg-image: none;
+}

@@ -393,7 +393,13 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `computeDiagnosticForLift(..., { progressionStyle })` forwards it to
   `suggestProgression`, and the program editor's Progression tab exposes the
   choice. RPE/fatigue/cut/stall holds still take precedence in every style.
-- Themes: `js/theme.js` owns the palette id; CSS owns the colours. Midnight is
+- Themes: `js/theme.js` owns the palette id; CSS owns the colours.
+  `css/tokens.css` is the three-layer colour system (primitives → semantic →
+  personality) and `js/theme/tokens.js` is the resolved read path for
+  charts/canvas (`useThemeTokens` subscribes to `theme:changed`). Components
+  consume semantic tokens (`bg`, `surface-1..3`, `text`, `accent`, `data-*`,
+  `tile-*`), never literals; A3 is migrating the remaining legacy literals.
+  Midnight is
   the icon-derived default for dark/system profiles (schema v10 seeds it), with
   Slate/Forest/Ember alternatives. Light keeps its own variable block. The
   Settings palette buttons persist `settings.palette`.
