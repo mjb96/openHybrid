@@ -79,6 +79,9 @@ try {
   await page.fill('#settingsSearch', 'theme');
   const results = await page.locator('[data-action="open-settings-result"]').count();
   ok(results >= 1, 'search returns settings results');
+  await page.fill('#settingsSearch', 'thm');
+  ok(await page.locator('[data-action="open-settings-result"][data-context="theme"]').count() === 1, 'search is fuzzy across labels');
+  await page.fill('#settingsSearch', 'theme');
   await page.click('[data-action="open-settings-result"][data-context="theme"]');
   await page.waitForFunction(() => location.hash.startsWith('#/settings/look-home'));
   ok(await page.locator('#settingsPageHost [data-setting-key="theme"]').count() >= 1, 'search result opens Look & Home on Theme');

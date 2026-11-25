@@ -61,6 +61,22 @@ const PAGE_TONE = {
   hybridTraining: 'green', fastingDefault: 'orange',
 };
 
+const SECTION_LABELS = { training: 'Training', once: 'Set once', connections: 'Connections', data: 'Data', about: 'About', profile: 'Profile', system: 'System' };
+
+/** Lightweight fuzzy match: substring first, then an in-order subsequence. */
+function fuzzyMatch(text, needle) {
+  const haystack = String(text || '').toLowerCase();
+  const wanted = String(needle || '').toLowerCase().trim();
+  if (!wanted) return true;
+  if (haystack.includes(wanted)) return true;
+  let index = 0;
+  for (const char of haystack) {
+    if (char === wanted[index]) index += 1;
+    if (index === wanted.length) return true;
+  }
+  return false;
+}
+
 const titleCase = (value) => {
   const text = String(value || '');
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : '';
@@ -189,9 +205,9 @@ export function renderSettingsHome(host, state, store, query = '') {
   const matches = (pageId) => {
     if (!needle) return true;
     const page = settingsPageById(pageId);
-    if (page && page.label.toLowerCase().includes(needle)) return true;
+    if (page && fuzzyMatch(page.label, needle)) return true;
     return settingsForPage(pageId).some((entry) =>
-      `${entry.label} ${(entry.keywords || []).join(' ')}`.toLowerCase().includes(needle));
+      fuzzyMatch(`${entry.label} ${(entry.keywords || []).join(' ')}`, needle));
   };
   const group = (label, section) => {
     const rows = settingsPagesForSection(section).filter((page) => matches(page.id)).map((page) => navRow(page.id, state, store));
@@ -220,7 +236,7 @@ function searchRows(state, store, needle) {
   const hits = settingsRegistryKeys()
     .map((key) => settingsEntry(key))
     .filter((entry) => entry && !entry.deprecated && entry.type !== 'system')
-    .filter((entry) => `${entry.label} ${(entry.keywords || []).join(' ')}`.toLowerCase().includes(needle))
+    .filter((entry) => fuzzyMatch(`${entry.label} ${(entry.keywords || []).join(' ')}`, needle))
     .slice(0, 12);
   if (!hits.length) return '';
   const rows = hits.map((entry) => {
@@ -229,7 +245,7 @@ function searchRows(state, store, needle) {
       label: entry.label,
       icon: PAGE_ICON[entry.key] || 'sliders',
       tone: PAGE_TONE[entry.key] || 'slate',
-      summary: page ? page.label : '',
+      summary: page ? `${SECTION_LABELS[page.section] || ''} › ${page.label}` : '',
       nav: true,
       action: 'open-settings-result',
       context: entry.key,
