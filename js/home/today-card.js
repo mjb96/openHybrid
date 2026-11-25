@@ -137,8 +137,8 @@ function completedMeta(dayLabel, summary) {
   return [dayLabel, time ? `finished ${time}` : 'workout logged'].filter(Boolean).join(' · ');
 }
 
-function baseModel({ state, program, model, briefing, score, now, offline, tz }) {
-  const todayDay = todayProgramDay(now, tz);
+function baseModel({ state, program, model, briefing, score, now, offline, tz, todayDay: requestedDay }) {
+  const todayDay = requestedDay || todayProgramDay(now, tz);
   return {
     state: 'ready',
     tone: 'ready',
@@ -165,16 +165,16 @@ function baseModel({ state, program, model, briefing, score, now, offline, tz })
 /**
  * @param {{
  *  state:any, program?:any, model?:any, briefing?:any, score?:any,
- *  now?:Date, offline?:boolean, tz?:string
+ *  now?:Date, offline?:boolean, tz?:string, todayDay?:string, noSession?:boolean
  * }} options
  */
 export function buildTodayCardModel(options) {
   const {
     state, program = null, model = null, briefing = null, score = null,
-    now = new Date(), offline = false, tz = undefined,
+    now = new Date(), offline = false, tz = undefined, todayDay = null, noSession = false,
   } = options;
   const todayISO = dateKey(now, tz);
-  const card = baseModel({ state, program, model, briefing, score, now, offline, tz });
+  const card = baseModel({ state, program, model, briefing, score, now, offline, tz, todayDay });
   const weekKey = card.week;
 
   // A one-off strength session is the most explicit unfinished intent. Keep it
@@ -323,6 +323,18 @@ export function buildTodayCardModel(options) {
 
   if (card.calendarRunNote) card.meta += ' · run already logged today';
 
+  // The day's plan was moved elsewhere; today itself is rest (HM2).
+  if (noSession) {
+    card.state = 'rest';
+    card.tone = 'rest';
+    card.eyebrow = 'Recovery day';
+    card.meta = `${card.dayLabel} · Week ${weekKey}`;
+    card.guidance = firstSentence(model?.rec?.advice, 'Your workout moved to another day. Recover now, or choose another workout.');
+    card.primary = { action: 'open-wellness-checkin', label: 'Log wellness check-in' };
+    card.secondary = { action: 'open-program-workout-picker', label: 'Choose another workout' };
+    return card;
+  }
+
   if (todaySession.planned.isRest) {
     card.state = 'rest';
     card.tone = 'rest';
@@ -380,7 +392,7 @@ function previewListHTML(card) {
 
 /**
  * @param {any} card
- * @param {{expanded?: boolean}} [options]
+ * @param {{expanded?: boolean, canMove?: boolean, moveDay?: string}} [options]
  */
 export function todayCardHTML(card, options = {}) {
   const collapsible = isTodayCardCollapsible(card);
@@ -408,6 +420,9 @@ export function todayCardHTML(card, options = {}) {
     ? sessionSummaryHTML(card.summary, { weightUnit: card.weightUnit, distanceUnit: card.distanceUnit })
     : '';
   const preview = previewListHTML(card);
+  const move = options.canMove && options.moveDay
+    ? `<button type="button" class="today-card__link" data-action="move-day" data-day="${esc(options.moveDay)}">Move this workout…</button>`
+    : '';
   const previewCompact = card.preview?.length
     ? `<p class="today-card__preview-compact">${esc(card.preview.slice(0, 2).map((item) => `${item.name} ${previewTarget(item)}`).join(' · '))}${card.preview.length > 2 ? ` · +${card.preview.length - 2} more` : ''}</p>`
     : '';
@@ -424,6 +439,7 @@ export function todayCardHTML(card, options = {}) {
     <div class="today-card__detail" id="homeTodayCardDetail">
       ${preview ? `<ul class="today-card__preview" aria-label="Today's lifts">${preview}</ul>` : ''}
       <p class="today-card__guidance">${esc(card.guidance)}</p>
+      ${move}
       ${offline}
     </div>
     <div class="today-card__actions">

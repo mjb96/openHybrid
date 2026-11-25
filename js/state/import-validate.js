@@ -118,6 +118,23 @@ export function sanitizeImportedState(state) {
       ? out.libraryFolders.filter(isValidRoutineFolder).slice(0, MAX_ROUTINE_FOLDERS)
       : [];
   }
+  // A week schedule only maps a calendar week (Monday) → program day → date.
+  // Anything else is dropped rather than trusted by the Home rail.
+  if (out.weekSchedule != null) {
+    const DAYS = new Set(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
+    const isDate = (value) => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const clean = {};
+    const source = isRecord(out.weekSchedule) ? out.weekSchedule : {};
+    for (const [week, moves] of Object.entries(source)) {
+      if (!isDate(week) || !isRecord(moves)) continue;
+      const days = {};
+      for (const [day, date] of Object.entries(moves)) {
+        if (DAYS.has(day) && isDate(date)) days[day] = date;
+      }
+      if (Object.keys(days).length) clean[week] = days;
+    }
+    out.weekSchedule = clean;
+  }
   return out;
 }
 

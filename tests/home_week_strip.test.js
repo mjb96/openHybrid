@@ -48,6 +48,23 @@ test('marks done, today, missed and rest days', () => {
   assert.equal(strip.plannedCount, 5);
 });
 
+test('a moved day carries its plan on the target date and rests on its own', () => {
+  const moved = {
+    ...state,
+    settings: { weekStartDay: 'mon' },
+    weeks: { '1': { ...state.weeks['1'], runSessions: {} } },
+    weekSchedule: { '2026-11-16': { thu: '2026-11-21' } }, // Thursday → Saturday
+  };
+  const strip = buildHomeWeekStrip({ state: moved, program, days, today: '2026-11-19' });
+  const byDate = Object.fromEntries(strip.days.map((d) => [d.date, d]));
+  assert.equal(byDate['2026-11-21'].programDay, 'thu');
+  assert.equal(byDate['2026-11-21'].status, 'planned');
+  assert.equal(byDate['2026-11-21'].moved, true);
+  assert.equal(byDate['2026-11-19'].planned, false, 'the original weekday must not still show a plan');
+  assert.equal(byDate['2026-11-19'].status, 'rest');
+  assert.equal(strip.plannedCount, 5);
+});
+
 test('a completed run counts as done and respects the week start', () => {
   state.weeks['1'].runSessions.thu = [{ sessionId: 'r1', dist: '5', time: '27:00' }];
   state.settings.weekStartDay = 'sun';

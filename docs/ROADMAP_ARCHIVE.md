@@ -5722,3 +5722,32 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - S-F1, S-F2, S-F4 and S-F5 are Resolved. ST5/ST6/ST11 remain PARTIAL for the
     wider Profile and Units work, not these defects.
 
+- **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
+  - One registry (`js/analytics/progress-sections.js`) now declares every
+    section and detail: id, label, subtitle, module gate, default order and
+    visibility, route id and children. The composer, the Customize sheet, the
+    band headers and `tests/progress_registry_guard.test.js` all read it.
+  - The trailing “More detail” heading and all footer links are gone. History is
+    the header icon; “How this page is calculated” is the header info control.
+    The reports band became ONE Reviews row (Week | Month | Year) with the
+    legacy route ids (`weekly-review`, `monthly-report`, `year-review`).
+  - Every data band header is a 44px “Details ›” control (Fasting → Fasting,
+    Body → Measures, Muscles → Muscle load, Main exercises → All lifts,
+    Endurance → Running). The detail shows the inherited `Progress · <range>`
+    chip and Back scrolls to the originating band. “Records” is a labelled
+    shortcut to Strength’s Stats tab.
+  - Customize Progress is strength-first (Pulse, Main exercises, Muscles, Body,
+    Reviews, then Balance/Endurance/Fasting), with indented detail switches, a
+    fixed reorder column, an Open chevron per row and “module off” rows disabled.
+    Pulse’s subtitle names the real current calendar week.
+  - Legacy ids survive: `reports` → `reviews` in both hidden and order
+    preferences; an existing saved order keeps its positions.
+  - Evidence: `npm test` 2,692 pass, typecheck, smoke, and the rewritten
+    `progress-hub-browser-check` at 320/390/412 px light/dark plus 200% text and
+    a hidden-section case. Part H flows 6–9 are 3→2, 2→2, 1→1, 2→2 taps
+    (agent-traced; device timings remain `[You]`). Screenshots:
+    `docs/screenshots/{before,after}-{hub,customize}-*.png`.
+  - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
+    search/stall; PG6 a real Records table/feed; PG9’s remaining overview
+    concision and scannability test.
+

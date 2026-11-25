@@ -4,23 +4,15 @@
 // strip. The UI renders it; this module decides done / today / missed / rest.
 // =============================================================================
 import { addDaysISO, indexSlotsByDate, localDayKey, weekStartOf } from '../analytics/weekly-aggregate.js';
+import { scheduledDayForDate } from '../schedule/week.js';
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const DAY_LABELS = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
-const REST_RE = /(^|\b)(rest|no structured|no lifting|recovery)(\b|$)/i;
 
 function orderedDays(weekStartDay) {
   const start = DAY_ORDER.indexOf(weekStartDay);
   if (start <= 0) return DAY_ORDER.slice();
   return [...DAY_ORDER.slice(start), ...DAY_ORDER.slice(0, start)];
-}
-
-function hasPlan(program, day) {
-  const plan = program?.days?.[day];
-  if (!plan) return false;
-  if (Array.isArray(plan.lifts) && plan.lifts.length > 0) return true;
-  const runs = String(plan.runs || '').trim();
-  return !!runs && !REST_RE.test(runs);
 }
 
 function shortDate(dateISO) {
@@ -51,7 +43,10 @@ export function buildHomeWeekStrip({ state, program = null, days = DAY_ORDER, to
 
   order.forEach((day) => {
     const date = addDaysISO(monday, DAY_ORDER.indexOf(day));
-    const planned = hasPlan(program, day);
+    // The schedule owns which program day a DATE carries (HM2). Without a move
+    // this is the weekday template, so every existing week is unchanged.
+    const scheduled = scheduledDayForDate(state, program, date);
+    const planned = !!scheduled;
     const done = (slotsByDate?.get(date) || []).length > 0;
     const isToday = date === todayISO;
     let status = 'rest';
@@ -71,6 +66,8 @@ export function buildHomeWeekStrip({ state, program = null, days = DAY_ORDER, to
       planned,
       done,
       isToday,
+      programDay: scheduled?.day || null,
+      moved: !!scheduled?.moved,
     });
   });
 

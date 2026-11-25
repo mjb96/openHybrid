@@ -854,7 +854,7 @@ export async function pullEngineDataFromStorage() {
     schemaVersion: 0, // 0 = legacy/unstamped; migrateState() upgrades + stamps on load
     currentWeek: '1', activeProgramId: 'hybrid_engine', weekStartedAt: null,
     weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [],
-    routines: [], libraryFolders: [], bodyWeightLog: [],
+    routines: [], libraryFolders: [], bodyWeightLog: [], weekSchedule: {},
     thresholdPaceSeconds: null, deloadApplied: null, _deloadDismissedWeek: null,
     streakData: { current: 0, longest: 0, lastActivityDate: null },
     goalData: { milestones: [], completedCount: 0 },

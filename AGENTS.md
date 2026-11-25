@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 52 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 53 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -480,7 +480,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   A date cell NEVER navigates: today shows the Today decision/summary; a
   completed date selects in place and renders `dayRecapHTML` (stats, heat map,
   muscles) with Back to week/today. Only the explicit "Open full activity"
-  opens History. `buildDayRecap`/`summariseSlots` resolve the stored
+  opens History. A planned (unlogged) date renders `plannedDayHTML` and can be
+  **moved** to a free date in the same calendar week (`js/schedule/week.js`
+  with `state.weekSchedule`): the rail, Today card, Train landing and cockpit
+  resolve which program day owns a date, the old weekday reads rest, logged
+  dates are never rewritten, and the shared undo bar restores the override. `buildDayRecap`/`summariseSlots` resolve the stored
   program-day title. The card deliberately omits the state pill, score row and
   evidence drawer. Directly below the week surface sits the optional hybrid
   section (`#homeHybridSection`, `js/home/hybrid-dashboard.js`): a Training

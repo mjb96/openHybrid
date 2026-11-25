@@ -1270,7 +1270,7 @@ first.
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | HM1 | One-tap start with preview | `home/today-card.js`, `workout/session-preview.js`, `train/train-landing.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | DONE | `sessionExercisePreview` resolves the same `liftTarget` and dated history the cockpit uses; Home renders up to three rows plus a compact collapsed line. `home-today-browser-check` asserts the target and last-time numbers at 320/390/412 px light/dark. Cold start remains 2 taps. |
-| HM2 | Move a day (G1) | none | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | MISSING | No reschedule control, no attribution change and no Undo; date cells only select and recap. |
+| HM2 | Move a day (G1) | `schedule/week.js`, `home/week-strip.js`, `home/move-day-sheet.js` | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | DONE | Free dates only in the current calendar week: `state.weekSchedule[weekStart][day] = date` moves the plan; Home/Train/cockpit resolve the scheduled day for a date; the old weekday reads rest, occupied/past dates are disabled with a reason, and the shared undo bar restores the override. Logged work keeps its stamped date. Logic and UI are covered by `tests/week_schedule.test.js` and `scripts/move-day-browser-check.mjs` (390/320). Replace/keep-both for an occupied target stays with G3. |
 | HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count now render on separate lines. The card still links to the legacy Strength screen until PG3/PG5 give that content a band home. |
 | HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
@@ -1629,6 +1629,21 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H2 HM2: move a planned day to a free date this week.**
+  - `js/schedule/week.js` adds the one missing model: `state.weekSchedule`
+    (calendar week → day → date). It decides which program day owns a date,
+    which dates are free, and validates/undoes a move without re-deriving
+    history.
+  - Home's week rail, Today card, Train landing and cockpit resolve the
+    scheduled day for a date, so a moved workout appears on its new date and the
+    old weekday reads rest. Logged work keeps its stamped date; analytics are
+    untouched.
+  - Free dates only: occupied and past dates are disabled with a reason, the
+    source date is marked, and nothing is overwritten. Undo is the shared bar.
+  - Tests: `tests/week_schedule.test.js` (resolution, free dates, validation,
+    undo, attribution), a sanitizer test for imports, and
+    `scripts/move-day-browser-check.mjs` (move, rail, Undo, 320px).
+
 - **2026-11-25 — H2 HM4: Home's one insight is strength-derived and safety-aware.**
   - `js/home/strength-insight.js` picks exactly one line: a planned deload
     week, else the first stalled lift planned today (the engine's
@@ -1761,35 +1776,6 @@ device timing it did not measure.
     coverage, both theme vocabularies and the apply/subscribe path.
   - Next A3: migrate the remaining audited literals (especially charts/canvas),
     add the contrast matrix and all-theme screenshots. origin/theme-system-audit
-
-- **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
-  - One registry (`js/analytics/progress-sections.js`) now declares every
-    section and detail: id, label, subtitle, module gate, default order and
-    visibility, route id and children. The composer, the Customize sheet, the
-    band headers and `tests/progress_registry_guard.test.js` all read it.
-  - The trailing “More detail” heading and all footer links are gone. History is
-    the header icon; “How this page is calculated” is the header info control.
-    The reports band became ONE Reviews row (Week | Month | Year) with the
-    legacy route ids (`weekly-review`, `monthly-report`, `year-review`).
-  - Every data band header is a 44px “Details ›” control (Fasting → Fasting,
-    Body → Measures, Muscles → Muscle load, Main exercises → All lifts,
-    Endurance → Running). The detail shows the inherited `Progress · <range>`
-    chip and Back scrolls to the originating band. “Records” is a labelled
-    shortcut to Strength’s Stats tab.
-  - Customize Progress is strength-first (Pulse, Main exercises, Muscles, Body,
-    Reviews, then Balance/Endurance/Fasting), with indented detail switches, a
-    fixed reorder column, an Open chevron per row and “module off” rows disabled.
-    Pulse’s subtitle names the real current calendar week.
-  - Legacy ids survive: `reports` → `reviews` in both hidden and order
-    preferences; an existing saved order keeps its positions.
-  - Evidence: `npm test` 2,692 pass, typecheck, smoke, and the rewritten
-    `progress-hub-browser-check` at 320/390/412 px light/dark plus 200% text and
-    a hidden-section case. Part H flows 6–9 are 3→2, 2→2, 1→1, 2→2 taps
-    (agent-traced; device timings remain `[You]`). Screenshots:
-    `docs/screenshots/{before,after}-{hub,customize}-*.png`.
-  - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
-    search/stall; PG6 a real Records table/feed; PG9’s remaining overview
-    concision and scannability test.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

@@ -294,6 +294,37 @@ export function dayRecapHTML(cell, options = {}) {
 }
 
 /**
+ * A planned (not yet logged) day selected from the week rail. It is not a
+ * recap: it previews the session and offers the one action that changes the
+ * plan — move it to a free date this week (HM2).
+ * @param {{ date: string, day: string, title?: string, lifts?: string[], runs?: string }} cell
+ * @param {{ backAction?: string, backLabel?: string }} [options]
+ */
+export function plannedDayHTML(cell, options = {}) {
+  const backAction = options.backAction || 'home-week-today';
+  const backLabel = options.backLabel || '← Back to today';
+  const lifts = Array.isArray(cell.lifts) ? cell.lifts.filter(Boolean) : [];
+  const runs = String(cell.runs || '').trim();
+  const list = lifts.length
+    ? `<ul class="today-card__preview" aria-label="Planned lifts">${lifts.map((name) => `<li class="today-card__preview-row"><span class="today-card__preview-name">${escapeHtml(name)}</span></li>`).join('')}</ul>`
+    : runs
+      ? `<p class="today-card__guidance">${escapeHtml(runs)}</p>`
+      : '';
+  return `<article class="today-card today-card--ready day-plan" data-today-state="planned" data-home-date="${escapeHtml(cell.date || '')}" aria-labelledby="homeDayPlanTitle">
+    <div class="today-card__head">
+      <span class="today-card__eyebrow">Planned workout</span>
+      <h2 id="homeDayPlanTitle" class="today-card__title">${escapeHtml(cell.title || 'Workout')}</h2>
+      <p class="today-card__meta">${escapeHtml(shortDate(cell.date))} · not started</p>
+    </div>
+    <div class="today-card__detail">${list}</div>
+    <div class="today-card__actions">
+      <button type="button" class="today-card__secondary" data-action="move-day" data-day="${escapeHtml(cell.day || '')}">Move to…</button>
+      <button type="button" class="today-card__secondary" data-action="${escapeHtml(backAction)}">${escapeHtml(backLabel)}</button>
+    </div>
+  </article>`;
+}
+
+/**
  * @param {ReturnType<typeof buildPastWeekView>} view
  * @param {{ weightUnit?: 'kg'|'lbs', distanceUnit?: 'km'|'mi' }} [options]
  * @returns {string}

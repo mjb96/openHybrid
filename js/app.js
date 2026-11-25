@@ -49,6 +49,7 @@ import { SENTRY_DSN, SENTRY_RELEASE } from './monitoring/sentry-config.js';
 import { initEngine, shouldSuggestDeload, paceSecondsPerKm } from './engine.js';
 import { initHome, renderHome, openFastingDetail, answerCoachOnHome } from './home.js';
 import { computeDashboardModel } from './home/dashboard-model.js';
+import { scheduledDayForDate } from './schedule/week.js';
 import { buildTrainLanding } from './train/train-landing.js';
 import { renderTrainLanding } from './train/view-train-landing.js';
 import { initAnalytics, renderAnalytics, saveThresholdPace, saveBodyweightGoal, setBodyweightRangeAction, setAnalyticsContext, shareScoreCard } from './analytics.js';
@@ -283,7 +284,7 @@ function renderTrainLandingView() {
   const container = document.getElementById('trainLanding');
   if (!container) return;
   const program = getProgramById(appState.activeProgramId);
-  const dayKey = _todayProgramDay();
+  const dayKey = scheduledDayForDate(appState, program, todayKey())?.day || _todayProgramDay();
   const model = computeDashboardModel(appState, DEFAULT_DAYS, program, dayKey);
   renderTrainLanding(container, buildTrainLanding({ state: appState, program, model }));
   paintIcons(container);

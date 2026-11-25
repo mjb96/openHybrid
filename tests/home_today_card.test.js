@@ -329,3 +329,13 @@ test('a ready card previews the planned lifts with target and last time', () => 
   assert.match(html, /last 100 kg × 5/);
   assert.match(html, /today-card__preview-compact/);
 });
+
+test('a day whose plan moved away is rest, not the old weekday plan', () => {
+  const card = buildTodayCardModel({
+    state: state(), program: PROGRAM, model, now: MONDAY, tz: DISPLAY_TZ,
+    todayDay: 'mon', noSession: true,
+  });
+  assert.equal(card.state, 'rest');
+  assert.equal(card.tone, 'rest');
+  assert.deepEqual(card.primary, { action: 'open-wellness-checkin', label: 'Log wellness check-in' });
+});
