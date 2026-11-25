@@ -31,7 +31,12 @@ export function applyVisibleViewportHeight(win, doc) {
   const d = doc || (w && w.document) || (typeof document !== 'undefined' ? document : undefined);
   const h = visibleViewportHeight(w);
   if (h == null || !d?.documentElement) return null;
-  d.documentElement.style.setProperty(CSS_VAR, `${Math.round(h)}px`);
+  const value = `${Math.round(h)}px`;
+  // Setting a custom property invalidates style even when unchanged; this runs
+  // on every visualViewport scroll, so skip the no-op writes.
+  if (d.documentElement.style.getPropertyValue(CSS_VAR) !== value) {
+    d.documentElement.style.setProperty(CSS_VAR, value);
+  }
   return h;
 }
 
@@ -73,5 +78,92 @@ export function trackVisibleViewport(win) {
       try { target.removeEventListener(event, update); } catch { /* best effort */ }
     }
     clearVisibleViewportHeight(d);
+  };
+}
+
+/**
+ * How far a focused control must move to clear the keyboard. Positive scrolls
+ * down (the control is below the visible area), negative scrolls up.
+ * @param {{ top: number, bottom: number }} rect
+ * @param {{ top: number, height: number }} viewport
+ * @param {number} [margin]
+ */
+export function revealDelta(rect, viewport, margin = 16) {
+  if (!rect || !viewport) return 0;
+  const bottom = viewport.top + viewport.height;
+  if (rect.bottom > bottom - margin) return rect.bottom - (bottom - margin);
+  if (rect.top < viewport.top + margin) return rect.top - (viewport.top + margin);
+  return 0;
+}
+
+/**
+ * Keep a focused field above the on-screen keyboard (LG2). Installs delegated
+ * focus handling once per app; the keyboard shrink is detected through
+ * visualViewport, and the nearest scrollable ancestor is nudged (never the
+ * page when a sheet owns the scroll).
+ * @returns {() => void}
+ */
+export function trackFocusVisibility(win) {
+  const w = win || (typeof window !== 'undefined' ? window : undefined);
+  const d = w?.document;
+  if (!w || !d) return () => {};
+  /** @type {Element|null} */
+  let focused = null;
+  /** @type {any[]} */
+  let timers = [];
+  const isField = (el) => !!el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && !el.readOnly;
+
+  const scrollerFor = (el) => {
+    for (let node = el.parentElement; node; node = node.parentElement) {
+      const style = w.getComputedStyle(node);
+      if (/(auto|scroll)/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 2) return node;
+    }
+    return null;
+  };
+
+  const reveal = () => {
+    if (!focused || !d.contains(focused)) return;
+    const vv = w.visualViewport;
+    const viewport = vv
+      ? { top: vv.offsetTop, height: vv.height }
+      : { top: 0, height: w.innerHeight };
+    const delta = revealDelta(focused.getBoundingClientRect(), viewport, 16);
+    if (!delta) return;
+    const scroller = scrollerFor(focused);
+    if (scroller) scroller.scrollTop += delta;
+    else w.scrollBy(0, delta);
+  };
+  const settle = () => {
+    timers.forEach((id) => w.clearTimeout(id));
+    // The keyboard animates: check after it starts and again when it settles.
+    timers = [w.setTimeout(reveal, 60), w.setTimeout(reveal, 320)];
+  };
+
+  const onFocus = (event) => {
+    const field = /** @type {any} */ (event.target);
+    if (!isField(field)) return;
+    focused = field;
+    // Numeric fields are one-value entries: close the keypad rather than
+    // offering a return key that inserts a newline/blank.
+    const mode = field.getAttribute?.('inputmode');
+    if (mode && /numeric|decimal|tel/.test(mode) && !field.hasAttribute('enterkeyhint')) {
+      field.setAttribute('enterkeyhint', 'done');
+    }
+    settle();
+  };
+  const onBlur = () => { focused = null; };
+
+  d.addEventListener('focusin', onFocus);
+  d.addEventListener('focusout', onBlur);
+  if (w.visualViewport?.addEventListener) {
+    w.visualViewport.addEventListener('resize', settle);
+    w.visualViewport.addEventListener('scroll', settle);
+  }
+  return () => {
+    timers.forEach((id) => w.clearTimeout(id));
+    d.removeEventListener('focusin', onFocus);
+    d.removeEventListener('focusout', onBlur);
+    w.visualViewport?.removeEventListener?.('resize', settle);
+    w.visualViewport?.removeEventListener?.('scroll', settle);
   };
 }

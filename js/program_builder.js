@@ -7,6 +7,7 @@ import {
   saveStateToLocalStorage, getProgramById, appState, reconcileActiveProgramEdits,
 } from './state.js';
 import { escapeHtml } from './util.js';
+import { trackVisibleViewport } from './ui/visible-viewport.js';
 import {
   browseExercises, canonicalExerciseId, EQUIPMENT, EXERCISE_CATEGORIES,
   EXERCISE_CATEGORY_LABELS, MUSCLE_GROUPS, equipmentLabel, normaliseExerciseName,
@@ -26,7 +27,6 @@ import {
   captureProgramDraft, restoreProgramDraft,
 } from './programs/editor-model.js';
 import { closeManagedModal, openManagedModal } from './ui/modal-stack.js';
-import { trackVisibleViewport } from './ui/visible-viewport.js';
 import { buildExerciseRowHTML } from './programs/exercise-row.js';
 import { openExerciseOptions } from './workout/exercise-options.js';
 import {
@@ -480,18 +480,18 @@ function openExercisePicker(day, index = null) {
   const results = root.querySelector('#builderExerciseResults');
   if (results) results.scrollTop = 0;
   root.classList.add('active');
-  // Size the picker to the REAL visible viewport so its scrollable results end
-  // above the on-screen keyboard, and keep it correct as the keyboard toggles.
   if (pickerViewportTeardown) { pickerViewportTeardown(); pickerViewportTeardown = null; }
   pickerViewportTeardown = trackVisibleViewport(typeof window !== 'undefined' ? window : undefined);
+  // Size the picker to the REAL visible viewport so its scrollable results end
+  // above the on-screen keyboard, and keep it correct as the keyboard toggles.
   // The managed modal owns dialog semantics, background scroll-lock, focus entry
   // (into the search field), focus trapping, Escape and Android Back.
   openManagedModal(root, { initialFocus: '#builderExerciseSearch' });
 }
 
 function closeExercisePicker() {
-  const root = document.getElementById('builderExercisePicker');
   if (pickerViewportTeardown) { pickerViewportTeardown(); pickerViewportTeardown = null; }
+  const root = document.getElementById('builderExercisePicker');
   if (!root) { pickerTarget = null; return; }
   root.classList.remove('active');
   closeManagedModal(root);

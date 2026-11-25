@@ -1437,7 +1437,7 @@ Verify first; sources: openGym, Hevy.
 | G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | PARTIAL | 66 reviewed core entries of 157; catalogue is 5,712; target is 300–500; the guard ratchets at >=32. |
 | G10 | Explained targets | `engine.js`, `templates.js`, `workout/target-why.js` | Every progression target states in one line why today's number is today's number | DONE | The cockpit card now shows one why line under the target: the engine's message for a stall/fatigue hold, the progression rationale behind the suggested load, a baseline line for a first performance, or the program prescription when history exists but no progression applies. It never invents a reason and never duplicates the diagnostic message; `tests/target_why.test.js` pins the cases and the render. |
 | LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
-| LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | PARTIAL | 44px, contrast, safe areas and inputmode pass; keyboard inset is used only by the program builder, the set sheet uses 88vh, and there is no enterkeyhint or focus-scroll. |
+| LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | DONE | 44px, contrast, safe areas and inputmode pass. The visible viewport is tracked app-wide (`--visible-viewport-height`), the per-set sheet is capped by it instead of 88vh, numeric fields get `enterkeyhint="done"` on focus, and a delegated focus handler scrolls a field clear of the on-screen keyboard (nearest scrollable ancestor first). `scripts/lg2-keyboard-browser-check.mjs` drives the real browser at 390 with a shrunken viewport. |
 
 G8 (demo size) and G6 (week start) live in H1; G4 (year heatmap) is in §17.2.
 
@@ -1629,6 +1629,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H3 LG2: logging fields clear the on-screen keyboard.**
+  - The visible viewport is tracked once for the app lifetime; the per-set
+    sheet is capped by `min(88vh, var(--visible-viewport-height) - 24px)`.
+  - A delegated focus handler sets `enterkeyhint="done"` on numeric fields and
+    scrolls the focused field above the keyboard, preferring the nearest
+    scrollable ancestor so a sheet's own scroll is not stolen.
+  - Tests: `revealDelta` maths and the enterkeyhint hook in
+    `visible_viewport.test.js`; `lg2-keyboard-browser-check` shrinks a real
+    Chromium viewport and proves the field and sheet stay visible.
+
 - **2026-11-25 — H3 G10: the cockpit explains today's target.**
   - `js/workout/target-why.js` turns the engine's existing evidence into one
     line under `Target: …`: the diagnostic message (stall/fatigue), the
@@ -1748,37 +1758,6 @@ device timing it did not measure.
     light/dark, including the collapsing title. No page has been switched to the
     components yet; Phase 4 does that.
   - 2,718 tests pass; the browser suite grows to 50 checks.
-
-- **2026-11-25 — H1 Settings/Profile Phase 2: registry, store and migration snapshot.**
-  - Expanded `js/settings/registry.js` to 57 descriptors with section/page,
-    validators, keywords, visibility/enablement rules and summary formatters.
-    Root settings and deprecated legacy stores are registered rather than hidden.
-  - Added `js/settings/store.js`: validated atomic writes, selector
-    subscriptions, page reset with undo data, snapshots and cross-tab setting
-    sync that never touches training history.
-  - Added `snapshotBeforeMigration`, called before ordered migrations; import
-    already keeps its pre-import backup.
-  - Tests: 2,709 pass, including new store tests and default/summary registry
-    gates. Existing cards still write directly until Phase 4.
-
-- **2026-11-25 — Progress: every enabled band renders (toggle contract).**
-  - A Customize switch looked broken: the composer only pushed a band when its
-    model had data (except Pulse/Reviews), so enabling Fasting or Endurance
-    showed nothing until that band happened to have a value in the selected range.
-  - The composer now builds every model and decides in a second pass. Once the
-    athlete has logged anything, every enabled and visible band renders; a band
-    with nothing in THIS range states it in place (`No fasts`, `No runs`,
-    `No sets`, `No split`, `No lifts`, `No entries`). A completely empty profile
-    keeps the single honest empty lead plus Pulse/Reviews, never eight cards.
-  - The share card skips data-less bands (it could have shared “undefined %
-    strength”) and the Share button only appears when something is shareable.
-  - Evidence: 2,741 tests (the composer contract test was updated, not deleted),
-    typecheck, smoke and `progress-hub-browser-check` at 320/390/412 px plus the
-    empty-profile case.
-  - Same branch: every Settings detail page was frozen because `.s-page__body`
-    declared `overflow-y:auto` + `overscroll-behavior:contain` with no overflow
-    of its own. `.settings-body` is the one scroller now, and
-    `scripts/settings-scroll-browser-check.mjs` drives a REAL wheel at 390/320.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
