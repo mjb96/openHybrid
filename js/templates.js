@@ -146,7 +146,7 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   </div>`;
 }
 
-export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, ssMemberCount = 0, ssOrdinal = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
+export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel = '', targetWhy = '', historicalLineText, historyPanelHTML = '', setsMarkup, groupId = null, ssColor = null, ssMemberCount = 0, ssOrdinal = null, weightUnit = 'kg', weightColumnLabel = 'Reps' }) {
   const stalledBadge = diagnostic.isStalled ? `<span class="badge-stall-indicator">PROGRESS CHECK</span>` : '';
   const targetStyle  = diagnostic.isStalled ? 'color: var(--color-amber); font-weight: 800;' : '';
   const ssBtnClass   = groupId ? 'btn-ss-link ss-active' : 'btn-ss-link';
@@ -172,6 +172,7 @@ export function buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, 
         </div>
         <div class="cockpit-ex-target" style="${targetStyle}" data-target-label="${escapeHtml(String(targetLabel || blueprintLabel))}">${escapeHtml(blueprintLabel)}</div>
         ${diagnostic?.message ? `<div class="cockpit-ex-diagnostic" data-diagnostic-note>${escapeHtml(diagnostic.message)}</div>` : ''}
+        ${targetWhy && targetWhy !== diagnostic?.message ? `<div class="cockpit-ex-diagnostic" data-target-why>${escapeHtml(targetWhy)}</div>` : ''}
       </div>
       <div class="cockpit-ex-status">${isCompleted ? 'DONE' : 'LOG'}</div>
     </div>

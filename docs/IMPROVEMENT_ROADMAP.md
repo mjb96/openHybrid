@@ -1435,7 +1435,7 @@ Verify first; sources: openGym, Hevy.
 | G5 | Closed-app rest alerts | `notifications.js`, `timers.js`, Android `ReminderScheduler` | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | PARTIAL | A fixed-time daily OS alarm exists; it is not planned-day, not cancelled by training, and the rest alert cannot fire while WebView timers are paused. |
 | G7 | Favourite exercises | new `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | MISSING | No favourite field, star control, persistence or favourites-first sort anywhere. |
 | G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | PARTIAL | 66 reviewed core entries of 157; catalogue is 5,712; target is 300–500; the guard ratchets at >=32. |
-| G10 | Explained targets | `engine.js`, `templates.js` | Every progression target states in one line why today's number is today's number | PARTIAL | Suggested-next and the recap explain themselves; today's `Target 4 × 8` has no why; deload explanation exists only on Home. |
+| G10 | Explained targets | `engine.js`, `templates.js`, `workout/target-why.js` | Every progression target states in one line why today's number is today's number | DONE | The cockpit card now shows one why line under the target: the engine's message for a stall/fatigue hold, the progression rationale behind the suggested load, a baseline line for a first performance, or the program prescription when history exists but no progression applies. It never invents a reason and never duplicates the diagnostic message; `tests/target_why.test.js` pins the cases and the render. |
 | LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
 | LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | PARTIAL | 44px, contrast, safe areas and inputmode pass; keyboard inset is used only by the program builder, the set sheet uses 88vh, and there is no enterkeyhint or focus-scroll. |
 
@@ -1629,6 +1629,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — H3 G10: the cockpit explains today's target.**
+  - `js/workout/target-why.js` turns the engine's existing evidence into one
+    line under `Target: …`: the diagnostic message (stall/fatigue), the
+    progression rationale, a baseline line for a first performance, or the
+    program prescription when no progression applies.
+  - The card renders it once and never repeats the diagnostic message; the
+    engine remains the only owner of the reason.
+  - Tests: `tests/target_why.test.js` (message, rationale, baseline, program
+    fallback, render/dedup); verified in the real cockpit.
+
 - **2026-11-25 — H2 HM6: honest first-session, offline and partial-data states.**
   - A brand-new athlete (no completed work anywhere) gets a `First session`
     eyebrow and a baseline-setting line; one completed set removes it.
@@ -1750,22 +1760,6 @@ device timing it did not measure.
     already keeps its pre-import backup.
   - Tests: 2,709 pass, including new store tests and default/summary registry
     gates. Existing cards still write directly until Phase 4.
-
-- **2026-11-25 — H1 Settings/Profile Phase 1: route shell and Home gear.**
-  - Home header now has a 48px gear that opens a full-screen `#/settings`
-    route; the sliders button remains Customize Home.
-  - Added `#/settings/profile`, reached only from the profile card; legacy
-    `open-profile` and `#profile` redirect there. The bottom tab bar is hidden
-    inside the route and restored on Home.
-  - Back works at both levels, browser/system Back pops the route, and Home's
-    scroll position is restored. Profile renders the existing athlete page
-    into the Settings sub-page, so no data or feature was duplicated.
-  - `js/settings/route.js` is the pure route model; a new
-    `settings-navigation-browser-check` covers 320/390/412, the redirects and
-    the scroll restore. Settings cards remain unchanged pending Phase 4.
-  - Decision: `/settings` is implemented as `#/settings` because the hosted PWA
-    and Android asset origin have no refresh rewrite. Approve the hash or add a
-    server fallback before individual setting deep links (Phase 6).
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

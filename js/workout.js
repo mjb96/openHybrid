@@ -29,6 +29,7 @@ import { showToast, saveNewCustomExerciseToLibrary } from './state.js';
 import { escapeHtml } from './util.js';
 import { buildEmptyWorkoutCard, buildSetRow, buildExerciseCard } from './templates.js';
 import { buildSessionOutline, outlineSummaryLine } from './workout/session-outline.js';
+import { explainTarget } from './workout/target-why.js';
 import { plannedSetsForLift } from './workout/set-plan.js';
 import { addWarmupRamp, rampSetsFor } from './workout/warmup-ramp.js';
 import { buildSessionReview } from './workout/session-review.js';
@@ -525,7 +526,8 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
     const weightColumnLabel = rowModes.size === 1
       ? ({ time: 'Time', distance: 'Distance' }[/** @type {string} */ ([...rowModes][0])] || 'Reps')
       : 'Value';
-    exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, ssMemberCount, ssOrdinal, plates, weightUnit: wUnit, weightColumnLabel });
+    const targetWhy = explainTarget(diagnostic, { week: wk, sets: target.sets, reps: target.reps, hasVisibleHistory: !!historyPanelHTML });
+    exCard.innerHTML = buildExerciseCard({ displaySafeName, safeLiftName, isCompleted, diagnostic, blueprintLabel, targetLabel, targetWhy, historicalLineText, historyPanelHTML, setsMarkup, groupId, ssColor, ssMemberCount, ssOrdinal, plates, weightUnit: wUnit, weightColumnLabel });
     // Free-text note and the private reference link both sit directly under the
     // history line. The note is DOM text (never HTML); the link is a real anchor
     // built through DOM APIs — neither value ever touches innerHTML.
