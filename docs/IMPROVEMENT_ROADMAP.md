@@ -913,7 +913,7 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
-> **Theme colour system — A3 complete 25 Nov 2026, awaiting default approval.**
+> **Theme colour system — A3 complete and the default palette approved 25 Nov 2026.**
 > The A0 audit (`docs/audit/theme-colour-audit.md`) inventoried 3,590 literals.
 > A1/A2 shipped the three-layer token system: `css/tokens.css` (primitives →
 > semantic → personality) and `js/theme/tokens.js` (`resolveThemeTokens`,
@@ -1640,6 +1640,7 @@ device timing it did not measure.
   - Owner review: dark surfaces are now neutral ink greys (bg `#060606`,
     surface-1 `#111111`) instead of navy; the body glows, navy card/sheet
     gradients and the remaining cobalt uses are gone. Light mode is unchanged.
+    The owner approved this pair as the default (25 Nov 2026).
   - Added `tests/theme_contrast.test.js` (AA pairs in both modes),
     `scripts/theme-literal-check.mjs` as a `verify` ratchet (3,590 → 1,750
     literals, no file above its ceiling) and `scripts/theme-screenshots.mjs`
