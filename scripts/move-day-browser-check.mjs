@@ -124,6 +124,23 @@ try {
   }));
   check(!undone.schedule['2026-11-23'], 'Undo clears the schedule override');
   check(/--planned/.test(undone.thu), 'Undo restores the original weekday');
+  // Moving TODAY's own workout must leave today at rest, not resurrect it.
+  await page.evaluate(() => document.querySelector('.today-card__link')?.click());
+  await page.waitForSelector('.move-sheet.active');
+  await page.click('.move-sheet__option[data-move-date="2026-11-29"]');
+  await page.waitForTimeout(500);
+  const restToday = await page.evaluate(() => ({
+    state: document.querySelector('#homeTodayCard .today-card')?.getAttribute('data-today-state'),
+    primary: document.getElementById('homePrimaryCta')?.textContent?.trim() || '',
+    sun: document.querySelector('.home-week-day[data-home-date="2026-11-29"]')?.className || '',
+  }));
+  check(restToday.state === 'rest', `moving today leaves a rest day (${restToday.state})`);
+  check(restToday.primary === 'Log wellness check-in', 'the rest day offers a wellness check-in');
+  check(/--planned/.test(restToday.sun), 'the target date still carries the moved plan');
+  await page.click('#activityUndoBar [data-action="undo-activity-delete"]');
+  await page.waitForTimeout(400);
+  const restoredToday = await page.evaluate(() => document.querySelector('#homeTodayCard .today-card')?.getAttribute('data-today-state'));
+  check(restoredToday === 'ready', `Undo restores today's session (${restoredToday})`);
   check(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 
