@@ -5829,3 +5829,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     of its own. `.settings-body` is the one scroller now, and
     `scripts/settings-scroll-browser-check.mjs` drives a REAL wheel at 390/320.
 
+- **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
+  - Added `js/settings/components.js` (page/group/row, toggle, segmented,
+    stepper, slider, time, text, select list, picker and danger) and
+    `css/settings.css` using existing semantic tokens only.
+  - Rows are 64px, icon tiles 36px, toggle hit areas 48px, segmented 44px,
+    inputs/steppers/back controls 48px; summaries truncate and disabled rows
+    state a reason.
+  - Added unit tests plus a real-browser component probe at 320/390/412 in
+    light/dark, including the collapsing title. No page has been switched to the
+    components yet; Phase 4 does that.
+  - 2,718 tests pass; the browser suite grows to 50 checks.
+

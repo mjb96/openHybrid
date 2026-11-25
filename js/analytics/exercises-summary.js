@@ -128,6 +128,10 @@ export function buildExerciseSummaryModel(state, options = /** @type {any} */ ({
         lastPerformedISO: entry.lastDate,
         // A PR only when some session in the window BEAT everything before it.
         prFlag: entry.hadRecordInWindow && entry.best > 0,
+        // PG5's flat flag: three or more sessions and no e1RM improvement across
+        // the selected window. It is deliberately a WINDOW fact (the band's
+        // range), not the engine's per-program PROGRESS CHECK stall.
+        flat: entry.sessionDates.size >= 3 && deltaPct != null && deltaPct <= 0,
         series,
       };
     })
