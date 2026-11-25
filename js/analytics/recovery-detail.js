@@ -61,7 +61,7 @@ function metric(id, label, unit, sourceKind, calculation, options = {}) {
     // both improve downwards; treating every rise as progress would invert
     // the meaning of half this domain.
     inverse: !!options.inverse,
-    color: options.color || '#10b981',
+    color: options.color || 'var(--success)',
     source: options.source || (sourceKind === SOURCE_KIND.DEVICE
       ? 'Health Connect daily readings'
       : 'Daily wellness check-ins'),
@@ -77,13 +77,13 @@ function metric(id, label, unit, sourceKind, calculation, options = {}) {
 export const RECOVERY_METRICS = Object.freeze([
   metric('recovery.sleep', 'Sleep', 'hours', SOURCE_KIND.SELF,
     'Mean logged sleep duration across the days in the selected period that have an entry. Days without an entry are skipped, never counted as zero.', {
-      color: '#6366f1',
+      color: 'var(--data-5)',
       plausible: [0.5, 18],
       limitations: ['Duration is not sleep quality; a long night of poor sleep still reads as a long night.'],
     }),
   metric('recovery.hrv', 'HRV', 'ms', SOURCE_KIND.DEVICE,
     'Mean heart-rate variability (RMSSD) across the days in the selected period with a reading.', {
-      color: '#22d3ee',
+      color: 'var(--data-7)',
       plausible: [1, 300],
       limitations: [
         'HRV is highly individual — your own trend matters, comparison with other people does not.',
@@ -92,21 +92,21 @@ export const RECOVERY_METRICS = Object.freeze([
     }),
   metric('recovery.resting-hr', 'Resting Heart Rate', 'bpm', SOURCE_KIND.DEVICE,
     'Mean resting heart rate across the days in the selected period with a reading.', {
-      color: '#f59e0b',
+      color: 'var(--warning)',
       inverse: true,
       plausible: [25, 140],
       limitations: ['A single elevated morning can reflect illness, alcohol or a late meal rather than training load.'],
     }),
   metric('recovery.soreness', 'Soreness', 'rating', SOURCE_KIND.SELF,
     'Mean self-rated soreness (1–5) across the days in the selected period with an entry.', {
-      color: '#ef4444',
+      color: 'var(--danger)',
       inverse: true,
       plausible: [1, 5],
       limitations: ['Soreness is a poor proxy for adaptation — its absence does not mean a session was ineffective.'],
     }),
   metric('recovery.steps', 'Daily Steps', 'steps', SOURCE_KIND.DEVICE,
     'Mean daily step count across the days in the selected period with a reading. Days the device recorded nothing are skipped rather than counted as a zero-step day.', {
-      color: '#14b8a6',
+      color: 'var(--data-2)',
       plausible: [1, 100000],
       limitations: [
         'Steps measure general daily movement, not training load — a heavy gym session can register very few.',
@@ -115,7 +115,7 @@ export const RECOVERY_METRICS = Object.freeze([
     }),
   metric('recovery.mood', 'Mood', 'rating', SOURCE_KIND.SELF,
     'Mean self-rated mood (1–5) across the days in the selected period with an entry.', {
-      color: '#a855f7',
+      color: 'var(--data-6)',
       plausible: [1, 5],
       limitations: ['Mood reflects far more than training; read it alongside the rest, not on its own.'],
     }),

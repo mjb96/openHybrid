@@ -8,10 +8,10 @@ const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('approved technical palette is the final loaded visual decision', () => {
   assert.match(brand, /--brand-midnight:\s*#07111f/i);
-  assert.match(brand, /--brand-gunmetal:\s*#101b2a/i);
+  assert.match(brand, /--brand-gunmetal:\s*(#101b2a|var\(--surface-2\))/i);
   assert.match(brand, /--brand-cobalt:\s*#2563eb/i);
-  assert.match(brand, /--brand-ice:\s*#60a5fa/i);
-  assert.match(brand, /--brand-burnt-orange:\s*#f97316/i);
+  assert.match(brand, /--brand-ice:\s*(#60a5fa|var\(--info\))/i);
+  assert.match(brand, /--brand-burnt-orange:\s*(#f97316|var\(--data-3\))/i);
 
   const brandLink = index.indexOf('./css/brand-consistency.css');
   assert.ok(brandLink > index.indexOf('./css/hybrid-score.css'));

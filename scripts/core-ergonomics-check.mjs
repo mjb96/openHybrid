@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBrowserContext, resolveChromium } from './browser-runtime.mjs';
+import { MIDNIGHT_TOKENS, LIGHT_TOKENS } from '../js/theme/tokens.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WIDTHS = [320, 360, 390, 412];
@@ -26,23 +27,11 @@ function contrast(foreground, background) {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-const css = await readFile(path.join(ROOT, 'css/styles.css'), 'utf8');
-const rootBlock = css.match(/:root\s*\{([\s\S]*?)\}/)?.[1] || '';
-const lightBlock = css.match(/html\[data-theme="light"\]\s*\{([\s\S]*?)\}/)?.[1] || '';
-const token = (block, name) => block.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`))?.[1];
-for (const [theme, block, surfaces] of [
-  ['dark', rootBlock, ['bg-app', 'bg-card']],
-  ['light', lightBlock, ['bg-app', 'bg-card']],
-]) {
-  for (const textName of ['text-secondary', 'text-muted', 'text-faint']) {
-    for (const surfaceName of surfaces) {
-      const foreground = token(block, textName);
-      const background = token(block, surfaceName);
-      check(Boolean(foreground && background), `${theme}: unresolved ${textName}/${surfaceName} contrast token`);
-      if (foreground && background) {
-        const ratio = contrast(foreground, background);
-        check(ratio >= 4.5, `${theme}: ${textName} on ${surfaceName} is ${ratio.toFixed(2)}:1 (needs 4.5:1)`);
-      }
+for (const [theme, tokens] of [['dark', MIDNIGHT_TOKENS], ['light', LIGHT_TOKENS]]) {
+  for (const textName of ['text-2', 'text-3']) {
+    for (const surfaceName of ['bg', 'surface-1']) {
+      const ratio = contrast(tokens[textName], tokens[surfaceName]);
+      check(ratio >= 4.5, `${theme}: ${textName} on ${surfaceName} is ${ratio.toFixed(2)}:1 (needs 4.5:1)`);
     }
   }
 }

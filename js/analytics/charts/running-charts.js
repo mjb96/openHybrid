@@ -14,7 +14,7 @@ export function renderEnhancedPaceChart(container, weekLabels, paceSeries, rolli
   if (!container) return;
   const nonZero = paceSeries.filter(v => v > 0);
   if (nonZero.length < 2) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:0.85rem;padding:8px 0;">Log 2+ weeks with run times to see pace analysis.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 50%, transparent);font-size:0.85rem;padding:8px 0;">Log 2+ weeks with run times to see pace analysis.</p>';
     return;
   }
 
@@ -31,34 +31,34 @@ export function renderEnhancedPaceChart(container, weekLabels, paceSeries, rolli
   const toY      = v => PT + chartH - ((v - minPace) / range) * chartH;
 
   const gId = uid();
-  const defs = `<defs>${linearGradientV(gId, '#ec4899', 0.25, '#ec4899', 0)}</defs>`;
+  const defs = `<defs>${linearGradientV(gId, 'var(--data-6)', 0.25, 'var(--data-6)', 0)}</defs>`;
 
   // Threshold band
   let threshSvg = '';
   if (thresholdSecs > 0) {
     const ty   = toY(thresholdSecs);
     const easyY = toY(thresholdSecs * 1.15);
-    threshSvg  = shadedBand(ty, easyY, PL, W, PR, '#f59e0b', 0.1);
-    threshSvg += refLine(ty, PL, W, PR, `T ${fmtPace(thresholdSecs)}`, '#f59e0b', true);
+    threshSvg  = shadedBand(ty, easyY, PL, W, PR, 'var(--warning)', 0.1);
+    threshSvg += refLine(ty, PL, W, PR, `T ${fmtPace(thresholdSecs)}`, 'var(--warning)', true);
   }
 
   // Main pace line + fill
   const pts    = paceSeries.map((v, i) => v > 0 ? [centreX(i), toY(v)] : null).filter(Boolean);
   const smooth = pts.length >= 2 ? bezierPath(pts) : '';
   const area   = smooth ? areaFill(smooth, pts, PT + chartH, gId) : '';
-  const line   = smooth ? `<path d="${smooth}" fill="none" stroke="rgba(236,72,153,0.85)" stroke-width="2.5" stroke-linecap="round"/>` : '';
+  const line   = smooth ? `<path d="${smooth}" fill="none" stroke="color-mix(in srgb, var(--data-6) 85%, transparent)" stroke-width="2.5" stroke-linecap="round"/>` : '';
 
   // Colour dots by zone (green=easy, amber=moderate, red=threshold/hard)
   let pDots = '';
   pts.forEach(([cx, cy], idx) => {
     const rawI = paceSeries.findIndex((v, i) => v > 0 && pts.slice(0, idx + 1).length === idx + 1);
     const pace = paceSeries[pts.map((_, ii) => ({ ii })).findIndex((_, ii) => paceSeries.filter(v => v > 0)[idx] !== undefined)]; // get original pace
-    let color = '#ec4899';
+    let color = 'var(--data-6)';
     if (thresholdSecs > 0) {
       const p = nonZero[idx] || 0;
-      color = p > thresholdSecs * 1.15 ? '#10b981' : p > thresholdSecs ? '#f59e0b' : '#ef4444';
+      color = p > thresholdSecs * 1.15 ? 'var(--success)' : p > thresholdSecs ? 'var(--warning)' : 'var(--danger)';
     }
-    pDots += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${color}" stroke="#0d1117" stroke-width="1.5"/>`;
+    pDots += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${color}" stroke="var(--surface-1)" stroke-width="1.5"/>`;
   });
 
   // Best effort marker (fastest pace dot labelled)
@@ -66,23 +66,23 @@ export function renderEnhancedPaceChart(container, weekLabels, paceSeries, rolli
   const bestIdx  = paceSeries.findIndex(v => v === bestPace);
   if (bestIdx >= 0) {
     const bx = centreX(bestIdx), by = toY(bestPace);
-    pDots += `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="6" fill="none" stroke="#f59e0b" stroke-width="1.5"/>`;
-    pDots += `<text x="${bx.toFixed(1)}" y="${(by - 10).toFixed(1)}" text-anchor="middle" font-size="9" fill="#f59e0b">Best ${fmtPace(bestPace)}</text>`;
+    pDots += `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="6" fill="none" stroke="var(--warning)" stroke-width="1.5"/>`;
+    pDots += `<text x="${bx.toFixed(1)}" y="${(by - 10).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--warning)">Best ${fmtPace(bestPace)}</text>`;
   }
 
   // Rolling average and trend
-  const raLine = rollingAvgPath(rolling4, centreX, toY, 'rgba(255,255,255,0.6)');
-  const trLine = trendLinePath(trendArr, centreX, toY, n, 'rgba(96,165,250,0.45)');
+  const raLine = rollingAvgPath(rolling4, centreX, toY, 'color-mix(in srgb, var(--text) 60%, transparent)');
+  const trLine = trendLinePath(trendArr, centreX, toY, n, 'color-mix(in srgb, var(--info) 45%, transparent)');
 
   const ticks = [0.25, 0.5, 0.75, 1].map(p => minPace + p * range);
   const grid  = gridLines(ticks, toY, PL, W, PR, fmtPace);
   const step  = n > 8 ? 2 : 1;
   const xLbl  = xAxisLabels(weekLabels, centreX, H - 5, { step });
 
-  const legend = `<text x="${PL}" y="12" font-size="9" fill="#ec4899">▬ Pace</text>
-    <text x="${PL + 40}" y="12" font-size="9" fill="rgba(255,255,255,0.55)">— 4wk avg</text>
-    <text x="${PL + 90}" y="12" font-size="9" fill="rgba(96,165,250,0.5)">-- Trend</text>
-    <text x="${PL + 130}" y="12" font-size="9" fill="#f59e0b">○ Threshold</text>`;
+  const legend = `<text x="${PL}" y="12" font-size="9" fill="var(--data-6)">▬ Pace</text>
+    <text x="${PL + 40}" y="12" font-size="9" fill="color-mix(in srgb, var(--text) 55%, transparent)">— 4wk avg</text>
+    <text x="${PL + 90}" y="12" font-size="9" fill="color-mix(in srgb, var(--info) 50%, transparent)">-- Trend</text>
+    <text x="${PL + 130}" y="12" font-size="9" fill="var(--warning)">○ Threshold</text>`;
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${defs}${grid}${threshSvg}${area}${line}${raLine}${trLine}${pDots}${xLbl}${legend}</svg>`;
 }
@@ -92,7 +92,7 @@ export function renderAerobicEfficiencyChart(container, weekLabels, effSeries, r
   if (!container) return;
   const nonZero = effSeries.filter(v => v > 0);
   if (nonZero.length < 2) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:0.85rem;padding:8px 0;">Log runs with heart rate to see aerobic efficiency.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 50%, transparent);font-size:0.85rem;padding:8px 0;">Log runs with heart rate to see aerobic efficiency.</p>';
     return;
   }
 
@@ -108,21 +108,21 @@ export function renderAerobicEfficiencyChart(container, weekLabels, effSeries, r
   const toY     = v => PT + chartH - ((v - minV) / range) * chartH;
 
   const gId = uid();
-  const defs = `<defs>${linearGradientV(gId, '#22d3ee', 0.25, '#22d3ee', 0)}</defs>`;
+  const defs = `<defs>${linearGradientV(gId, 'var(--accent)', 0.25, 'var(--accent)', 0)}</defs>`;
 
   const pts    = effSeries.map((v, i) => v > 0 ? [centreX(i), toY(v)] : null).filter(Boolean);
   const smooth = pts.length >= 2 ? bezierPath(pts) : '';
   const area   = smooth ? areaFill(smooth, pts, PT + chartH, gId) : '';
-  const line   = smooth ? `<path d="${smooth}" fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linecap="round"/>` : '';
-  const dots   = dotSeries(pts, '#22d3ee', 4);
-  const raLine = rollingAvgPath(rolling4, centreX, toY, 'rgba(255,255,255,0.6)');
+  const line   = smooth ? `<path d="${smooth}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>` : '';
+  const dots   = dotSeries(pts, 'var(--accent)', 4);
+  const raLine = rollingAvgPath(rolling4, centreX, toY, 'color-mix(in srgb, var(--text) 60%, transparent)');
 
   const ticks  = [0.25, 0.5, 0.75, 1].map(p => minV + p * range);
   const grid   = gridLines(ticks, toY, PL, W, PR, v => v.toFixed(2));
   const step   = n > 8 ? 2 : 1;
   const xLbl   = xAxisLabels(weekLabels, centreX, H - 5, { step });
 
-  const legend = `<text x="${PL}" y="11" font-size="9" fill="#22d3ee">Aerobic Efficiency (s/km per BPM) — lower = better</text>`;
+  const legend = `<text x="${PL}" y="11" font-size="9" fill="var(--accent)">Aerobic Efficiency (s/km per BPM) — lower = better</text>`;
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${defs}${grid}${area}${line}${raLine}${dots}${xLbl}${legend}</svg>`;
 }
@@ -131,11 +131,11 @@ export function renderAerobicEfficiencyChart(container, weekLabels, effSeries, r
 export function renderHrZoneRingChart(container, zonePct) {
   if (!container) return;
   if (!zonePct || zonePct.every(v => v === 0)) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:0.85rem;padding:8px 0;">Import .FIT data to see HR zone distribution.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 50%, transparent);font-size:0.85rem;padding:8px 0;">Import .FIT data to see HR zone distribution.</p>';
     return;
   }
 
-  const COLORS = ['#22d3ee', '#10b981', '#f59e0b', '#f97316', '#ef4444'];
+  const COLORS = ['var(--accent)', 'var(--success)', 'var(--warning)', 'var(--data-3)', 'var(--danger)'];
   const LABELS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
   const W = 260, CX = 80, CY = 80, R = 60, r = 38;
 
@@ -168,11 +168,11 @@ export function renderHrZoneRingChart(container, zonePct) {
   LABELS.forEach((lbl, i) => {
     const y = 16 + i * 22;
     legend += `<rect x="170" y="${y}" width="10" height="10" fill="${COLORS[i]}" rx="2"/>`;
-    legend += `<text x="184" y="${y + 8}" font-size="11" fill="rgba(255,255,255,0.8)">${lbl}: ${pcts[i]}%</text>`;
+    legend += `<text x="184" y="${y + 8}" font-size="11" fill="color-mix(in srgb, var(--text) 80%, transparent)">${lbl}: ${pcts[i]}%</text>`;
   });
 
   container.innerHTML = `<svg viewBox="0 0 ${W} 160" style="width:100%;max-width:260px;height:auto;display:block;">
-    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="22"/>
+    <circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="color-mix(in srgb, var(--text) 8%, transparent)" stroke-width="22"/>
     ${slices}
     ${legend}
   </svg>`;
@@ -183,7 +183,7 @@ export function renderDistanceProgressionChart(container, weekLabels, distSeries
   if (!container) return;
   const nonZero = distSeries.filter(v => v > 0);
   if (nonZero.length < 2) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.5);font-size:0.85rem;padding:8px 0;">Log 2+ weeks of running to see distance trends.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 50%, transparent);font-size:0.85rem;padding:8px 0;">Log 2+ weeks of running to see distance trends.</p>';
     return;
   }
 
@@ -197,7 +197,7 @@ export function renderDistanceProgressionChart(container, weekLabels, distSeries
   const toY     = v => PT + chartH - (v / maxV) * chartH;
 
   const gId = uid();
-  const defs = `<defs>${linearGradientV(gId, '#ec4899', 0.9, '#be185d', 0.5)}</defs>`;
+  const defs = `<defs>${linearGradientV(gId, 'var(--data-6)', 0.9, 'var(--data-6)', 0.5)}</defs>`;
 
   let bars = '';
   distSeries.forEach((v, i) => {
@@ -210,12 +210,12 @@ export function renderDistanceProgressionChart(container, weekLabels, distSeries
 
   const ticks  = [0.25, 0.5, 0.75, 1].map(p => maxV * p);
   const grid   = gridLines(ticks, toY, PL, W, PR, v => v.toFixed(0));
-  const raLine = rollingAvgPath(rolling4, centreX, toY, 'rgba(255,255,255,0.6)');
+  const raLine = rollingAvgPath(rolling4, centreX, toY, 'color-mix(in srgb, var(--text) 60%, transparent)');
   const step   = n > 8 ? 2 : 1;
   const xLbl   = xAxisLabels(weekLabels, centreX, H - 5, { step });
 
-  const legend = `<text x="${PL}" y="11" font-size="9" fill="#ec4899">▪ Distance (km)</text>
-    <text x="${PL + 88}" y="11" font-size="9" fill="rgba(255,255,255,0.55)">— 4wk avg</text>`;
+  const legend = `<text x="${PL}" y="11" font-size="9" fill="var(--data-6)">▪ Distance (km)</text>
+    <text x="${PL + 88}" y="11" font-size="9" fill="color-mix(in srgb, var(--text) 55%, transparent)">— 4wk avg</text>`;
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${defs}${grid}${bars}${raLine}${xLbl}${legend}</svg>`;
 }

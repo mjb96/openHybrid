@@ -5693,3 +5693,10 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
     the Reports band still duplicates the screen. origin/theme-system-audit
 
+- **2026-11-24 — H4 A1: the stall evidence is no longer dead code.**
+  - `buildExerciseCard` now renders `diagnostic.message` under the target, so a
+    PROGRESS CHECK badge states the 3-session span, the missed target and the
+    hold/recovery action instead of leaving the athlete to guess.
+  - Tests pin the stalled line and the empty-message case.
+  - Still PARTIAL: no analytics surface lists stalled lifts.
+

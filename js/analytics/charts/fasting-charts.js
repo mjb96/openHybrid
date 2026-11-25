@@ -6,12 +6,12 @@
 // ==========================================
 import { uid, bezierPath, linearGradientV, areaFill, dotSeries, refLine } from './chart-primitives.js';
 
-const AMBER  = '#f59e0b';
-const ORANGE = '#f97316';
-const BLUE   = '#3b82f6';
-const GREEN  = '#10b981';
-const PURPLE = '#8b5cf6';
-const MUTED  = 'rgba(255,255,255,0.45)';
+const AMBER  = 'var(--warning)';
+const ORANGE = 'var(--data-3)';
+const BLUE   = 'var(--data-1)';
+const GREEN  = 'var(--success)';
+const PURPLE = 'var(--data-5)';
+const MUTED  = 'color-mix(in srgb, var(--text) 45%, transparent)';
 
 // ── Bar chart: weekly fasting hours ──────────────────────────────────────────
 
@@ -40,7 +40,7 @@ export function renderFastingHoursBarChart(container, weeklyTrend) {
   const ticks = Array.from({ length: tickCount + 1 }, (_, i) => Math.round((maxV / tickCount) * i));
   const yLines = ticks.map(val => {
     const y = toY(val);
-    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="1"/>
       <text x="${PL - 5}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="${MUTED}">${val}h</text>`;
   }).join('');
 
@@ -103,7 +103,7 @@ export function renderFastingDurationTrend(container, weeklyTrend) {
   const ticks = [0, Math.round(maxV * 0.5), Math.round(maxV)];
   const yLines = ticks.map(val => {
     const y = toY(val);
-    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="1"/>
       <text x="${PL - 5}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="${MUTED}">${val}h</text>`;
   }).join('');
 
@@ -155,7 +155,7 @@ export function renderGoalCompletionTrend(container, weeklyTrend) {
   const ticks = [0, 50, 100];
   const yLines = ticks.map(val => {
     const y = toY(val);
-    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="1"/>
       <text x="${PL - 5}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="${MUTED}">${val}%</text>`;
   }).join('');
 
@@ -204,14 +204,14 @@ export function renderZoneDistributionChart(container, zoneDistribution) {
     const color = z.zone.color;
     return `<div style="margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-        <span style="font-size:0.75rem;color:rgba(255,255,255,0.65);display:flex;align-items:center;gap:6px;">
+        <span style="font-size:0.75rem;color:color-mix(in srgb, var(--text) 65%, transparent);display:flex;align-items:center;gap:6px;">
           <span>${z.zone.icon}</span>
           <span>${z.zone.name}</span>
-          <span style="font-size:0.65rem;color:rgba(255,255,255,0.3);">${z.zone.hoursStart}h+</span>
+          <span style="font-size:0.65rem;color:color-mix(in srgb, var(--text) 30%, transparent);">${z.zone.hoursStart}h+</span>
         </span>
         <span style="font-size:0.75rem;font-weight:700;color:${color};font-variant-numeric:tabular-nums;">${z.count}</span>
       </div>
-      <div style="height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;">
+      <div style="height:5px;background:color-mix(in srgb, var(--text) 7%, transparent);border-radius:3px;overflow:hidden;">
         <div style="height:100%;width:${pct.toFixed(1)}%;background:${color};border-radius:3px;transition:width 0.5s ease;"></div>
       </div>
     </div>`;
@@ -241,7 +241,7 @@ export function renderFastingFrequencyChart(container, weeklyTrend) {
   const ticks = [0, Math.ceil(maxV / 2), maxV];
   const yLines = ticks.map(val => {
     const y = toY(val);
-    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="1"/>
       <text x="${PL - 5}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="${MUTED}">${val}</text>`;
   }).join('');
 
@@ -260,8 +260,8 @@ export function renderFastingFrequencyChart(container, weeklyTrend) {
   // Target line: 5 fasts/week
   const targetY = toY(Math.min(5, maxV));
   const targetLine = maxV >= 4
-    ? `<line x1="${PL}" y1="${targetY.toFixed(1)}" x2="${W - PR}" y2="${targetY.toFixed(1)}" stroke="rgba(139,92,246,0.35)" stroke-width="1.5" stroke-dasharray="5,3"/>
-       <text x="${W - PR}" y="${(targetY - 4).toFixed(1)}" text-anchor="end" font-size="8.5" fill="rgba(139,92,246,0.55)">target</text>`
+    ? `<line x1="${PL}" y1="${targetY.toFixed(1)}" x2="${W - PR}" y2="${targetY.toFixed(1)}" stroke="color-mix(in srgb, var(--data-5) 35%, transparent)" stroke-width="1.5" stroke-dasharray="5,3"/>
+       <text x="${W - PR}" y="${(targetY - 4).toFixed(1)}" text-anchor="end" font-size="8.5" fill="color-mix(in srgb, var(--data-5) 55%, transparent)">target</text>`
     : '';
 
   const step = n > 8 ? Math.ceil(n / 6) : 1;
@@ -286,7 +286,7 @@ export function renderFastingFrequencyChart(container, weeklyTrend) {
 export function renderFastingScoreRing(container, score, label, color) {
   if (!container) return;
   if (score === null) {
-    container.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;padding:16px;"><div style="color:rgba(255,255,255,0.35);font-size:0.78rem;">Log 2+ fasts to unlock your Fasting Score</div></div>`;
+    container.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;padding:16px;"><div style="color:color-mix(in srgb, var(--text) 35%, transparent);font-size:0.78rem;">Log 2+ fasts to unlock your Fasting Score</div></div>`;
     return;
   }
   const r  = 54, cx = 70, cy = 70;
@@ -296,13 +296,13 @@ export function renderFastingScoreRing(container, score, label, color) {
   container.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;">
       <svg viewBox="0 0 140 140" style="width:140px;height:140px;">
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="12"/>
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="12"/>
         <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="12"
           stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}"
           stroke-linecap="round"
           transform="rotate(-90 ${cx} ${cy})"/>
         <text x="${cx}" y="${cy - 6}" text-anchor="middle" font-size="30" font-weight="900" fill="${color}">${score}</text>
-        <text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="9.5" font-weight="700" letter-spacing="0.07em" fill="rgba(255,255,255,0.50)">${label.toUpperCase()}</text>
+        <text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="9.5" font-weight="700" letter-spacing="0.07em" fill="color-mix(in srgb, var(--text) 50%, transparent)">${label.toUpperCase()}</text>
       </svg>
     </div>`;
 }
@@ -329,7 +329,7 @@ export function renderMonthlyAdherenceChart(container, monthlyTrend) {
   const ticks = [0, Math.round(maxV * 0.5), Math.round(maxV)];
   const yLines = ticks.map(val => {
     const y = toY(val);
-    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+    return `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="1"/>
       <text x="${PL - 5}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="${MUTED}">${val}h</text>`;
   }).join('');
 

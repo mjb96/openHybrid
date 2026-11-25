@@ -15,8 +15,11 @@ import { closeManagedModal, openManagedModal } from './modal-stack.js';
 // =============================================================================
 import { hapticSuccess } from '../haptics.js';
 import { escapeHtml } from '../util.js';
+import { resolveThemeTokens } from '../theme/tokens.js';
 
-const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#f8fafc', '#8b5cf6'];
+// Confetti is drawn on a throwaway canvas, so it reads the RESOLVED theme
+// tokens rather than CSS variables. Order matches the old brand spread.
+const CONFETTI_TOKENS = ['warning', 'success', 'info', 'text', 'data-5'];
 const AUTO_DISMISS_MS = 3600;
 
 let _stylesInjected = false;
@@ -48,7 +51,7 @@ function ensureStyles() {
   .celebration-overlay {
     position: fixed; inset: 0; z-index: 4000;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(5, 8, 16, 0.62);
+    background: var(--overlay-scrim);
     -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
     opacity: 0; transition: opacity .25s ease;
   }
@@ -56,16 +59,16 @@ function ensureStyles() {
   .celebration-card {
     max-width: 320px; margin: 0 20px; padding: 28px 26px 24px;
     text-align: center; border-radius: 24px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
-    border: 1px solid rgba(255,255,255,0.14);
-    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    background: var(--surface-1);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--elevation-3);
     transform: scale(.92); transition: transform .3s cubic-bezier(.34,1.4,.64,1);
   }
   .celebration--in .celebration-card { transform: scale(1); }
-  .celebration-icon { font-size: 44px; line-height: 1; margin-bottom: 12px; color: #f59e0b; }
-  .celebration-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text-inverse, #f8fafc); margin-bottom: 6px; }
-  .celebration-sub { font-size: .82rem; color: var(--text-muted, #94a3b8); line-height: 1.45; }
-  .celebration-hint { font-size: .62rem; color: rgba(255,255,255,0.35); margin-top: 16px; text-transform: uppercase; letter-spacing: .08em; }
+  .celebration-icon { font-size: 44px; line-height: 1; margin-bottom: 12px; color: var(--warning); }
+  .celebration-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.3px; color: var(--text); margin-bottom: 6px; }
+  .celebration-sub { font-size: .82rem; color: var(--text-2); line-height: 1.45; }
+  .celebration-hint { font-size: .62rem; color: var(--text-3); margin-top: 16px; text-transform: uppercase; letter-spacing: .08em; }
   .celebration-canvas { position: fixed; inset: 0; z-index: 4001; pointer-events: none; }
   @media (prefers-reduced-motion: reduce) {
     .celebration-overlay, .celebration-card { transition: none !important; transform: none !important; }
@@ -88,6 +91,7 @@ export function confettiBurst({ particleCount = 90, durationMs = 1700 } = {}) {
   const W = canvas.width = Math.floor(innerWidth * dpr);
   const H = canvas.height = Math.floor(innerHeight * dpr);
 
+  const palette = CONFETTI_TOKENS.map((key) => resolveThemeTokens(document.documentElement)[key]);
   const parts = Array.from({ length: particleCount }, () => {
     const angle = (-90 + (Math.random() * 120 - 60)) * Math.PI / 180; // upward fan
     const speed = (7 + Math.random() * 9) * dpr;
@@ -100,7 +104,7 @@ export function confettiBurst({ particleCount = 90, durationMs = 1700 } = {}) {
       h: (7 + Math.random() * 7) * dpr,
       rot: Math.random() * Math.PI,
       vr: (Math.random() - 0.5) * 0.3,
-      color: COLORS[Math.floor(Math.random() * COLORS.length)],
+      color: palette[Math.floor(Math.random() * palette.length)],
     };
   });
 

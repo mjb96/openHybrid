@@ -913,16 +913,32 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
-> **Theme colour system — A1/A2 landed 25 Nov 2026; A3 literal migration remains.**
-> The A0 audit (`docs/audit/theme-colour-audit.md`) inventories 3,590 literals.
-> A1 now ships the three-layer token system: `css/tokens.css` (primitives →
-> semantic → personality tokens) and `js/theme/tokens.js` (`resolveThemeTokens`,
-> `applyThemeTokens`, `useThemeTokens` with a `theme:changed` subscription).
-> The approved Midnight/light semantic values are published, the Slate card pins
-> and body-wide glows are gone, cards use `surface-1`/`divider`/`elevation-1`,
-> and meta/manifest/Android bars start at `#070B14`. **A3** (replacing the
-> remaining audited literals, chart/canvas colour reads and the screenshot matrix)
-> is still open.
+> **Theme colour system — A3 complete 25 Nov 2026, awaiting default approval.**
+> The A0 audit (`docs/audit/theme-colour-audit.md`) inventoried 3,590 literals.
+> A1/A2 shipped the three-layer token system: `css/tokens.css` (primitives →
+> semantic → personality) and `js/theme/tokens.js` (`resolveThemeTokens`,
+> `applyThemeTokens`, `useThemeTokens` with `theme:changed`).
+> **A3** applies it. Surfaces, text, borders, overlays, accents and data colours
+> in the shipped CSS are now tokens or `color-mix` over tokens; the old indigo
+> brand accent is gone (cyan/teal is the accent, and `--domain-strength` keeps
+> the periwinkle labels), and 415 colour fallbacks were removed. Every chart
+> module is literal-free — series, grids, axes, goal lines and dots read the
+> semantic layer, so a chart flips with the theme. The in-app celebration canvas
+> resolves tokens with `resolveThemeTokens`; exported share cards keep a fixed
+> dark brand palette on purpose (they are art, not UI).
+> Light mode is repaired, not just re-tinted: the legacy `--text-inverse` alias
+> collision (white text on white sheets), `color-scheme: light`, the light brand
+> block, light nav/gradients and the UA button face on nav items are fixed, and
+> `theme-color` is synced from the resolved token at runtime.
+> **Guard rails:** `scripts/theme-literal-check.mjs` is a ratchet in
+> `npm run verify` — **1,750 literals remain across 57 files** (down from 3,590),
+> mostly shadow stacks, one-off light overrides and the deliberately branded
+> share art; no file may exceed its recorded ceiling.
+> `tests/theme_contrast.test.js` pins WCAG AA for both modes.
+> `scripts/theme-screenshots.mjs` writes the matrix (Home, Train, cockpit, active
+> session, per-set sheet, Progress, Plans, Settings, Profile at 390 dark/light and
+> 320 dark) to `docs/screenshots/theme-*.png`. Open: Part B themes (Slate/Forest/
+> Ember), and the remaining 1,750 literals.
 
 ### 14.1 Design stance
 
@@ -1607,6 +1623,30 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — Theme A3: semantic colour applied, contrast and screenshot matrix.**
+  - Replaced literal surfaces/text/borders/accents/overlays across the CSS with
+    semantic tokens or `color-mix` over them, removed 415 colour fallbacks, and
+    migrated the old indigo brand accent to the approved cyan/teal one (strength
+    labels keep `--domain-strength`).
+  - Removed every colour literal from the chart modules: series, grids, axes,
+    goal lines, dot rings and legends now read CSS tokens, so charts follow the
+    active theme. The celebration overlay/confetti read `resolveThemeTokens`.
+  - Fixed real light-mode defects: the `--text-inverse` alias collision (white
+    titles on white sheets), missing `color-scheme: light`, the UA button face
+    behind the nav, light gradients/nav, and `theme-color` now syncs from the
+    resolved token (the meta cannot read a variable).
+  - Fixed the latent safe-area bug: `--safe-top/-bottom` referenced undefined
+    `--app-safe-*`, which pushed the fixed bottom nav 225px off-screen.
+  - Added `tests/theme_contrast.test.js` (AA pairs in both modes),
+    `scripts/theme-literal-check.mjs` as a `verify` ratchet (3,590 → 1,750
+    literals, no file above its ceiling) and `scripts/theme-screenshots.mjs`
+    with the 27-image matrix. `core-ergonomics-check` now reads the token
+    constants instead of scraping `styles.css`, and the new
+    `theme-visibility-browser-check` fails on rendered text that matches its
+    surface (it caught the programme-card category label on a white card).
+  - Verify: 2,729 tests, typecheck, precache, workflow and theme guards, smoke;
+    51/51 existing browser checks plus the new visibility check.
+
 - **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
   - Added `js/settings/components.js` (page/group/row, toggle, segmented,
     stepper, slider, time, text, select list, picker and danger) and
@@ -1728,13 +1768,6 @@ device timing it did not measure.
   - The settings browser check clicks Reduce, asserts the hook and the stored
     preference, then restores System.
   - Still PARTIAL: no text size, haptics, demo size or sounds group.
-
-- **2026-11-24 — H4 A1: the stall evidence is no longer dead code.**
-  - `buildExerciseCard` now renders `diagnostic.message` under the target, so a
-    PROGRESS CHECK badge states the 3-session span, the missed target and the
-    hold/recovery action instead of leaving the athlete to guess.
-  - Tests pin the stalled line and the empty-message case.
-  - Still PARTIAL: no analytics surface lists stalled lifts.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

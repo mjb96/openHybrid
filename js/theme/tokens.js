@@ -66,6 +66,19 @@ function customPropertyName(key) {
 }
 
 /**
+ * The browser/Android chrome colour cannot read a CSS variable, so it is the
+ * one place that needs the resolved value pushed at runtime. Keeps the status
+ * bar in step with light mode instead of pinning the boot navy.
+ * @param {TokenMap} [tokens]
+ * @param {Document|null} [doc]
+ */
+export function syncThemeColorMeta(tokens, doc = typeof document !== 'undefined' ? document : null) {
+  const meta = doc?.querySelector?.('meta[name="theme-color"]');
+  if (!meta) return;
+  meta.setAttribute('content', (tokens || MIDNIGHT_TOKENS).bg);
+}
+
+/**
  * Publish the semantic layer as CSS custom properties. CSS already defines the
  * default values; this is the runtime path for the theme engine and for tests.
  * @param {HTMLElement|null|undefined} root
@@ -77,6 +90,7 @@ export function applyThemeTokens(root, tokens) {
   for (const [key, value] of Object.entries(map)) {
     root.style.setProperty(customPropertyName(key), value);
   }
+  syncThemeColorMeta(map);
   if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
     window.dispatchEvent(new CustomEvent('theme:changed', { detail: { mode: activeMode(root), tokens: map } }));
   }

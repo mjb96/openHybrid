@@ -26,7 +26,7 @@ function _uid() { return 'g' + (++_gid); }
 
 export function renderVolumeChart(container, weekLabels, volData, runData, highlightIdx = -1) {
   if (!container || weekLabels.length < 1) {
-    if (container) container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Log workouts to see volume trends.</p>';
+    if (container) container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Log workouts to see volume trends.</p>';
     return;
   }
 
@@ -42,12 +42,12 @@ export function renderVolumeChart(container, weekLabels, volData, runData, highl
   const vGrad = _uid(), rGrad = _uid();
   const defs = `<defs>
     <linearGradient id="${vGrad}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#3b82f6" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0.55"/>
+      <stop offset="0%"   stop-color="var(--data-1)" stop-opacity="1"/>
+      <stop offset="100%" stop-color="var(--data-1)" stop-opacity="0.55"/>
     </linearGradient>
     <linearGradient id="${rGrad}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%"   stop-color="#ec4899" stop-opacity="0.45"/>
-      <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
+      <stop offset="0%"   stop-color="var(--data-6)" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="var(--data-6)" stop-opacity="0"/>
     </linearGradient>
   </defs>`;
 
@@ -62,11 +62,11 @@ export function renderVolumeChart(container, weekLabels, volData, runData, highl
 
     if (barH > 0) {
       bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="${barH.toFixed(1)}"
-        fill="${isHL ? '#60a5fa' : `url(#${vGrad})`}"
+        fill="${isHL ? 'var(--info)' : `url(#${vGrad})`}"
         opacity="${isHL ? 1 : 0.8}" rx="4"/>`;
       if (isHL) {
         // Bright top-cap accent on highlighted bar
-        bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="3" fill="#93c5fd" rx="2" opacity="0.9"/>`;
+        bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW}" height="3" fill="var(--info)" rx="2" opacity="0.9"/>`;
       }
     }
 
@@ -83,10 +83,10 @@ export function renderVolumeChart(container, weekLabels, volData, runData, highl
     const smooth = _smoothBezierPath(pts);
     const areaD  = smooth + ` L ${pts[pts.length-1][0].toFixed(1)},${(PAD_T+chartH).toFixed(1)} L ${pts[0][0].toFixed(1)},${(PAD_T+chartH).toFixed(1)} Z`;
     runSvg = `<path d="${areaD}" fill="url(#${rGrad})"/>`;
-    runSvg += `<path d="${smooth}" fill="none" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round"/>`;
+    runSvg += `<path d="${smooth}" fill="none" stroke="var(--data-6)" stroke-width="2.5" stroke-linecap="round"/>`;
     runXY.forEach(([cx, cy, i]) => {
       const isHL = i === highlightIdx;
-      runSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${isHL ? 5.5 : 4}" fill="#ec4899" stroke="#0d1117" stroke-width="${isHL ? 2 : 1.5}"/>`;
+      runSvg += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${isHL ? 5.5 : 4}" fill="var(--data-6)" stroke="var(--surface-1)" stroke-width="${isHL ? 2 : 1.5}"/>`;
     });
   }
 
@@ -95,8 +95,8 @@ export function renderVolumeChart(container, weekLabels, volData, runData, highl
     const val = Math.round((maxVol / 2) * t);
     const vy  = PAD_T + chartH - (t / 2) * chartH;
     const lbl = val > 999 ? (val / 1000).toFixed(1) + 'k' : val;
-    yAxis += `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="600" fill="rgba(255,255,255,0.5)">${lbl}</text>`;
-    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    yAxis += `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="600" fill="color-mix(in srgb, var(--text) 50%, transparent)">${lbl}</text>`;
+    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 7%, transparent)" stroke-width="1"/>`;
   }
 
   let xAxis = '';
@@ -105,7 +105,7 @@ export function renderVolumeChart(container, weekLabels, volData, runData, highl
     const isHL = i === highlightIdx;
     xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="11"
       font-weight="${isHL ? 800 : 600}"
-      fill="${isHL ? '#60a5fa' : 'rgba(255,255,255,0.55)'}">${label}</text>`;
+      fill="${isHL ? 'var(--info)' : 'color-mix(in srgb, var(--text) 55%, transparent)'}">${label}</text>`;
   });
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${defs}${yAxis}${bars}${runSvg}${xAxis}</svg>`;
@@ -114,7 +114,7 @@ export function renderVolumeChart(container, weekLabels, volData, runData, highl
 export function renderRpeChart(container, weekLabels, rpeData) {
   if (!container) return;
   if (weekLabels.length === 0 || rpeData.every(r => r === 0)) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Log RPE on workouts to see fatigue trends.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Log RPE on workouts to see fatigue trends.</p>';
     return;
   }
 
@@ -127,7 +127,7 @@ export function renderRpeChart(container, weekLabels, rpeData) {
     const y = PAD_T + chartH * (1 - yPct - h);
     return `<rect x="${PAD_L}" y="${y.toFixed(1)}" width="${chartW}" height="${(chartH * h).toFixed(1)}" fill="${colour}" opacity="0.15"/>`;
   };
-  const bands = band(0, 6 / 10, '#10b981') + band(0.6, 2 / 10, '#f59e0b') + band(0.8, 2 / 10, '#ef4444');
+  const bands = band(0, 6 / 10, 'var(--success)') + band(0.6, 2 / 10, 'var(--warning)') + band(0.8, 2 / 10, 'var(--danger)');
 
   let points = '';
   let dots = '';
@@ -136,7 +136,7 @@ export function renderRpeChart(container, weekLabels, rpeData) {
     const ry = rpeData[i] > 0 ? PAD_T + chartH - (rpeData[i] / 10) * chartH : PAD_T + chartH;
     if (rpeData[i] > 0) {
       points += `${rx.toFixed(1)},${ry.toFixed(1)} `;
-      dots += `<circle cx="${rx.toFixed(1)}" cy="${ry.toFixed(1)}" r="5" fill="${rpeColour(rpeData[i])}" stroke="#111827" stroke-width="2"/>`;
+      dots += `<circle cx="${rx.toFixed(1)}" cy="${ry.toFixed(1)}" r="5" fill="${rpeColour(rpeData[i])}" stroke="var(--surface-1)" stroke-width="2"/>`;
     }
   });
 
@@ -147,16 +147,16 @@ export function renderRpeChart(container, weekLabels, rpeData) {
   }).filter(Boolean);
 
   const line = nonZeroPts.length >= 2
-    ? `<path d="${_smoothBezierPath(nonZeroPts)}" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="2.5" stroke-linecap="round"/>`
+    ? `<path d="${_smoothBezierPath(nonZeroPts)}" fill="none" stroke="color-mix(in srgb, var(--text) 45%, transparent)" stroke-width="2.5" stroke-linecap="round"/>`
     : '';
 
   let xAxis = '';
   weekLabels.forEach((label, i) => {
     const lx = PAD_L + (i / n) * chartW + chartW / n / 2;
-    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="rgba(255,255,255,0.9)">${label}</text>`;
+    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="color-mix(in srgb, var(--text) 90%, transparent)">${label}</text>`;
   });
 
-  const yLabels = [[6, '#f59e0b'], [8, '#ef4444']].map(([v, c]) => {
+  const yLabels = [[6, 'var(--warning)'], [8, 'var(--danger)']].map(([v, c]) => {
     const vy = PAD_T + chartH - (v / 10) * chartH;
     return `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="12" font-weight="bold" fill="${c}">${v}</text>
       <line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="${c}" stroke-width="1.5" opacity="0.4"/>`;
@@ -170,8 +170,8 @@ export function renderBodyWeightChart(container, bwLog) {
   const validEntries = (bwLog || []).filter(e => e && e.date && e.weight > 0);
   if (validEntries.length < 2) {
     container.innerHTML = validEntries.length === 1
-      ? `<p style="color:rgba(255,255,255,0.8);font-size:0.85rem;padding:8px 0;">One entry logged (${validEntries[0].weight} kg). Log more to see a trend.</p>`
-      : '<p style="color:rgba(255,255,255,0.6);font-size:0.75rem;">Log body weight to see trend.</p>';
+      ? `<p style="color:color-mix(in srgb, var(--text) 80%, transparent);font-size:0.85rem;padding:8px 0;">One entry logged (${validEntries[0].weight} kg). Log more to see a trend.</p>`
+      : '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.75rem;">Log body weight to see trend.</p>';
     return;
   }
 
@@ -191,16 +191,16 @@ export function renderBodyWeightChart(container, bwLog) {
   const toY = w => PAD_T + chartH - ((w - (minW - 1)) / (rangeW + 2)) * chartH;
 
   const points = weights.map((w, i) => `${toX(i).toFixed(1)},${toY(w).toFixed(1)}`).join(' ');
-  const polyline = `<polyline fill="none" stroke="#a855f7" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${points}"/>`;
+  const polyline = `<polyline fill="none" stroke="var(--data-5)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${points}"/>`;
 
   const fillPath = `M ${toX(0).toFixed(1)},${(PAD_T + chartH).toFixed(1)} ` +
     weights.map((w, i) => `L ${toX(i).toFixed(1)},${toY(w).toFixed(1)}`).join(' ') +
     ` L ${toX(n - 1).toFixed(1)},${(PAD_T + chartH).toFixed(1)} Z`;
-  const fill = `<path d="${fillPath}" fill="#a855f7" opacity="0.12"/>`;
+  const fill = `<path d="${fillPath}" fill="var(--data-5)" opacity="0.12"/>`;
 
   let dots = '';
   weights.forEach((w, i) => {
-    dots += `<circle cx="${toX(i).toFixed(1)}" cy="${toY(w).toFixed(1)}" r="4" fill="#a855f7" stroke="#111827" stroke-width="2"/>`;
+    dots += `<circle cx="${toX(i).toFixed(1)}" cy="${toY(w).toFixed(1)}" r="4" fill="var(--data-5)" stroke="var(--surface-1)" stroke-width="2"/>`;
   });
 
   const specialIdx = new Set([0, n - 1, weights.indexOf(minW), weights.indexOf(maxW)]);
@@ -209,18 +209,18 @@ export function renderBodyWeightChart(container, bwLog) {
     const x = toX(i);
     const y = toY(weights[i]);
     const above = y > PAD_T + 20;
-    valueLabels += `<text x="${x.toFixed(1)}" y="${(above ? y - 8 : y + 18).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="rgba(255,255,255,0.9)">${weights[i].toFixed(1)}</text>`;
+    valueLabels += `<text x="${x.toFixed(1)}" y="${(above ? y - 8 : y + 18).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="color-mix(in srgb, var(--text) 90%, transparent)">${weights[i].toFixed(1)}</text>`;
   });
 
   let xAxis = '';
   const step = n <= 8 ? 1 : Math.ceil(n / 6);
   for (let i = 0; i < n; i += step) {
-    xAxis += `<text x="${toX(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.7)">${labels[i]}</text>`;
+    xAxis += `<text x="${toX(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="color-mix(in srgb, var(--text) 70%, transparent)">${labels[i]}</text>`;
   }
 
   [[minW, 'min'], [maxW, 'max']].forEach(([w]) => {
     const vy = toY(w);
-    valueLabels += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    valueLabels += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 8%, transparent)" stroke-width="1"/>`;
   });
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${fill}${polyline}${dots}${valueLabels}${xAxis}</svg>`;
@@ -230,7 +230,7 @@ export function renderHrZonesChart(container, weekLabels, zonesData) {
   if (!container) return;
   const hasData = zonesData.some(week => week.some(z => z > 0));
   if (!hasData || weekLabels.length === 0) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Import .FIT data to view HR zones.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Import .FIT data to view HR zones.</p>';
     return;
   }
 
@@ -239,7 +239,7 @@ export function renderHrZonesChart(container, weekLabels, zonesData) {
   const chartH = H - PAD_B - PAD_T;
   const n = weekLabels.length;
   const barW = Math.max(12, Math.floor(chartW / n) - 8);
-  const colors = ['#22d3ee', '#10b981', '#f59e0b', '#f97316', '#ef4444'];
+  const colors = ['var(--accent)', 'var(--success)', 'var(--warning)', 'var(--data-3)', 'var(--danger)'];
   let bars = '';
 
   weekLabels.forEach((label, i) => {
@@ -258,14 +258,14 @@ export function renderHrZonesChart(container, weekLabels, zonesData) {
   let xAxis = '';
   weekLabels.forEach((label, i) => {
     const lx = PAD_L + (i / n) * chartW + chartW / n / 2;
-    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="rgba(255,255,255,0.9)">${label}</text>`;
+    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="color-mix(in srgb, var(--text) 90%, transparent)">${label}</text>`;
   });
 
   let yAxis = '';
   [0, 50, 100].forEach(pct => {
     const vy = PAD_T + chartH - (pct / 100) * chartH;
-    yAxis += `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="rgba(255,255,255,0.6)">${pct}%</text>
-              <line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+    yAxis += `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="color-mix(in srgb, var(--text) 60%, transparent)">${pct}%</text>
+              <line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 10%, transparent)" stroke-width="1"/>`;
   });
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${yAxis}${bars}${xAxis}</svg>`;
@@ -275,7 +275,7 @@ export function renderCadenceChart(container, weekLabels, cadenceData) {
   if (!container) return;
   const valid = cadenceData.filter(c => c > 0);
   if (valid.length === 0 || weekLabels.length === 0) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Import .FIT data to view cadence trends.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Import .FIT data to view cadence trends.</p>';
     return;
   }
 
@@ -298,25 +298,25 @@ export function renderCadenceChart(container, weekLabels, cadenceData) {
     if (c > 0) {
       const x = toX(i), y = toY(c);
       points += `${x.toFixed(1)},${y.toFixed(1)} `;
-      dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="#f59e0b" stroke="#111827" stroke-width="2"/>
-               <text x="${x.toFixed(1)}" y="${(y - 10).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="#f59e0b">${Math.round(c)}</text>`;
+      dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="var(--warning)" stroke="var(--surface-1)" stroke-width="2"/>
+               <text x="${x.toFixed(1)}" y="${(y - 10).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--warning)">${Math.round(c)}</text>`;
     }
   });
 
   const line = points.trim().split(' ').length >= 2
-    ? `<polyline fill="none" stroke="#f59e0b" stroke-width="3" stroke-linejoin="round" points="${points.trim()}"/>` : '';
+    ? `<polyline fill="none" stroke="var(--warning)" stroke-width="3" stroke-linejoin="round" points="${points.trim()}"/>` : '';
 
   let xAxis = '';
   weekLabels.forEach((label, i) => {
     const lx = toX(i);
-    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="rgba(255,255,255,0.9)">${label}</text>`;
+    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="12" font-weight="600" fill="color-mix(in srgb, var(--text) 90%, transparent)">${label}</text>`;
   });
 
   let yAxis = '';
   [minC, Math.round((minC + maxC) / 2), maxC].forEach(val => {
     const vy = toY(val);
-    yAxis += `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="rgba(255,255,255,0.6)">${val}</text>
-              <line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>`;
+    yAxis += `<text x="${PAD_L - 8}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="color-mix(in srgb, var(--text) 60%, transparent)">${val}</text>
+              <line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 10%, transparent)" stroke-width="1"/>`;
   });
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${yAxis}${line}${dots}${xAxis}</svg>`;
@@ -326,7 +326,7 @@ export function render1RMProgressChart(container, weekLabels, sqData, bpData, dl
   if (!container) return;
   const hasAny = (sqData.some(v => v > 0) || bpData.some(v => v > 0) || dlData.some(v => v > 0));
   if (!hasAny || weekLabels.length < 1) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Complete squat, bench or deadlift sets to see 1RM progress.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Complete squat, bench or deadlift sets to see 1RM progress.</p>';
     return;
   }
 
@@ -348,15 +348,15 @@ export function render1RMProgressChart(container, weekLabels, sqData, bpData, dl
   [0.25, 0.5, 0.75].forEach(pct => {
     const val = minVal + pct * range;
     const vy = toY(val);
-    yAxis += `<text x="${PAD_L - 6}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.5)">${Math.round(val)}</text>`;
-    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+    yAxis += `<text x="${PAD_L - 6}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="color-mix(in srgb, var(--text) 50%, transparent)">${Math.round(val)}</text>`;
+    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 12%, transparent)" stroke-width="1"/>`;
   });
 
   // X axis labels
   let xAxis = '';
   weekLabels.forEach((label, i) => {
     const lx = toX(i);
-    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.7)">${label}</text>`;
+    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="color-mix(in srgb, var(--text) 70%, transparent)">${label}</text>`;
   });
 
   // Draw a series line + dots, skipping zeros
@@ -369,21 +369,21 @@ export function render1RMProgressChart(container, weekLabels, sqData, bpData, dl
       result += `<polyline fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" points="${pts}"/>`;
     }
     nonZero.forEach(p => {
-      result += `<circle cx="${toX(p.i).toFixed(1)}" cy="${toY(p.v).toFixed(1)}" r="4" fill="${color}" stroke="#111827" stroke-width="1.5"/>`;
+      result += `<circle cx="${toX(p.i).toFixed(1)}" cy="${toY(p.v).toFixed(1)}" r="4" fill="${color}" stroke="var(--surface-1)" stroke-width="1.5"/>`;
     });
     return result;
   };
 
-  const series = drawSeries(sqData, '#3b82f6') + drawSeries(bpData, '#10b981') + drawSeries(dlData, '#f59e0b');
+  const series = drawSeries(sqData, 'var(--data-1)') + drawSeries(bpData, 'var(--success)') + drawSeries(dlData, 'var(--warning)');
 
   // Legend at top
   const legend =
-    `<circle cx="${PAD_L}" cy="10" r="5" fill="#3b82f6"/>` +
-    `<text x="${PAD_L + 8}" y="14" font-size="10" fill="rgba(255,255,255,0.8)">SQ</text>` +
-    `<circle cx="${PAD_L + 38}" cy="10" r="5" fill="#10b981"/>` +
-    `<text x="${PAD_L + 46}" y="14" font-size="10" fill="rgba(255,255,255,0.8)">BP</text>` +
-    `<circle cx="${PAD_L + 76}" cy="10" r="5" fill="#f59e0b"/>` +
-    `<text x="${PAD_L + 84}" y="14" font-size="10" fill="rgba(255,255,255,0.8)">DL</text>`;
+    `<circle cx="${PAD_L}" cy="10" r="5" fill="var(--data-1)"/>` +
+    `<text x="${PAD_L + 8}" y="14" font-size="10" fill="color-mix(in srgb, var(--text) 80%, transparent)">SQ</text>` +
+    `<circle cx="${PAD_L + 38}" cy="10" r="5" fill="var(--success)"/>` +
+    `<text x="${PAD_L + 46}" y="14" font-size="10" fill="color-mix(in srgb, var(--text) 80%, transparent)">BP</text>` +
+    `<circle cx="${PAD_L + 76}" cy="10" r="5" fill="var(--warning)"/>` +
+    `<text x="${PAD_L + 84}" y="14" font-size="10" fill="color-mix(in srgb, var(--text) 80%, transparent)">DL</text>`;
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${yAxis}${series}${xAxis}${legend}</svg>`;
 }
@@ -441,34 +441,34 @@ export function bodyWeightChartSVG(bwLog, options = {}) {
   for (let i = 0; i <= gridSteps; i++) {
     const value = ymin + ((ymax - ymin) * i) / gridSteps;
     const y = toY(value);
-    grid += `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="rgba(148,163,184,.14)" stroke-width="1"/>`
-      + `<text x="${PAD_L - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="rgba(203,213,225,.62)">${value.toFixed(1)}</text>`;
+    grid += `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text-3) 1400%, transparent)" stroke-width="1"/>`
+      + `<text x="${PAD_L - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="color-mix(in srgb, var(--text-2) 6200%, transparent)">${value.toFixed(1)}</text>`;
   }
 
   const xLabelIdx = compact
     ? [...new Set([0, log.length - 1])]
     : [...new Set([0, Math.floor((log.length - 1) / 2), log.length - 1])];
-  const xAxis = xLabelIdx.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 5}" text-anchor="${index === 0 ? 'start' : index === log.length - 1 ? 'end' : 'middle'}" font-size="9.5" fill="rgba(203,213,225,.62)">${formatDayMonth(log[index].date)}</text>`).join('');
+  const xAxis = xLabelIdx.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 5}" text-anchor="${index === 0 ? 'start' : index === log.length - 1 ? 'end' : 'middle'}" font-size="9.5" fill="color-mix(in srgb, var(--text-2) 6200%, transparent)">${formatDayMonth(log[index].date)}</text>`).join('');
 
   const fillPath = `M ${xs[0].toFixed(1)},${(PAD_T + chartH).toFixed(1)} `
     + xs.map((x, index) => `L ${x.toFixed(1)},${ys[index].toFixed(1)}`).join(' ')
     + ` L ${xs[xs.length - 1].toFixed(1)},${(PAD_T + chartH).toFixed(1)} Z`;
   const dailyPath = xs.map((x, index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[index].toFixed(1)}`).join(' ');
   const maPath = xs.map((x, index) => `${index === 0 ? 'M' : 'L'}${x.toFixed(1)},${toY(ma[index]).toFixed(1)}`).join(' ');
-  const dots = xs.map((x, index) => `<circle cx="${x.toFixed(1)}" cy="${ys[index].toFixed(1)}" r="${compact ? 2.2 : 2.6}" fill="#22d3ee"><title>${log[index].date} · ${weights[index]} ${unit}</title></circle>`).join('');
+  const dots = xs.map((x, index) => `<circle cx="${x.toFixed(1)}" cy="${ys[index].toFixed(1)}" r="${compact ? 2.2 : 2.6}" fill="var(--accent)"><title>${log[index].date} · ${weights[index]} ${unit}</title></circle>`).join('');
 
   const goalLine = hasGoal
-    ? `<line x1="${PAD_L}" y1="${toY(goal).toFixed(1)}" x2="${W - PAD_R}" y2="${toY(goal).toFixed(1)}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="${compact ? '4 3' : '6 4'}"/>`
-      + (compact ? '' : `<text x="${W - PAD_R}" y="${(toY(goal) - 6).toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="700" fill="#f59e0b">Goal ${goal} ${unit}</text>`)
+    ? `<line x1="${PAD_L}" y1="${toY(goal).toFixed(1)}" x2="${W - PAD_R}" y2="${toY(goal).toFixed(1)}" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="${compact ? '4 3' : '6 4'}"/>`
+      + (compact ? '' : `<text x="${W - PAD_R}" y="${(toY(goal) - 6).toFixed(1)}" text-anchor="end" font-size="9.5" font-weight="700" fill="var(--warning)">Goal ${goal} ${unit}</text>`)
     : '';
 
   // The legend is the only thing the compact card cannot afford; the card's own
   // meta line already names the goal, and the trend line is explained below it.
-  const legend = compact ? '' : `<circle cx="${PAD_L}" cy="11" r="3.5" fill="#22d3ee"/>`
+  const legend = compact ? '' : `<circle cx="${PAD_L}" cy="11" r="3.5" fill="var(--accent)"/>`
     + `<text x="${PAD_L + 8}" y="14.5" font-size="9.5" fill="var(--text-secondary)">Daily</text>`
-    + `<line x1="${PAD_L + 44}" y1="11" x2="${PAD_L + 58}" y2="11" stroke="#a3e635" stroke-width="2.5"/>`
+    + `<line x1="${PAD_L + 44}" y1="11" x2="${PAD_L + 58}" y2="11" stroke="var(--data-2)" stroke-width="2.5"/>`
     + `<text x="${PAD_L + 63}" y="14.5" font-size="9.5" fill="var(--text-secondary)">7d avg</text>`
-    + (hasGoal ? `<line x1="${PAD_L + 112}" y1="11" x2="${PAD_L + 126}" y2="11" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 2"/><text x="${PAD_L + 131}" y="14.5" font-size="9.5" fill="var(--text-secondary)">Goal</text>` : '');
+    + (hasGoal ? `<line x1="${PAD_L + 112}" y1="11" x2="${PAD_L + 126}" y2="11" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="4 2"/><text x="${PAD_L + 131}" y="14.5" font-size="9.5" fill="var(--text-secondary)">Goal</text>` : '');
 
   // Two charts can be in the DOM at once (Home stays mounted behind Progress),
   // so the gradient id is per-caller rather than a shared constant.
@@ -476,11 +476,11 @@ export function bodyWeightChartSVG(bwLog, options = {}) {
   const label = options.ariaLabel || (compact ? 'Bodyweight trend' : 'Body weight history');
   const className = compact ? ' class="home-bw__spark"' : '';
   return `<svg viewBox="0 0 ${W} ${H}"${className} style="width:100%;height:auto;display:block;" role="img" aria-label="${label}">`
-    + `<defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#22d3ee" stop-opacity=".24"/><stop offset="100%" stop-color="#22d3ee" stop-opacity="0"/></linearGradient></defs>`
+    + `<defs><linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity=".24"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>`
     + grid
     + `<path d="${fillPath}" fill="url(#${gradientId})"/>`
-    + `<path d="${dailyPath}" fill="none" stroke="#22d3ee" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity=".75"/>`
-    + `<path d="${maPath}" fill="none" stroke="#a3e635" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`
+    + `<path d="${dailyPath}" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" opacity=".75"/>`
+    + `<path d="${maPath}" fill="none" stroke="var(--data-2)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`
     + dots + goalLine + xAxis + legend
     + `</svg>`;
 }
@@ -588,7 +588,7 @@ export function renderSiteTrend(container, points, options = {}) {
 export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
   if (!container) return;
   if (!trainingDays || trainingDays.length === 0) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Log workouts to see your training calendar.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Log workouts to see your training calendar.</p>';
     return;
   }
 
@@ -607,7 +607,7 @@ export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
     for (let d = 0; d < nDays; d++) {
       const cx = PAD_L + w * STEP;
       const cy = PAD_T + d * STEP;
-      bg += `<rect x="${cx}" y="${cy}" width="${CELL}" height="${CELL}" fill="rgba(255,255,255,0.05)" rx="2"/>`;
+      bg += `<rect x="${cx}" y="${cy}" width="${CELL}" height="${CELL}" fill="color-mix(in srgb, var(--text) 5%, transparent)" rx="2"/>`;
     }
   }
 
@@ -615,7 +615,7 @@ export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
   let wkLabels = '';
   weekLabels.forEach((lbl, w) => {
     const cx = PAD_L + w * STEP + CELL / 2;
-    wkLabels += `<text x="${cx}" y="${PAD_T - 4}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.4)">${lbl}</text>`;
+    wkLabels += `<text x="${cx}" y="${PAD_T - 4}" text-anchor="middle" font-size="9" fill="color-mix(in srgb, var(--text) 40%, transparent)">${lbl}</text>`;
   });
 
   // Day labels left column
@@ -623,7 +623,7 @@ export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
   let dayLabels = '';
   dayNames.forEach((name, d) => {
     const cy = PAD_T + d * STEP + CELL / 2 + 3;
-    dayLabels += `<text x="${PAD_L - 4}" y="${cy}" text-anchor="end" font-size="9" fill="rgba(255,255,255,0.4)">${name}</text>`;
+    dayLabels += `<text x="${PAD_L - 4}" y="${cy}" text-anchor="end" font-size="9" fill="color-mix(in srgb, var(--text) 40%, transparent)">${name}</text>`;
   });
 
   // Overlay trained cells
@@ -638,9 +638,9 @@ export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
     const cx = PAD_L + w * STEP;
     const cy = PAD_T + dayIdx * STEP;
     let color;
-    if (gym && run) color = '#10b981';
-    else if (gym)   color = '#3b82f6';
-    else if (run)   color = '#ec4899';
+    if (gym && run) color = 'var(--success)';
+    else if (gym)   color = 'var(--data-1)';
+    else if (run)   color = 'var(--data-6)';
     else return;
     cells += `<rect x="${cx}" y="${cy}" width="${CELL}" height="${CELL}" fill="${color}" opacity="0.85" rx="2"/>`;
   });
@@ -648,12 +648,12 @@ export function renderConsistencyHeatmap(container, trainingDays, weekLabels) {
   // Legend row at bottom
   const ly = gridH + 4;
   const legend =
-    `<rect x="${PAD_L}" y="${ly}" width="10" height="10" fill="#3b82f6" rx="2"/>` +
-    `<text x="${PAD_L + 13}" y="${ly + 8}" font-size="9" fill="rgba(255,255,255,0.7)">Gym</text>` +
-    `<rect x="${PAD_L + 38}" y="${ly}" width="10" height="10" fill="#ec4899" rx="2"/>` +
-    `<text x="${PAD_L + 51}" y="${ly + 8}" font-size="9" fill="rgba(255,255,255,0.7)">Run</text>` +
-    `<rect x="${PAD_L + 74}" y="${ly}" width="10" height="10" fill="#10b981" rx="2"/>` +
-    `<text x="${PAD_L + 87}" y="${ly + 8}" font-size="9" fill="rgba(255,255,255,0.7)">Both</text>`;
+    `<rect x="${PAD_L}" y="${ly}" width="10" height="10" fill="var(--data-1)" rx="2"/>` +
+    `<text x="${PAD_L + 13}" y="${ly + 8}" font-size="9" fill="color-mix(in srgb, var(--text) 70%, transparent)">Gym</text>` +
+    `<rect x="${PAD_L + 38}" y="${ly}" width="10" height="10" fill="var(--data-6)" rx="2"/>` +
+    `<text x="${PAD_L + 51}" y="${ly + 8}" font-size="9" fill="color-mix(in srgb, var(--text) 70%, transparent)">Run</text>` +
+    `<rect x="${PAD_L + 74}" y="${ly}" width="10" height="10" fill="var(--success)" rx="2"/>` +
+    `<text x="${PAD_L + 87}" y="${ly + 8}" font-size="9" fill="color-mix(in srgb, var(--text) 70%, transparent)">Both</text>`;
 
   container.innerHTML = `<svg viewBox="0 0 ${gridW} ${totalH}" style="width:100%;height:auto;display:block;">${bg}${wkLabels}${dayLabels}${cells}${legend}</svg>`;
 }
@@ -662,7 +662,7 @@ export function renderPaceLineChart(container, weekLabels, paceData, thresholdSe
   if (!container) return;
   const nonZero = paceData.filter(s => s > 0);
   if (nonZero.length === 0 || weekLabels.length < 1) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Log runs with time to see pace trend.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Log runs with time to see pace trend.</p>';
     return;
   }
 
@@ -688,8 +688,8 @@ export function renderPaceLineChart(container, weekLabels, paceData, thresholdSe
   [0.25, 0.5, 0.75].forEach(pct => {
     const val = minPace + pct * range;
     const vy = toY(val);
-    yAxis += `<text x="${PAD_L - 6}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.5)">${fmtPace(val)}</text>`;
-    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+    yAxis += `<text x="${PAD_L - 6}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="color-mix(in srgb, var(--text) 50%, transparent)">${fmtPace(val)}</text>`;
+    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 12%, transparent)" stroke-width="1"/>`;
   });
 
   // Threshold band and line
@@ -702,10 +702,10 @@ export function renderPaceLineChart(container, weekLabels, paceData, thresholdSe
     const bandBot = Math.max(ty, easyY);
     const bandH = bandBot - bandTop;
     if (bandH > 0) {
-      thresholdSvg += `<rect x="${PAD_L}" y="${bandTop.toFixed(1)}" width="${chartW}" height="${bandH.toFixed(1)}" fill="#f59e0b" opacity="0.10"/>`;
+      thresholdSvg += `<rect x="${PAD_L}" y="${bandTop.toFixed(1)}" width="${chartW}" height="${bandH.toFixed(1)}" fill="var(--warning)" opacity="0.10"/>`;
     }
-    thresholdSvg += `<line x1="${PAD_L}" y1="${ty.toFixed(1)}" x2="${W - PAD_R}" y2="${ty.toFixed(1)}" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.8"/>`;
-    thresholdSvg += `<text x="${W - PAD_R}" y="${(ty - 4).toFixed(1)}" text-anchor="end" font-size="9" fill="#f59e0b">Threshold</text>`;
+    thresholdSvg += `<line x1="${PAD_L}" y1="${ty.toFixed(1)}" x2="${W - PAD_R}" y2="${ty.toFixed(1)}" stroke="var(--warning)" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.8"/>`;
+    thresholdSvg += `<text x="${W - PAD_R}" y="${(ty - 4).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--warning)">Threshold</text>`;
   }
 
   // Smooth bezier pace line + gradient fill + coloured dots
@@ -722,26 +722,26 @@ export function renderPaceLineChart(container, weekLabels, paceData, thresholdSe
     const smooth = _smoothBezierPath(pts);
     const areaD  = smooth + ` L ${pts[pts.length-1][0].toFixed(1)},${(PAD_T+chartH).toFixed(1)} L ${pts[0][0].toFixed(1)},${(PAD_T+chartH).toFixed(1)} Z`;
     line = `<defs><linearGradient id="${paceGrad}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ec4899" stop-opacity="0.3"/>
-      <stop offset="100%" stop-color="#ec4899" stop-opacity="0"/>
+      <stop offset="0%" stop-color="var(--data-6)" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="var(--data-6)" stop-opacity="0"/>
     </linearGradient></defs>
     <path d="${areaD}" fill="url(#${paceGrad})"/>
-    <path d="${smooth}" fill="none" stroke="rgba(236,72,153,0.8)" stroke-width="2.5" stroke-linecap="round"/>`;
+    <path d="${smooth}" fill="none" stroke="color-mix(in srgb, var(--data-6) 80%, transparent)" stroke-width="2.5" stroke-linecap="round"/>`;
   }
   paceNonZero.forEach(([x, y, i]) => {
     const s = paceData[i];
-    let dotColor = '#ec4899';
+    let dotColor = 'var(--data-6)';
     if (thresholdSecs > 0) {
-      dotColor = s > thresholdSecs * 1.15 ? '#10b981' : s > thresholdSecs ? '#f59e0b' : '#ef4444';
+      dotColor = s > thresholdSecs * 1.15 ? 'var(--success)' : s > thresholdSecs ? 'var(--warning)' : 'var(--danger)';
     }
-    dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${dotColor}" stroke="#0d1117" stroke-width="1.5"/>`;
+    dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${dotColor}" stroke="var(--surface-1)" stroke-width="1.5"/>`;
   });
 
   // X axis
   let xAxis = '';
   weekLabels.forEach((label, i) => {
     const lx = toX(i);
-    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.7)">${label}</text>`;
+    xAxis += `<text x="${lx.toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="color-mix(in srgb, var(--text) 70%, transparent)">${label}</text>`;
   });
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${yAxis}${thresholdSvg}${line}${dots}${xAxis}</svg>`;
@@ -751,7 +751,7 @@ export function renderACWRChart(container, weekLabels, atlSeries, ctlSeries) {
   if (!container) return;
   const valid = atlSeries.some(v => v > 0) || ctlSeries.some(v => v > 0);
   if (!valid || weekLabels.length < 2) {
-    container.innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:0.9rem;padding:12px 0;">Log sessions with RPE and duration to unlock load history.</p>';
+    container.innerHTML = '<p style="color:color-mix(in srgb, var(--text) 60%, transparent);font-size:0.9rem;padding:12px 0;">Log sessions with RPE and duration to unlock load history.</p>';
     return;
   }
 
@@ -776,13 +776,13 @@ export function renderACWRChart(container, weekLabels, atlSeries, ctlSeries) {
   }
   const allPts = safePts1 + safePts2.split(' ').filter(Boolean).reverse().join(' ');
   if (allPts.trim()) {
-    bandSvg = `<polygon points="${allPts}" fill="#10b981" opacity="0.08"/>`;
+    bandSvg = `<polygon points="${allPts}" fill="var(--success)" opacity="0.08"/>`;
   }
 
   // CTL line (blue, dashed) — smooth bezier
   const ctlNonZero = ctlSeries.map((v, i) => v > 0 ? [toX(i), toY(v)] : null).filter(Boolean);
   const ctlLine = ctlNonZero.length >= 2
-    ? `<path d="${_smoothBezierPath(ctlNonZero)}" fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="6,3" stroke-linecap="round"/>`
+    ? `<path d="${_smoothBezierPath(ctlNonZero)}" fill="none" stroke="var(--data-1)" stroke-width="2" stroke-dasharray="6,3" stroke-linecap="round"/>`
     : '';
 
   // ATL line (amber, solid) — smooth bezier + gradient area fill
@@ -794,18 +794,18 @@ export function renderACWRChart(container, weekLabels, atlSeries, ctlSeries) {
     const atlGrad = _uid();
     const areaD   = smooth + ` L ${atlPts[atlPts.length-1][0].toFixed(1)},${(PAD_T+chartH).toFixed(1)} L ${atlPts[0][0].toFixed(1)},${(PAD_T+chartH).toFixed(1)} Z`;
     atlLine = `<defs><linearGradient id="${atlGrad}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.2"/>
-      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+      <stop offset="0%" stop-color="var(--warning)" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="var(--warning)" stop-opacity="0"/>
     </linearGradient></defs>
     <path d="${areaD}" fill="url(#${atlGrad})"/>
-    <path d="${smooth}" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>`;
+    <path d="${smooth}" fill="none" stroke="var(--warning)" stroke-width="2.5" stroke-linecap="round"/>`;
   } else if (atlNonZero.length === 1) {
     atlLine = '';
   }
   atlNonZero.forEach(([cx, cy, i]) => {
     const acwr = ctlSeries[i] > 0 ? atlSeries[i] / ctlSeries[i] : 0;
-    const dc   = acwr === 0 ? '#94a3b8' : acwr <= 1.0 ? '#10b981' : acwr <= 1.3 ? '#f59e0b' : '#ef4444';
-    atlDots += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${dc}" stroke="#0d1117" stroke-width="1.5"/>`;
+    const dc   = acwr === 0 ? 'var(--text-2)' : acwr <= 1.0 ? 'var(--success)' : acwr <= 1.3 ? 'var(--warning)' : 'var(--danger)';
+    atlDots += `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="4.5" fill="${dc}" stroke="var(--surface-1)" stroke-width="1.5"/>`;
   });
 
   // Y axis gridlines
@@ -813,22 +813,22 @@ export function renderACWRChart(container, weekLabels, atlSeries, ctlSeries) {
   [0.25, 0.5, 0.75, 1].forEach(pct => {
     const val = Math.round(maxVal * pct);
     const vy  = toY(maxVal * pct);
-    yAxis += `<text x="${PAD_L - 5}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="rgba(255,255,255,0.45)">${val}</text>`;
-    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+    yAxis += `<text x="${PAD_L - 5}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="color-mix(in srgb, var(--text) 45%, transparent)">${val}</text>`;
+    yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 8%, transparent)" stroke-width="1"/>`;
   });
 
   // X axis labels (show every 2nd to avoid crowding)
   let xAxis = '';
   weekLabels.forEach((label, i) => {
     if (n > 8 && i % 2 !== 0) return;
-    xAxis += `<text x="${toX(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="rgba(255,255,255,0.6)">${label}</text>`;
+    xAxis += `<text x="${toX(i).toFixed(1)}" y="${H - 5}" text-anchor="middle" font-size="10" fill="color-mix(in srgb, var(--text) 60%, transparent)">${label}</text>`;
   });
 
   // Legend
   const legend = `
-    <text x="${PAD_L}" y="${PAD_T - 2}" font-size="9" fill="#f59e0b">▬ ATL (acute)</text>
-    <text x="${PAD_L + 90}" y="${PAD_T - 2}" font-size="9" fill="#3b82f6" stroke-dasharray="4,2">- - CTL (chronic)</text>
-    <text x="${PAD_L + 195}" y="${PAD_T - 2}" font-size="9" fill="#10b981">■ Safe zone</text>`;
+    <text x="${PAD_L}" y="${PAD_T - 2}" font-size="9" fill="var(--warning)">▬ ATL (acute)</text>
+    <text x="${PAD_L + 90}" y="${PAD_T - 2}" font-size="9" fill="var(--data-1)" stroke-dasharray="4,2">- - CTL (chronic)</text>
+    <text x="${PAD_L + 195}" y="${PAD_T - 2}" font-size="9" fill="var(--success)">■ Safe zone</text>`;
 
   container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;">${yAxis}${bandSvg}${ctlLine}${atlLine}${atlDots}${xAxis}${legend}</svg>`;
 }
