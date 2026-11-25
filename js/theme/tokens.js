@@ -12,9 +12,9 @@
 
 /** @type {TokenMap} */
 export const MIDNIGHT_TOKENS = Object.freeze({
-  bg: '#070B14', 'surface-1': '#0F1624', 'surface-2': '#161F31', 'surface-3': '#1D2840',
+  bg: '#060606', 'surface-1': '#111111', 'surface-2': '#181818', 'surface-3': '#202020',
   divider: 'rgba(255,255,255,.08)', 'border-strong': 'rgba(255,255,255,.14)',
-  text: '#EEF2F8', 'text-2': '#A3AEC2', 'text-3': '#7584A0', 'text-inverse': '#04202A',
+  text: '#F2F2F2', 'text-2': '#B0B0B0', 'text-3': '#8A8A8A', 'text-inverse': '#04202A',
   accent: '#22D3EE', 'accent-pressed': '#06B6D4', 'accent-subtle': 'rgba(34,211,238,.14)',
   'on-accent': '#04202A', 'accent-text': '#22D3EE',
   success: '#34D399', 'success-subtle': 'rgba(52,211,153,.14)',
@@ -23,10 +23,10 @@ export const MIDNIGHT_TOKENS = Object.freeze({
   info: '#60A5FA', 'info-subtle': 'rgba(96,165,250,.14)',
   'domain-strength': '#7C8CFF', 'domain-endurance': '#FF9F5A', 'domain-recovery': '#34D399',
   'data-1': '#4C8DF6', 'data-2': '#34C77B', 'data-3': '#F59A3D', 'data-4': '#EF5A6F',
-  'data-5': '#9B7BF2', 'data-6': '#E873B9', 'data-7': '#2BB8B0', 'data-8': '#7D8799',
+  'data-5': '#9B7BF2', 'data-6': '#E873B9', 'data-7': '#2BB8B0', 'data-8': '#8A8A8A',
   'tile-1': '#4C8DF6', 'tile-2': '#34C77B', 'tile-3': '#F59A3D', 'tile-4': '#EF5A6F',
-  'tile-5': '#9B7BF2', 'tile-6': '#E873B9', 'tile-7': '#2BB8B0', 'tile-8': '#7D8799',
-  'overlay-scrim': 'rgba(7,11,20,.72)', 'focus-ring': '#22D3EE',
+  'tile-5': '#9B7BF2', 'tile-6': '#E873B9', 'tile-7': '#2BB8B0', 'tile-8': '#8A8A8A',
+  'overlay-scrim': 'rgba(6,6,6,.76)', 'focus-ring': '#22D3EE',
 });
 
 /** @type {TokenMap} */

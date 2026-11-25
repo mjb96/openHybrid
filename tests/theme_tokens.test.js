@@ -16,13 +16,13 @@ import {
 const CSS = readFileSync(new URL('../css/tokens.css', import.meta.url), 'utf8');
 
 test('Midnight matches the approved semantic baseline', () => {
-  assert.equal(MIDNIGHT_TOKENS.bg, '#070B14');
-  assert.equal(MIDNIGHT_TOKENS['surface-1'], '#0F1624');
-  assert.equal(MIDNIGHT_TOKENS.text, '#EEF2F8');
+  assert.equal(MIDNIGHT_TOKENS.bg, '#060606');
+  assert.equal(MIDNIGHT_TOKENS['surface-1'], '#111111');
+  assert.equal(MIDNIGHT_TOKENS.text, '#F2F2F2');
   assert.equal(MIDNIGHT_TOKENS.accent, '#22D3EE');
   assert.equal(MIDNIGHT_TOKENS['on-accent'], '#04202A');
   assert.equal(MIDNIGHT_TOKENS['domain-strength'], '#7C8CFF');
-  assert.equal(MIDNIGHT_TOKENS['data-8'], '#7D8799');
+  assert.equal(MIDNIGHT_TOKENS['data-8'], '#8A8A8A');
 });
 
 test('every JS token has a CSS custom property in both themes', () => {

@@ -7,13 +7,13 @@
 
 :root {
   /* --- Primitive palette (raw, never used by components) --- */
-  --p-navy-950: #070b14;
-  --p-navy-900: #0f1624;
-  --p-navy-850: #161f31;
-  --p-navy-800: #1d2840;
-  --p-slate-100: #eef2f8;
-  --p-slate-300: #a3aec2;
-  --p-slate-500: #7584a0;
+  --p-ink-950: #060606;
+  --p-ink-900: #111111;
+  --p-ink-850: #181818;
+  --p-ink-800: #202020;
+  --p-grey-100: #f2f2f2;
+  --p-grey-300: #b0b0b0;
+  --p-grey-500: #8a8a8a;
   --p-cyan-400: #22d3ee;
   --p-cyan-500: #06b6d4;
   --p-green-400: #34d399;
@@ -29,18 +29,18 @@
   --p-purple-500: #9b7bf2;
   --p-pink-500: #e873b9;
   --p-teal-500: #2bb8b0;
-  --p-slate-400: #7d8799;
+  --p-grey-400: #8a8a8a;
 
   /* --- Semantic colour: Midnight --- */
-  --bg: var(--p-navy-950);
-  --surface-1: var(--p-navy-900);
-  --surface-2: var(--p-navy-850);
-  --surface-3: var(--p-navy-800);
+  --bg: var(--p-ink-950);
+  --surface-1: var(--p-ink-900);
+  --surface-2: var(--p-ink-850);
+  --surface-3: var(--p-ink-800);
   --divider: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.14);
-  --text: var(--p-slate-100);
-  --text-2: var(--p-slate-300);
-  --text-3: var(--p-slate-500);
+  --text: var(--p-grey-100);
+  --text-2: var(--p-grey-300);
+  --text-3: var(--p-grey-500);
   --text-inverse: #04202a;
   --accent: var(--p-cyan-400);
   --accent-pressed: var(--p-cyan-500);
@@ -65,7 +65,7 @@
   --data-5: #9b7bf2;
   --data-6: #e873b9;
   --data-7: #2bb8b0;
-  --data-8: #7d8799;
+  --data-8: #8a8a8a;
   --tile-1: #4c8df6;
   --tile-2: #34c77b;
   --tile-3: #f59a3d;
@@ -73,8 +73,8 @@
   --tile-5: #9b7bf2;
   --tile-6: #e873b9;
   --tile-7: #2bb8b0;
-  --tile-8: #7d8799;
-  --overlay-scrim: rgba(7, 11, 20, 0.72);
+  --tile-8: #8a8a8a;
+  --overlay-scrim: rgba(6, 6, 6, 0.76);
   --focus-ring: var(--p-cyan-400);
 
   /* --- Personality --- */
@@ -86,7 +86,7 @@
   --elevation-1: 0 2px 8px rgba(0, 0, 0, 0.22);
   --elevation-2: 0 8px 24px rgba(0, 0, 0, 0.32);
   --elevation-3: 0 18px 48px rgba(0, 0, 0, 0.44);
-  --bg-image: radial-gradient(ellipse at 82% 0%, rgba(34, 211, 238, 0.10), transparent 52%);
+  --bg-image: none;
   --label-style: uppercase;
   --label-spacing: 0.1em;
   --font-heading: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
@@ -117,12 +117,12 @@ html[data-theme="light"] {
   --warning-subtle: rgba(180, 83, 9, 0.10);
   --danger: #b91c1c;
   --danger-subtle: rgba(185, 28, 28, 0.10);
-  --info: #1d4ed8;
+  --info: var(--accent-pressed);
   --info-subtle: rgba(29, 78, 216, 0.10);
   --domain-strength: #4338ca;
   --domain-endurance: #c2410c;
   --domain-recovery: #047857;
-  --data-1: #1d4ed8;
+  --data-1: var(--accent-pressed);
   --data-2: #047857;
   --data-3: #b45309;
   --data-4: #b91c1c;
@@ -130,7 +130,7 @@ html[data-theme="light"] {
   --data-6: #be185d;
   --data-7: #0f766e;
   --data-8: #475569;
-  --tile-1: #1d4ed8;
+  --tile-1: var(--accent-pressed);
   --tile-2: #047857;
   --tile-3: #b45309;
   --tile-4: #b91c1c;

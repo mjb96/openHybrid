@@ -8,7 +8,7 @@
    ============================================================================= */
 
 :root {
-  --brand-midnight: #07111f;
+  --brand-midnight: #060606;
   --brand-gunmetal: var(--surface-2);
   --brand-raised: var(--surface-3);
   --brand-cobalt: #2563eb;
@@ -50,7 +50,7 @@ html[data-theme="dark"][data-palette="midnight"] {
   --bg-card: var(--surface-1);
   --bg-input: var(--surface-3);
   --bg-input-focus: var(--surface-3);
-  --bg-deep: #0a111d;
+  --bg-deep: #0a0a0a;
   --color-blue: var(--accent);
   --color-indigo: var(--accent-pressed);
   --color-orange: #a3e635;

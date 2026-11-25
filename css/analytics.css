@@ -515,7 +515,7 @@
 .an-volume-bar { align-items:center; align-self:stretch; background:transparent; border:0; color:var(--text-muted); display:flex; flex-direction:column; gap:4px; min-width:0; padding:0; }
 .an-volume-bar__value { font-size:.57rem; font-variant-numeric:tabular-nums; min-height:14px; overflow:hidden; text-overflow:ellipsis; width:100%; }
 .an-volume-bar__track { align-items:end; background:var(--overlay-sm); border-radius:6px; display:flex; flex:1; overflow:hidden; width:100%; }
-.an-volume-bar__track span { background:linear-gradient(180deg,var(--info),#2563eb); border-radius:6px; display:block; min-height:3px; transition:height .2s ease; width:100%; }
+.an-volume-bar__track span { background:linear-gradient(180deg,var(--info),var(--accent)); border-radius:6px; display:block; min-height:3px; transition:height .2s ease; width:100%; }
 .an-volume-bar.is-selected .an-volume-bar__track { box-shadow:0 0 0 2px var(--color-blue); }.an-volume-bar.is-future { opacity:.35; }
 .an-volume-bar__label { font-size:.66rem; font-weight:750; }
 .an-volume-selection { border-top:1px solid var(--border-subtle); margin-top:14px; padding-top:12px; }
@@ -538,7 +538,7 @@
 .an-stat__drill { color:var(--color-blue); font-size:.62rem; font-weight:750; margin-top:auto; padding-top:7px; }
 .an-entity-link { align-items:center; background:transparent; border:0; color:var(--text-primary); display:inline-flex; gap:5px; min-height:44px; padding:4px 0; text-align:left; }.an-entity-link > span:last-child { color:var(--color-blue); }
 .an-exercise-trend { align-items:end; background:linear-gradient(180deg,transparent,var(--overlay-xs)); border-bottom:1px solid var(--border-default); display:flex; gap:4px; height:110px; margin-bottom:12px; overflow-x:auto; padding:8px 2px 0; }
-.an-exercise-trend span { background:linear-gradient(180deg,var(--info),#2563eb); border-radius:4px 4px 0 0; flex:1 0 8px; max-width:22px; min-height:4px; }
+.an-exercise-trend span { background:linear-gradient(180deg,var(--info),var(--accent)); border-radius:4px 4px 0 0; flex:1 0 8px; max-width:22px; min-height:4px; }
 .an-muscle-trend { align-items:end; display:grid; grid-template-columns:repeat(8,minmax(0,1fr)); gap:5px; height:130px; }
 .an-muscle-trend div { align-items:center; display:flex; flex-direction:column; height:100%; justify-content:flex-end; }.an-muscle-trend div > span { background:linear-gradient(180deg,var(--success),#059669); border-radius:5px 5px 0 0; display:block; min-height:4px; width:100%; }.an-muscle-trend small { color:var(--text-muted); font-size:.55rem; margin-top:4px; }
 
@@ -904,14 +904,15 @@ html[data-theme="light"] .wellness-checkin-form input:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 14%, transparent), inset 0 1px 2px rgba(0,0,0,0.05) !important;
 }
 
-/* -- SVG chart cards: keep dark background in light mode ------------------
-   SVG chart text/grid colours are hard-coded rgba(255,255,255,...) — they
-   must render on a dark background. Use :has(svg) to target only chart cards.
+/* -- SVG chart cards --------------------------------------------------------
+   Charts now draw with semantic tokens (A3), so in light mode they belong on
+   the same light card as every other surface. This used to force a dark card
+   because grid/text colours were hard-coded white.
    -------------------------------------------------------------------------- */
 html[data-theme="light"] .analytics-section .card-dark:has(svg) {
-  background: linear-gradient(160deg, #0e1525 0%, var(--surface-1) 100%) !important;
-  border-color: color-mix(in srgb, var(--text) 7%, transparent) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28) !important;
+  background: var(--surface-1) !important;
+  border-color: var(--divider) !important;
+  box-shadow: var(--elevation-1) !important;
 }
 
 /* -- Inline white-border row fix ------------------------------------------
@@ -1220,11 +1221,11 @@ html[data-theme="light"] .fa-score-card {
   background: rgba(0, 0, 0, 0.015);
 }
 
-/* SVG ring cards in light mode — keep dark background so SVG text is readable */
+/* SVG ring cards in light mode: semantic tokens make a light card readable. */
 html[data-theme="light"] #analytics-fasting .card-dark:has(svg) {
-  background: linear-gradient(160deg, #0e1525 0%, var(--surface-1) 100%) !important;
-  border-color: color-mix(in srgb, var(--text) 7%, transparent) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.28) !important;
+  background: var(--surface-1) !important;
+  border-color: var(--divider) !important;
+  box-shadow: var(--elevation-1) !important;
 }
 
 /* ==========================================================================

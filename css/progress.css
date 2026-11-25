@@ -687,7 +687,7 @@ html[data-theme="light"] .pg-ex__meta { color: #475569; }
 .pg-daycell.is-walk { background: transparent; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--text-3) 50%, transparent); }
 
 html[data-theme="light"] .pg-daycell { background: rgba(15, 23, 42, 0.08); }
-html[data-theme="light"] .pg-daycell.is-run { background: #1d4ed8; }
+html[data-theme="light"] .pg-daycell.is-run { background: var(--accent-pressed); }
 html[data-theme="light"] .pg-statrow b { color: #0f172a; }
 html[data-theme="light"] .pg-statrow span { color: #475569; }
 

@@ -7,7 +7,7 @@ const programs = readFileSync(new URL('../css/programs.css', import.meta.url), '
 const index = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
 test('approved technical palette is the final loaded visual decision', () => {
-  assert.match(brand, /--brand-midnight:\s*#07111f/i);
+  assert.match(brand, /--brand-midnight:\s*#060606/i);
   assert.match(brand, /--brand-gunmetal:\s*(#101b2a|var\(--surface-2\))/i);
   assert.match(brand, /--brand-cobalt:\s*#2563eb/i);
   assert.match(brand, /--brand-ice:\s*(#60a5fa|var\(--info\))/i);
