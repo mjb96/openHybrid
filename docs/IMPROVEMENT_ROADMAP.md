@@ -1353,7 +1353,7 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 | PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | DONE | Every band with a detail renders its whole header as a 44px "Details ›" control; the detail inherits the range (header chip) and Back scrolls to the originating band (`data-band-origin`). The browser check asserts the chip and the restored position. |
 | PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reviews.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | The hub now has ONE Reviews row (Week \| Month \| Year, all legacy route ids) and the Reports band is deleted. The screen itself is still Overview \| Stats rather than a merged Week \| Month \| Year surface. |
 | PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js`, `analytics/all-lifts-sheet.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | DONE | “All N lifts” opens a searchable sheet over the SAME rows the band built: name, sessions, best e1RM, window change, last performed, PR badge and a **flat** badge (≥3 sessions with no e1RM improvement in the selected range — a window fact, not the engine's per-program PROGRESS CHECK). Search filters live with an honest “N of M” count, and a row opens the existing exercise drilldown. `tests/all_lifts.test.js` + `scripts/all-lifts-browser-check.mjs`. |
-| PG6 | Records row | `strength/records.js`, `set-records.js` | PR table and dated feed (A6) | PARTIAL | The Main exercises band now has a labelled “Records” switch that opens Strength’s Stats tab, but there is still no dedicated PR table or dated feed. |
+| PG6 | Records row | `strength/records.js`, `set-records.js`, `strength/pr-index.js`, `analytics/records-sheet.js` | PR table and dated feed (A6) | DONE | “Records →” opens one sheet with the all-time best e1RM per lift (date and PR count) and the dated PR feed, both from `buildRecordIndex`; Year in Review now reads the same collector. Search filters table and feed; a row opens the exercise drilldown. `tests/pr_index.test.js` + `scripts/records-browser-check.mjs`. |
 | PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | DONE | Default order is Pulse → Main exercises → Muscles → Body → Reviews, then Balance/Endurance/Fasting. Customize reads the registry for top-level rows and indented detail switches, keeps the reorder column at one x, and disables module-off rows with "module off" copy. Saved old orders preserve their position (`reports` → `reviews`). |
 | PG8 | Navigation contract | `analytics/navigation.js`, `analytics.js` | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | DONE | Band-origin Back returns to and scrolls to the originating band; every detail shows the inherited `Progress · <range>` chip; the last band still clears the fixed nav. The browser check asserts all three. |
 | PG9 | Overview concision | `views/view-progress-hub.js`, `analytics.js` | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | PARTIAL | Slice 1 removed the 9 trailing links, collapsed Reports into Reviews and gave each band one header drilldown. Each band still carries its chart + rows + table (the next slice moves the secondary evidence into the detail) and there is no scannability test; `buildProgressLanding` still computes the retired domain model. |
@@ -1458,7 +1458,7 @@ families without an action. Verify what already answers each question.
 | A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | PARTIAL | ROI, block PR and rolling-4 exist; the e1RM chart stops at 12w/6m/all (no 4w/1y) and ROI is program-week indexed. |
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
 | A5 | Session vs last time | `session-recap.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | PARTIAL | Per-lift Last time/Next time/PRs exist; no session-level volume or best-set delta vs the previous session, and it is not routine-aware. |
-| A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | PARTIAL | Per-lift values, set records, dated per-exercise history and annual PRs exist; no all-time PR table with dates or cross-lift feed. |
+| A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
 | A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js` | Sessions per muscle per week with the same period comparison as sets | PARTIAL | Credited sets and last-trained exist; no sessions-per-muscle-per-week series. |
 | G4 | Year heatmap | `analytics/training-calendar.js`, `profile-stats.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | MISSING | Trailing heatmap only (26-week cap, default 12), shaded by volume/distance; no 52-week time view or day recap. |
 | A8 | Relative strength | `profile-stats.js`, `athlete-profile.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | PARTIAL | Big-3 e1RM/BW + tier exists; the ratio is unlabeled, has no estimate wording, falls back to an undated session weight, and is not in Progress. |
@@ -1629,6 +1629,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 PG6/A6: one Records table and dated PR feed.**
+  - The Main exercises band's “Records →” now opens a dedicated sheet: all-time
+    best e1RM per lift (date + PR count) and a newest-first dated feed.
+  - `js/strength/pr-index.js` is the ONE date-strict e1RM PR collector; Year in
+    Review was refactored onto it, so the recap and Records cannot disagree.
+    First date is a baseline, ties do not fire, same-date sessions merge to the
+    best, aliases collapse and `isE1rmPr` owns the epsilon.
+  - Search filters table and feed; rows open the exercise drilldown.
+  - Tests: `tests/pr_index.test.js` (baseline/tie/beat, same-date, aliases,
+    year baseline, table/feed, sheet filter) and
+    `scripts/records-browser-check.mjs` (56 checks).
+
 - **2026-11-26 — H4 HM3: the Strength card links to its Progress home.**
   - The Home Strength card no longer routes to the legacy Strength screen: it
     opens the Progress hub and scrolls to the Main exercises band, whose
@@ -1732,12 +1744,6 @@ device timing it did not measure.
     and the visibility check now audits light, Midnight and every palette.
     36 screenshots include per-palette Home/Train/Settings and Look & Home.
   - Verify: node tests, typecheck, precache/workflow/theme guards, smoke.
-
-- **2026-11-25 — Settings fix: anchor lookup without selector interpolation.**
-  - CodeQL flagged `js/incomplete-sanitization` (quotes escaped, backslashes
-    not) when a `#/settings/<anchor>` deep link built a `querySelector`. It now
-    reads `data-setting-key` and compares the dataset value, so no user string
-    reaches a selector.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

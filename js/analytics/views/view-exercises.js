@@ -110,7 +110,7 @@ export function renderExercises(model, options = {}) {
   const actions = `
     <div class="pg-band__actions">
       ${hidden.includes('allLifts') ? '' : `<button type="button" class="pg-band__action" data-action="open-all-lifts">${extra > 0 ? `All ${model.rows.length} lifts` : 'All lifts'} →</button>`}
-      ${hidden.includes('liftRecords') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="strength_pr">Records →</button>'}
+      ${hidden.includes('liftRecords') ? '' : '<button type="button" class="pg-band__action" data-action="open-records">Records →</button>'}
     </div>`;
 
   const body = `

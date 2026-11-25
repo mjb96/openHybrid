@@ -55,6 +55,7 @@ import { buildTrainLanding } from './train/train-landing.js';
 import { renderTrainLanding } from './train/view-train-landing.js';
 import { initAnalytics, renderAnalytics, saveThresholdPace, saveBodyweightGoal, setBodyweightRangeAction, setAnalyticsContext, shareScoreCard } from './analytics.js';
 import { openAllLiftsSheet } from './analytics/all-lifts-sheet.js';
+import { openRecordsSheet } from './analytics/records-sheet.js';
 import { showMeasurementTrend } from './analytics/views/view-bodyweight.js';
 import { initBodyweightSheet, openBodyweightSheet, closeBodyweightSheet, stepBodyweight, saveBodyweightSheet, deleteBodyweightEntry } from './bodyweight-sheet.js';
 import {
@@ -1648,6 +1649,7 @@ document.addEventListener('click', (e) => {
     switchGlobalAppTab(tgt);
   }
   else if (action === 'open-all-lifts') openAllLiftsSheet();
+  else if (action === 'open-records') openRecordsSheet(appState);
   else if (action === 'open-analytics') openAnalyticsView(target.getAttribute('data-context'), target.getAttribute('data-scroll-target'), {
     entity: target.getAttribute('data-entity'),
     entityName: target.getAttribute('data-entity-name'),

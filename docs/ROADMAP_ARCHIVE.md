@@ -5869,3 +5869,9 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Verify: 2,729 tests, typecheck, precache, workflow and theme guards, smoke;
     51/51 existing browser checks plus the new visibility check.
 
+- **2026-11-25 — Settings fix: anchor lookup without selector interpolation.**
+  - CodeQL flagged `js/incomplete-sanitization` (quotes escaped, backslashes
+    not) when a `#/settings/<anchor>` deep link built a `querySelector`. It now
+    reads `data-setting-key` and compares the dataset value, so no user string
+    reaches a selector.
+

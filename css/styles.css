@@ -11018,6 +11018,71 @@ html[data-theme="light"] .plate-sheet-note.is-warn { color: #b45309; }
   .all-lifts__backdrop { transition: none; }
 }
 
+
+/* ==========================================================================
+   RECORDS (PG6/A6) — all-time table + dated PR feed
+   ========================================================================== */
+.records__scroll { overflow-y: auto; overscroll-behavior: contain; padding: 2px 0 8px; }
+.records__section-label {
+  margin: 14px 0 6px;
+  color: var(--text-3);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.records-table { border: 1px solid var(--border-default); border-radius: 12px; overflow: hidden; }
+.records-table__head,
+.records-table__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 82px 68px 34px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+}
+.records-table__head {
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.records-table__row {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+.records-table__name { font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.records-table__best { font-weight: 800; font-variant-numeric: tabular-nums; }
+.records-feed { list-style: none; margin: 0; padding: 0; }
+.records-feed__row + .records-feed__row { border-top: 1px solid var(--divider); }
+.records-feed__hit {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  grid-template-areas: 'date lift value' 'date prev prev';
+  gap: 1px 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 9px 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.records-feed__date { grid-area: date; color: var(--text-3); font-size: 0.7rem; font-weight: 700; align-self: center; }
+.records-feed__lift { grid-area: lift; font-weight: 750; font-size: 0.82rem; }
+.records-feed__value { grid-area: value; font-weight: 800; font-variant-numeric: tabular-nums; }
+.records-feed__prev { grid-area: prev; color: var(--text-3); font-size: 0.68rem; }
+
 /* Home card customization */
 .home-header-actions { display: flex; align-items: center; gap: 8px; }
 .home-customize-btn {
