@@ -71,29 +71,26 @@ html[data-theme="dark"][data-palette="midnight"] .detail-cta-btn:not(.detail-cta
   box-shadow: 0 6px 22px rgba(34, 211, 238, 0.22) !important;
 }
 
-body {
-  background-image:
-    radial-gradient(ellipse at 82% 0%, rgba(var(--brand-cobalt-rgb), 0.15), transparent 50%),
-    radial-gradient(ellipse at 15% 88%, rgba(var(--brand-cobalt-rgb), 0.07), transparent 46%),
-    radial-gradient(ellipse at 58% 55%, rgba(96,165,250,0.035), transparent 56%);
-}
+body { background-image: none; }
+#view-home.active { background-image: var(--bg-image); }
 
-/* One surface vocabulary across Home, Workout, Insights and Profile. */
+/* One surface vocabulary across Home, Workout, Insights and Profile. Cards use
+   the semantic surface/divider/elevation tokens; no per-card tint or glow. */
 .card-dark,
 .glance-card,
 .profile-stat-card,
 .profile-active-program,
 .an-chart,
 .an-insights {
-  border-radius: 14px !important;
-  border-color: rgba(96,165,250,0.10) !important;
-  background: linear-gradient(160deg, rgba(16,27,42,0.98), rgba(7,17,31,0.98)) !important;
-  box-shadow: 0 8px 26px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.025) !important;
+  border-radius: var(--radius-lg);
+  border: var(--border-width) solid var(--divider);
+  background: var(--surface-1);
+  box-shadow: var(--elevation-1);
 }
 
 .card-dark:hover {
-  border-color: rgba(var(--brand-cobalt-rgb), 0.24) !important;
-  box-shadow: 0 14px 36px rgba(0,0,0,0.48), 0 0 0 1px rgba(var(--brand-cobalt-rgb), 0.06) !important;
+  border-color: var(--border-strong);
+  box-shadow: var(--elevation-2);
 }
 
 /* Programs-style type hierarchy: compact, sentence-case and confident. */
@@ -207,20 +204,16 @@ select:focus {
 .prog-card--small .prog-card-info,
 .prog-card--large .prog-card-info { background: #0b1420; }
 
-html[data-theme="light"] body {
-  background-image:
-    radial-gradient(ellipse at 82% 0%, rgba(var(--brand-cobalt-rgb), 0.075), transparent 50%),
-    radial-gradient(ellipse at 15% 88%, rgba(var(--brand-cobalt-rgb), 0.035), transparent 46%) !important;
-}
+html[data-theme="light"] body { background-image: none; }
 
 html[data-theme="light"] .card-dark,
 html[data-theme="light"] .profile-stat-card,
 html[data-theme="light"] .profile-active-program,
 html[data-theme="light"] .an-chart,
 html[data-theme="light"] .an-insights {
-  background: linear-gradient(160deg, #ffffff, #f4f7fb) !important;
-  border-color: rgba(37,99,235,0.12) !important;
-  box-shadow: 0 3px 14px rgba(15,23,42,0.08) !important;
+  background: var(--surface-1);
+  border-color: var(--divider);
+  box-shadow: var(--elevation-1);
 }
 
 html[data-theme="light"] .bottom-nav {

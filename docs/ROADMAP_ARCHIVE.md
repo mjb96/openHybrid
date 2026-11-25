@@ -5654,8 +5654,7 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - `tests/dashboard_model.test.js` pins a one-of-two-sessions fixture where the
     set percentage is 100 but the plan line says "1 of 2 planned sessions done".
   - Still PARTIAL: readiness and weekly volume have duplicate surfaces and there
-    is no duplicate-metric guard.
-
+    is no duplicate-metric guard. origin/theme-system-audit
 - **2026-11-24 — H2 HM3: Strength this week states every figure.**
   - The Home strength card now shows sessions and working sets together, the
     same-weekday volume delta, the top e1RM change and this week's PR count.
@@ -5685,4 +5684,12 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     calculation; the gaps are missing features, dead surfaces and navigation.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+
+- **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**
+  - The Reports band sent the row to `weekly-review`, which forces Review's
+    Overview tab; the year section lives on Stats. A new `year-review` route
+    selects Stats, and the Progress-hub browser check now opens the row and
+    asserts both the active tab and the visible year container.
+  - PG4 stays PARTIAL: Review is still Overview|Stats, not Week|Month|Year, and
+    the Reports band still duplicates the screen. origin/theme-system-audit
 

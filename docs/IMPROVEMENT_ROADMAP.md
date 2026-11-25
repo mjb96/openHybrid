@@ -913,6 +913,17 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
+> **Theme colour system — A1/A2 landed 25 Nov 2026; A3 literal migration remains.**
+> The A0 audit (`docs/audit/theme-colour-audit.md`) inventories 3,590 literals.
+> A1 now ships the three-layer token system: `css/tokens.css` (primitives →
+> semantic → personality tokens) and `js/theme/tokens.js` (`resolveThemeTokens`,
+> `applyThemeTokens`, `useThemeTokens` with a `theme:changed` subscription).
+> The approved Midnight/light semantic values are published, the Slate card pins
+> and body-wide glows are gone, cards use `surface-1`/`divider`/`elevation-1`,
+> and meta/manifest/Android bars start at `#070B14`. **A3** (replacing the
+> remaining audited literals, chart/canvas colour reads and the screenshot matrix)
+> is still open.
+
 ### 14.1 Design stance
 
 Patterns to adopt: a profile card at the top; grouped inset lists; one row =
@@ -1596,23 +1607,6 @@ device timing it did not measure.
 
 ## 21. Session log
 
-- **2026-11-25 — H1 Settings/Profile Phases 4–8: 13 pages, Profile, links and data.**
-  - Replaced the legacy settings cards with the registry-driven 13-row IA and
-    shared components: top-level profile card/search, Workout, Timer alerts,
-    Plan & schedule, Reminders, Units, Equipment, Look & Home, Modules,
-    Integrations, Data & backup, Watches, AI Coach and About.
-  - Added the editable Profile groups (identity, body metrics, goals) and schema
-    v17 optional fields (`heightCm`, `birthDate`, `sex`, `trainingStartDate`).
-  - Search opens the exact setting with a pulse; setting-level deep links and a
-    refresh restore work. Added the active-workout settings gear/sheet and the
-    active-gym switch.
-  - Equipment keeps multiple profiles/plates/bands; per-exercise rest overrides
-    show Default/Custom with one-tap revert. Data page exposes all exports,
-    imports, auto-backup, storage used and typed DELETE confirmation.
-  - New browser checks cover pages, deep links and the workout sheet; the suite
-    is 51 checks. Remaining: final visual matrix/a11y pass and the Phase 0
-    dead-store decisions.
-
 - **2026-11-25 — H1 Settings/Profile Phase 3: shared component system.**
   - Added `js/settings/components.js` (page/group/row, toggle, segmented,
     stepper, slider, time, text, select list, picker and danger) and
@@ -1669,6 +1663,21 @@ device timing it did not measure.
     `docs/audit/settings-profile-rebuild-audit.md`. No UI, CSS, route or store
     changed. Next: approval, then Phase 1 navigation.
 
+- **2026-11-25 — Theme A1/A2: semantic token layer and Midnight baseline.**
+  - Added `css/tokens.css` with primitives, the full semantic set, data/tile
+    scales and personality tokens (radius, borders, elevation, bg-image, label
+    style, fonts, density, motion scale), plus a light semantic block.
+  - Added `js/theme/tokens.js` with `resolveThemeTokens`, `applyThemeTokens` and
+    `useThemeTokens` (redraw hook on `theme:changed`); palette application keeps
+    the semantic layer in sync and system-theme changes re-apply it.
+  - Removed the Slate card gradient/border/glow `!important` pins and the
+    body-wide glow; Home alone carries `--bg-image`. Set meta/manifest/Android
+    status colours to `#070B14`.
+  - Tests: `tests/theme_tokens.test.js` pins the Midnight values, CSS/JS token
+    coverage, both theme vocabularies and the apply/subscribe path.
+  - Next A3: migrate the remaining audited literals (especially charts/canvas),
+    add the contrast matrix and all-theme screenshots. origin/theme-system-audit
+
 - **2026-11-25 — H4 PG2/PG3/PG7/PG9 slice 1: Progress navigation rebuilt.**
   - One registry (`js/analytics/progress-sections.js`) now declares every
     section and detail: id, label, subtitle, module gate, default order and
@@ -1697,6 +1706,7 @@ device timing it did not measure.
   - Still open: PG4’s screen is still Overview | Stats; PG5 all-lifts
     search/stall; PG6 a real Records table/feed; PG9’s remaining overview
     concision and scannability test.
+
 - **2026-11-24 — H1 P0 closed: #319 and #321 merged.**
   - Onboarding equipment now survives boot; back-dated weigh-ins no longer
     become current; the notification master switch persists.
