@@ -1271,7 +1271,7 @@ first.
 | --- | --- | --- | --- | --- | --- |
 | HM1 | One-tap start with preview | `home/today-card.js`, `workout/session-preview.js`, `train/train-landing.js` | Today card shows the planned lifts with target and last-time numbers; one Start/Resume/Review action; start from cold open in 2 taps or fewer | DONE | `sessionExercisePreview` resolves the same `liftTarget` and dated history the cockpit uses; Home renders up to three rows plus a compact collapsed line. `home-today-browser-check` asserts the target and last-time numbers at 320/390/412 px light/dark. Cold start remains 2 taps. |
 | HM2 | Move a day (G1) | `schedule/week.js`, `home/week-strip.js`, `home/move-day-sheet.js` | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | DONE | Free dates only in the current calendar week: `state.weekSchedule[weekStart][day] = date` moves the plan; Home/Train/cockpit resolve the scheduled day for a date; the old weekday reads rest, occupied/past dates are disabled with a reason, and the shared undo bar restores the override. Logged work keeps its stamped date. Logic and UI are covered by `tests/week_schedule.test.js` and `scripts/move-day-browser-check.mjs` (390/320). Replace/keep-both for an occupied target stays with G3. |
-| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | PARTIAL | Sessions, sets, elapsed volume delta, top e1RM change and PR count render on separate lines. PG5 now provides the all-lifts index; the card still links to the legacy Strength screen — rewiring it to the exercises band/sheet is the next HM3 slice. |
+| HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | DONE | Sessions, sets, elapsed volume delta, top e1RM change and PR count render on separate lines. The card now opens the Progress hub scrolled to the Main exercises band (`data-scroll-target`), whose “All N lifts” sheet is the PG5 index — no route to the legacy Strength screen. The browser check asserts the landing. |
 | HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | DONE | Ready/rest/in-progress/completed/unresolved/no-plan/past-week empty were already distinct. Added an explicit **first session** state (no completed work anywhere), moved the offline note into the card head so it is visible while collapsed, and made a one-signal readiness read say "limited signal" instead of presenting it as settled. `home_today_card` tests pin all three; Home Today browser check passes. |
@@ -1629,6 +1629,14 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 HM3: the Strength card links to its Progress home.**
+  - The Home Strength card no longer routes to the legacy Strength screen: it
+    opens the Progress hub and scrolls to the Main exercises band, whose
+    all-lifts sheet is the PG5 index. Bands gained stable `id="band-*"` anchors
+    and `open-analytics` accepts a `data-scroll-target`.
+  - The hybrid-dashboard browser check asserts the landing (band visible in the
+    viewport) in addition to the existing card metrics.
+
 - **2026-11-26 — H4 PG5: the searchable all-lifts index.**
   - The Main exercises band's “All N lifts” now opens a searchable sheet built
     from the SAME rows the band already produced (no metric re-derived): name,
@@ -1730,34 +1738,6 @@ device timing it did not measure.
     not) when a `#/settings/<anchor>` deep link built a `querySelector`. It now
     reads `data-setting-key` and compares the dataset value, so no user string
     reaches a selector.
-
-- **2026-11-25 — Theme A3: semantic colour applied, contrast and screenshot matrix.**
-  - Replaced literal surfaces/text/borders/accents/overlays across the CSS with
-    semantic tokens or `color-mix` over them, removed 415 colour fallbacks, and
-    migrated the old indigo brand accent to the approved cyan/teal one (strength
-    labels keep `--domain-strength`).
-  - Removed every colour literal from the chart modules: series, grids, axes,
-    goal lines, dot rings and legends now read CSS tokens, so charts follow the
-    active theme. The celebration overlay/confetti read `resolveThemeTokens`.
-  - Fixed real light-mode defects: the `--text-inverse` alias collision (white
-    titles on white sheets), missing `color-scheme: light`, the UA button face
-    behind the nav, light gradients/nav, and `theme-color` now syncs from the
-    resolved token (the meta cannot read a variable).
-  - Fixed the latent safe-area bug: `--safe-top/-bottom` referenced undefined
-    `--app-safe-*`, which pushed the fixed bottom nav 225px off-screen.
-  - Owner review: dark surfaces are now neutral ink greys (bg `#060606`,
-    surface-1 `#111111`) instead of navy; the body glows, navy card/sheet
-    gradients and the remaining cobalt uses are gone. Light mode is unchanged.
-    The owner approved this pair as the default (25 Nov 2026).
-  - Added `tests/theme_contrast.test.js` (AA pairs in both modes),
-    `scripts/theme-literal-check.mjs` as a `verify` ratchet (3,590 → 1,750
-    literals, no file above its ceiling) and `scripts/theme-screenshots.mjs`
-    with the 27-image matrix. `core-ergonomics-check` now reads the token
-    constants instead of scraping `styles.css`, and the new
-    `theme-visibility-browser-check` fails on rendered text that matches its
-    surface (it caught the programme-card category label on a white card).
-  - Verify: 2,729 tests, typecheck, precache, workflow and theme guards, smoke;
-    51/51 existing browser checks plus the new visibility check.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

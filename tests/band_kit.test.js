@@ -11,7 +11,7 @@ import {
 
 test('a band is a labelled section whose heading names it', () => {
   const html = band({ id: 'muscles', eyebrow: 'Muscles', value: '96', valueUnit: 'sets' });
-  assert.match(html, /<section class="pg-band" data-band="muscles"/);
+  assert.match(html, /<section class="pg-band" id="band-muscles" data-band="muscles"/);
   assert.match(html, /aria-labelledby="pg-band-muscles-title"/);
   assert.match(html, /id="pg-band-muscles-title"/);
   assert.match(html, /96/);

@@ -220,7 +220,7 @@ export function strengthCardHTML(model) {
   const prLine = s.prCount > 0 ? `${s.prCount} PR${s.prCount === 1 ? '' : 's'} this week` : '';
 
   return `<article class="card-dark home-hy home-hy__mini">
-    <button type="button" class="home-hy__mini-body" data-action="open-analytics" data-context="strength">
+    <button type="button" class="home-hy__mini-body" data-action="open-analytics" data-context="hub" data-scroll-target="band-exercises">
       <span class="home-hy__eyebrow">Strength</span>
       <span class="home-hy__value">${volume}</span>
       ${deltaChip(s.deltaPct)}

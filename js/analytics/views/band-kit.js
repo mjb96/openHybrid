@@ -73,7 +73,7 @@ export function band({ id, eyebrow, value, valueUnit, title, sub, chip, actions,
         <span class="pg-band__details">Details <span aria-hidden="true">›</span></span>
       </button>`
     : `<div class="pg-band__head">${headInner}</div>`;
-  return `<section class="pg-band" data-band="${esc(id)}" ${named}>
+  return `<section class="pg-band" id="band-${esc(id)}" data-band="${esc(id)}" ${named}>
     ${head}
     ${subHTML}
     ${body || ''}

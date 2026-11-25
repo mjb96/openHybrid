@@ -5841,3 +5841,31 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     components yet; Phase 4 does that.
   - 2,718 tests pass; the browser suite grows to 50 checks.
 
+- **2026-11-25 — Theme A3: semantic colour applied, contrast and screenshot matrix.**
+  - Replaced literal surfaces/text/borders/accents/overlays across the CSS with
+    semantic tokens or `color-mix` over them, removed 415 colour fallbacks, and
+    migrated the old indigo brand accent to the approved cyan/teal one (strength
+    labels keep `--domain-strength`).
+  - Removed every colour literal from the chart modules: series, grids, axes,
+    goal lines, dot rings and legends now read CSS tokens, so charts follow the
+    active theme. The celebration overlay/confetti read `resolveThemeTokens`.
+  - Fixed real light-mode defects: the `--text-inverse` alias collision (white
+    titles on white sheets), missing `color-scheme: light`, the UA button face
+    behind the nav, light gradients/nav, and `theme-color` now syncs from the
+    resolved token (the meta cannot read a variable).
+  - Fixed the latent safe-area bug: `--safe-top/-bottom` referenced undefined
+    `--app-safe-*`, which pushed the fixed bottom nav 225px off-screen.
+  - Owner review: dark surfaces are now neutral ink greys (bg `#060606`,
+    surface-1 `#111111`) instead of navy; the body glows, navy card/sheet
+    gradients and the remaining cobalt uses are gone. Light mode is unchanged.
+    The owner approved this pair as the default (25 Nov 2026).
+  - Added `tests/theme_contrast.test.js` (AA pairs in both modes),
+    `scripts/theme-literal-check.mjs` as a `verify` ratchet (3,590 → 1,750
+    literals, no file above its ceiling) and `scripts/theme-screenshots.mjs`
+    with the 27-image matrix. `core-ergonomics-check` now reads the token
+    constants instead of scraping `styles.css`, and the new
+    `theme-visibility-browser-check` fails on rendered text that matches its
+    surface (it caught the programme-card category label on a white card).
+  - Verify: 2,729 tests, typecheck, precache, workflow and theme guards, smoke;
+    51/51 existing browser checks plus the new visibility check.
+

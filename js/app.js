@@ -1648,7 +1648,7 @@ document.addEventListener('click', (e) => {
     switchGlobalAppTab(tgt);
   }
   else if (action === 'open-all-lifts') openAllLiftsSheet();
-  else if (action === 'open-analytics') openAnalyticsView(target.getAttribute('data-context'), null, {
+  else if (action === 'open-analytics') openAnalyticsView(target.getAttribute('data-context'), target.getAttribute('data-scroll-target'), {
     entity: target.getAttribute('data-entity'),
     entityName: target.getAttribute('data-entity-name'),
     parentContext: target.getAttribute('data-parent-context'),
