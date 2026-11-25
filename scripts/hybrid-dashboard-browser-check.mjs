@@ -103,6 +103,22 @@ try {
   });
   ok(order, 'the hybrid section sits below the week surface, never above Today');
 
+  // ---- HM3: the strength card owns a Progress destination ----------------
+  await page.click('#homeStrengthWeekCard .home-hy__mini-body');
+  await page.waitForSelector('#analytics-hub.active');
+  await page.waitForTimeout(700);
+  const exercisesBand = await page.evaluate(() => {
+    const band = document.getElementById('band-exercises');
+    if (!band) return { shown: false };
+    const rect = band.getBoundingClientRect();
+    return { shown: true, top: Math.round(rect.top), viewport: innerHeight };
+  });
+  ok(exercisesBand.shown && exercisesBand.top >= 0 && exercisesBand.top < exercisesBand.viewport,
+    `the strength card opens the exercises band (top ${exercisesBand.top})`);
+  await page.click('.nav-item[data-target="home"]');
+  await page.waitForSelector('#view-home.active');
+  await page.waitForSelector('#homeStrengthWeekCard .home-hy');
+
   // ---- 44px controls ------------------------------------------------------
   const heights = await page.evaluate(() => [
     document.querySelector('#homeBalanceCard .home-hy__body'),
