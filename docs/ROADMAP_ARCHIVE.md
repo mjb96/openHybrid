@@ -5700,3 +5700,17 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests pin the stalled line and the empty-message case.
   - Still PARTIAL: no analytics surface lists stalled lifts.
 
+- **2026-11-24 — H1 ST10: destructive reset gets a second gate.**
+  - Reset now asks twice, with the second dialog naming exactly what is deleted
+    and that a JSON backup is the only restore path. Cancelling the second gate
+    leaves the saved state untouched; the settings browser check proves it.
+  - Still PARTIAL: reset and delete-all are one action with no per-domain choice.
+
+- **2026-11-24 — H1 ST8: an explicit reduced-motion preference.**
+  - Appearance now offers System / Reduce / Full. `ui/motion.js` publishes
+    `data-reduced-motion` on `<html>`; the CSS hook collapses animation and
+    transition durations, and System follows the OS (including live changes).
+  - The settings browser check clicks Reduce, asserts the hook and the stored
+    preference, then restores System.
+  - Still PARTIAL: no text size, haptics, demo size or sounds group.
+

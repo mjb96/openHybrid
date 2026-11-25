@@ -375,6 +375,7 @@ function genericGroups(pageId, state, store) {
     if (moduleEnabled(state, 'running')) add('Running', ['thresholdPaceSeconds']);
   } else if (pageId === 'once.look') {
     add('Theme', ['theme', 'palette', 'reducedMotion']);
+    groups.push('<p class="s-group__footnote">Palettes shape dark mode; Light keeps its own palette.</p>');
     groups.push(settingsGroup({
       label: 'Layout',
       rows: [

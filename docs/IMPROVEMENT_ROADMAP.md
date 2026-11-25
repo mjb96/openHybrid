@@ -913,7 +913,7 @@ starts with the P0 data-safety findings.
 
 ## 14. Settings and Profile (H1)
 
-> **Theme colour system — A3 complete and the default palette approved 25 Nov 2026.**
+> **Theme colour system — A3 and Part B complete; default palette approved 25 Nov 2026.**
 > The A0 audit (`docs/audit/theme-colour-audit.md`) inventoried 3,590 literals.
 > A1/A2 shipped the three-layer token system: `css/tokens.css` (primitives →
 > semantic → personality) and `js/theme/tokens.js` (`resolveThemeTokens`,
@@ -934,11 +934,17 @@ starts with the P0 data-safety findings.
 > `npm run verify` — **1,750 literals remain across 57 files** (down from 3,590),
 > mostly shadow stacks, one-off light overrides and the deliberately branded
 > share art; no file may exceed its recorded ceiling.
-> `tests/theme_contrast.test.js` pins WCAG AA for both modes.
-> `scripts/theme-screenshots.mjs` writes the matrix (Home, Train, cockpit, active
-> session, per-set sheet, Progress, Plans, Settings, Profile at 390 dark/light and
-> 320 dark) to `docs/screenshots/theme-*.png`. Open: Part B themes (Slate/Forest/
-> Ember), and the remaining 1,750 literals.
+> `tests/theme_contrast.test.js` pins WCAG AA for Midnight, Slate, Forest, Ember
+> and Light.
+> **Part B** ships Slate, Forest and Ember as full semantic palettes: a block in
+> `css/tokens.css` plus an identical `PALETTE_TOKENS` map in
+> `js/theme/tokens.js`, consulted by `resolveThemeTokens`. Only surfaces, text
+> and the accent change; status/data colours stay constant, and light mode keeps
+> its own palette (a choice is remembered for dark). `scripts/theme-screenshots.mjs`
+> covers Home/Train/Settings for each palette, and the visibility check audits
+> every mode at 390.
+> Open: the remaining 1,750 literals (share art, shadow stacks, one-off light
+> overrides) — the ratchet only lets that number fall.
 
 ### 14.1 Design stance
 
@@ -1623,6 +1629,28 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-25 — Theme Part B: Slate, Forest and Ember palettes.**
+  - Each palette is a full semantic block in `css/tokens.css` plus an identical
+    `PALETTE_TOKENS` map in `js/theme/tokens.js`; `activePalette` /
+    `resolveThemeTokens` read `data-palette`. Only surfaces, text and accent
+    change — status and data colours are shared.
+  - The brand layer now derives every dark palette from the semantic accent
+    (`--brand-cobalt-rgb` comes from `--accent-rgb`); Midnight keeps its pastel
+    nav ink and lime "today" accent. The duplicate palette overrides in
+    `styles.css` were removed so there is one source.
+  - Light ignores the palette (pinned by a test) and the choice is remembered
+    for dark; Settings → Look & Home selects it and applies immediately.
+  - Guards: palette vocabulary/CSS-block test, AA contrast for all five modes,
+    and the visibility check now audits light, Midnight and every palette.
+    36 screenshots include per-palette Home/Train/Settings and Look & Home.
+  - Verify: node tests, typecheck, precache/workflow/theme guards, smoke.
+
+- **2026-11-25 — Settings fix: anchor lookup without selector interpolation.**
+  - CodeQL flagged `js/incomplete-sanitization` (quotes escaped, backslashes
+    not) when a `#/settings/<anchor>` deep link built a `querySelector`. It now
+    reads `data-setting-key` and compares the dataset value, so no user string
+    reaches a selector.
+
 - **2026-11-25 — Theme A3: semantic colour applied, contrast and screenshot matrix.**
   - Replaced literal surfaces/text/borders/accents/overlays across the CSS with
     semantic tokens or `color-mix` over them, removed 415 colour fallbacks, and
@@ -1758,20 +1786,6 @@ device timing it did not measure.
     prescriptions after a confirmation and a localStorage recovery copy.
   - S-F1, S-F2, S-F4 and S-F5 are Resolved. ST5/ST6/ST11 remain PARTIAL for the
     wider Profile and Units work, not these defects.
-
-- **2026-11-24 — H1 ST10: destructive reset gets a second gate.**
-  - Reset now asks twice, with the second dialog naming exactly what is deleted
-    and that a JSON backup is the only restore path. Cancelling the second gate
-    leaves the saved state untouched; the settings browser check proves it.
-  - Still PARTIAL: reset and delete-all are one action with no per-domain choice.
-
-- **2026-11-24 — H1 ST8: an explicit reduced-motion preference.**
-  - Appearance now offers System / Reduce / Full. `ui/motion.js` publishes
-    `data-reduced-motion` on `<html>`; the CSS hook collapses animation and
-    transition durations, and System follows the OS (including live changes).
-  - The settings browser check clicks Reduce, asserts the hook and the stored
-    preference, then restores System.
-  - Still PARTIAL: no text size, haptics, demo size or sounds group.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
