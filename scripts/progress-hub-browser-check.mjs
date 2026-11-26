@@ -213,6 +213,22 @@ async function readYearReview(page) {
       statValues: [...(el?.querySelectorAll('.wrev-stats .wrev-stat__v') || [])].map((node) => node.textContent.trim()),
       containerOverflow: !!el && el.scrollWidth > el.clientWidth + 1,
       documentOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+      heatmap: (() => {
+        const heat = document.getElementById('yearHeatmapContainer');
+        if (!heat) return { exists: false };
+        return {
+          exists: true,
+          hidden: heat.hidden === true || getComputedStyle(heat).display === 'none',
+          height: heat.getBoundingClientRect().height,
+          heading: heat.querySelector('h2.section-header')?.textContent?.trim() || '',
+          months: heat.querySelectorAll('.pg-year__month').length,
+          days: heat.querySelectorAll('[data-action="open-activities-day"]').length,
+          shaded: heat.querySelectorAll('.pg-year__cell--l1, .pg-year__cell--l2, .pg-year__cell--l3, .pg-year__cell--l4').length,
+          unmeasured: heat.querySelectorAll('.pg-year__cell--logged:not(.pg-year__cell--measured)').length,
+          text: heat.textContent?.replace(/\s+/g, ' ').trim().slice(0, 160) || '',
+          overflow: heat.scrollWidth > heat.clientWidth + 1,
+        };
+      })(),
       longNameVisible: !!el && el.textContent.includes(longName),
       weeklyReviewVisible: (() => {
         const weekly = document.getElementById('weeklyReviewContainer');
@@ -725,6 +741,16 @@ try {
     if (!/e1RM PRs/.test(seen.text) || !/Barbell Bench Press/.test(seen.text) || !/128 kg/.test(seen.text)) {
       failures.push('year review 390kg: missing the annual e1RM PR');
     }
+
+    // G4: the year heatmap is always available and independent of the seasonal recap.
+    const heat = seen.heatmap;
+    if (!heat.exists || heat.hidden || heat.height <= 0) failures.push('year heatmap 390kg: the section is not visible');
+    if (heat.heading !== 'Year at a glance') failures.push(`year heatmap 390kg: missing the heading (${heat.heading})`);
+    if (heat.months !== 12) failures.push(`year heatmap 390kg: expected 12 months, got ${heat.months}`);
+    if (heat.days < 300) failures.push(`year heatmap 390kg: only ${heat.days} tappable days`);
+    if (!heat.shaded) failures.push('year heatmap 390kg: no day is shaded by time trained');
+    if (!/trained/.test(heat.text)) failures.push(`year heatmap 390kg: no measured total (${heat.text})`);
+    if (heat.overflow || seen.documentOverflow) failures.push('year heatmap 390kg: horizontal overflow');
     const yearShare = await page.locator('[data-action="share-year-review"]').count();
     if (yearShare !== 1) failures.push('year review 390kg: missing the share action');
     else {
@@ -750,6 +776,27 @@ try {
       const yearVisible = await page.$eval('#yearReviewContainer', (el) => !el.hidden && el.getBoundingClientRect().height > 0).catch(() => false);
       if (activeTab !== 'stats') failures.push(`year review 390kg: Reports opened Review "${activeTab}" instead of Stats`);
       if (!yearVisible) failures.push('year review 390kg: Reports opened a tab without the year section');
+    }
+    // A shaded day opens that date in History, not a second Progress calendar.
+    const tapped = await page.evaluate(() => {
+      const button = document.querySelector('#yearHeatmapContainer [data-action="open-activities-day"][data-date="2026-11-10"]');
+      if (!button) return false;
+      button.click();
+      return true;
+    });
+    if (!tapped) failures.push('year heatmap 390kg: the 10 November cell is missing');
+    else {
+      const opened = await page.waitForFunction(
+        () => document.getElementById('activitiesScreen')?.style.display === 'block',
+        null, { timeout: 4000 },
+      ).then(() => true).catch(() => false);
+      const history = await page.evaluate(() => ({
+        content: document.getElementById('activitiesContent')?.textContent?.replace(/\s+/g, ' ') || '',
+      }));
+      if (!opened) failures.push('year heatmap 390kg: tapping a day did not open History');
+      else if (!/November 2026/.test(history.content) || !/Back Squat/.test(history.content)) {
+        failures.push(`year heatmap 390kg: History is not filtered to the tapped day (${history.content.slice(0, 120)})`);
+      }
     }
     if (seen.documentOverflow || seen.containerOverflow) failures.push('year review 390kg: horizontal overflow');
     if (errors.length) failures.push(`year review 390kg: browser errors: ${errors.join(' | ')}`);
@@ -792,6 +839,8 @@ try {
     if (!seen.longNameVisible) failures.push(`year review ${width}px: the long-named exercise is missing`);
     if (seen.containerOverflow) failures.push(`year review ${width}px: the container overflows horizontally`);
     if (seen.documentOverflow) failures.push(`year review ${width}px: the page overflows horizontally`);
+    if (!seen.heatmap.exists || seen.heatmap.hidden) failures.push(`year heatmap ${width}px: the section is not visible`);
+    if (seen.heatmap.overflow) failures.push(`year heatmap ${width}px: the heatmap overflows horizontally`);
     if (errors.length) failures.push(`year review ${width}px: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
@@ -811,6 +860,9 @@ try {
     }));
 
     if (!seen.exists) failures.push('year review off-season: the container is missing');
+    if (!seen.heatmap.exists || seen.heatmap.hidden || seen.heatmap.days < 1) {
+      failures.push('year heatmap off-season: the always-available year view did not render');
+    }
     if (!seen.hidden || seen.display !== 'none' || seen.height !== 0) {
       failures.push(`year review off-season: the container is visible (${seen.display}/${seen.height})`);
     }

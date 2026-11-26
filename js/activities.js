@@ -476,6 +476,12 @@ export function handleActivityAction(action, element) {
     return true;
   }
   if (action === 'open-activities') { openActivities(); return true; }
+  // G4: any dated cell (the year heatmap) opens History filtered to that day.
+  if (action === 'open-activities-day') {
+    const date = element.getAttribute('data-date');
+    openActivities({ date: date || null });
+    return true;
+  }
   if (action === 'close-activities') { closeActivities(); return true; }
   if (action === 'filter-activities') {
     _filter = element.getAttribute('data-filter') || 'all';

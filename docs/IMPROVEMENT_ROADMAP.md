@@ -1460,7 +1460,7 @@ families without an action. Verify what already answers each question.
 | A5 | Session vs last time | `session-recap.js`, `workout/session-comparison.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | DONE | The recap Summary now carries one “vs last time” block: volume (and %), set delta, best-e1RM delta and the session’s PR count. Identity is the routine when the session came from the library, otherwise the same programmed day; only completed working sets count, a future/empty session is never the baseline, and runs are not compared here. `tests/session_comparison.test.js` + the recap test; verified in the History detail. |
 | A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
 | A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js`, `views/view-muscles.js` | Sessions per muscle per week with the same period comparison as sets | DONE | A session is a training DATE: one compound day trains chest and triceps once each, not once per lift or per set. The model exposes `sessions`, `previousSessions` and `sessionsDelta` per muscle and `sessionsByMuscle` per bucket; the focused muscle states `N sessions (+/− vs previous)` and both data tables carry a Sessions column. Tests: `muscles_model` frequency/previous-window cases; the Progress-hub browser check asserts the focused meta. |
-| G4 | Year heatmap | `analytics/training-calendar.js`, `profile-stats.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | MISSING | Trailing heatmap only (26-week cap, default 12), shaded by volume/distance; no 52-week time view or day recap. |
+| G4 | Year heatmap | `analytics/year-heatmap.js`, `views/view-year-heatmap.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | DONE | Review → Stats ends with **Year at a glance**: twelve month grids (the rolling year, Monday- or Sunday-first from the athlete's setting) shading each day by MEASURED training time — strength gym time plus run time. A day with training but no recorded duration is outlined as “logged, time not recorded” rather than shaded as a short session, and a run-only day is one session, never two. Every past day is a 44px button that opens History filtered to that date; future days are inert. It renders independently of the seasonal Year in Review, so off-season the year is still available. Tests: `year_heatmap` (shade bands, mixed/run-only/unmeasured days, archived weeks, window edges, week start) and `year_heatmap_view`; the Progress-hub browser check asserts 12 months, shaded days, the measured total, no overflow at 320/390/412 and a real day tap into History. |
 | A8 | Relative strength | `profile-stats.js`, `athlete-profile.js`, `exercise-detail.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | DONE | The exercise drilldown states `X.XX× bodyweight (est. · <weight> on <date>)` for the big three, using the latest DATED weigh-in within 30 days and nothing else. The Profile band is labelled `est.` with the weigh-in note, and the undated per-session bodyweight fallback is gone (`_latestBodyWeight`/`_recentBodyWeight`). Tests: `relative_strength.test.js` + exercise-detail cases + the all-lifts browser check. |
 | A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `exercise-detail.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | PARTIAL | Range vocabulary covers bands; strength volume has 4w–all; e1RM stops at 12w/6m/all and the legacy Strength screen is the only 4w–all home. |
 
@@ -1629,6 +1629,20 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 G4: the always-available year heatmap.**
+  - Review → Stats ends with **Year at a glance**: twelve month grids over the
+    rolling year, shaded by measured training time (strength gym time + run
+    time). A training day with no recorded duration is outlined as “logged,
+    time not recorded”; nothing is estimated. A run-only day counts as one
+    session.
+  - Every past day is a 44px button that opens History filtered to that date;
+    future days are inert. It is independent of the seasonal Year in Review, so
+    the year is available in every month.
+  - Tests: `tests/year_heatmap.test.js` (shade bands, mixed/run-only/unmeasured
+    days, archived weeks, window edges, week start) and
+    `tests/year_heatmap_view.test.js`; the Progress-hub browser check asserts the
+    rendered year, no 320/390/412 overflow and a real day tap into History.
+
 - **2026-11-26 — H4 A4: rep-range and effort mix.**
   - New `analytics/intensity-mix.js` reports the share of completed working sets
     by rep range (1–3 / 4–6 / 7–12 / 13+) and by recorded RIR (0–1 / 2–3 / 4+,
@@ -1720,18 +1734,6 @@ device timing it did not measure.
     and `open-analytics` accepts a `data-scroll-target`.
   - The hybrid-dashboard browser check asserts the landing (band visible in the
     viewport) in addition to the existing card metrics.
-
-- **2026-11-26 — H4 PG5: the searchable all-lifts index.**
-  - The Main exercises band's “All N lifts” now opens a searchable sheet built
-    from the SAME rows the band already produced (no metric re-derived): name,
-    sessions, best e1RM, window change, last performed, PR and a flat flag.
-  - The flat flag is a window fact — three or more sessions with no e1RM
-    improvement in the selected range — and is deliberately distinct from the
-    engine's per-program PROGRESS CHECK stall.
-  - Search filters live with an honest `N of M` count; a row opens the existing
-    exercise drilldown. PG5 unblocks HM3's link target.
-  - Tests: `tests/all_lifts.test.js`; `scripts/all-lifts-browser-check.mjs`
-    (55 checks).
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
