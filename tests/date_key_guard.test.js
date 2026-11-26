@@ -32,7 +32,6 @@ function jsFiles(dir) {
 // explicitly justified here.
 const ALLOWED_UTC_DAY_ARITHMETIC = new Map([
   ['js/dates.js', 2],                    // addDaysISO + slotDateISO
-  ['js/analytics/weekly-aggregate.js', 1], // Monday key after noon-UTC math
   ['js/fasting/fasting-calcs.js', 1],      // ISO-week Monday after UTC math
 ]);
 
@@ -50,6 +49,7 @@ test('dates.js owns local day resolution; weekly aggregate only re-exports it', 
   const dates = readFileSync(path.join(ROOT, 'js/dates.js'), 'utf8');
   const weekly = readFileSync(path.join(ROOT, 'js/analytics/weekly-aggregate.js'), 'utf8');
   assert.match(dates, /export function localDayKey/);
-  assert.match(weekly, /import \{ addDaysISO, localDayKey \} from '\.\.\/dates\.js'/);
+  assert.match(weekly, /import \{ addDaysISO, calendarWeekStart, localDayKey \} from '\.\.\/dates\.js'/);
+  assert.match(weekly, /export function weekStartOf\(dateISO, weekStartDay = _calendarWeekStartDay\)/);
   assert.doesNotMatch(weekly, /new Intl\.DateTimeFormat/);
 });

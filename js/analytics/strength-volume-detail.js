@@ -4,7 +4,7 @@
 // live week, aliases merge through the canonical catalogue, and every aggregate
 // retains the exact persisted workout IDs that contributed to it.
 
-import { addDaysISO, DAY_KEYS, indexSlotsByDate, localDayKey, weekStartOf } from './weekly-aggregate.js';
+import { addDaysISO, DAY_KEYS, indexSlotsByDate, localDayKey, weekStartOf, weekdayKeyOf } from './weekly-aggregate.js';
 import { comparePeriodValues } from './comparison.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { muscleCreditsForExercise, resolveExercise } from '../exercises/catalog.js';
@@ -34,7 +34,7 @@ function addTotals(target, value) {
 }
 
 /**
- * Summarise a Monday-based strength period while retaining evidence rows.
+ * Summarise a calendar-week strength period while retaining evidence rows.
  * @param {any} state
  * @param {string} weekStart
  * @param {{today:string, elapsedDays:number, index:ReturnType<typeof indexSlotsByDate>}} options
@@ -44,14 +44,19 @@ function summariseWeek(state, weekStart, { today, elapsedDays, index }) {
   const exerciseMap = new Map();
   const muscleMap = new Map();
   const workouts = [];
-  const days = DAY_KEYS.map((dayKey, dayIndex) => ({
-    dayKey,
-    label: DAY_LABELS[dayKey],
-    date: addDaysISO(weekStart, dayIndex),
-    ...emptyTotals(),
-    workoutCount: 0,
-    exerciseCount: 0,
-  }));
+  const days = DAY_KEYS.map((dayKey, dayIndex) => {
+    const date = addDaysISO(weekStart, dayIndex);
+    // Position-in-week key → the real weekday name for the label.
+    const weekday = weekdayKeyOf(date) || dayKey;
+    return {
+      dayKey,
+      label: DAY_LABELS[weekday],
+      date,
+      ...emptyTotals(),
+      workoutCount: 0,
+      exerciseCount: 0,
+    };
+  });
 
   for (let dayIndex = 0; dayIndex < DAY_KEYS.length; dayIndex++) {
     if (dayIndex >= elapsedDays) break;

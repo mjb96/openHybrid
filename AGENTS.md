@@ -555,6 +555,20 @@ server works.
   `detectSetPR` still marks the badge and persists `isPR`/`prKind`, so a hidden
   banner never changes history. `tests/keep_awake.test.js` and
   `tests/pr_surfaces.test.js` pin both.
+- Week start (ST7): `settings.weekStartDay` (`mon`|`sun`) governs every CALENDAR
+  week through ONE rule — `calendarWeekStart(date, weekStartDay)` in `js/dates.js`,
+  reached through `weekStartOf`/`weekKeyOf` in `js/analytics/weekly-aggregate.js`.
+  The app projects the setting on every `app:storage-loaded`
+  (`setCalendarWeekStart`), so boot, import/restore and the Settings change all use
+  one model, and choosing Sunday repaints the visible surface immediately.
+  **Program weeks are Monday plan indices** (`startOfProgramWeek`, the
+  `weekSchedule` move keys) and never move with the preference — "Week 2 of 8"
+  cannot depend on a display choice. Calendar-week records are keyed by POSITION
+  in the athlete's week, so a weekday NAME must come from the date
+  (`weekdayKeyOf`), never from the key. No migration: stored dates are already
+  real calendar days, so the setting only changes bucketing and switching back
+  restores the Monday view exactly. The weekly-summary notification fires at
+  18:00 on the LAST day of the athlete's week.
 - Weekly analytics attribution: `state.currentWeek` is a PROGRAM-week counter that only
   advances on an explicit step / confirmed auto-advance — it is NOT the calendar week.
   So "this week" analytics must NOT read `weeks[currentWeek]` directly (that leaked a

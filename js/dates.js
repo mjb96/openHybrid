@@ -76,6 +76,11 @@ export function localDayKey(value, tz = DEFAULT_TZ) {
  * itself (e.g. Friday) as `weekStartedAt` shifted every weekday: Monday 20 Nov
  * became "today" on Friday 20 Nov.
  *
+ * This is the PROGRAM-WEEK anchor and always Monday, regardless of
+ * `settings.weekStartDay`: a program week is a plan index over Monday-indexed
+ * slots. Calendar weeks (analytics, rails, History) use
+ * `calendarWeekStart(date, weekStartDay)` instead.
+ *
  * Date-only values are kept as intentional calendar days; timestamps are
  * resolved in `tz` first.
  * @param {unknown} [value]
@@ -88,6 +93,32 @@ export function startOfProgramWeek(value = new Date(), tz = DEFAULT_TZ) {
   const dow = new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay();
   const offset = dow === 0 ? -6 : 1 - dow;
   return addDaysISO(key, offset);
+}
+
+/**
+ * The CALENDAR week a date belongs to, as a YYYY-MM-DD key, honouring the
+ * athlete's `settings.weekStartDay` (Monday by default, Sunday optional).
+ *
+ * This is the one calendar-week rule. It is deliberately NOT the program-week
+ * anchor (`startOfProgramWeek`): a program week is a plan index built from
+ * Monday-indexed day slots, so it must not move when the athlete's calendar
+ * preference changes. Analytics, Home's rail, History and every "this week"
+ * total read THIS; the plan keeps its own Monday slots.
+ *
+ * Date-only values are kept as intentional calendar days; timestamps are
+ * resolved in `tz` first. Noon-UTC arithmetic keeps the key DST-independent.
+ * @param {unknown} dateISO
+ * @param {'mon'|'sun'|string} [weekStartDay]
+ * @param {string} [tz]
+ * @returns {string|null}
+ */
+export function calendarWeekStart(dateISO, weekStartDay = 'mon', tz = DEFAULT_TZ) {
+  const key = localDayKey(dateISO, tz);
+  if (!key) return null;
+  const [y, m, d] = key.split('-').map(Number);
+  const dow = new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay(); // 0=Sun..6=Sat
+  const start = weekStartDay === 'sun' ? 0 : 1;
+  return addDaysISO(key, -((dow - start + 7) % 7));
 }
 
 // Returns YYYY-MM-DD for today in the given timezone.
@@ -194,9 +225,10 @@ export function daysBetween(a, b) {
 }
 
 /**
- * Human Monday–Sunday range for week labels: "23–29 Nov", "30 Nov – 6 Dec",
- * or "28 Dec 2026 – 3 Jan 2027". Calendar keys only — no Date parsing, so a
- * timezone can never move the day. Returns '' for an invalid key.
+ * Human range for week labels (start and end follow the athlete's week start):
+ * "23–29 Nov", "30 Nov – 6 Dec" or "28 Dec 2026 – 3 Jan 2027". Calendar keys
+ * only — no Date parsing, so a timezone can never move the day. Returns '' for
+ * an invalid key.
  * @param {string} startISO
  * @param {string} endISO
  */

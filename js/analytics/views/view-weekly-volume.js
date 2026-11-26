@@ -153,7 +153,7 @@ export function renderWeeklyVolumeBody(root, state) {
     ${model.excludedFutureRecords ? `<div class="an-data-note">${model.excludedFutureRecords} future-dated ${model.excludedFutureRecords === 1 ? 'record was' : 'records were'} excluded from this live week.</div>` : ''}
     <nav class="an-segment" aria-label="Weekly volume breakdown">${tab('days', 'Day')}${tab('workouts', 'Workouts')}${tab('exercises', 'Exercises')}${tab('muscles', 'Muscles')}</nav>
     ${content}
-    <details class="an-method"><summary>How is weekly volume calculated?</summary><p>Total tonnage is weight × completed reps across working sets dated inside this Monday–Sunday calendar week. Warm-ups, incomplete sets, undated legacy records and future-dated records in a live week are excluded.</p></details>`;
+    <details class="an-method"><summary>How is weekly volume calculated?</summary><p>Total tonnage is weight × completed reps across working sets dated inside this calendar week. Warm-ups, incomplete sets, undated legacy records and future-dated records in a live week are excluded.</p></details>`;
 
   root.querySelectorAll('[data-volume-tab]').forEach(button => button.addEventListener('click', () => {
     _activeBreakdown = button.getAttribute('data-volume-tab') || 'days';

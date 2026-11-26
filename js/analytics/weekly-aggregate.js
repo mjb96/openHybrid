@@ -11,8 +11,8 @@
 // week. Reading `weeks[currentWeek]` as "this week" is exactly the attribution
 // bug this module exists to kill.
 //
-// Here we bucket every logged day by its REAL stamped date into Monday-based
-// calendar weeks, so:
+// Here we bucket every logged day by its REAL stamped date into calendar weeks
+// (Monday-based, or Sunday-based when the athlete chose that in Settings), so:
 //   • "this week" means the actual current calendar week (empty stays empty),
 //   • prior training only ever appears in its own calendar week / the comparison,
 //   • a legacy day with no recoverable date is preserved + reported, never
@@ -22,7 +22,7 @@
 // it can never diverge from the detail views.
 // =============================================================================
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
-import { addDaysISO, localDayKey } from '../dates.js';
+import { addDaysISO, calendarWeekStart, localDayKey } from '../dates.js';
 import { runDaySummary, runSessionsForDay } from '../state/run-sessions.js';
 import { parseStrengthDurationSeconds } from '../strength/duration.js';
 
@@ -32,26 +32,65 @@ export { addDaysISO, localDayKey } from '../dates.js';
 
 export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
+// ---------------------------------------------------------------------------
+// Week-start resolution
+//
+// Calendar weeks follow `settings.weekStartDay` (Monday default, Sunday
+// optional). The setting stays the single owner; this is only its resolved
+// projection for the pure analytics helpers, refreshed at boot and whenever the
+// athlete changes it (`app:storage-loaded`), so all 60+ call sites cannot drift
+// apart into a mix of Monday-only and Sunday-aware maths.
+//
+// `startOfProgramWeek` is deliberately NOT this: a program week is a plan index
+// over Monday-indexed day slots and must not move with a display preference.
+// ---------------------------------------------------------------------------
+/** @type {'mon'|'sun'} */
+let _calendarWeekStartDay = 'mon';
+
+/** Apply the athlete's week-start preference. Unknown values fall back to Monday. */
+export function setCalendarWeekStart(day) {
+  _calendarWeekStartDay = day === 'sun' ? 'sun' : 'mon';
+}
+
+/** The week-start currently applied to calendar maths. */
+export function calendarWeekStartDay() {
+  return _calendarWeekStartDay;
+}
+
 /**
- * Monday (YYYY-MM-DD) of the calendar week containing `dateISO`. Uses noon-UTC
- * math on the date-only key so it's timezone/DST-independent — the Monday of a
- * given calendar day never drifts. Monday-based per the app's week model.
+ * Start (YYYY-MM-DD) of the calendar week containing `dateISO`, honouring the
+ * applied week-start preference. Noon-UTC math on the date-only key keeps it
+ * timezone/DST-independent. Callers that must be explicit can pass the day.
+ * @param {string} dateISO
+ * @param {'mon'|'sun'|string} [weekStartDay]
+ * @returns {string|null}
+ */
+export function weekStartOf(dateISO, weekStartDay = _calendarWeekStartDay) {
+  return calendarWeekStart(dateISO, weekStartDay);
+}
+
+/** The canonical week key IS the week-start date string — one value, no ambiguity. */
+export function weekKeyOf(dateISO, weekStartDay = _calendarWeekStartDay) {
+  return weekStartOf(dateISO, weekStartDay);
+}
+
+const WEEKDAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+/**
+ * The REAL weekday key ('mon'..'sun') of a calendar date.
+ *
+ * Calendar-week records are keyed by POSITION in the athlete's week
+ * (`collectCalendarWeek` puts the week's first day under `DAY_KEYS[0]`), so a
+ * day key is NOT a weekday name once the week starts on Sunday. Any human
+ * weekday label must come from the date through this helper.
  * @param {string} dateISO
  * @returns {string|null}
  */
-export function weekStartOf(dateISO) {
+export function weekdayKeyOf(dateISO) {
   const key = localDayKey(dateISO);
   if (!key) return null;
   const [y, m, d] = key.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d, 12));
-  const back = (dt.getUTCDay() + 6) % 7; // days since Monday (0=Sun..6=Sat)
-  dt.setUTCDate(dt.getUTCDate() - back);
-  return dt.toISOString().slice(0, 10);
-}
-
-/** The canonical week key IS the Monday date string — one value, no ambiguity. */
-export function weekKeyOf(dateISO) {
-  return weekStartOf(dateISO);
+  return WEEKDAY_KEYS[new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay()];
 }
 
 /**

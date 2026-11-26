@@ -4,7 +4,7 @@
 //
 // The old heatmap columns were program weeks (`W1..Wn`), so archived/imported
 // activations had no column at all. This model walks the canonical date index
-// and returns the last N Monday-based weeks, each with seven day cells.
+// and returns the last N calendar weeks, each with seven day cells.
 // =============================================================================
 import { addDaysISO, indexSlotsByDate, localDayKey, weekStartOf, DAY_KEYS } from './weekly-aggregate.js';
 

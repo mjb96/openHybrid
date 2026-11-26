@@ -50,6 +50,7 @@ test('Strength Insights names and opens the workout logged, not Tuesday schedule
   });
   assert.deepEqual(chips, [{
     calendarDay: 'tue',
+    calendarWeekday: 'tue',
     sourceDay: 'mon',
     weekKey: '2',
     title: 'Upper Strength',

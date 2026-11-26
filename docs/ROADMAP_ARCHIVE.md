@@ -6134,3 +6134,18 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/contextual_settings_links.test.js` plus real clicks in the
     Progress-hub, Measures and Plans browser checks.
 
+
+- **2026-11-26 — H5 slice 1: the block review.**
+  - Review → Month now leads with **Block Review**: the last four completed
+    calendar weeks (sessions, tonnage, per-lift best e1RM and all-time PRs vs
+    the previous block) plus the engine's own progress checks. Status is
+    descriptive — insufficient / on track / mixed / needs a look — with one
+    action to review the plan. No deload write yet.
+  - The window is calendar-based (four completed weeks ending the Sunday before
+    the current week); tonnage and e1RM use the same canonical models as the
+    rest of Progress.
+  - Tests: `block_review` (window, tonnage/e1RM deltas, PRs, warm-ups, status,
+    sparse/empty) and `block_review_view`; the Progress-hub browser check
+    asserts the Month block.
+  - Also in this PR: the README refresh (removed Quick start/renaming, updated
+    what it does, added what's next).

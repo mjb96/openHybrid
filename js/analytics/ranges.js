@@ -74,7 +74,7 @@ export function resolveRange(id, todayISO, options = {}) {
     : earliest;
   const endISO = today;
 
-  // A window that ends on Wednesday leaves its final Monday–Sunday week
+  // A window that ends mid-week leaves its final calendar week
   // incomplete. Charts mark that bar rather than drawing it as a full week.
   const lastWeekStart = weekStartOf(endISO);
   const isPartial = lastWeekStart

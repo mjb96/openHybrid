@@ -38,7 +38,7 @@ export const STRENGTH_METRICS = Object.freeze([
       limitations: ['More tonnage is not automatically productive; exercise selection, effort and recovery still matter.'],
     }),
   metric('strength.muscle-set-credits', 'Muscle Set Credits', 'set-credits', 'calendar-week',
-    'Sum of estimated muscle credits in the current Monday–Sunday calendar week: dominant muscles receive 1.0, meaningful secondary muscles 0.5 and minor contributors 0.25 per valid set.', {
+    'Sum of estimated muscle credits in the current calendar week: dominant muscles receive 1.0, meaningful secondary muscles 0.5 and minor contributors 0.25 per valid set.', {
       color: '#10b981',
       limitations: ['Credits are a transparent exercise-classification estimate, not measured muscle stimulus.', 'General ranges are not personal recovery limits.'],
     }),

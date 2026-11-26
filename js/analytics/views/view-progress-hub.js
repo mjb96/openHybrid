@@ -73,7 +73,7 @@ function headerActions(extras) {
       <summary class="hub-icon-btn" aria-label="How this page is calculated"
         title="How this page is calculated">${icon('info', { size: 20 })}</summary>
       <div class="pg-method__panel">
-        <p>Every band covers the <strong>range you selected</strong> above, attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the period they happened in. <strong>Pulse</strong> is the one exception: it is always the current calendar week (Monday to Sunday), and it ignores the range on purpose.</p>
+        <p>Every band covers the <strong>range you selected</strong> above, attributed by the real date each session was logged — not by your program week counter, so an archived program's sessions still count towards the period they happened in. <strong>Pulse</strong> is the one exception: it is always the current calendar week (as set by your week start), and it ignores the range on purpose.</p>
         <p>A part-finished period is compared only with the same elapsed days of the previous one, so a Tuesday is never measured against a full seven days. Strength comparisons are same-exercise only. Estimates are labelled as estimates.</p>
       </div>
     </details>

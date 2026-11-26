@@ -287,18 +287,32 @@ export function checkMissedWorkout() {
   }
 }
 
-// ── Weekly Summary (Sunday 18:00) ──────────────────────────────────────────────
+// ── Weekly Summary (18:00 on the LAST day of the athlete's week) ──────────────
+
+/**
+ * The next end-of-week instant at 18:00 for the athlete's calendar week: Sunday
+ * for a Monday-start week, Saturday for a Sunday-start one. Today's own end day
+ * rolls to the following week so the summary never describes a week that has
+ * another day left. Exported for testing.
+ * @param {Date} now
+ * @param {'mon'|'sun'|string} [weekStartDay]
+ */
+export function nextWeekEndInstant(now, weekStartDay = 'mon') {
+  const endDow = weekStartDay === 'sun' ? 6 : 0; // Sat | Sun
+  const target = new Date(now);
+  const days = ((endDow - now.getDay()) + 7) % 7 || 7;
+  target.setDate(now.getDate() + days);
+  target.setHours(18, 0, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 7);
+  return target;
+}
 
 function _armWeeklySummary() {
   if (_weeklySummaryTimer) clearTimeout(_weeklySummaryTimer);
   if (!_settings().notifWeeklySummary) return;
 
-  const now    = new Date();
-  const target = new Date(now);
-  const daysUntilSunday = ((7 - now.getDay()) % 7) || 7;
-  target.setDate(now.getDate() + daysUntilSunday);
-  target.setHours(18, 0, 0, 0);
-  if (target <= now) target.setDate(target.getDate() + 7);
+  const now = new Date();
+  const target = nextWeekEndInstant(now, _settings().weekStartDay);
 
   _weeklySummaryTimer = setTimeout(() => {
     _fireWeeklySummary();

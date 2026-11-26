@@ -16,7 +16,7 @@ const selectedPointByMetric = new Map();
 const dateLabel = (date, withYear = false) => formatDayMonthShort(date, { year: withYear }) || 'Date unavailable';
 const fullDateLabel = (date) => dateLabel(date, true);
 
-// The selected week's breakdown is a Monday–Sunday rail, so its seven labels are
+// The selected week's breakdown is a seven-day calendar rail, so its seven labels are
 // weekdays rather than dates. Derived from the canonical key at UTC noon, which
 // keeps the weekday stable on any device timezone.
 const WEEKDAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

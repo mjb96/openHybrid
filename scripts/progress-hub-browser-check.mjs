@@ -956,6 +956,77 @@ try {
     if (errors.length) failures.push(`year review off-season: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
+
+  // -------------------------------------------------------------------------
+  // ST7 — the athlete's week start drives EVERY calendar surface, and changing
+  // it repaints the visible one instead of waiting for an unrelated navigation
+  // (S-F3). Program weeks are plan indices and must NOT move with it.
+  // -------------------------------------------------------------------------
+  {
+    const context = await createBrowserContext(browser, { viewport: { width: 390, height: 844 }, timezoneId: TZ, colorScheme: 'dark' });
+    await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(fixture('dark'))]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => {
+      if (message.type() === 'error' && !/frame-ancestors.*ignored.*meta/i.test(message.text()) && !/net::ERR_/.test(message.text())) errors.push(message.text());
+    });
+
+    const readRail = () => page.$eval('#homeWeekDays', (host) => ({
+      dates: [...host.querySelectorAll('[data-home-date]')].map((cell) => cell.getAttribute('data-home-date')),
+      names: [...host.querySelectorAll('.home-week-day__name')].map((cell) => cell.textContent.trim()),
+    }));
+    const dayNum = (key) => Number(String(key).slice(8, 10));
+    // The Sunday that opens the current week once the athlete chooses Sunday.
+    const sunday = addDays(MON, -1);
+
+    await page.goto(BASE, { waitUntil: 'networkidle' });
+    await page.waitForSelector('#homeWeekDays [data-home-date]');
+    const before = await readRail();
+    if (before.names[0] !== 'Mon') failures.push(`week start: Home rail did not open on Monday (${before.names.join(',')})`);
+
+    // Drive the REAL Settings control, not the state object.
+    await page.click('#homeSettingsBtn');
+    await page.waitForSelector('#settingsOverlay [data-action="open-settings-page"]');
+    await page.click('#settingsOverlay [data-action="open-settings-page"][data-context="training.schedule"]');
+    await page.waitForSelector('#settingsPageHost [data-setting-segment="weekStartDay"][data-value="sun"]', { timeout: 4000 })
+      .catch(() => failures.push('week start: the Settings control for "Week starts on" is missing'));
+    await page.click('#settingsPageHost [data-setting-segment="weekStartDay"][data-value="sun"]');
+    // One level back to the Settings index, then out to Home.
+    await page.click('#settingsPageHost .s-back');
+    await page.click('#settingsOverlay [data-action="close-settings"]');
+
+    // S-F3: no reload, no tab switch — the rail under the sheet must be the
+    // Sunday week by the time Settings closes.
+    await page.waitForFunction(
+      () => document.querySelector('#homeWeekDays .home-week-day__name')?.textContent?.trim() === 'Sun',
+      null,
+      { timeout: 3000 },
+    ).catch(() => failures.push('week start: Home did not repaint after the setting changed (S-F3)'));
+    const after = await readRail();
+    if (after.names[0] !== 'Sun') failures.push(`week start: Home rail still starts ${after.names[0]} after choosing Sunday`);
+    if (after.dates[0] !== sunday) failures.push(`week start: Home rail starts ${after.dates[0]}, expected the Sunday ${sunday}`);
+    if (after.dates.at(-1) !== addDays(sunday, 6)) failures.push(`week start: Home rail ends ${after.dates.at(-1)}, expected ${addDays(sunday, 6)}`);
+    if (!after.dates.includes(today)) failures.push(`week start: today ${today} fell out of the visible week`);
+
+    // Progress follows the same week: Pulse names the Sunday–Saturday range.
+    await openHub(page);
+    await page.waitForSelector('#analytics-hub.active [data-band="pulse"]');
+    const eyebrow = await page.$eval('[data-band="pulse"] .pg-band__sub', (el) => el.textContent.trim());
+    const startsOnSunday = eyebrow.startsWith(`${dayNum(sunday)} `) || eyebrow.startsWith(`${dayNum(sunday)}–`);
+    if (!startsOnSunday) failures.push(`week start: Pulse names "${eyebrow}" instead of the Sunday week (${sunday})`);
+
+    // The PROGRAM week is a plan index: it must still be Monday-anchored.
+    const anchor = await page.evaluate(async () => {
+      const mod = await import('/js/dates.js');
+      return mod.startOfProgramWeek('2026-11-22');
+    });
+    if (anchor !== '2026-11-16') failures.push(`week start: startOfProgramWeek moved with the preference (${anchor})`);
+
+    console.log('Week start (390px):', JSON.stringify({ before: before.names, after: after.names, sunday, pulse: eyebrow }));
+    if (errors.length) failures.push(`week start: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
 } finally {
   await browser.close();
   await new Promise((resolve) => server.close(resolve));

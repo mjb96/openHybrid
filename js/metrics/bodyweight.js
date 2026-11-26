@@ -11,7 +11,7 @@
 // No DOM and no state mutation; the view and its tests share this vocabulary.
 // =============================================================================
 
-import { addDaysISO, dateKey } from '../dates.js';
+import { calendarWeekStart, dateKey } from '../dates.js';
 
 export const RATE_WINDOW_DAYS = 21;
 export const RATE_MIN_WEIGHINS = 6;
@@ -85,10 +85,9 @@ function noon(dateISO) {
  * @param {'mon'|'sun'|string} [weekStartDay]
  */
 export function weekStartOf(dateISO, weekStartDay = 'mon') {
-  const date = new Date(`${dateISO}T12:00:00`);
-  const start = weekStartDay === 'sun' ? 0 : 1;
-  const diff = (date.getDay() - start + 7) % 7;
-  return addDaysISO(dateISO, -diff);
+  // Delegates to the ONE calendar-week rule in dates.js so bodyweight cannot
+  // drift from Pulse/analytics if the rule ever changes again.
+  return /** @type {string} */ (calendarWeekStart(dateISO, weekStartDay));
 }
 
 /**

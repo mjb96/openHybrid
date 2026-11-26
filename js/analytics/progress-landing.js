@@ -40,7 +40,7 @@ import { formatWeekRange } from '../dates.js';
 // hub and the Weekly Review cannot drift into three formats.
 export { formatWeekRange };
 
-/** Days of a Monday-based week that have already elapsed, 1..7. */
+/** Days of the athlete's calendar week that have already elapsed, 1..7. */
 function elapsedDayCount(weekStartISO, todayISO) {
   for (let i = 0; i < 7; i++) {
     if (addDaysISO(weekStartISO, i) === todayISO) return i + 1;

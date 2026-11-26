@@ -6,7 +6,7 @@
 // ==========================================
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { msUntilNextDaily, notificationsGranted, initNotifications, cancelReminders, composeMorningReminder } from '../js/notifications.js';
+import { msUntilNextDaily, nextWeekEndInstant, notificationsGranted, initNotifications, cancelReminders, composeMorningReminder } from '../js/notifications.js';
 
 const HOUR = 3600 * 1000;
 const MIN  = 60 * 1000;
@@ -24,6 +24,29 @@ test('msUntilNextDaily: earlier today → rolls to tomorrow', () => {
 test('msUntilNextDaily: exactly now → tomorrow (never fires immediately)', () => {
   const now = new Date(2026, 0, 1, 12, 0, 0, 0);
   assert.equal(msUntilNextDaily(now, 12, 0), 24 * HOUR);
+});
+
+test('nextWeekEndInstant: the summary lands at the END of the athlete week', () => {
+  // Wednesday 2026-11-25 09:00 local.
+  const wednesday = new Date(2026, 10, 25, 9, 0, 0, 0);
+  assert.equal(wednesday.getDay(), 3);
+
+  const mondayStart = nextWeekEndInstant(wednesday, 'mon');
+  assert.equal(mondayStart.getDay(), 0, 'Monday-start weeks end on Sunday');
+  assert.equal(mondayStart.getDate(), 29);
+  assert.equal(mondayStart.getHours(), 18);
+
+  const sundayStart = nextWeekEndInstant(wednesday, 'sun');
+  assert.equal(sundayStart.getDay(), 6, 'Sunday-start weeks end on Saturday');
+  assert.equal(sundayStart.getDate(), 28);
+  assert.equal(sundayStart.getHours(), 18);
+
+  // On the end day itself the summary describes the week that is still running,
+  // so it rolls a full week instead of firing part-way through today.
+  const sunday = new Date(2026, 10, 29, 9, 0, 0, 0);
+  assert.equal(nextWeekEndInstant(sunday, 'mon').getDate(), 6, 'rolls to the next Sunday');
+  const saturday = new Date(2026, 10, 28, 9, 0, 0, 0);
+  assert.equal(nextWeekEndInstant(saturday, 'sun').getDate(), 5, 'rolls to the next Saturday');
 });
 
 test('notificationsGranted: false when no window (Node/SSR)', () => {

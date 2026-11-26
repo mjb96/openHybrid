@@ -28,7 +28,7 @@ export function resetWeekNav() { _calOffset = 0; }
 /** Return from any historical selection to the live calendar week. */
 export function returnToCurrentWeek() { _calOffset = 0; }
 
-/** Monday (YYYY-MM-DD) of the currently selected calendar week. */
+/** Start (YYYY-MM-DD) of the currently selected calendar week. */
 export function getSelectedWeekStart(today) {
   const base = weekStartOf(today || localDayKey(new Date()));
   return addDaysISO(base, _calOffset * 7);
@@ -86,7 +86,7 @@ export function updateWeekNavDisplay(getState) {
         ? 'Previous week'
         : `${Math.abs(_calOffset)} weeks ago`;
   }
-  // The label's date range is the REAL Monday–Sunday span, never derived from the
+  // The label's date range is the REAL seven-day span, never derived from the
   // min/max of whatever activity happens to be present.
   if (datesEl) datesEl.textContent = formatWeekRange(start, end);
 

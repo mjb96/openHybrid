@@ -27,7 +27,7 @@ import { resolveProgramForState, saveStateToLocalStorage } from '../../state.js'
 import { esc, screenTabBar, mountScreenTabs, spark as _spark } from './screen-kit.js';
 import { formatWeight, weightUnitOf } from '../utils.js';
 import { getCalendarWeekOffset, getSelectedWeekStart } from '../week-nav.js';
-import { collectCalendarWeek, weekStartOf, localDayKey, addDaysISO } from '../weekly-aggregate.js';
+import { collectCalendarWeek, weekStartOf, localDayKey, addDaysISO, weekdayKeyOf } from '../weekly-aggregate.js';
 import { formatWeekRange } from '../../dates.js';
 import { calendarStrengthSummary, calendarWeekE1rmSeriesForLift, bestE1rmByLiftForWeek } from '../../metrics/metrics-strength.js';
 import { canonicalExerciseId } from '../../exercises/catalog.js';
@@ -540,7 +540,7 @@ export function strengthSessionsStripHTML(appState, days, opts = {}) {
   return `<div class="sw-sessions">
     <div class="sw-sessions__title">${esc(_sessionsStripTitle(weekStart))}</div>
     <div class="sw-sessions__row">${chips.map(chip => `<button class="sw-session-chip" data-action="open-session-detail" data-week="${esc(chip.weekKey)}" data-day="${esc(chip.sourceDay)}" data-datelabel="${esc(chip.title)}">
-      <span class="sw-session-chip__day">${_DAY_ABBR[chip.calendarDay] || esc(chip.calendarDay)}</span>
+      <span class="sw-session-chip__day">${_DAY_ABBR[chip.calendarWeekday] || esc(chip.calendarWeekday)}</span>
       <span class="sw-session-chip__title">${esc(chip.title)}</span>
       <span class="sw-session-chip__vol">${Math.round(chip.totalVolume)} ${esc(chip.unit)} vol</span>
     </button>`).join('')}</div>
@@ -575,6 +575,9 @@ export function strengthSessionChipModels(appState, days, opts = {}) {
       : activeProgram;
     chips.push({
       calendarDay: d,
+      // The visible label comes from the real date: `d` is the week POSITION and
+      // is only a weekday name when the week starts on Monday.
+      calendarWeekday: weekdayKeyOf(source.date) || d,
       sourceDay,
       weekKey: String(source.weekKey ?? source.weekNum ?? appState.currentWeek ?? '1'),
       title: source.sessionTitle || sourceProgram?.days?.[sourceDay]?.title || 'Workout',

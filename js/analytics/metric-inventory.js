@@ -78,7 +78,7 @@ const RUNNING_INVENTORY = RUNNING_METRICS.map((metric) => item({
   comparisonRule: ['lifetime', 'configured', 'rolling-ewma'].includes(metric.scope)
     ? 'No fabricated period comparison; the detail explains the lifetime/configured/rolling scope.'
     : metric.scope === 'calendar-week'
-      ? 'Live week uses elapsed-matched prior weekdays; completed history points are full Monday–Sunday weeks.'
+      ? 'Live week uses elapsed-matched prior weekdays; completed history points are full calendar weeks.'
       : 'Current rolling window compares with the immediately preceding equal-length window when both are valid.',
   emptyState: metric.empty,
   beforeInteraction: ['running.weekly-distance', 'running.average-pace', 'running.best-pace', 'running.vdot'].includes(metric.id) ? 'domain-only' : 'static',
