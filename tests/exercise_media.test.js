@@ -12,8 +12,9 @@ import { EXERCISE_MEDIA, exerciseMediaHTML, mediaForExercise } from '../js/exerc
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ids = new Set(CORE_EXERCISES.map((exercise) => exercise.id));
 
-test('the prototype covers ten reviewed core lifts', () => {
-  assert.equal(Object.keys(EXERCISE_MEDIA).length, 10);
+test('the stills cover most reviewed core lifts and only real ids', () => {
+  const count = Object.keys(EXERCISE_MEDIA).length;
+  assert.ok(count >= 140, `expected the full rollout, got ${count}`);
   for (const id of Object.keys(EXERCISE_MEDIA)) {
     assert.ok(ids.has(id), `${id} is not a core exercise`);
   }
@@ -33,7 +34,7 @@ test('every frame exists, is local and stays inside the size budget', () => {
       total += size;
     }
   }
-  assert.ok(total < 800_000, `media total is ${total} bytes`);
+  assert.ok(total < 5_000_000, `media total is ${total} bytes`);
 });
 
 test('aliases resolve to the same media; unknown lifts have none', () => {
@@ -42,7 +43,7 @@ test('aliases resolve to the same media; unknown lifts have none', () => {
   assert.equal(mediaForExercise('Not An Exercise'), null);
 });
 
-test('the block is two local images with a fixed ratio and reduced-motion fallback', () => {
+test('the block is two local images with a fixed ratio and a source caption', () => {
   const html = exerciseMediaHTML('Back Squat');
   assert.match(html, /class="exercise-media"/);
   assert.match(html, /role="img"/);
@@ -50,6 +51,11 @@ test('the block is two local images with a fixed ratio and reduced-motion fallba
   assert.equal((html.match(/<img /g) || []).length, 2);
   assert.match(html, /is-active/);
   assert.match(html, /loading="lazy"/);
+  assert.match(html, /width="480"/);
+  // The source demo is a Barbell Squat, so the block says so.
+  assert.match(html, /Demo: Barbell Squat/);
   assert.doesNotMatch(html, /https?:/);
-  assert.equal(exerciseMediaHTML('Sled Pull'), '');
+  // An exact-name demo needs no caption.
+  assert.doesNotMatch(exerciseMediaHTML('Plank'), /exercise-media__caption/);
+  assert.equal(exerciseMediaHTML('Nordic Curl'), '', 'unmapped lifts have no demo');
 });

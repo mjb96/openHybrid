@@ -73,12 +73,13 @@ Media is deliberately out of scope until there is a licence-compatible source. T
 - **wger** — exercise data is Creative Commons per entry; app is AGPL.
 - **openGym media** — must not be copied.
 
-**Prototype (10 core lifts).** `assets/exercises/*.webp` holds two public-domain
-stills per lift from Free Exercise DB (Unlicense), crossfaded into a slow loop in
+**Rollout (142 of 157 core lifts).** `assets/exercises/*.webp` holds two
+public-domain stills per lift from Free Exercise DB (Unlicense), crossfaded into a slow loop in
 the exercise detail. The mapping is `js/exercises/media.js`; the files are
-precached by discovery (368 KB for ten lifts). Attributed in `NOTICE.md`. Any
-wider rollout keeps the same rule: per-file licence record, attribution, and a
-size decision before shipping.
+precached by discovery (~3.6 MB for 142 lifts, 480 px WebP). Where the source
+exercise has a different name the block says “Demo: <source>”, so a paused or
+EZ-bar variant never pretends to be a different movement. Fifteen lifts have no
+defensible match and show no demo. Attributed in `NOTICE.md`.
 
 ## Integrity tests
 
