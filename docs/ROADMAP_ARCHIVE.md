@@ -6022,3 +6022,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/relative_strength.test.js`, exercise-detail cases, and the
     all-lifts browser check's relative-strength assertion.
 
+- **2026-11-26 — H4 A7: muscle frequency per bucket.**
+  - `buildMuscleModel` now counts distinct training DATES per muscle (a session),
+    per bucket and for the range, plus the same comparison against the previous
+    window that sets already had. One compound day credits each involved muscle
+    once, never once per lift or set.
+  - The focused muscle headline states `N sessions (+/− vs previous)` and both
+    the focused table and the all-muscles table carry a Sessions column.
+  - Tests: `muscles_model` frequency and previous-window cases; the Progress-hub
+    browser check now requires the focused session count.
+

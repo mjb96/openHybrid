@@ -96,9 +96,10 @@ the same training picture.
 The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
 Logging → Progress**. The short version:
 
-- **H5 — strength coaching.** A periodic block review built from the engine's
-  own stall/fatigue evidence, with an evidence-gated, undoable deload
-  recommendation — never a low-bar nag.
+- **H5 — strength coaching.** The **Block Review** now ships in Review → Month:
+  the last four completed weeks (sessions, tonnage, per-lift e1RM change, PRs
+  and the engine's own progress checks). The evidence-gated, undoable deload
+  action follows.
 - **H6 — running completeness.** Verify the existing run surface, then add best
   efforts (fastest 1 km/1 mi/5 km/10 km) and a labelled race-time estimate from
   data the app already holds. Intervals, zones and efficiency follow when

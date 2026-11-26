@@ -612,6 +612,19 @@ try {
 
     await page.click('#analytics-weekly-review [data-an-tab="month"]');
     await page.waitForSelector('#analyticsTimelineTableBody tr', { timeout: 4000 }).catch(() => {});
+    // H5: the Month tab reviews the four COMPLETED weeks above the report.
+    const blockReview = await page.evaluate(() => {
+      const host = document.getElementById('blockReviewContainer');
+      return {
+        heading: host?.querySelector('h2')?.textContent?.trim() || '',
+        present: !!host?.querySelector('.pg-block'),
+        text: host?.textContent?.replace(/\s+/g, ' ').trim() || '',
+      };
+    });
+    if (blockReview.heading !== 'Block Review') failures.push(`${width}px: the Month tab has no block review heading`);
+    if (!blockReview.present) failures.push(`${width}px: the block review did not render`);
+    if (!/26 Oct – 22 Nov 2026/.test(blockReview.text)) failures.push(`${width}px: the block review window is wrong (${blockReview.text.slice(0, 90)})`);
+    if (!/3 strength sessions/.test(blockReview.text)) failures.push(`${width}px: the block review does not count the completed block (${blockReview.text.slice(0, 90)})`);
     const reviewStats = await page.$eval('#analytics-weekly-review', (section) => ({
       rows: section.querySelectorAll('#analyticsTimelineTableBody tr').length,
       firstRow: section.querySelector('#analyticsTimelineTableBody tr')?.textContent?.trim() || '',
