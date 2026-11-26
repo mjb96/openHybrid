@@ -27,6 +27,10 @@ export const WEB_ROOT_ALLOWLIST = [
   '.nojekyll',
   'css',
   'js',
+  // Exercise demonstration stills live here. The staging allowlist is what the
+  // PWA and APK actually ship, so a file that exists in the repo but not here
+  // 404s in production even though it works on a local dev server.
+  'assets',
 ];
 
 // Things that must NEVER be present in the staged root even if a stray copy
