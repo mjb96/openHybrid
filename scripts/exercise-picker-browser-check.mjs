@@ -91,6 +91,9 @@ try {
   await page.click('[data-action="open-program-detail"][data-program-id="prog_pick"]');
   await page.waitForSelector('#programDetailScreen .detail-cta-secondary [data-program-id="prog_pick"]', { timeout: 8000 });
   await page.click('#programDetailScreen [data-action="open-builder"][data-program-id="prog_pick"]');
+  // PL6: the editor opens on the plan; the exercise rows live in the day editor.
+  await page.waitForSelector('#builderViewContainer [data-action="b-select-day"]', { timeout: 8000 });
+  await page.click('#builderViewContainer [data-action="b-select-day"][data-day="mon"]');
   await page.waitForSelector('#builderViewContainer .program-editor__exercise-name', { timeout: 8000 });
 
   // Scroll the editor down toward a lower exercise row, then remember the position.
