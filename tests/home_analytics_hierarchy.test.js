@@ -44,7 +44,10 @@ test('Home offers one Start, not a competing Workout quick action', () => {
   assert.ok(quickAt > 0, 'Home renders the quick-action row');
   const quickBlock = indexHTML.slice(quickAt, indexHTML.indexOf('</div>', quickAt));
   assert.doesNotMatch(quickBlock, /open-quick-start/);
-  assert.match(quickBlock, /data-action="open-run-logger"/);
+  // HM5: Run moved to Train (where Quick start lives); the three Home actions
+  // are deliberately Empty workout · Weight · History.
+  assert.match(quickBlock, /data-action="start-empty-workout"/);
+  assert.doesNotMatch(quickBlock, /data-action="open-run-logger"/);
   assert.match(quickBlock, /class="home-quick-btn btn-history-link"/);
 });
 

@@ -1273,7 +1273,7 @@ first.
 | HM2 | Move a day (G1) | `schedule/week.js`, `home/week-strip.js`, `home/move-day-sheet.js` | Reschedule a planned workout from the day cell without editing the plan; attribution uses the real date; Undo | DONE | Free dates only in the current calendar week: `state.weekSchedule[weekStart][day] = date` moves the plan; Home/Train/cockpit resolve the scheduled day for a date; the old weekday reads rest, occupied/past dates are disabled with a reason, and the shared undo bar restores the override. Logged work keeps its stamped date. Logic and UI are covered by `tests/week_schedule.test.js` and `scripts/move-day-browser-check.mjs` (390/320). Replace/keep-both for an occupied target stays with G3. |
 | HM3 | Strength this week | `home/hybrid-dashboard.js` | Sessions, sets and volume vs the same weekdays last week, plus this week's PRs; one line each; links to the owning Progress surface | DONE | Sessions, sets, elapsed volume delta, top e1RM change and PR count render on separate lines. The card now opens the Progress hub scrolled to the Main exercises band (`data-scroll-target`), whose “All N lifts” sheet is the PG5 index — no route to the legacy Strength screen. The browser check asserts the landing. |
 | HM4 | One strength insight | `home/strength-insight.js`, `home.js` | A single "because" recommendation from strength data (stalled lift, under-trained muscle, deload cue), never contradicting the plan or a recovery warning | DONE | One line: a planned deload week, else the first stalled planned lift (decision owned by `computeDiagnosticForLift`, the same rule as the cockpit badge), else the previous generic insight. It never replaces a warning/caution line and is suppressed while the overtraining escalation is on screen; `tests/home_strength_insight.test.js` pins the precedence and the engine-driven stall. Under-trained-muscle wording stays with A2's volume guide. |
-| HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | PARTIAL | Exactly three: Weight, Run, History. No empty workout, no log-past-session and no contextual action. |
+| HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | DONE (G3 deferred) | The three Home shortcuts are now **Empty workout · Weight · History**: Run moved to Train's Quick start (the surface that owns starting an activity), so Home is about starting/recording, not browsing. "Log a past session" stays in History until G3 lands. The module switches still hide the Train Run/Walk offers. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | DONE | Ready/rest/in-progress/completed/unresolved/no-plan/past-week empty were already distinct. Added an explicit **first session** state (no completed work anywhere), moved the offline note into the card head so it is visible while collapsed, and made a one-signal readiness read say "limited signal" instead of presenting it as settled. `home_today_card` tests pin all three; Home Today browser check passes. |
 | HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | DONE | One owner per figure: readiness → the Today card's guidance (and the recovery detail); bodyweight + delta → the bodyweight card; weekly volume, sessions and working sets → the Strength week card; planned sessions → the week rail. The coach is advisory only (fasting, load/ACWR, streak) and hides while the overtraining card is up. `tests/home_metric_ownership.test.js` pins the rule; `home-today-browser-check` still passes. |
 
@@ -1430,7 +1430,7 @@ Verify first; sources: openGym, Hevy.
 
 | ID | Gap | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
-| G2 | Reps per side | `workout/load-basis.js`, `set-utils.js` | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | MISSING | Only load basis each/per-side/total exists; a set stores one `r`; no per-side rep model or stepper. |
+| G2 | Reps per side | `workout/load-basis.js`, `set-utils.js` | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | DONE (display) | A unilateral row (catalogue `unilateral`) states the split beside the entry as the total is typed (`8 → 4 per side`), and an odd total is shown honestly (`4.5 per side`) rather than rounded. Storage, history and 1RM keep the TOTAL, so there is no schema change and no second truth. Target re-interpretation and even-step progression were deliberately not introduced: the plan's prescription stays what it says. |
 | G3 | Log a past session | `run-logger.js`, `workout/one-off-session.js`, `activities.js` | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | PARTIAL | Backdated runs exist; strength sessions stamp today; no replace/keep-both/cancel when the day already has a session. |
 | G5 | Closed-app rest alerts | `notifications.js`, `timers.js`, Android `ReminderScheduler` | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | PARTIAL | A fixed-time daily OS alarm exists; it is not planned-day, not cancelled by training, and the rest alert cannot fire while WebView timers are paused. |
 | G7 | Favourite exercises | `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | DONE | Every picker row carries a 44px star (`aria-pressed`, Add/Remove <name>), and the unfiltered library leads with ONE **Favourites** section — catalogue and custom together, never duplicated — while a filtered list sorts favourites first. The preference is one id-keyed map (`settings.favouriteExercises`), so a catalogue alias stars the same exercise, toggling is idempotent and the map is bounded at 120; the import sanitizer keeps only `key: true` on a null-prototype object. Tests: `favourites` (alias key, custom key, bound, stable order, star naming, hostile import) and `exercise-picker-browser-check` (star size/state, persisted state, Favourites section, favourite leads). |
@@ -1648,6 +1648,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H3 HM5 + G2: Home shortcuts and the per-side split.**
+  - Home's three shortcuts are **Empty workout · Weight · History**; Run moved
+    to Train's Quick start, which is the surface that owns starting an activity.
+    The module switches still hide the Train Run/Walk offers.
+  - Unilateral rows state the per-side split as the total is typed
+    (`8 → 4 per side`; an odd total shows `4.5 per side` rather than being
+    rounded). The stored value, history and 1RM keep the TOTAL — display only,
+    no schema change and no second truth.
+  - Tests: `per_side_row` and `load_basis`; the module-toggle check drives the
+    Train quick-start Run/Walk visibility instead of the old Home Run shortcut.
+
 - **2026-11-26 — H6a: running completeness, read-only.**
   - Audited R1–R10 against the current app (R1/R4/R8/R10 verified), then added
     **R5 best efforts** (fastest 1 km, 1 mi, 5 km, 10 km from recorded splits)
@@ -1761,17 +1772,6 @@ device timing it did not measure.
     days, archived weeks, window edges, week start) and
     `tests/year_heatmap_view.test.js`; the Progress-hub browser check asserts the
     rendered year, no 320/390/412 overflow and a real day tap into History.
-
-- **2026-11-26 — H4 A4: rep-range and effort mix.**
-  - New `analytics/intensity-mix.js` reports the share of completed working sets
-    by rep range (1–3 / 4–6 / 7–12 / 13+) and by recorded RIR (0–1 / 2–3 / 4+,
-    with unrated counted separately). Holds and carries are not rep sets but
-    keep their effort rating; warm-ups never count.
-  - The exercises band shows both stacked bars with exact shares and a factual
-    goal line (strength / hybrid / endurance) — the observed mix, never a
-    prescription. Under five rep sets the mix is withheld.
-  - Tests: `tests/intensity_mix.test.js` and the exercises view; the all-lifts
-    browser check asserts the rendered block.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

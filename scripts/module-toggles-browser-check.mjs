@@ -64,8 +64,9 @@ try {
   await page.goto(base, { waitUntil: 'networkidle' });
   await page.waitForSelector('#homeWeekStrip');
 
-  const runQuick = page.locator('#homeQuickActions [data-action="open-run-logger"]');
-  ok(await runQuick.isVisible(), 'Running module is visible by default');
+  // HM5: Run moved out of the Home quick actions (it lives in Train's Quick
+  // start), so the module check drives that surface instead.
+  ok(await page.locator('#homeQuickActions [data-action="start-empty-workout"]').isVisible(), 'Home offers the empty-workout shortcut');
 
   await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
@@ -73,11 +74,19 @@ try {
   await page.waitForSelector('#settingsPageHost .s-page');
   await page.locator('label.s-switch', { has: page.locator('input[data-setting-key="modules.running"]') }).click();
   await page.waitForFunction(() => document.documentElement.dataset.moduleRunning === 'off');
-  ok(!(await runQuick.isVisible()), 'turning Running off hides the Home run action');
 
   await page.click('#settingsPageHost .s-back');
   await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('#settingsOverlay [data-action="close-settings"]');
+  // The Train quick-start sheet is the running entry point now; turning the
+  // module off must remove its Run/Walk offers.
+  await page.click('.nav-item[data-target="workout"]');
+  await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelector('[data-action="open-quick-start"]')?.click());
+  await page.waitForSelector('#quickStartSheet.active', { timeout: 3000 }).catch(() => {});
+  ok(!(await page.locator('#quickStartSheet [data-action="qs-run"]').isVisible()), 'turning Running off hides the Run quick start');
+  ok(!(await page.locator('#quickStartSheet [data-action="qs-walk"]').isVisible()), 'turning Running off hides the Walk quick start');
+  await page.evaluate(() => document.querySelector('#quickStartSheet [data-action="close-quick-start"]')?.click());
   await page.click('.nav-item[data-target="analytics"]');
   await page.waitForSelector('#view-analytics.active');
   await page.waitForSelector('#analytics-hub.active');

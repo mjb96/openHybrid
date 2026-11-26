@@ -6,7 +6,7 @@ import { DAY_NAMES_FULL } from './constants.js';
 import { escapeHtml } from './util.js';
 import { isBodyweightExercise, resolvedLoadMode } from './workout/load-mode.js';
 import {
-  basisLabel, defaultBasisForExercise, normalizeBasis, supportsLoadBasis,
+  basisLabel, defaultBasisForExercise, isUnilateralExercise, normalizeBasis, perSideRepsLabel, supportsLoadBasis,
 } from './workout/load-basis.js';
 import { compareWithPrevious, previousSetCompact, setRowNumberLabel } from './workout/set-entry.js';
 import { effectiveSetMode } from './workout/set-shape.js';
@@ -113,6 +113,9 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // (tests/imported_content_rendering.test.js), which no other row attribute
   // covers.
   const rirAttr = sData.rir != null ? sData.rir : (sData.rpe != null ? 10 - sData.rpe : '');
+  // G2: unilateral work is logged as ONE total (history and 1RM keep meaning the
+  // total); the row states the per-side split so a side is never ambiguous.
+  const unilateral = isUnilateralExercise(exerciseName) && mode === 'reps';
 
   return `<div class="cockpit-set-row ${sData.c ? 'is-complete' : ''} ${typeClass} ${sData.isPR ? 'is-pr' : ''}"${hasRole ? ` data-set-role="${escapeHtml(String(roleTag.role))}"` : ''}${boAttrs} data-set-index="${sIdx}" data-set-mode="${escapeHtml(String(mode))}" data-load-mode="${escapeHtml(String(directMode))}"${basisCapable ? ` data-load-basis="${escapeHtml(basis)}"` : ''} data-set-type="${escapeHtml(String(type))}" data-rest-label="${escapeHtml(restLabel)}" data-load-label="${escapeHtml(loadCls)}" data-basis-label="${escapeHtml(basisCapable ? basisLabel(basis) : '')}" data-failure="${sData.failure ? '1' : ''}" data-rir="${escapeHtml(String(rirAttr))}"${sData.prKind ? ` data-pr-kind="${escapeHtml(String(sData.prKind))}"` : ''}>
     ${roleTagHtml}
@@ -132,7 +135,8 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
         ? `<input type="text" inputmode="numeric" class="input-time-node input-set-value-node" aria-label="Time for set ${sIdx + 1} (MM:SS)" placeholder="0:00" value="${sData.sec ? escapeHtml(formatDuration(sData.sec)) : ''}">`
         : mode === 'distance'
           ? `<input type="number" inputmode="decimal" class="input-dist-node input-set-value-node" aria-label="Distance for set ${sIdx + 1} (metres)" placeholder="m" value="${sData.dist ? escapeHtml(formatDistance(sData.dist)) : ''}">`
-          : `<input type="number" inputmode="numeric" class="input-reps-node input-set-value-node" aria-label="Reps for set ${sIdx + 1}" data-target-reps="${escapeHtml(String(prescribedRepGoal || ''))}" placeholder="${escapeHtml(String(ghostReps))}" value="${escapeHtml(String(sData.r || ''))}">`}
+          : `<input type="number" inputmode="numeric" class="input-reps-node input-set-value-node" aria-label="Reps for set ${sIdx + 1}" data-target-reps="${escapeHtml(String(prescribedRepGoal || ''))}" placeholder="${escapeHtml(String(ghostReps))}" value="${escapeHtml(String(sData.r || ''))}">
+            ${unilateral ? `<small class="set-per-side" data-per-side aria-live="polite">${escapeHtml(perSideRepsLabel(sData.r) || 'total reps')}</small>` : ''}`}
     </div>
     <div class="gym-check-container">
       <label class="gym-check-wrap">

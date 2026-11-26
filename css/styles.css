@@ -9941,6 +9941,7 @@ input[type="checkbox"].gym-check {
   appearance: none;
   margin: 0;
 }
+.set-per-side { display: block; margin-top: 2px; color: var(--text-3); font-size: .58rem; font-weight: 700; line-height: 1.2; text-align: center; }
 .set-entry { min-width: 0; display: grid; gap: 3px; }
 .set-entry small {
   display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
