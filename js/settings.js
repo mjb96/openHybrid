@@ -1579,6 +1579,12 @@ export async function exportData() {
     mime: 'application/json',
   });
   const n = backup.routeCount;
+  // ST9: a backup is only "taken" when the platform confirmed it was saved or
+  // started. A cancelled/failed export must not refresh the timestamp.
+  if (result?.status === 'saved' || result?.status === 'started') {
+    appState.lastBackupAt = new Date().toISOString();
+    saveStateToLocalStorage(true);
+  }
   const copy = exportResultMessage(result, n ? `Data (${n} route${n === 1 ? '' : 's'})` : 'Data');
   showToast(copy.message, copy.error);
 }

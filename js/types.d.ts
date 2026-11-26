@@ -165,6 +165,8 @@ export interface AppState {
     arm?: number; thigh?: number; bodyFat?: number;
   }>;
   thresholdPaceSeconds: number | null;
+  /** ST9: ISO timestamp of the last successful manual JSON export; backup metadata, not a setting. */
+  lastBackupAt?: string | null;
   deloadApplied: any;
   _deloadDismissedWeek: string | null;
   streakData: StreakData;

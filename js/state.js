@@ -854,6 +854,8 @@ export async function pullEngineDataFromStorage() {
     schemaVersion: 0, // 0 = legacy/unstamped; migrateState() upgrades + stamps on load
     currentWeek: '1', activeProgramId: 'hybrid_engine', weekStartedAt: null,
     weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [],
+    // ST9: metadata for the last successful manual JSON export. Not a setting.
+    lastBackupAt: null,
     routines: [], libraryFolders: [], bodyWeightLog: [], weekSchedule: {},
     thresholdPaceSeconds: null, deloadApplied: null, _deloadDismissedWeek: null,
     streakData: { current: 0, longest: 0, lastActivityDate: null },
@@ -934,6 +936,7 @@ settings: { name: '', weightUnit: 'kg', distanceUnit: 'km', progressionIncrement
     localStorage.removeItem('dashboardTileOrder');
     localStorage.removeItem('dashboardTilesHidden');
   } catch {}
+  if (typeof appState.lastBackupAt !== 'string' || Number.isNaN(Date.parse(appState.lastBackupAt))) appState.lastBackupAt = null;
   if (!appState.settings.avatarDataUrl && appState.settings.avatarDataUrl !== null) appState.settings.avatarDataUrl = null;
   if (!appState.settings.bandWeights) appState.settings.bandWeights = { L: 10, M: 20, H: 30 };
   if (!appState.settings.restPeriods) appState.settings.restPeriods = { ...DEFAULT_REST_TIERS };

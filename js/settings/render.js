@@ -13,6 +13,7 @@ import { moduleEnabled, hybridTrainingEnabled } from '../modules.js';
 import { getActiveEquipmentProfile, ensureEquipmentProfiles, EQUIPMENT_KEYS } from '../equipment-profiles.js';
 import { latestWeighIn } from '../metrics/bodyweight.js';
 import { DEFAULT_REST_TIERS } from '../workout/rest-duration.js';
+import { describeLastBackup } from '../portability/backup-status.js';
 import {
   SETTINGS_PAGES, settingsEntry, settingsForPage, settingsPageForRoute, settingsPagesForSection,
   settingEnabled, settingSummary, settingVisible, settingsRegistryKeys, settingsPageById,
@@ -451,6 +452,7 @@ function equipmentPage(state, store) {
 
 /** @param {any} state */
 function dataPage(state) {
+  const backup = describeLastBackup(state?.lastBackupAt);
   const raw = (() => { try { return localStorage.getItem('hybrid_engine_v2_state') || ''; } catch { return ''; } })();
   const kb = raw ? Math.max(1, Math.round(new Blob([raw]).size / 1024)) : 0;
   return `
@@ -467,6 +469,7 @@ function dataPage(state) {
     ${settingsGroup({
       label: 'Export',
       rows: [
+        settingsRow({ label: 'Last manual backup', icon: 'clock', tone: backup.stale ? 'orange' : 'green', summary: backup.detail }),
         settingsRow({ label: 'Training data (JSON)', icon: 'download', tone: 'blue', summary: 'Everything, including routes', nav: true, action: 'export-data' }),
         settingsRow({ label: 'Training context (JSON)', icon: 'book', tone: 'purple', summary: 'Compact, no personal data', nav: true, action: 'export-training-context' }),
         settingsRow({ label: 'Spreadsheet (CSV)', icon: 'download', tone: 'green', summary: 'Workout history', nav: true, action: 'export-csv' }),
