@@ -10,6 +10,7 @@ import { buildBodyweightModel } from '../metrics/bodyweight.js';
 import { bodyWeightChartSVG } from '../analytics/charts.js';
 import { formatDayMonth } from '../dates.js';
 import { escapeHtml } from '../util.js';
+import { displayWeightString, fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 /** @param {any} state @param {{ now?: number, days?: number }} [options] */
 export function buildHomeBodyweight(state, { now = Date.now(), days = 30 } = {}) {
@@ -29,17 +30,19 @@ export function renderHomeBodyweight(container, state) {
   const model = buildHomeBodyweight(state);
   const unit = model.unit;
   const latest = model.latest;
-  const delta = model.delta == null ? '' : `${model.delta > 0 ? '+' : ''}${model.delta.toFixed(1)} ${unit} / 30d`;
+  // ST6: the model is canonical kilograms; the card is a display surface.
+  const show = (stored) => fromCanonicalWeight(stored, unit) ?? 0;
+  const delta = model.delta == null ? '' : `${model.delta > 0 ? '+' : ''}${show(model.delta).toFixed(1)} ${unit} / 30d`;
   const trend = model.rate.enough
-    ? `${model.rate.perWeek > 0 ? '+' : ''}${model.rate.perWeek.toFixed(2)} ${unit}/wk`
+    ? `${model.rate.perWeek > 0 ? '+' : ''}${show(model.rate.perWeek).toFixed(2)} ${unit}/wk`
     : delta;
   const meta = [
     latest ? formatDayMonth(latest.date) : '',
     trend,
-    model.targetWeight ? `Goal ${model.targetWeight} ${unit}` : '',
+    model.targetWeight ? `Goal ${displayWeightString(model.targetWeight, unit, { decimals: 1 })} ${unit}` : '',
   ].filter(Boolean).join(' · ');
   const aria = latest
-    ? `Log bodyweight, latest ${latest.weight.toFixed(1)} ${unit}`
+    ? `Log bodyweight, latest ${displayWeightString(latest.weight, unit, { decimals: 1 })} ${unit}`
     : 'Log bodyweight';
   // The same chart Progress draws, at card geometry: daily points, the 7-day
   // mean and the goal line. Tapping the chart still opens the full graph, while
@@ -59,7 +62,7 @@ export function renderHomeBodyweight(container, state) {
     <button type="button" class="home-bw__line" data-action="open-bw-sheet" aria-label="${escapeHtml(aria)}">
       <span class="home-bw__copy">
         <span class="home-bw__eyebrow">Bodyweight</span>
-        <strong class="home-bw__title">${latest ? `${latest.weight.toFixed(1)} ${unit}` : 'No weigh-ins yet'}</strong>
+        <strong class="home-bw__title">${latest ? `${displayWeightString(latest.weight, unit, { decimals: 1 })} ${unit}` : 'No weigh-ins yet'}</strong>
         <span class="home-bw__meta">${escapeHtml(meta)}</span>
       </span>
       <span class="home-bw__log" aria-hidden="true">Log</span>

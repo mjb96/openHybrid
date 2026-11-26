@@ -77,7 +77,7 @@ test('exports bodyweight history as its own CSV, sorted and deduped', () => {
     ],
   });
   const rows = parseCsv(csv);
-  assert.deepEqual(rows[0], ['Date', 'Weight']);
+  assert.deepEqual(rows[0], ['Date', 'WeightKg']);
   assert.deepEqual(rows.slice(1), [['2026-11-01', '85'], ['2026-11-19', '83.4']]);
 });
 

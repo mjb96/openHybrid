@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 56 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 58 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -402,10 +402,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   Overview and Stats tabs, built from `weeklyReviewShareRows` — the rows are the
   week's own numbers, and a historical week omits adherence and focus. Volume
   goes through the shared
-  `formatVolume` (`js/analytics/utils.js`), which LABELS the athlete's stored
-  unit and never converts it — kg keeps its `t` compaction, lbs stays lbs.
-  Bodyweight is deliberately omitted because weigh-ins are stored in the
-  athlete's then-current unit. Review
+  `formatVolume` (`js/analytics/utils.js`), which CONVERTS canonical kilograms
+  into the athlete's display unit — kg keeps its `t` compaction, lbs stays
+  whole pounds.
+  Bodyweight is deliberately omitted because a weigh-in reads in whichever
+  unit it was entered under history, and the review is about training. Review
   Stats' Training Calendar and Consistency Log use the same calendar weeks (no
   `W1..Wn` program grid).
   `loggedSessionsByDate` counts sessions inside a slot — strength plus every
@@ -569,6 +570,27 @@ server works.
   real calendar days, so the setting only changes bucketing and switching back
   restores the Monday view exactly. The weekly-summary notification fires at
   18:00 on the LAST day of the athlete's week.
+- Canonical weight storage (ST6): **every weight in `state` is KILOGRAMS**;
+  `settings.weightUnit` is a DISPLAY preference. `js/metrics/weight-unit.js`
+  owns both boundaries (`toCanonicalWeight` / `canonicalWeightString` going in,
+  `fromCanonicalWeight` / `displayWeightString` coming out), and
+  `js/workout/units.js` is the cockpit's boundary. The v17→v18 migration
+  converts an existing lbs state exactly once (`convertStoredWeights(..., {exact:true})`)
+  and stamps `state.unitBasis='kg'`, which makes it idempotent. Changing the
+  unit therefore rewrites NOTHING (`setWeightUnit` is display-only: no confirm,
+  no recovery copy). Models stay canonical (kg) — `buildBodyweightModel`, the
+  engine's `suggestProgression`, `buildSessionRecap` — and VIEWS convert once;
+  a view must never call `fromCanonicalWeight` on a value it already converted.
+  The engine's `progression.weight`/`suggestedWeight` are the exception: they
+  leave as DISPLAY values because the cockpit puts them straight in the weight
+  field. `progressionIncrement` and a weight-based `rateGoal` are canonical too.
+  Escapes the rule on purpose: plate setups, dumbbell ladders, machine stacks
+  and band weights are per-unit UI data; distance stays km and tape stays cm.
+  Exports are unambiguous: the training CSV writes `WeightKg`/`BodyWeightKg`,
+  the bodyweight CSV writes `Date,WeightKg`, and the importers accept both
+  spellings and convert into kilograms. `scripts/weight-unit-browser-check.mjs`
+  proves a typed 225 lb persists as 102.06 kg while a stored 90.72 kg reads as
+  200 lb.
 - Weekly analytics attribution: `state.currentWeek` is a PROGRAM-week counter that only
   advances on an explicit step / confirmed auto-advance — it is NOT the calendar week.
   So "this week" analytics must NOT read `weeks[currentWeek]` directly (that leaked a

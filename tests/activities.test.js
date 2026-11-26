@@ -182,7 +182,8 @@ test('activity rows honour the athlete’s weight/distance units and import prov
   const rows = buildActivityHistory(state);
   const strength = rows.find((row) => row.kind === 'strength');
   const run = rows.find((row) => row.kind === 'run' && row.sessionId === 'run_a');
-  assert.match(strength.metrics.join(' '), /500 lbs/);
+  // ST6: 100 kg x 5 sets-tonnage reads as 1,102 lb for a lb athlete.
+  assert.match(strength.metrics.join(' '), /1,102 lb/);
   assert.match(run.metrics.join(' '), /3\.11 mi/);
   assert.match(run.metrics.join(' '), /8:03 \/mi/);
   assert.equal(run.subtitle, 'Imported from CSV');

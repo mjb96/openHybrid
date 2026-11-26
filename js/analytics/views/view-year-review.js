@@ -16,6 +16,7 @@
 import { formatVolume, weightUnitOf } from '../utils.js';
 import { buildYearInReview, yearReviewYear } from '../../brain/year-review.js';
 import { formatDayMonthShort, todayKey } from '../../dates.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KM_TO_MI = 0.621371;
@@ -114,7 +115,7 @@ export function renderYearInReview(state, days, todayISO) {
     ${shownPrs.map((pr) => `<article class="card-dark p-3 mb-2 flex-between">
       <span style="font-weight:700;color:var(--text-inverse);${CLIP}"><span aria-hidden="true">🏆</span> ${esc(pr.lift)}</span>
       <span style="color:var(--text-muted);font-size:0.78rem;text-align:right;white-space:nowrap;margin-left:10px;">
-        <b style="color:var(--color-amber);">${pr.e1rm} ${unit}</b> · ${esc(formatDayMonthShort(pr.date))}
+        <b style="color:var(--color-amber);">${Math.round(fromCanonicalWeight(pr.e1rm, unit) ?? 0)} ${unit}</b> · ${esc(formatDayMonthShort(pr.date))}
       </span>
     </article>`).join('')}` : '';
 

@@ -25,6 +25,8 @@ import {
 } from './load-basis.js';
 import { latestWeighIn } from '../metrics/bodyweight.js';
 import { effortForSet, normalizeEffortRir } from './effort.js';
+import { displayWeight } from './units.js';
+import { fromCanonicalWeight, toCanonicalWeight } from '../metrics/weight-unit.js';
 import { getExerciseRestOverride, setExerciseRestOverride } from './exercise-config.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './one-off-session.js';
 import {
@@ -58,14 +60,17 @@ export function appendCustomSetRow(btnNode, liftName) {
 const DROP_SET_FACTOR = 0.8;
 const DROP_SET_STEP = { kg: 2.5, lb: 5 };
 
-function _dropSetLoad(weight, unit) {
+function _dropSetLoad(weightKg, unit) {
+  // The 80% discount is a DISPLAY-unit decision: a lb athlete drops in 5 lb
+  // steps, not 5 kg. Convert in, round, convert back to canonical kilograms.
   const step = DROP_SET_STEP[unit] || DROP_SET_STEP.kg;
-  const target = weight * DROP_SET_FACTOR;
+  const display = fromCanonicalWeight(weightKg, unit) || 0;
+  const target = display * DROP_SET_FACTOR;
   const rounded = Math.round(target / step) * step;
   // With no lighter rung available (a 2.5 kg dumbbell), keep the source load
   // rather than inventing a weight the equipment does not have.
-  const next = rounded > 0 && rounded < weight ? rounded : weight;
-  return Number(next.toFixed(2));
+  const next = rounded > 0 && rounded < display ? rounded : display;
+  return toCanonicalWeight(next, unit) || 0;
 }
 
 // A prescribed card often has blank rows after the one just ticked. Seeding
@@ -335,7 +340,7 @@ function _syncLoadModeRow(liftName, setIndex, set) {
   const mode = resolvedLoadMode(set, liftName);
   row.dataset.loadMode = mode;
   const weightInput = /** @type {HTMLInputElement|null} */ (row.querySelector('.input-weight-node'));
-  if (weightInput) weightInput.value = set.w || '';
+  if (weightInput) weightInput.value = displayWeight(_getState(), set.w) || '';
 }
 
 /** Ask once when a bodyweight-dependent load mode has no real body weight. */
@@ -354,15 +359,18 @@ async function _ensureBodyweight(appState) {
   });
   if (entered == null) return null;
 
+  // The prompt is in the athlete's unit; bodyweight is stored in kilograms.
+  const kg = toCanonicalWeight(entered, unit);
+  if (kg == null) return null;
   if (!appState.settings) appState.settings = {};
-  appState.settings.defaultBodyWeight = entered;
+  appState.settings.defaultBodyWeight = kg;
   if (!Array.isArray(appState.bodyWeightLog)) appState.bodyWeightLog = [];
   const today = dateKey();
   const existing = appState.bodyWeightLog.findIndex((entry) => entry?.date === today);
-  if (existing >= 0) appState.bodyWeightLog[existing].weight = entered;
-  else appState.bodyWeightLog.push({ date: today, weight: entered });
+  if (existing >= 0) appState.bodyWeightLog[existing].weight = kg;
+  else appState.bodyWeightLog.push({ date: today, weight: kg });
   _saveState(true);
-  return entered;
+  return kg;
 }
 
 export async function setSetLoadMode(liftName, setIndex, mode) {
@@ -437,7 +445,7 @@ export async function cycleSetLoad(liftName, setIndex) {
       chip.className = `btn-load tactile-scale load-${className}`;
     }
     const weightInput = /** @type {HTMLInputElement|null} */ (row.querySelector('.input-weight-node'));
-    if (weightInput) weightInput.value = nextSet.w;
+    if (weightInput) weightInput.value = displayWeight(_getState(), nextSet.w);
   }
   _syncLoadModeRow(liftName, setIndex, nextSet);
   _saveState(true);

@@ -79,7 +79,8 @@ import {
   clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
-import { weightUnitLabel } from './workout/units.js';
+import { displayWeight, storedWeightFromInput, weightUnitLabel } from './workout/units.js';
+import { fromCanonicalWeight, toCanonicalWeight } from './metrics/weight-unit.js';
 import { formatEffort } from './workout/effort.js';
 import {
   openConfirmResetModal, closeConfirmResetModal, executeResetActiveDayMetrics,
@@ -298,13 +299,13 @@ function _previousSessionPanel(appState, performance, exerciseName, weightUnit) 
   const sourceProgram = getProgramById(performance.programId);
   const title = sourceWeek.sessionTitle || sourceProgram?.days?.[performance.day]?.title || 'Previous workout';
   const sets = performance.workingSets || [];
-  const volume = Math.round(sets.reduce((sum, set) => sum + setVolume(set), 0));
+  const volume = Math.round(fromCanonicalWeight(sets.reduce((sum, set) => sum + setVolume(set), 0), weightUnit) || 0);
   const comparableLoad = isE1rmExercise(exerciseName, sets[0]) && performance.weight > 0;
   const top = comparableLoad
-    ? `top ${performance.weight}${weightUnit} × ${performance.reps}`
+    ? `top ${displayWeight({ settings: { weightUnit } }, performance.weight)}${weightUnit} × ${performance.reps}`
     : `${sets.reduce((sum, set) => sum + (parseInt(set?.r, 10) || 0), 0)} total reps`;
   const rows = sets.map((set, index) => {
-    const weight = parseFloat(set?.w) || 0;
+    const weight = displayWeight({ settings: { weightUnit } }, set?.w);
     const reps = parseInt(set?.r, 10) || 0;
     // One effort reader, and the existing copy: an entered RIR reads as
     // "1.5 reps left", a legacy RPE-only set keeps "RPE 8.5", and an unrated
@@ -313,7 +314,7 @@ function _previousSessionPanel(appState, performance, exerciseName, weightUnit) 
     const effortText = escapeHtml(hasRir
       ? formatEffort(set, { style: 'reps-left' })
       : formatEffort(set, { scale: 'rpe' }));
-    return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight > 0 ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effortText}</small></div>`;
+    return `<div class="previous-session__set"><span>S${index + 1}</span><strong>${weight ? `${escapeHtml(String(weight))}${escapeHtml(weightUnit)} × ` : ''}${escapeHtml(String(reps))}</strong><small>${effortText}</small></div>`;
   }).join('');
   return `<details class="previous-session">
     <summary><span><small>Last performed · ${escapeHtml(_priorDateLabel(performance.date))}</small><strong>${escapeHtml(top)} · ${sets.length} ${sets.length === 1 ? 'set' : 'sets'}</strong></span><b>Details</b></summary>
@@ -411,15 +412,15 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
   if (priorPerformance) {
     const doneSets = priorPerformance.workingSets;
     historicalLineText = 'Last session: [ ' + doneSets.map((set) => {
-      const weight = parseFloat(set?.w) || 0;
+      const weight = displayWeight(appState, set?.w);
       const reps = parseInt(set?.r, 10) || 0;
-      return weight > 0
-        ? `${escapeHtml(String(weight))}${wUnit} × ${escapeHtml(String(reps))}`
+      return weight
+        ? `${escapeHtml(weight)}${wUnit} × ${escapeHtml(String(reps))}`
         : `${escapeHtml(String(reps))} reps`;
     }).join(', ') + ' ]';
     historyPanelHTML = _previousSessionPanel(appState, priorPerformance, displayLiftName, wUnit);
   } else if (loggerHistory.globalBestEstimated1RM > 0) {
-    historicalLineText = `Previous best: ${Math.round(loggerHistory.globalBestEstimated1RM)}${wUnit} (estimated 1RM)`;
+    historicalLineText = `Previous best: ${Math.round(Number(displayWeight(appState, loggerHistory.globalBestEstimated1RM)) || 0)}${wUnit} (estimated 1RM)`;
   }
 
   const safeLiftName = escapeHtml(liftName);
@@ -428,14 +429,17 @@ function _buildExerciseCardEl(liftName, loggedLiftsData, weekData, wk, selectedD
   // Only an activation-scoped progression suggestion may become an editable
   // ghost target. Global exercise history remains read-only in the Last
   // performed panel until the athlete deliberately chooses Use previous values.
+  // The ghost is STORED data (the row template converts it once). The engine's
+  // suggestion leaves as a display value, so it is converted back here; the
+  // prescription is already canonical.
   const suggestedGhost = (diagnostic.progression && diagnostic.progression.weight)
-    ? { w: diagnostic.progression.weight, r: diagnostic.progression.reps }
+    ? { w: toCanonicalWeight(diagnostic.progression.weight, wUnit), r: diagnostic.progression.reps }
     : (target.weight > 0 ? { w: target.weight, r: target.reps } : null);
   // The day's top-set (T1 rep-max) actual weight drives the Block-2 (weeks 7–11)
   // back-off suggestion. Read it from the STORED rep-max row so it survives edits
   // and reload; recomputed here at render, and live on input (see recalcJtBackoff).
   const topSetRow = Array.isArray(setsArr) ? setsArr.find((s) => s && s.role === 'repmax') : null;
-  const topSetWeight = topSetRow ? parseFloat(topSetRow.w) : NaN;
+  const topSetWeight = topSetRow ? Number(displayWeight(appState, topSetRow.w)) : NaN;
 
   let priorWorkingIndex = 0;
   let jtWorkingIndex = 0;
@@ -650,7 +654,7 @@ function refreshCockpitActiveStats() {
   const unit = appState.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg';
   const volEl = document.getElementById('cockpitActiveVolume');
   const setsEl = document.getElementById('cockpitActiveSets');
-  if (volEl) volEl.textContent = `${Math.round(volume).toLocaleString('en-AU')} ${unit}`;
+  if (volEl) volEl.textContent = `${Math.round(fromCanonicalWeight(volume, unit) || 0).toLocaleString('en-AU')} ${unit}`;
   if (setsEl) setsEl.textContent = `${doneSets}/${totalSets}`;
   document.querySelectorAll('#cockpitExerciseRail .cockpit-exercise-rail__item').forEach((item) => {
     const name = item.getAttribute('data-liftname');
@@ -756,7 +760,7 @@ export function renderWorkout() {
               html += `<div style="display:flex; justify-content:space-between; margin-bottom: 2px;">
                           <span>Set ${s.set}</span>
                           <span>${s.reps} reps</span>
-                          <span>${s.weight} ${escapeHtml(weightUnitLabel(_getState?.() || {}))}</span>
+                          <span>${escapeHtml(displayWeight(_getState?.() || {}, s.weight))} ${escapeHtml(weightUnitLabel(_getState?.() || {}))}</span>
                           <span style="color:var(--accent-blue);">${escapeHtml(String(s.category || ''))}</span>
                        </div>`;
           });
@@ -1317,14 +1321,15 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
       bandWeights: appState.settings?.bandWeights,
     });
   }
-  const quickSet = { ..._prev, w: targetW, c: true, mode: setShape };
+  const quickSet = { ..._prev, w: storedWeightFromInput(appState, targetW), c: true, mode: setShape };
   if (setShape === SET_MODE.TIME) quickSet.sec = parseDuration(targetV) || 0;
   else if (setShape === SET_MODE.DISTANCE) quickSet.dist = parseFloat(targetV) || 0;
   else quickSet.r = targetV;
   _setArr[sIdx] = quickSet;
   const quickBasis = parentRow.getAttribute('data-load-basis');
   if (quickBasis) _setArr[sIdx].basis = quickBasis;
-  if (_tw != null && _prev.tw == null) _setArr[sIdx].tw = _tw;
+  // `tw` is the PRESCRIBED target weight, stored canonically like `w`.
+  if (_tw != null && _prev.tw == null) _setArr[sIdx].tw = storedWeightFromInput(appState, _tw);
   if (_tr != null && _prev.tr == null) _setArr[sIdx].tr = _tr;
   _ensureWorkoutDateStamp(appState, wk, selectedDay);
 
@@ -1349,7 +1354,7 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
   // entirely because detection only ran for REPS.
   detectSetPR(parentRow, liftName, sIdx, {
     ...(_setArr[sIdx] || {}),
-    w: targetW,
+    w: storedWeightFromInput(appState, targetW),
     mode: setShape,
     c: true,
   }, appState, wk, selectedDay, { justTicked: true });
@@ -1455,7 +1460,7 @@ export function usePreviousValues(liftName) {
     const priorMode = setModeOf(prior);
     let changed = false;
     if (!String(set?.w || '').trim() && String(prior?.w || '').trim()) {
-      set.w = prior.w; if (weightInput) weightInput.value = String(prior.w); changed = true;
+      set.w = prior.w; if (weightInput) weightInput.value = displayWeight(appState, prior.w); changed = true;
     }
     if (priorMode === rowMode) {
       if (rowMode === SET_MODE.TIME && !String(set?.sec ?? '').trim() && Number(prior.sec) > 0) {
@@ -1507,8 +1512,8 @@ export function updateInputState(inputNode) {
     ? _prescribedRepGoal(inputNode)
     : _numericPlaceholder(inputNode);
   if (inputNode.classList.contains('input-weight-node')) {
-    setObj.w = inputNode.value;
-    if (ph != null && setObj.tw == null) setObj.tw = ph;
+    setObj.w = storedWeightFromInput(appState, inputNode.value);
+    if (ph != null && setObj.tw == null) setObj.tw = storedWeightFromInput(appState, ph);
     // Opt-in auto ramp: after the first working weight is entered, add an
     // editable ladder above it once. The liftMeta stamp means deleting a
     // warm-up does not bring it back on the next edit.
@@ -1623,7 +1628,7 @@ export function commitWorkoutUIState() {
           const hasValue = String(valueIn?.value ?? '').trim() !== '';
           const hasStoredWeight = String(storedSet.w ?? '').trim() !== '';
           const isTicked = !!cIn?.checked;
-          if (wIn && (isTicked || hasValue || hasStoredWeight)) storedSet.w = wIn.value;
+          if (wIn && (isTicked || hasValue || hasStoredWeight)) storedSet.w = storedWeightFromInput(appState, wIn.value);
           const hadStoredValue = storedSet.sec != null || storedSet.dist != null || String(storedSet.r ?? '').trim() !== '';
           if (valueIn && (isTicked || hasValue || hadStoredValue)) {
             if (mode === SET_MODE.TIME) {
@@ -1793,7 +1798,7 @@ export function toggleGymCheckLoggingState(checkboxNode) {
         const w = parseFloat(wIn?.value) || 0;
         const candidate = {
           ...storedForRest,
-          w: wIn ? wIn.value : storedForRest.w,
+          w: wIn ? storedWeightFromInput(_appState, wIn.value) : storedForRest.w,
           mode: rowMode,
           c: true,
         };
@@ -1874,7 +1879,13 @@ function _achievedSummaryFromSets(setsArr, unit) {
     const shape = setModeOf(working[0]);
     return _shapeSummary(shape, working.map(s => shape === SET_MODE.TIME ? Number(s.sec) || 0 : Number(s.dist) || 0));
   }
-  return _achievedLabel(working.length, working.map(s => parseFloat(s.w) || 0), working.map(s => parseInt(s.r, 10) || 0), unit);
+  // Stored kilograms -> the display unit before the label is built.
+  return _achievedLabel(
+    working.length,
+    working.map(s => parseFloat(displayWeight({ settings: { weightUnit: unit } }, s.w)) || 0),
+    working.map(s => parseInt(s.r, 10) || 0),
+    unit,
+  );
 }
 function _achievedSummaryFromCard(card, unit) {
   const done = Array.from(card.querySelectorAll('.cockpit-set-row'))
@@ -2242,10 +2253,10 @@ function renderSessionHighlights(appState, weekKey, day, liftNames) {
     if (h.kind === 'hold') return `Hold PR · ${formatDuration(h.value)} · +${round(h.delta)}s`;
     if (h.kind === 'carry') return `Carry PR · ${formatDistance(h.value)}m · +${round(h.delta)}m`;
     if (h.kind === 'reps') {
-      const load = Number(h.load) > 0 ? `${round(h.load)} ${unit} × ` : '';
+      const load = Number(h.load) > 0 ? `${round(fromCanonicalWeight(h.load, unit) || 0)} ${unit} × ` : '';
       return `Rep PR · ${load}${round(h.value)} reps · +${round(h.delta)}`;
     }
-    return `${round(h.e1rm)} ${unit} est. 1RM · +${round(h.delta)}`;
+    return `${round(fromCanonicalWeight(h.e1rm, unit) || 0)} ${unit} est. 1RM · +${round(fromCanonicalWeight(h.delta, unit) || 0)}`;
   };
   host.hidden = false;
   host.innerHTML = `
@@ -2305,7 +2316,10 @@ export function openFinishSessionModal() {
   }
   if (discardEl) discardEl.hidden = false;
 
-  if (sumVolEl) sumVolEl.textContent = `${vol} ${weightUnitLabel(_getState?.() || {})}`;
+  if (sumVolEl) {
+    const finishUnit = weightUnitLabel(_getState?.() || {});
+    sumVolEl.textContent = `${Math.round(fromCanonicalWeight(vol, finishUnit) || 0).toLocaleString('en-AU')} ${finishUnit}`;
+  }
   if (sumSetsEl) sumSetsEl.textContent = setsDone;
 
   // Notable progress, computed from the SAME canonical primitives the Strength

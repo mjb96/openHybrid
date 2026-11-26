@@ -38,6 +38,7 @@ const checks = [
   'scripts/active-run-browser-check.mjs',
   'scripts/recovery-metric-browser-check.mjs',
   'scripts/bodyweight-browser-check.mjs',
+  'scripts/weight-unit-browser-check.mjs',
   'scripts/import-browser-check.mjs',
   'scripts/muscle-load-browser-check.mjs',
   'scripts/running-analytics-check.mjs',

@@ -6149,3 +6149,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     asserts the Month block.
   - Also in this PR: the README refresh (removed Quick start/renaming, updated
     what it does, added what's next).
+
+- **2026-11-26 — G9 complete: 157/157 core exercises reviewed.**
+  - Finished the remaining 66 in three reviewed batches of 25/25/16:
+    band/bodyweight push work, kettlebell and band rows/curls, the squat and
+    hinge variants (tempo, paused, pin, deficit, rack pull, RDLs, good mornings,
+    hip thrusts, calves), core (planks, dead bug, bird dog, carries, crunches,
+    TGU) and conditioning (swings, clean, snatch, windmill, rowing, sled).
+  - Every core entry now has instructions + difficulty + safety notes; the
+    reviewed ratchet is 157 and the shape guards still pass. The core stays at
+    157 — no catalogue promotion.

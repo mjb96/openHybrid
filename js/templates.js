@@ -14,6 +14,7 @@ import { formatDistance, formatDuration, setModeOf } from './set-utils.js';
 // Leaf import: the row template needs the label only. Importing the records
 // model here pulled the exercise catalogue and history scan into every render.
 import { prKindLabel } from './strength/pr-labels.js';
+import { displayWeightString, normalizeWeightUnit } from './metrics/weight-unit.js';
 
 export function buildEmptyWorkoutCard() {
   return '<div class="card-dark text-xs-muted empty-state-card">No lifting scheduled today.</div>';
@@ -26,7 +27,11 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // set's entered values (see ghostForRow). `prescribed` is the coach's target
   // and stays the adherence baseline even when the ghost follows the athlete's
   // own previous set.
-  const ghostWeight = historicalSetData?.w || weightUnit;
+  // ST6: `sData.w`, `historicalSetData.w` and `prescribed.w` are STORED
+  // KILOGRAMS. The row is a display surface, so every weight below is converted
+  // once, here, and nowhere else in the row.
+  const unit = normalizeWeightUnit(weightUnit);
+  const ghostWeight = historicalSetData?.w ? displayWeightString(historicalSetData.w, unit) : weightUnit;
   const ghostReps   = historicalSetData?.r || prescribedReps || 'reps';
   const type = sData.type || '';
   const mode = setMode || effectiveSetMode(sData, exerciseName, null);
@@ -49,8 +54,8 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   const knownBodyweight = Number.isFinite(Number.parseFloat(bodyweight)) && Number.parseFloat(bodyweight) > 0
     ? Number.parseFloat(bodyweight) : null;
   const effectiveValue = bodyweightCapable && directMode === 'bodyweight' && !sData.w && knownBodyweight != null
-    ? String(knownBodyweight)
-    : String(sData.w || '');
+    ? displayWeightString(knownBodyweight, unit)
+    : (sData.w ? displayWeightString(sData.w, unit) : '');
 
   // Tier-aware role tag (J&T top set / back-off / plus / target / MRS …). The
   // label is derived from the role STORED on the set (stable across row edits)
@@ -66,7 +71,8 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // restores it (no stale calculated load). A row the athlete has filled keeps
   // its value (never overwritten); the suggestion only ever fills a blank.
   const boSrc = hasRole && roleTag.boSrc ? String(roleTag.boSrc) : '';
-  const ghostDefault = String(prescribed?.w ?? ghostWeight);
+  const prescribedDisplay = prescribed?.w != null ? displayWeightString(prescribed.w, unit) : null;
+  const ghostDefault = String(prescribedDisplay ?? ghostWeight);
   const weightPlaceholder = (hasRole && roleTag.backoffSuggest != null) ? String(roleTag.backoffSuggest) : String(ghostWeight);
   // The adherence baseline: the same value the placeholder used to carry before
   // it started following the previous set. Kept on the row so true-adherence
@@ -76,7 +82,7 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // measured them against themselves.
   const prescribedPlaceholder = (hasRole && roleTag.backoffSuggest != null)
     ? String(roleTag.backoffSuggest)
-    : (prescribed?.w != null ? String(prescribed.w) : '');
+    : (prescribedDisplay != null ? prescribedDisplay : '');
   const backoffHint = hasRole && roleTag.backoffHint ? String(roleTag.backoffHint) : '';
   const boAttrs = boSrc
     ? ` data-bo-src="${escapeHtml(boSrc)}" data-bo-pct="${escapeHtml(String(roleTag.boPct ?? ''))}"`
@@ -86,13 +92,21 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
   // set for this set index — never the prescription or a ghost — because the
   // whole point is comparing today against what actually happened. An em dash
   // means there is no prior set; a blank would read as "still loading".
-  const prev = previousSetCompact(previousSetData, weightUnit);
-  const priorWeight = parseFloat(previousSetData?.w);
+  // The PREVIOUS column and the comparison are display values too: comparing a
+  // stored kilogram against a just-typed pound number would report a 2.2× win.
+  const previousDisplay = previousSetData
+    ? { ...previousSetData, w: displayWeightString(previousSetData.w, unit) }
+    : null;
+  const prev = previousSetCompact(previousDisplay, weightUnit);
+  const priorWeight = parseFloat(previousDisplay?.w);
   const priorMode = previousSetData ? setModeOf(previousSetData) : null;
   const priorValue = priorMode === 'time' ? Number(previousSetData?.sec) || 0
     : priorMode === 'distance' ? Number(previousSetData?.dist) || 0
     : parseInt(previousSetData?.r, 10) || 0;
-  const compare = compareWithPrevious(sData, previousSetData);
+  const compare = compareWithPrevious(
+    { ...sData, w: sData.w ? displayWeightString(sData.w, unit) : '' },
+    previousDisplay,
+  );
   const compareHtml = compare
     ? `<span class="set-cmp set-cmp--${compare.tone}" aria-label="${compare.label}" title="${compare.label}">${compare.glyph}</span>`
     : '';

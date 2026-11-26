@@ -12,6 +12,7 @@ import { runDaySummary, runSessionsForDay } from '../state/run-sessions.js';
 import { buildSessionMuscles } from './session-muscles.js';
 import { muscleHeatmapHTML } from './body-heatmap.js';
 import { escapeHtml } from '../util.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 const KM_TO_MI = 0.621371;
 
@@ -122,7 +123,7 @@ export function sessionSummaryHTML(summary, options = {}) {
   if (summary.duration) stats.push({ value: summary.duration, label: 'Duration' });
   if (summary.volume > 0) {
     stats.push({
-      value: `${Math.round(summary.volume).toLocaleString('en-AU')} ${unit}`,
+      value: `${Math.round(fromCanonicalWeight(summary.volume, unit) || 0).toLocaleString('en-AU')} ${unit}`,
       label: 'Volume',
     });
   }

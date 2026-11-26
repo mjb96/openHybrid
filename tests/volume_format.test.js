@@ -23,10 +23,11 @@ test('the 1000 boundary switches to tonnes exactly at 1000 kg', () => {
   assert.equal(formatVolume(1001, 'kg'), '1.0t');
 });
 
-test('lbs volume is grouped and labelled, never converted to kg or tonnes', () => {
-  assert.equal(formatVolume(14050, 'lbs'), '14,050 lb');
-  assert.equal(formatVolume(1000, 'lbs'), '1,000 lb');
-  assert.equal(formatVolume(550, 'lbs'), '550 lb');
+test('lbs volume converts canonical kilograms into grouped pounds', () => {
+  // ST6: tonnage is stored in kilograms, so 14,050 kg reads as 30,975 lb.
+  assert.equal(formatVolume(14050, 'lbs'), '30,975 lb');
+  assert.equal(formatVolume(1000, 'lbs'), '2,205 lb');
+  assert.equal(formatVolume(550, 'lbs'), '1,213 lb');
   assert.equal(formatVolume(0, 'lbs'), '0 lb');
 });
 

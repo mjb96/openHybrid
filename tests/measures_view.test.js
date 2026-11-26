@@ -111,7 +111,8 @@ test('an empty photo library is stated, never rendered as an empty grid', () => 
 test('units come from state, never from a literal in the view', () => {
   const imperial = buildMeasuresModel({
     settings: { weightUnit: 'lbs', measurementUnit: 'in' },
-    bodyWeightLog: [{ date: '2026-11-20', weight: 172.8 }],
+    // 172.8 lb in canonical kilograms (ST6).
+    bodyWeightLog: [{ date: '2026-11-20', weight: 78.38 }],
     bodyMeasurements: [{ date: '2026-11-20', waist: 82, bodyFat: 18.5 }],
   });
   assert.equal(imperial.weightUnit, 'lb');

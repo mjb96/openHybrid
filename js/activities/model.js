@@ -7,6 +7,7 @@
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { runSessionsForDay } from '../state/run-sessions.js';
 import { parseStrengthDurationSeconds } from '../strength/duration.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const KM_TO_MI = 0.621371;
@@ -137,7 +138,9 @@ export function buildActivityHistory(state, options = {}) {
           subtitle: summary.exercises.slice(0, 2).join(', ') + (summary.exercises.length > 2 ? ` +${summary.exercises.length - 2}` : ''),
           metrics: [
             summary.workingSets ? `${summary.workingSets} sets` : '',
-            summary.volume ? `${summary.volume.toLocaleString()} ${state?.settings?.weightUnit || 'kg'}` : '',
+            summary.volume
+              ? `${Math.round(fromCanonicalWeight(summary.volume, state?.settings?.weightUnit) || 0).toLocaleString()} ${state?.settings?.weightUnit || 'kg'}`
+              : '',
             duration,
           ].filter(Boolean),
           durationSeconds: parseStrengthDurationSeconds(duration),

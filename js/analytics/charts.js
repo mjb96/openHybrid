@@ -4,6 +4,7 @@
 import { rpeColour } from './utils.js';
 import { formatDayMonth } from '../dates.js';
 import { normalizeWeighIns } from '../metrics/bodyweight.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 // Shared helper: smooth cubic-bezier path through an array of [x,y] points
 function _smoothBezierPath(pts) {
@@ -404,9 +405,14 @@ export function render1RMProgressChart(container, weekLabels, sqData, bpData, dl
 export function bodyWeightChartSVG(bwLog, options = {}) {
   const compact = options.compact === true;
   const unit = options.unit || 'kg';
-  const goal = Number(options.goal);
+  // ST6: the log and the goal arrive in canonical kilograms. Convert ONCE here
+  // — the chart is display-only, so every label, dot and gridline downstream is
+  // in the athlete's unit and cannot double-convert.
+  const toDisplay = (kg) => fromCanonicalWeight(kg, unit) ?? 0;
+  const goalRaw = Number(options.goal);
+  const goal = Number.isFinite(goalRaw) && goalRaw > 0 ? toDisplay(goalRaw) : NaN;
   const hasGoal = Number.isFinite(goal) && goal > 0;
-  const log = normalizeWeighIns(bwLog);
+  const log = normalizeWeighIns(bwLog).map((entry) => ({ ...entry, weight: toDisplay(entry.weight) }));
   if (log.length < 2) return '';
 
   const W = compact ? 320 : 400;

@@ -1,23 +1,53 @@
 // @ts-check
 // =============================================================================
-// The athlete's weight unit, for labelling.
+// The athlete's weight unit, for DISPLAY and for the one conversion boundary.
 //
-// Two lines, its own file, on purpose: it is read by both js/workout.js and the
-// modules split out of it, and the alternatives were worse. Leaving it in
-// workout.js would make every extracted module import workout.js back (a cycle);
-// duplicating it invites the two copies to disagree about what 'lbs' means.
+// Two lines would be enough for a label, but ST6 made storage canonical: every
+// weight in `appState` is kilograms, and the DOM/display layer works in the
+// athlete's unit. This file is the single place the workout modules cross that
+// boundary, so a new writer cannot quietly store a display number.
 //
-// Loads are STORED canonically and this only decides the label, so it must not
-// grow conversion logic — `js/workout.js`'s distance helpers are the precedent
-// for where that belongs.
+// It is its own module (not in workout.js) because the modules split out of
+// workout.js need it, and importing workout.js back would be a cycle.
 // =============================================================================
 
+import {
+  canonicalWeightString,
+  displayWeightString,
+  normalizeWeightUnit,
+} from '../metrics/weight-unit.js';
+
 /**
- * The unit suffix to show beside a load. Anything other than an explicit 'lbs'
- * is kg, so an absent or malformed setting labels kg rather than nothing.
+ * The unit to show beside a load. Anything other than an explicit 'lbs' is kg,
+ * so an absent or malformed setting labels kg rather than nothing.
  * @param {any} appState
  * @returns {'kg'|'lbs'}
  */
 export function weightUnitLabel(appState) {
   return appState?.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg';
+}
+
+/**
+ * Stored kilograms → the string a weight input/placeholder should show.
+ * @param {any} appState
+ * @param {unknown} stored
+ * @param {{ decimals?: number }} [options]
+ */
+export function displayWeight(appState, stored, options) {
+  return displayWeightString(stored, weightUnitLabel(appState), options);
+}
+
+/**
+ * A typed display value → the string to persist (canonical kilograms).
+ * A blank input stays blank: a blank row is not a 0 kg set.
+ * @param {any} appState
+ * @param {unknown} value
+ */
+export function storedWeightFromInput(appState, value) {
+  return canonicalWeightString(value, weightUnitLabel(appState));
+}
+
+/** The athlete's unit, normalised for maths helpers. */
+export function weightUnitOf(appState) {
+  return normalizeWeightUnit(weightUnitLabel(appState));
 }

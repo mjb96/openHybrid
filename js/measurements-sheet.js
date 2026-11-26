@@ -29,6 +29,7 @@ import {
   measurementUnit, normalizeMeasurements, roundDisplay,
 } from './metrics/measurements.js';
 import { normalizeWeighIns, weightUnitLabel } from './metrics/bodyweight.js';
+import { displayWeightString } from './metrics/weight-unit.js';
 import { measureEntryFor, saveMeasureEntry } from './metrics/measures.js';
 import { addPhoto, listPhotos, photoObjectUrl, removePhoto } from './photos/library.js';
 import { preparePhoto } from './photos/capture.js';
@@ -219,8 +220,9 @@ function fillSheet(chosen) {
   if (weightInput) {
     const ownWeight = weighIns.find((entry) => entry.date === chosen);
     const lastWeight = [...weighIns].reverse().find((entry) => entry.date <= chosen);
-    weightInput.value = ownWeight ? String(ownWeight.weight) : '';
-    weightInput.placeholder = lastWeight ? String(lastWeight.weight) : weightUnit;
+    // Stored kilograms -> the athlete's display unit (1 decimal, trimmed).
+    weightInput.value = ownWeight ? displayWeightString(ownWeight.weight, weightUnit) : '';
+    weightInput.placeholder = lastWeight ? displayWeightString(lastWeight.weight, weightUnit) : weightUnit;
     weightInput.setAttribute('aria-label', `Body weight (${weightUnit})`);
   }
   paintPhotoSlot();
@@ -451,7 +453,7 @@ export async function saveMeasurementsSheet() {
     return;
   }
 
-  const result = saveMeasureEntry(appState, date, values, { unit });
+  const result = saveMeasureEntry(appState, date, values, { unit, weightUnit: weightUnitLabel(appState) });
   if (!result.ok) {
     showToast(`Check ${result.invalid.join(', ')} — that reading is outside a plausible range.`, true);
     return;

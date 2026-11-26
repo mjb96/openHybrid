@@ -110,17 +110,24 @@ try {
   await page.waitForFunction(() => location.hash === '#/settings');
   await page.waitForSelector('#settingsPageHost [data-action="open-settings-page"][data-context="once.units"]');
 
-  // Units conversion keeps history in sync.
+  // ST6: the unit switch is DISPLAY-ONLY — no confirm, no rewrite. Storage stays
+  // canonical kilograms; the athlete just reads pounds from now on.
   await openPage(page, 'once.units');
   await page.click('[data-setting-segment="weightUnit"][data-value="lbs"]');
-  await page.waitForSelector('.cmodal__btn--ok');
-  await page.click('.cmodal__btn--ok');
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'lbs');
-  const converted = await page.evaluate(() => {
+  const switched = await page.evaluate(() => {
     const saved = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
-    return { unit: saved.settings?.weightUnit, weight: saved.weeks?.['1']?.lifts?.mon?.Squat?.[0]?.w };
+    return {
+      unit: saved.settings?.weightUnit,
+      weight: saved.weeks?.['1']?.lifts?.mon?.Squat?.[0]?.w,
+      unitBasis: saved.unitBasis,
+      toast: document.getElementById('sysToast')?.textContent?.trim() || '',
+    };
   });
-  ok(converted.unit === 'lbs' && Number(converted.weight) === 220.5, `100 kg becomes 220.5 lb (${converted.weight})`);
+  ok(switched.unit === 'lbs' && Number(switched.weight) === 100,
+    `the stored 100 kg set is NOT rewritten (${switched.weight})`);
+  ok(!(await page.locator('.cmodal__btn--ok').count()), 'the unit switch asks for no confirmation');
+  ok(/stored data unchanged/i.test(switched.toast), `the toast says nothing was rewritten (${switched.toast})`);
 
   // Threshold pace rejects a typo and stores a valid mm:ss.
   await page.fill('#settingsThresholdPace', '4.30');

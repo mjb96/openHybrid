@@ -33,10 +33,12 @@ function weekEntries(state) {
     .sort(([aKey, a], [bKey, b]) => earliestDate(a).localeCompare(earliestDate(b)) || aKey.localeCompare(bKey));
 }
 
+// ST6: weight columns are CANONICAL KILOGRAMS and say so in the header, so a
+// re-import into an app set to the other unit cannot be silently rescaled.
 const HEADER = [
   'WeekKey', 'ActivationId', 'ProgramId', 'Day', 'Date', 'Exercise', 'Set',
-  'Weight', 'Reps', 'Completed', 'RunSessionId', 'RunDist', 'RunTime', 'RunRPE',
-  'AvgHR', 'MaxHR', 'ElevGain', 'Calories', 'BodyWeight', 'GymRPE', 'Notes',
+  'WeightKg', 'Reps', 'Completed', 'RunSessionId', 'RunDist', 'RunTime', 'RunRPE',
+  'AvgHR', 'MaxHR', 'ElevGain', 'Calories', 'BodyWeightKg', 'GymRPE', 'Notes',
 ];
 // The `Notes` column is the WORKOUT note (`week.notes[day]`) — part of the
 // session record and deliberately exported with it. Private scopes are not
@@ -52,7 +54,7 @@ function runValues(run) {
 
 /** @param {any} state */
 export function buildBodyweightCsv(state) {
-  let csv = row(['Date', 'Weight']);
+  let csv = row(['Date', 'WeightKg']);
   for (const entry of normalizeWeighIns(state?.bodyWeightLog)) {
     csv += row([entry.date, entry.weight]);
   }

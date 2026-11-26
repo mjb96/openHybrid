@@ -12,6 +12,7 @@ import { addDaysISO, daysBetween, localDayKey, todayKey } from './dates.js';
 import { indexSlotsByDate, weekStartOf } from './analytics/weekly-aggregate.js';
 import { collectRunningHistory } from './analytics/running-detail.js';
 import { exercisePerformanceHistory } from './workout/exercise-history.js';
+import { fromCanonicalWeight } from './metrics/weight-unit.js';
 
 // ── Section helpers ───────────────────────────────────────────────────────────
 
@@ -63,17 +64,21 @@ export function _renderBodyWeightSection(state) {
   const unit = state.settings?.weightUnit || 'kg';
 
   const W = 300, H = 64, pad = 6;
-  const pts = bw.points;
-  const span = Math.max(1, bw.max - bw.min);
+  // ST6: the trend is canonical kilograms; this card is display-only.
+  const toDisplay = (stored) => fromCanonicalWeight(stored, unit) ?? 0;
+  const pts = bw.points.map((point) => ({ ...point, weight: toDisplay(point.weight) }));
+  const min = toDisplay(bw.min);
+  const max = toDisplay(bw.max);
+  const span = Math.max(1, max - min);
   const n = pts.length;
   const x = i => pad + (i / (n - 1)) * (W - pad * 2);
-  const y = w => H - pad - ((w - bw.min) / span) * (H - pad * 2);
+  const y = w => H - pad - ((w - min) / span) * (H - pad * 2);
   const line = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.weight).toFixed(1)}`).join(' ');
   const area = `${line} L${x(n - 1).toFixed(1)},${H - pad} L${x(0).toFixed(1)},${H - pad} Z`;
 
   const up = bw.delta > 0;
   const deltaHtml = bw.delta !== 0
-    ? `<span class="profile-bw-delta profile-bw-delta--${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(bw.delta)} ${unit}</span>`
+    ? `<span class="profile-bw-delta profile-bw-delta--${up ? 'up' : 'down'}">${up ? '↑' : '↓'} ${Math.abs(toDisplay(bw.delta)).toFixed(1)} ${unit}</span>`
     : `<span class="profile-bw-delta">– stable</span>`;
 
   return `
@@ -81,7 +86,7 @@ export function _renderBodyWeightSection(state) {
       <div class="profile-section-title">Body Weight</div>
       <div class="profile-bw-card">
         <div class="profile-bw-head">
-          <div class="profile-bw-latest">${bw.latest}<span class="profile-bw-unit">${unit}</span></div>
+          <div class="profile-bw-latest">${toDisplay(bw.latest).toFixed(1)}<span class="profile-bw-unit">${unit}</span></div>
           <div class="profile-bw-meta">${deltaHtml}<span class="profile-bw-sub">last 30 days</span></div>
         </div>
         <svg class="profile-bw-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
@@ -600,7 +605,7 @@ export function _relStrengthBand(items, unit) {
           <div class="profile-rs-ratio" style="color:${color};">${i.ratio.toFixed(2)}<span class="profile-rs-x">×BW</span><span class="profile-rs-est">est.</span></div>
           <div class="profile-rs-label">${_esc(i.label)}</div>
           <div class="profile-rs-sub" style="color:${color};">${i.tier?.name || ''}</div>
-          <div class="profile-rs-e1rm">${Math.round(i.e1rm)}&nbsp;${unit}</div>
+          <div class="profile-rs-e1rm">${Math.round(fromCanonicalWeight(i.e1rm, unit) ?? 0)}&nbsp;${unit}</div>
         </div>`;
       }).join('')}
       ${items[0]?.bodyWeightDate ? `<p class="profile-rs-note">Estimate · e1RM divided by the latest weigh-in (${items[0].bodyWeightDate}).</p>` : ''}
@@ -610,14 +615,16 @@ export function _relStrengthBand(items, unit) {
 
 export function _prRow(liftName, e1rm, unit, trend, goal) {
   const safeName  = _esc(liftName);
+  // ST6: e1RM, its trend delta and the goal are canonical kilograms.
+  const show = (stored) => Math.round(fromCanonicalWeight(stored, unit) ?? 0);
   const trendHtml = trend
-    ? `<span class="profile-pr-trend profile-pr-trend--${trend.dir}">${trend.dir === 'up' ? '↑' : '↓'} ${trend.diff}${unit}</span>`
+    ? `<span class="profile-pr-trend profile-pr-trend--${trend.dir}">${trend.dir === 'up' ? '↑' : '↓'} ${show(trend.diff)}${unit}</span>`
     : '';
 
   const pct = goal ? Math.min(100, Math.round((e1rm / goal) * 100)) : 0;
   const goalHtml = goal ? `
     <div class="profile-pr-goal-bar"><div class="profile-pr-goal-fill" style="width:${pct}%"></div></div>
-    <div class="profile-pr-goal-meta">${pct}% of ${goal}${unit} goal</div>
+    <div class="profile-pr-goal-meta">${pct}% of ${show(goal)}${unit} goal</div>
   ` : '';
 
   return `
@@ -625,7 +632,7 @@ export function _prRow(liftName, e1rm, unit, trend, goal) {
       <div class="profile-pr-row-main">
         <span class="profile-pr-lift">${safeName}</span>
         <div class="profile-pr-row-right">
-          <span class="profile-pr-value">${Math.round(e1rm)}&nbsp;${unit}&nbsp;<span class="profile-pr-tag">e1RM</span>${trendHtml}</span>
+          <span class="profile-pr-value">${show(e1rm)}&nbsp;${unit}&nbsp;<span class="profile-pr-tag">e1RM</span>${trendHtml}</span>
           <button class="profile-pr-set-goal-btn" data-action="set-pr-goal" data-lift="${safeName}" data-unit="${unit}" aria-label="Set goal for ${safeName}">${goal ? '✏' : '＋'}</button>
         </div>
       </div>

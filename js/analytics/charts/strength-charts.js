@@ -6,10 +6,19 @@
 import { uid, bezierPath, linearGradientV, gridLines, xAxisLabels, areaFill, dotSeries, refLine, trendLinePath, rollingAvgPath } from './chart-primitives.js';
 import { zoneColor } from '../calculations/volume-landmarks.js';
 import { escapeHtml } from '../../util.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 // 1RM Progression chart with projection line and rolling average.
 export function render1RMProgressionChart(container, weekLabels, series, trend, rolling4, lifetimePR, liftName, unit = 'kg') {
   if (!container) return;
+  // ST6: every series arrives in canonical kilograms. Convert the WHOLE chart
+  // once — the line, the trend extension, the rolling average and the PR
+  // reference must share one scale.
+  const toDisplay = (value) => fromCanonicalWeight(value, unit) ?? 0;
+  series = series.map(toDisplay);
+  trend = (trend || []).map(toDisplay);
+  rolling4 = (rolling4 || []).map(toDisplay);
+  lifetimePR = toDisplay(lifetimePR);
   const nonZero = series.filter(v => v > 0);
   if (nonZero.length < 2) {
     container.innerHTML = `<p style="color:color-mix(in srgb, var(--text) 50%, transparent);font-size:0.85rem;padding:8px 0;">Complete 2+ weeks of ${escapeHtml(liftName)} to see progression.</p>`;

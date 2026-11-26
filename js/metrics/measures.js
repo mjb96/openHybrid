@@ -28,6 +28,7 @@ import {
 } from './measurements.js';
 import { normalizeWeighIns, weightUnitLabel } from './bodyweight.js';
 import { listPhotos, photoIdFor } from '../photos/library.js';
+import { fromCanonicalWeight, toCanonicalWeight } from './weight-unit.js';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** A body weight outside this range is a typo, not an athlete. */
@@ -147,7 +148,9 @@ export function measureEntryFor(state, date) {
  *   back would silently store 75.9 cm. The sheet passes the original cm for
  *   untouched fields, so Save can never rewrite a reading the athlete did not
  *   change.
- * @param {{ unit?: 'cm'|'in'|string }} [options]
+ * @param {{ unit?: 'cm'|'in'|string, weightUnit?: 'kg'|'lbs'|string }} [options]
+ *   `unit` is the TAPE unit; `weightUnit` is the weight display unit. A typed
+ *   weight arrives in that display unit and is stored in kilograms.
  * @returns {{ ok: boolean, invalid: string[], hasValues: boolean }}
  */
 export function saveMeasureEntry(state, date, values = {}, options = {}) {
@@ -175,9 +178,12 @@ export function saveMeasureEntry(state, date, values = {}, options = {}) {
   let weight = null;
   const rawWeight = values.weight;
   if (rawWeight != null && String(rawWeight).trim() !== '') {
+    // The field shows the athlete's unit; the store is canonical kilograms.
+    const weightUnit = options.weightUnit === 'lbs' ? 'lbs' : 'kg';
+    const maxDisplay = Math.round(fromCanonicalWeight(MAX_MEASURE_WEIGHT, weightUnit) || MAX_MEASURE_WEIGHT);
     const parsed = Number(rawWeight);
-    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > MAX_MEASURE_WEIGHT) invalid.push('Weight');
-    else weight = parsed;
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > maxDisplay) invalid.push('Weight');
+    else weight = toCanonicalWeight(parsed, weightUnit);
   }
   if (invalid.length) return { ok: false, invalid, hasValues: false };
 

@@ -11,6 +11,7 @@ import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { formatDayMonthShort } from '../../dates.js';
 import { setAllLiftsModel } from '../all-lifts-sheet.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 const COLORS = Object.freeze({
   up: 'var(--color-green, #10b981)',
@@ -25,7 +26,7 @@ const COLORS = Object.freeze({
  */
 function metaFor(row, unit) {
   const parts = [`${row.sessions} session${row.sessions === 1 ? '' : 's'}`];
-  if (row.bestE1rm > 0) parts.push(`${row.bestE1rm} ${unit} best`);
+  if (row.bestE1rm > 0) parts.push(`${Math.round(fromCanonicalWeight(row.bestE1rm, unit) ?? 0)} ${unit} best`);
   if (row.lastPerformedISO) parts.push(`last ${formatDayMonthShort(row.lastPerformedISO)}`);
   return parts.join(' · ');
 }

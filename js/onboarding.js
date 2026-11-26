@@ -10,6 +10,7 @@ import { normalizeWeightUnit } from './metrics/weight-unit.js';
 import { applyActiveEquipment } from './equipment-profiles.js';
 import { todayKey } from './dates.js';
 import { completeRecoveryGate } from './state/recovery-gate.js';
+import { toCanonicalWeight } from './metrics/weight-unit.js';
 
 let _getState;
 
@@ -272,8 +273,10 @@ function _finish() {
     appState.hybridScore.provisional = { score: prov.score, pillars: provPillars, createdAt: new Date().toISOString() };
   } catch (_) { /* provisional is a nicety — never block finishing onboarding */ }
 
-  const bw = parseFloat(document.getElementById('obBodyWeight')?.value);
-  if (!isNaN(bw) && bw > 0) {
+  // The onboarding field is in the athlete's unit; storage is kilograms.
+  const bwDisplay = parseFloat(document.getElementById('obBodyWeight')?.value);
+  const bw = toCanonicalWeight(bwDisplay, appState.settings?.weightUnit);
+  if (bw != null && bw > 0) {
     appState.settings.defaultBodyWeight = bw;
     if (!appState.bodyWeightLog) appState.bodyWeightLog = [];
     const today = todayKey();

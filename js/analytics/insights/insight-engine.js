@@ -6,6 +6,7 @@
 // ==========================================
 import { pctChange } from '../calculations/math-utils.js';
 import { isE1rmPr } from '../../strength/e1rm.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 // Format a percentage cleanly.
 function fmtPct(pct, decimals = 0) {
@@ -97,7 +98,7 @@ export function generateStrengthInsights({
     // `currentWeekPR >= lifetimePR * 0.995` test fired on a repeat of the
     // lifetime best (and on a 0.5% regression).
     if (isE1rmPr(prog.currentWeekPR, prog.priorBestMax)) {
-      insights.push({ text: `New estimated 1RM on ${lift}: ${Math.round(prog.currentWeekPR)} ${unit}.`, priority: 'good', category: 'strength' });
+      insights.push({ text: `New estimated 1RM on ${lift}: ${Math.round(fromCanonicalWeight(prog.currentWeekPR, unit) ?? 0)} ${unit}.`, priority: 'good', category: 'strength' });
     }
 
     if (prog.roi > bestRoi) { bestRoi = prog.roi; bestRoiLift = lift; }
@@ -113,7 +114,7 @@ export function generateStrengthInsights({
   }
   if (bestRoiLift && bestRoi > 0.2) {
     insights.push({
-      text: `${bestRoiLift} is showing the strongest improvement rate: +${bestRoi.toFixed(1)} ${unit}/week.`,
+      text: `${bestRoiLift} is showing the strongest improvement rate: +${(fromCanonicalWeight(bestRoi, unit) ?? 0).toFixed(1)} ${unit}/week.`,
       priority: 'good',
       category: 'strength',
     });

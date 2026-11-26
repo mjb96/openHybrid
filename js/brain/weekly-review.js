@@ -33,6 +33,8 @@ import { isE1rmPr } from '../strength/e1rm.js';
 import { isProgramDeloadWeek } from './day-verdict.js';
 import { todayKey, formatWeekRange } from '../dates.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
+import { formatWeight, formatVolume } from '../analytics/utils.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 const round1 = (n) => Math.round(n * 10) / 10;
 
@@ -257,7 +259,8 @@ export function reviewToText(r, distUnit = 'km', weightUnit = 'kg') {
   }
   const dist = distUnit === 'mi' ? `${round1(r.totals.distanceKm * 0.621371)} mi` : `${r.totals.distanceKm} km`;
   const bits = [
-    `${r.totals.volume.toLocaleString()} ${weightUnit} lifted`,
+    // The narrative copy states whole units; only stat tiles compact to tonnes.
+    `${Math.round(fromCanonicalWeight(r.totals.volume, weightUnit) ?? 0).toLocaleString('en-AU')} ${weightUnit} lifted`,
     `${dist} run`,
     `${r.totals.sessions} session${r.totals.sessions === 1 ? '' : 's'}`,
   ];

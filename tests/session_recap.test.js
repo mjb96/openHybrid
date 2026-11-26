@@ -254,10 +254,12 @@ test('recap labels weights and distances in the athlete’s units', () => {
   };
   const r = buildSessionRecap(state, '1', 'mon');
   const html = renderSessionRecapHTML(r);
-  assert.match(html, /500 lbs/);
+  // ST6: the stored 100 kg set reads as 221 lb, and its 500 kg tonnage as 1,102 lb.
+  assert.match(html, /1,102 lb/);
+  assert.match(html, /220 lbs/);
   assert.match(html, /3\.11 mi/);
   assert.match(html, /8:03 \/mi/);
-  assert.doesNotMatch(html, /500 kg|5\.00 km|5:00 \/km/);
+  assert.doesNotMatch(html, /500 kg|1,102 kg|5\.00 km|5:00 \/km/);
 });
 
 test('high-rep work remains in the recap but is not presented as a 1RM estimate', () => {

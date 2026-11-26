@@ -11,6 +11,7 @@
 // =============================================================================
 import { shareImageCanvas } from '../brain/pr-share.js';
 import { formatRunDistance, formatRunPace } from '../workout/run-units.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 /** @param {number} seconds */
 function clock(seconds) {
@@ -24,8 +25,9 @@ function liftDetail(lift, unit) {
   if (lift?.shape === 'distance' && lift.topShape) return `${Math.round(lift.topShape.value)} m`;
   const top = lift?.topSet;
   if (top && top.r > 0) {
-    const weight = Number(top.w) || 0;
-    const load = weight > 0 ? `${Math.round(weight * 100) / 100} ${unit} × ` : '';
+    // The recap carries canonical kilograms; the card shows the athlete's unit.
+    const weight = fromCanonicalWeight(Number(top.w) || 0, unit) || 0;
+    const load = weight > 0 ? `${Math.round(weight * 10) / 10} ${unit} × ` : '';
     return `${load}${top.r}`;
   }
   return `${lift?.sets || 0} sets`;
@@ -48,7 +50,10 @@ export function buildWorkoutShareSummary(recap, { title } = {}) {
 
   /** @type {Array<{ label: string, value: string }>} */
   const stats = [];
-  if (recap.tonnage > 0) stats.push({ label: 'Volume', value: `${Number(recap.tonnage).toLocaleString('en-US')} ${unit}` });
+  if (recap.tonnage > 0) {
+    const tonnage = Math.round(fromCanonicalWeight(Number(recap.tonnage) || 0, unit) || 0);
+    stats.push({ label: 'Volume', value: `${tonnage.toLocaleString('en-US')} ${unit}` });
+  }
   if (recap.workingSets > 0) stats.push({ label: 'Sets', value: String(recap.workingSets) });
   if (recap.duration) stats.push({ label: 'Time', value: String(recap.duration) });
   if (recap.run) {

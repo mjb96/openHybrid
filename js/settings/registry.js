@@ -16,6 +16,7 @@
 // =============================================================================
 import { hybridTrainingEnabled, moduleEnabled } from '../modules.js';
 import { DEFAULT_REST_TIERS } from '../workout/rest-duration.js';
+import { fromCanonicalWeight, normalizeWeightUnit } from '../metrics/weight-unit.js';
 
 /**
  * @typedef {'text'|'number'|'select'|'toggle'|'time'|'object'|'system'} SettingType
@@ -41,6 +42,7 @@ import { DEFAULT_REST_TIERS } from '../workout/rest-duration.js';
  *   min?: number,
  *   max?: number,
  *   step?: number,
+ *   canonicalWeight?: boolean, // stored in kilograms; the control shows the display unit
  *   summary?: (state: any) => string,
  *   visibleWhen?: (state: any) => boolean,
  *   enabledWhen?: (state: any) => EnabledState,
@@ -68,8 +70,8 @@ export const SETTINGS_REGISTRY = freeze([
   { key: 'fitnessGoal', label: 'Training goal', type: 'select', group: 'profile', section: 'profile', page: 'profile.training-goal', default: 'hybrid', choices: ['strength', 'hybrid', 'endurance'], keywords: ['strength', 'endurance', 'hybrid'], footer: 'Used for plan recommendations and the Hybrid Score.', summary: (s) => titleCase(s?.settings?.fitnessGoal || 'hybrid') },
   { key: 'fitnessLevel', label: 'Experience', type: 'select', group: 'profile', section: 'profile', page: 'profile.training-goal', default: 'intermediate', choices: ['beginner', 'intermediate', 'advanced'], keywords: ['beginner', 'advanced'], footer: 'Used for plan recommendations and load suggestions.', summary: (s) => titleCase(s?.settings?.fitnessLevel || 'intermediate') },
   { key: 'weightGoal', label: 'Body goal', type: 'select', group: 'profile', section: 'profile', page: 'profile.training-goal', default: 'maintain', choices: ['cut', 'maintain', 'bulk'], keywords: ['cut', 'bulk', 'lose', 'gain'], summary: (s) => titleCase(s?.settings?.weightGoal || 'maintain') },
-  { key: 'defaultBodyWeight', label: 'Body weight', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, keywords: ['bodyweight', 'mass', 'weight'], summary: (s) => numberUnit(s?.settings?.defaultBodyWeight, s?.settings?.weightUnit || 'kg') },
-  { key: 'targetWeight', label: 'Target weight', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, keywords: ['goal', 'bodyweight', 'target'], summary: (s) => numberUnit(s?.settings?.targetWeight, s?.settings?.weightUnit || 'kg') },
+  { key: 'defaultBodyWeight', label: 'Body weight', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, canonicalWeight: true, keywords: ['bodyweight', 'mass', 'weight'], summary: (s) => weightUnitText(s?.settings?.defaultBodyWeight, s?.settings?.weightUnit || 'kg') },
+  { key: 'targetWeight', label: 'Target weight', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, canonicalWeight: true, keywords: ['goal', 'bodyweight', 'target'], summary: (s) => weightUnitText(s?.settings?.targetWeight, s?.settings?.weightUnit || 'kg') },
   { key: 'rateGoal', label: 'Weight rate goal', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: -2, max: 2, step: 0.05, keywords: ['goal', 'rate', 'bodyweight'], summary: (s) => s?.settings?.rateGoal == null ? '' : `${s.settings.rateGoal} ${s?.settings?.weightUnit || 'kg'}/wk` },
   { key: 'heightCm', label: 'Height', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 50, max: 300, step: 0.1, keywords: ['height', 'body'], summary: (s) => s?.settings?.heightCm ? `${s.settings.heightCm} cm` : '' },
   { key: 'birthDate', label: 'Date of birth', type: 'text', group: 'profile', section: 'profile', page: 'profile.body', default: null, keywords: ['birth', 'dob', 'age'], footer: 'Optional. Stored only for future calculations; nothing currently derives from it.', summary: (s) => s?.settings?.birthDate || '' },
@@ -82,7 +84,7 @@ export const SETTINGS_REGISTRY = freeze([
   { key: 'onboardingComplete', label: 'Setup complete', type: 'system', group: 'system', section: 'system', page: 'system', default: false, keywords: ['setup', 'onboarding'], summary: (s) => s?.settings?.onboardingComplete ? 'Yes' : 'No' },
 
   // ── Training ──────────────────────────────────────────────────────────────
-  { key: 'progressionIncrement', label: 'Progression step', type: 'number', group: 'training', section: 'training', page: 'training.workout', default: 2.5, min: 0.25, max: 20, step: 0.25, keywords: ['increment', 'load', 'progression'], summary: (s) => numberUnit(s?.settings?.progressionIncrement, s?.settings?.weightUnit || 'kg') },
+  { key: 'progressionIncrement', label: 'Progression step', type: 'number', group: 'training', section: 'training', page: 'training.workout', default: 2.5, min: 0.25, max: 20, step: 0.25, canonicalWeight: true, keywords: ['increment', 'load', 'progression'], summary: (s) => weightUnitText(s?.settings?.progressionIncrement, s?.settings?.weightUnit || 'kg') },
   { key: 'autoAdvanceWeek', label: 'Auto-advance week', type: 'toggle', group: 'training', section: 'training', page: 'training.schedule', default: true, keywords: ['program week', 'advance', 'schedule'], summary: (s) => on(s, 'autoAdvanceWeek') ? 'On' : 'Off' },
   { key: 'previousValuesScope', label: 'Previous values', type: 'select', group: 'training', section: 'training', page: 'training.workout', default: 'all', choices: ['all', 'program'], keywords: ['history', 'last time', 'previous'], summary: (s) => s?.settings?.previousValuesScope === 'program' ? 'This program' : 'Any workout' },
   { key: 'showPlateHints', label: 'Plate hints', type: 'toggle', group: 'training', section: 'training', page: 'training.workout', default: false, keywords: ['plates', 'bar', 'hints', 'input'], summary: (s) => on(s, 'showPlateHints') ? 'On' : 'Off' },
@@ -345,6 +347,19 @@ function titleCase(value) {
 function numberUnit(value, unit) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? `${number} ${unit}` : '';
+}
+
+/**
+ * ST6: a stored KILOGRAM value summarised in the athlete's display unit.
+ * Kept separate from `numberUnit` because most numbers are not weights.
+ */
+function weightUnitText(value, unit) {
+  const stored = Number(value);
+  if (!Number.isFinite(stored) || stored <= 0) return '';
+  const display = fromCanonicalWeight(stored, unit);
+  if (display == null) return '';
+  const rounded = Math.round(display * 10) / 10;
+  return `${rounded} ${normalizeWeightUnit(unit) === 'lbs' ? 'lb' : 'kg'}`;
 }
 
 function paceText(seconds, unit) {

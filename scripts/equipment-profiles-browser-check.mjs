@@ -113,9 +113,9 @@ try {
   await page.waitForSelector('#settingsPageHost .s-home');
   await page.click('[data-action="open-settings-page"][data-context="once.units"]');
   await page.waitForSelector('#settingsPageHost .s-page');
+  // ST6: the unit switch is display-only (no confirmation, no stored rewrite);
+  // the per-unit plate setup still follows the displayed unit.
   await page.click('[data-setting-segment="weightUnit"][data-value="lbs"]');
-  await page.waitForSelector('.cmodal__btn--ok');
-  await page.click('.cmodal__btn--ok');
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'lbs');
   await page.click('#settingsPageHost .s-back');
   await page.waitForSelector('#settingsPageHost .s-home');
@@ -128,8 +128,6 @@ try {
   await page.click('[data-action="open-settings-page"][data-context="once.units"]');
   await page.waitForSelector('#settingsPageHost .s-page');
   await page.click('[data-setting-segment="weightUnit"][data-value="kg"]');
-  await page.waitForSelector('.cmodal__btn--ok');
-  await page.click('.cmodal__btn--ok');
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.weightUnit === 'kg');
   await page.click('#settingsPageHost .s-back');
   await page.waitForSelector('#settingsPageHost .s-home');

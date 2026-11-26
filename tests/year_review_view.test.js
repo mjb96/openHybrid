@@ -72,14 +72,15 @@ test('an untrained past year says sessions WERE logged; a partial year says yet'
   assert.match(getEl('yearReviewContainer').innerHTML, /No sessions logged in 2026 yet\./);
 });
 
-test('a lbs profile labels stored volume as pounds, never converting it', () => {
+test('a lbs profile converts stored kilogram volume into pounds', () => {
+  // ST6: 100 kg x 5 = 500 kg of tonnage, shown as 1,102 lb to a lb athlete.
   view.renderYearInReview(
-    stateWith({ '1': { dates: { mon: '2026-03-10' }, lifts: { mon: { 'Back Squat': [work(2810, 5)] } } } }, { weightUnit: 'lbs' }),
+    stateWith({ '1': { dates: { mon: '2026-03-10' }, lifts: { mon: { 'Back Squat': [work(100, 5)] } } } }, { weightUnit: 'lbs' }),
     [],
     '2026-12-15',
   );
   const html = getEl('yearReviewContainer').innerHTML;
-  assert.match(html, /14,050 lb/);
+  assert.match(html, /1,102 lb/);
   assert.doesNotMatch(html, /kg/, 'no kilogram label may leak into an lbs profile');
 });
 

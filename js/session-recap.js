@@ -27,6 +27,7 @@ import { showToast, getProgramById } from './state.js';
 import { suggestProgression } from './engine.js';
 import { sanitizeGpsQuality } from './gps/route-quality.js';
 import { estimatedE1rmForSet } from './strength/e1rm.js';
+import { fromCanonicalWeight } from './metrics/weight-unit.js';
 import {
   bestRecordForSession, bestRecordFromHistory, isRecord, prKindLabel,
   recordCandidates, recordPreviousValue,
@@ -355,11 +356,12 @@ function _comparisonLine(r) {
   const c = r.comparison;
   if (!c) return '';
   const unit = r.weightUnit || 'kg';
+  const show = (stored) => Math.round(fromCanonicalWeight(stored, unit) ?? 0);
   const signed = (value, suffix) => `${value > 0 ? '+' : ''}${value}${suffix}`;
   const parts = [];
-  parts.push(`${signed(c.volumeDelta, ' ' + unit)} volume${c.volumePct != null ? ` (${signed(c.volumePct, '%')})` : ''}`);
+  parts.push(`${signed(show(c.volumeDelta), ' ' + unit)} volume${c.volumePct != null ? ` (${signed(c.volumePct, '%')})` : ''}`);
   if (c.setsDelta !== 0) parts.push(`${signed(c.setsDelta, '')} set${Math.abs(c.setsDelta) === 1 ? '' : 's'}`);
-  if (c.bestDelta != null && c.bestDelta !== 0) parts.push(`best ${signed(c.bestDelta, ' ' + unit)}`);
+  if (c.bestDelta != null && c.bestDelta !== 0) parts.push(`best ${signed(show(c.bestDelta), ' ' + unit)}`);
   if (c.prs > 0) parts.push(`${c.prs} PR${c.prs === 1 ? '' : 's'}`);
   const up = c.volumeDelta > 0 || (c.bestDelta != null && c.bestDelta > 0);
   const down = c.volumeDelta < 0 && (c.bestDelta == null || c.bestDelta <= 0);
@@ -374,7 +376,7 @@ function _summaryTiles(r) {
   const unit = r.weightUnit || 'kg';
   const distUnit = r.distanceUnit || 'km';
   return [
-    r.tonnage > 0 ? statTile('Volume', `${r.tonnage.toLocaleString()} ${unit}`) : '',
+    r.tonnage > 0 ? statTile('Volume', `${Math.round(fromCanonicalWeight(r.tonnage, unit) ?? 0).toLocaleString()} ${unit}`) : '',
     r.workingSets > 0 ? statTile('Sets', r.workingSets) : '',
     r.duration ? statTile('Duration', r.duration) : '',
     r.gymRpe ? statTile('Gym RPE', `${r.gymRpe}/10`) : '',
@@ -394,7 +396,7 @@ function _liftSummaryRows(r) {
   return r.lifts.map((l) => {
     const previous = Array.isArray(l.previous) && l.previous.length
       ? `<div class="recap-lift__prev">Last time: ${l.previous
-        .map((set) => setSummary(set, unit)).join(' · ')}</div>`
+        .map((set) => setSummary({ ...set, w: fromCanonicalWeight(set.w, unit) ?? set.w }, unit)).join(' · ')}</div>`
       : '';
     const next = l.next
       ? `<div class="recap-lift__next">Next time: <b>${l.next.weight}${unit} × ${l.next.reps}</b>${l.next.rationale ? `<small>${esc(l.next.rationale)}</small>` : ''}</div>`
@@ -403,11 +405,11 @@ function _liftSummaryRows(r) {
     <div class="recap-lift">
       <div class="recap-lift__name">${esc(l.name)}${_prBadges(l)}</div>
       <div class="recap-lift__detail">
-        ${l.topSet ? `${l.topSet.w} ${unit} × ${l.topSet.r}`
+        ${l.topSet ? `${Math.round(fromCanonicalWeight(l.topSet.w, unit) ?? 0)} ${unit} × ${l.topSet.r}`
           : l.topShape
-            ? `${l.topShape.weight > 0 ? `${l.topShape.weight} ${unit} · ` : ''}best ${l.topShape.mode === SET_MODE.TIME ? formatDuration(l.topShape.value) : `${formatDistance(l.topShape.value)}m`}`
+            ? `${l.topShape.weight > 0 ? `${Math.round(fromCanonicalWeight(l.topShape.weight, unit) ?? 0)} ${unit} · ` : ''}best ${l.topShape.mode === SET_MODE.TIME ? formatDuration(l.topShape.value) : `${formatDistance(l.topShape.value)}m`}`
             : `${l.sets} sets`}
-        ${l.e1rm > 0 ? `<span class="recap-lift__e1rm">est. 1RM ${l.e1rm} ${unit}</span>` : ''}
+        ${l.e1rm > 0 ? `<span class="recap-lift__e1rm">est. 1RM ${Math.round(fromCanonicalWeight(l.e1rm, unit) ?? 0)} ${unit}</span>` : ''}
       </div>
       ${previous}
       ${next}
@@ -489,7 +491,7 @@ function _liftSetGrid(r) {
             <span class="rc-set__wr">${setSummary(s, unit)}</span>
             ${_setTag(s)}
             ${s.rir != null ? `<span class="rc-set__rir">RIR ${s.rir}</span>` : ''}
-            ${s.vol > 0 ? `<span class="rc-set__vol">${s.vol.toLocaleString()} ${unit}</span>` : ''}
+            ${s.vol > 0 ? `<span class="rc-set__vol">${Math.round(fromCanonicalWeight(s.vol, unit) ?? 0).toLocaleString()} ${unit}</span>` : ''}
             ${s.note ? `<span class="rc-set__note">${esc(s.note)}</span>` : ''}
           </div>`;
     }).join('');
@@ -508,7 +510,7 @@ function _sessionTotals(r) {
   const tiles = [
     r.workingSets > 0 ? statTile('Sets', r.workingSets) : '',
     r.totalReps > 0 ? statTile('Reps', r.totalReps) : '',
-    r.tonnage > 0 ? statTile('Volume', `${r.tonnage.toLocaleString()} ${unit}`) : '',
+    r.tonnage > 0 ? statTile('Volume', `${Math.round(fromCanonicalWeight(r.tonnage, unit) ?? 0).toLocaleString()} ${unit}`) : '',
     r.duration ? statTile('Duration', r.duration) : '',
     r.gymHR ? statTile('Avg HR', `${r.gymHR} bpm`) : '',
     r.gymMaxHR ? statTile('Max HR', `${r.gymMaxHR} bpm`) : '',

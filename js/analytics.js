@@ -48,6 +48,7 @@ import { isRangeId, resolveRange } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatRunDistance } from './workout/run-units.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
+import { displayWeightString, toCanonicalWeight } from './metrics/weight-unit.js';
 
 let _getState;
 let _getDays;
@@ -245,7 +246,7 @@ async function deleteMeasureEntryAction(dateISO) {
   if (!entry) return;
   const weightUnit = weightUnitLabel(state);
   const parts = [];
-  if (entry.weight != null) parts.push(`${Number(entry.weight).toFixed(1)} ${weightUnit}`);
+  if (entry.weight != null) parts.push(`${displayWeightString(entry.weight, weightUnit, { decimals: 1 })} ${weightUnit}`);
   if (entry.bodyFat != null) parts.push(`${entry.bodyFat}% body fat`);
   if (entry.sites.length) parts.push(`${entry.sites.length} tape ${entry.sites.length === 1 ? 'site' : 'sites'}`);
   if (entry.photo) parts.push('a photo');
@@ -562,9 +563,12 @@ export function saveBodyweightGoal() {
   if (!appState) return;
   if (!appState.settings || typeof appState.settings !== 'object') appState.settings = {};
 
+  // The editor is in the athlete's unit; the goal is stored in kilograms.
+  const weightUnit = appState.settings.weightUnit;
   const targetRaw = document.getElementById('bwGoalWeight')?.value ?? '';
   const target = parseFloat(targetRaw);
-  appState.settings.targetWeight = Number.isFinite(target) && target > 0 ? target : null;
+  const targetKg = Number.isFinite(target) && target > 0 ? toCanonicalWeight(target, weightUnit) : null;
+  appState.settings.targetWeight = targetKg;
 
   const dir = document.getElementById('bwRateDir')?.value || '';
   if (!dir) {
@@ -577,9 +581,14 @@ export function saveBodyweightGoal() {
       showToast('Enter a rate range first');
       return;
     }
+    // A weight-based rate is stored in kilograms per week; a % rate is not a
+    // weight and stays as typed.
+    const asStored = (value) => (by === 'w' ? toCanonicalWeight(value, weightUnit) || 0 : value);
+    const storedLo = asStored(lo);
+    const storedHi = asStored(hi);
     appState.settings.rateGoal = dir === 'hold'
-      ? { dir, by, lo: 0, hi }
-      : { dir: dir === 'gain' ? 'gain' : 'lose', by, lo, hi };
+      ? { dir, by, lo: 0, hi: storedHi }
+      : { dir: dir === 'gain' ? 'gain' : 'lose', by, lo: storedLo, hi: storedHi };
   }
 
   saveStateToLocalStorage(true);

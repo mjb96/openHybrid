@@ -19,6 +19,9 @@ import { isShedPplulProgram, shedPplulLiftTarget } from './programs/shed-pplul-m
 import { getCatalogEntry } from './programs/catalog.js';
 import { DEFAULT_PROGRESSION_STYLE, normalizeProgressionStyle } from './programs/progression-style.js';
 import { effortForSet } from './workout/effort.js';
+import {
+  displayWeightString, fromCanonicalWeight, toCanonicalWeight,
+} from './metrics/weight-unit.js';
 
 // Re-exported for backwards-compatible import sites (and the engine test suite).
 export { isCompletedSet };
@@ -215,7 +218,9 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
   if (history.length === 0) return result;
 
   const lastSession = history[0];
-  result.suggestedWeight = lastSession.weight || '';
+  result.suggestedWeight = lastSession.weight
+    ? Number(displayWeightString(lastSession.weight, appState.settings?.weightUnit))
+    : '';
   result.suggestedReps = lastSession.reps || '';
 
   // A repeated load is not automatically a plateau: completing the prescribed
@@ -279,6 +284,8 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
   // (the ghost the cockpit shows, and what one-tap quick-log commits).
   const increment = appState.settings?.progressionIncrement || CONFIG.weightIncrement || 2.5;
   const canRecommendLoad = repTarget > 0 && isE1rmExercise(liftName, lastSessionSets?.[0]);
+  const unit = appState.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg';
+  const showWeight = (kg) => displayWeightString(kg, unit);
   let prog = suggestProgression(canRecommendLoad ? (lastSessionSets || []) : [], repTarget, {
     increment,
     weightGoal: appState.settings?.weightGoal,
@@ -286,20 +293,23 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
     fatigued: result.isFatigueOverload,
     hardRpe: CONFIG.fatigueRpeThreshold || 8.5,
     style: opts.progressionStyle,
+    unit,
+    show: showWeight,
   });
   if (prog.action !== 'baseline') {
     // Snap the suggested load to equipment the active profile actually owns.
     // With no ladder configured this is a no-op, preserving every pre-inventory
     // profile. A load-up never drops below the current weight; if the ladder has
     // no rung above it, hold where the lifter is instead of inventing one.
-    const unit = appState.settings?.weightUnit === 'lbs' ? 'lb' : 'kg';
+    const ladderUnit = unit === 'lbs' ? 'lb' : 'kg';
     const exercise = resolveExercise(liftName);
     const equipment = exercise?.equipment || [];
     const ladder = equipment.includes('dumbbells')
-      ? getActiveDumbbells(appState, unit)
-      : getActiveMachineStack(appState, exercise?.id || canonicalExerciseId(liftName) || '', unit);
+      ? getActiveDumbbells(appState, ladderUnit)
+      : getActiveMachineStack(appState, exercise?.id || canonicalExerciseId(liftName) || '', ladderUnit);
     if (ladder.length && Number.isFinite(Number(prog.weight))) {
-      const current = Number(prog.weight);
+      // Ladders are per-unit display ladders; snap there, then store kilograms.
+      const current = Number(fromCanonicalWeight(prog.weight, unit));
       const above = ladder.filter((weight) => weight > current);
       const snapped = ladder.includes(current)
         ? current
@@ -312,14 +322,17 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
       if (snapped !== current) {
         prog = {
           ...prog,
-          weight: snapped,
-          rationale: `${prog.rationale} Nearest available ${unit === 'lb' ? 'lb' : 'kg'} ${equipment.includes('dumbbells') ? 'dumbbell' : 'stack'} weight.`,
+          weight: toCanonicalWeight(snapped, unit) || prog.weight,
+          rationale: `${prog.rationale} Nearest available ${ladderUnit} ${equipment.includes('dumbbells') ? 'dumbbell' : 'stack'} weight.`,
         };
       }
     }
-    result.progression = prog;
-    result.suggestedWeight = prog.weight;
-    result.suggestedReps = prog.reps;
+    // The cockpit is a DISPLAY surface: `progression.weight` is what it puts in
+    // the weight field, so it leaves this API in the athlete's unit.
+    const displayProg = { ...prog, weight: Number(showWeight(prog.weight)) };
+    result.progression = displayProg;
+    result.suggestedWeight = displayProg.weight;
+    result.suggestedReps = displayProg.reps;
   }
 
   return result;
@@ -347,12 +360,20 @@ export function computeDiagnosticForLift(currentWeekString, dayKey, liftName, re
  * @param {number} repTarget       prescribed top-of-range rep goal for the lift.
  * @param {{ increment?: number, weightGoal?: 'cut'|'maintain'|'bulk',
  *           stalled?: boolean, fatigued?: boolean, hardRpe?: number,
- *           style?: 'double'|'linear'|'rep-first'|string }} [opts]
+ *           style?: 'double'|'linear'|'rep-first'|string,
+ *           unit?: 'kg'|'lbs', show?: (kg: number) => string }} [opts]
+ *   `increment` and `weight` are CANONICAL KILOGRAMS; `unit` makes step rounding
+ *   land on that unit's increments and `show` formats the copy for the athlete.
  * @returns {{ action: 'baseline'|'load-up'|'hold'|'rep-up',
  *             weight: number|'', reps: number|'', rationale: string }}
  */
 export function suggestProgression(lastWorkingSets, repTarget, opts = {}) {
   const increment = opts.increment > 0 ? opts.increment : (CONFIG.weightIncrement || 2.5);
+  // `weight` stays canonical kilograms (the model's contract); `show` is the
+  // display formatter for the copy the athlete reads, and `unit` makes the step
+  // rounding land on that unit's increments.
+  const show = typeof opts.show === 'function' ? opts.show : (value) => String(value);
+  const unit = opts.unit === 'lbs' ? 'lbs' : 'kg';
   const hardRpe   = opts.hardRpe > 0 ? opts.hardRpe : 9;
   const goal      = opts.weightGoal || 'maintain';
   /** @type {{ action: any, weight: number|'', reps: number|'', rationale: string }} */
@@ -375,13 +396,20 @@ export function suggestProgression(lastWorkingSets, repTarget, opts = {}) {
   const rpes = sets.map(s => parseFloat(s.rpe)).filter(v => v > 0);
   const avgRpe = rpes.length ? rpes.reduce((a, b) => a + b, 0) / rpes.length : null;
 
-  const round = v => Math.round(v / increment) * increment;
+  const displayIncrement = Math.round((fromCanonicalWeight(increment, unit) || 0) * 100) / 100;
+  const round = (v) => {
+    // Round in the DISPLAY unit so a lb athlete's jumps stay on 5 lb, then store
+    // the canonical kilogram value.
+    const asDisplay = fromCanonicalWeight(v, unit) || 0;
+    const step = displayIncrement > 0 ? displayIncrement : (unit === 'lbs' ? 5 : 2.5);
+    return toCanonicalWeight(Math.round(asDisplay / step) * step, unit) || v;
+  };
 
   // A flat trend is a review signal, not enough evidence for a precise 10%
   // deload. Hold the last successful load; the user/program still owns deloads.
   if (opts.stalled) {
     return { action: 'hold', weight: W, reps: target,
-      rationale: `Flat estimated-strength trend — hold ${W} and review recovery.` };
+      rationale: `Flat estimated-strength trend — hold ${show(W)} and review recovery.` };
   }
 
   const hitTarget  = referenceSets.every((set) => parseInt(set.r, 10) >= target);
@@ -394,8 +422,8 @@ export function suggestProgression(lastWorkingSets, repTarget, opts = {}) {
   // Shared hold for maximal effort, accumulated fatigue, or a cut.
   const holdForEffort = () => {
     const why = goal === 'cut'
-      ? `Cutting — hold ${W} and keep the reps.`
-      : `Completed ${R}${rpeNote} — hold ${W} to consolidate.`;
+      ? `Cutting — hold ${show(W)} and keep the reps.`
+      : `Completed ${R}${rpeNote} — hold ${show(W)} to consolidate.`;
     return { action: /** @type {const} */ ('hold'), weight: W, reps: target, rationale: why };
   };
 
@@ -403,12 +431,12 @@ export function suggestProgression(lastWorkingSets, repTarget, opts = {}) {
     // Fixed reps: a missed top set holds the same load until it is completed.
     if (!hitTarget) {
       return { action: 'hold', weight: W, reps: target,
-        rationale: `Linear — hold ${W} until every top set hits ${target}.` };
+        rationale: `Linear — hold ${show(W)} until every top set hits ${target}.` };
     }
     if (hardEffort || opts.fatigued || goal === 'cut') return holdForEffort();
     const next = round(W + increment);
     return { action: 'load-up', weight: next, reps: target,
-      rationale: `Linear — all top sets hit ${target}${rpeNote} — add load to ${next}.` };
+      rationale: `Linear — all top sets hit ${target}${rpeNote} — add load to ${show(next)}.` };
   }
 
   if (style === 'rep-first') {
@@ -416,31 +444,31 @@ export function suggestProgression(lastWorkingSets, repTarget, opts = {}) {
     if (!hitTarget) {
       const nextReps = Math.min(target, R + 1);
       return { action: 'rep-up', weight: W, reps: nextReps,
-        rationale: `Chase ${nextReps} reps at ${W} before adding load.` };
+        rationale: `Chase ${nextReps} reps at ${show(W)} before adding load.` };
     }
     if (hardEffort || opts.fatigued || goal === 'cut') return holdForEffort();
     // Build two reps past the prescription before adding weight.
     if (R < target + 2) {
       const nextReps = Math.min(target + 2, R + 1);
       return { action: 'rep-up', weight: W, reps: nextReps,
-        rationale: `Rep-first — build to ${target + 2} reps at ${W} before adding load.` };
+        rationale: `Rep-first — build to ${target + 2} reps at ${show(W)} before adding load.` };
     }
     const next = round(W + increment);
     return { action: 'load-up', weight: next, reps: target,
-      rationale: `Rep-first — reached ${target + 2} reps at ${W}${rpeNote} — add load to ${next}.` };
+      rationale: `Rep-first — reached ${target + 2} reps at ${show(W)}${rpeNote} — add load to ${show(next)}.` };
   }
 
   // Double progression (default): chase the rep target, then add load.
   if (!hitTarget) {
     const nextReps = Math.min(target, R + 1);
     return { action: 'rep-up', weight: W, reps: nextReps,
-      rationale: `Chase ${nextReps} reps at ${W} before adding load.` };
+      rationale: `Chase ${nextReps} reps at ${show(W)} before adding load.` };
   }
   if (hardEffort || opts.fatigued || goal === 'cut') return holdForEffort();
 
   const next = round(W + increment);
   return { action: 'load-up', weight: next, reps: target,
-    rationale: `All top-load sets hit ${target}${rpeNote} — add load to ${next}.` };
+    rationale: `All top-load sets hit ${target}${rpeNote} — add load to ${show(next)}.` };
 }
 
 // ==========================================
