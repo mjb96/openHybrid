@@ -113,7 +113,7 @@ import { initGpsTracker, startTracking, pauseTracking, resumeTracking, stopTrack
 import { renderRunMap } from './workout-map.js';
 import { orderedLiftNames } from './workout-order.js';
 import { isCompletedSet } from './set-utils.js';
-import { strengthDayStats } from './analytics/weekly-aggregate.js';
+import { setCalendarWeekStart, strengthDayStats } from './analytics/weekly-aggregate.js';
 import { dateKey, todayKey, todayProgramDay, startOfProgramWeek, localDayKey, daysBetween, addDaysISO } from './dates.js';
 import { resolveDateToSlot, resolveSlotDate } from './analytics/logged-days.js';
 import { newRunSessionId, runDaySummary, upsertRunSession, findImportedRunSession } from './state/run-sessions.js';
@@ -147,9 +147,28 @@ document.addEventListener('app:equipment-changed', () => {
 
 document.addEventListener('app:storage-loaded', () => {
   try {
+    // Calendar weeks (analytics, Home's rail, History, every "this week" total)
+    // follow the athlete's week-start preference. Re-applied here so a boot,
+    // an import/restore or a Settings change all land on the SAME week model
+    // before anything re-renders. Program weeks are unaffected by design.
+    setCalendarWeekStart(appState.settings?.weekStartDay);
     hydrateCurrentView();
   } catch (err) {
     console.warn('UI Hydration pending full app initialization.', err);
+  }
+});
+
+// Cross-tab settings sync writes through the registry instead of a setter, so
+// the week-start projection is re-applied here too (and the visible surface
+// repaints). Scoped to that one key: other settings have their own handlers.
+document.addEventListener('settings:changed', (event) => {
+  const keys = event.detail?.keys;
+  if (!Array.isArray(keys) || !keys.includes('weekStartDay')) return;
+  try {
+    setCalendarWeekStart(appState.settings?.weekStartDay);
+    hydrateCurrentView();
+  } catch (err) {
+    console.warn('Week-start refresh failed after a settings sync.', err);
   }
 });
 

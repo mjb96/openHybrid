@@ -36,16 +36,16 @@ function periodFor(range, offset, today) {
     const year = shiftYear(today, safeOffset);
     return { start: `${year}-01-01`, end: `${year}-12-31`, isCurrent: safeOffset === 0 };
   }
-  const currentMonday = weekStartOf(today);
+  const currentWeekStart = weekStartOf(today);
   if (range === '4w') {
-    const endWeek = addDaysISO(currentMonday, safeOffset * 28);
+    const endWeek = addDaysISO(currentWeekStart, safeOffset * 28);
     return {
       start: addDaysISO(endWeek, -21),
       end: addDaysISO(endWeek, 6),
       isCurrent: safeOffset === 0,
     };
   }
-  const start = addDaysISO(currentMonday, safeOffset * 7);
+  const start = addDaysISO(currentWeekStart, safeOffset * 7);
   return { start, end: addDaysISO(start, 6), isCurrent: safeOffset === 0 };
 }
 

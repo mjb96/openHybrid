@@ -48,7 +48,7 @@ function metric(id, label, unit, scope, calculation, options = {}) {
 }
 
 export const RUNNING_METRICS = Object.freeze([
-  metric('running.weekly-distance', 'Weekly Distance', 'distance', 'calendar-week', 'Sum of distance from every dated run in the selected Monday–Sunday calendar week. Walks are counted separately.', { color: '#3b82f6' }),
+  metric('running.weekly-distance', 'Weekly Distance', 'distance', 'calendar-week', 'Sum of distance from every dated run in the selected calendar week. Walks are counted separately.', { color: '#3b82f6' }),
   metric('running.four-week-distance', '4-Week Distance', 'distance', 'rolling-28d', 'Sum of run distance over the trailing 28 calendar days. Walks are counted separately.', { color: '#ec4899', series: 'rolling-4w' }),
   metric('running.total-distance', 'Total Distance', 'distance', 'lifetime', 'Lifetime sum of run distance across every program activation. Walks are counted separately.', { color: '#22d3ee', series: 'cumulative' }),
   metric('running.weekly-duration', 'Weekly Duration', 'duration', 'calendar-week', 'Sum of parsed activity duration in the selected calendar week.', { color: '#22d3ee' }),

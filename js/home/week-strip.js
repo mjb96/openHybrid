@@ -34,15 +34,20 @@ export function buildHomeWeekStrip({ state, program = null, days = DAY_ORDER, to
   // date-strict, deduplicated index as the Home recap and every Progress chart,
   // so an imported/archived session on today's date counts as done.
   const todayISO = localDayKey(today) || localDayKey(new Date());
-  const monday = weekStartOf(todayISO);
+  // The rail is the athlete's CALENDAR week: Sunday-first when they chose it,
+  // and the seven dates move with it (a Sunday-start week begins the previous
+  // Sunday, not the Sunday at the end of a Monday week).
+  const weekStartDay = state?.settings?.weekStartDay === 'sun' ? 'sun' : 'mon';
+  const weekStart = weekStartOf(todayISO, weekStartDay);
   const slotsByDate = indexSlotsByDate(state).allByDate;
-  const order = orderedDays(state?.settings?.weekStartDay || 'mon').filter((day) => days.includes(day));
+  const weekOrder = orderedDays(weekStartDay);
+  const order = weekOrder.filter((day) => days.includes(day));
   const cells = [];
   let doneCount = 0;
   let plannedCount = 0;
 
   order.forEach((day) => {
-    const date = addDaysISO(monday, DAY_ORDER.indexOf(day));
+    const date = addDaysISO(weekStart, weekOrder.indexOf(day));
     // The schedule owns which program day a DATE carries (HM2). Without a move
     // this is the weekday template, so every existing week is unchanged.
     const scheduled = scheduledDayForDate(state, program, date);
@@ -71,13 +76,13 @@ export function buildHomeWeekStrip({ state, program = null, days = DAY_ORDER, to
     });
   });
 
-  const weekEnd = addDaysISO(monday, 6);
+  const weekEnd = addDaysISO(weekStart, 6);
   return {
     days: cells,
     doneCount,
     plannedCount,
     pct: plannedCount > 0 ? Math.round((doneCount / plannedCount) * 100) : null,
-    weekStart: monday,
-    range: `${shortDate(monday)} – ${shortDate(weekEnd)}`,
+    weekStart,
+    range: `${shortDate(weekStart)} – ${shortDate(weekEnd)}`,
   };
 }

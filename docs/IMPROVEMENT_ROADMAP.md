@@ -997,7 +997,7 @@ or corrects it.
 | ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | DONE | The router forwards `data-page`/`data-anchor` to `openSettings`, and the surfaces link to the page that owns the value: Progress and Measures → **Units & language** (`once.units`, the same measurement/weight unit), Plans → **Equipment** (`once.equipment`, the kit a plan is built around). The logger keeps the registry-driven Workout settings sheet (`open-workout-settings`), so no value has a second writer. Tests: `contextual_settings_links` (router forwarding + each page target + the logger sheet); the Progress-hub, Measures and Plans browser checks open the real pages. |
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | DONE | Profile now leads with editable Identity, Body metrics (weigh-in, height, DOB, sex, target/rate) and Training goal groups, with links to weight history and Measures. Schema v17 adds the optional fields as null; the weigh-in writes the canonical `bodyWeightLog` and stays in sync with Home. |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
-| ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
+| ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | DONE | `calendarWeekStart(date, weekStartDay)` is the one rule; `weekStartOf`/`weekKeyOf` resolve the setting through one projection applied on every `app:storage-loaded` (boot, import, Settings change), so Home's rail, History, bodyweight, Pulse, the week chart, strength volume, Muscles, Balance, Reports and the Year heatmap share it. Changing it repaints immediately (S-F3), and the weekly-summary notification follows the week end. **Program weeks stay Monday plan indices** (`startOfProgramWeek`, `weekSchedule`) by design. **No migration:** stored dates are already real calendar days, so the setting only changes bucketing and reverting restores the Monday view. Tests: `week_start` (both starts; Pulse, strength-week and Weekly Review attribution; Home rail; weekday labels; program anchor; wiring), `notifications` (week-end instant), and the Progress-hub browser check drives the real Settings control and asserts the rail + Pulse range change without a reload. |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `ui/text-size.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette, System/Reduce/Full motion, **text size** (Default / Large / Extra large scaling the root font) and **haptics** (on/off for set/PR feedback) now share Look & Home. Sounds still live with the rest timers they belong to (Training → Logging), and demo size (G8) is not built. Tests: `text_size` + a static wiring guard; the Settings browser check toggles Extra large and asserts the root font grows.
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | DONE | Settings → Data now states the **last manual backup** (Today / Yesterday / N days ago) and gives one calm warning at 7+ days or when none exists. The timestamp is root metadata (`lastBackupAt`), written only after the platform confirms a saved/started export — never after a cancel or failure — and it is not a setting, so it never appears in the settings registry. Automatic backup keeps its own status/time; progress photos stay device-local with the Measures zip. Restore remains the JSON import + the previous-import snapshot. Tests: `backup_status` (wording, ISO timestamps, stale line, junk) and a static wiring guard. |
 | ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | DONE | Delete-all now requires typing DELETE after the first confirmation; the Data page shows every export beside it. Simple pages have a confirmed Reset to defaults with an Undo snackbar; Units is excluded so a reset cannot relabel history without conversion. |
@@ -1045,7 +1045,7 @@ settings card; "not shown" means the value has no Settings row.
 | `weightUnit` | Training card | `kg` | `settings.js`, onboarding | most surfaces | move to Units |
 | `distanceUnit` | Training card | `km` | `settings.js`, onboarding | GPS, Home, dashboard | move to Units |
 | `measurementUnit` | Not shown (Measures sheet only) | seeded from weight unit | `measurements-sheet.js` | measurements, Measures | move to Units |
-| `weekStartDay` | Training card | `mon` | `settings.js` | Home rail, dashboard model, History calendar, bodyweight | move to Units; see S-F3 |
+| `weekStartDay` | Training card | `mon` | `settings.js` | every calendar surface via `calendarWeekStart` (Home rail, History, bodyweight, Pulse/analytics); program weeks stay Monday | move to Units; S-F3 closed by ST7 |
 | `progressionIncrement` | Logging | `2.5` | `settings.js` | engine, session recap | keep |
 | `previousValuesScope` | Logging | `all` | `settings.js` | workout | keep |
 | `showPlateHints` | Logging | `false` | `settings.js` | workout | keep |
@@ -1097,7 +1097,7 @@ P0 and must be closed before H1's acceptance is claimed.
 | --- | --- | --- | --- | --- |
 | S-F1 | **Fixed 24 Nov (#319):** onboarding now writes its equipment answer through `applyActiveEquipment`, so boot reprojects the profile without reverting it. | `equipment-profiles.js`, `onboarding.js`, `tests/equipment_profiles.test.js` | Resolved | H1 / ST5 |
 | S-F2 | **Fixed 24 Nov (#319):** both readers use `latestWeighIn`, which orders by date and still accepts legacy undated readings. Back-dated entries no longer become current. | `metrics/bodyweight.js`, `workout/set-mutations.js`, `settings.js`, `tests/bodyweight_current.test.js` | Resolved | H1 / ST5 |
-| S-F3 | "Week starts on" already splits the app: Home/History/bodyweight honour Sunday, every Progress analytic and `startOfProgramWeek` hardcodes Monday, and changing it refreshes nothing. | `js/analytics/weekly-aggregate.js`, `pulse.js`, `muscles.js`, `hybrid-balance.js`, `dates.js`; no refresh dispatch | **P1** | H1 / ST7; one calendar-week owner + tests |
+| S-F3 | **Fixed 27 Nov (ST7):** every calendar surface now resolves `settings.weekStartDay` through one rule (`calendarWeekStart`), the change repaints immediately, and the weekly-summary notification lands at the athlete's week end. Program weeks stay Monday plan indices. | `js/dates.js`, `js/analytics/weekly-aggregate.js`, `js/app.js`, `js/settings.js`, `tests/week_start.test.js` | Resolved | H1 / ST7; one calendar-week owner + tests |
 | S-F4 | **Fixed 24 Nov (#321):** the kg↔lb switch converts stored sets, bodyweight, goals, PR targets and prescriptions after a confirmation and a localStorage recovery copy. Canonical display-only units remain a later migration. | `metrics/weight-unit.js`, `settings.js`, `settings-nav-browser-check.mjs` | Resolved | H1 / ST6 |
 | S-F5 | **Fixed 24 Nov (#319):** `settings.notificationsEnabled` is the persisted master switch; a granted OS permission alone never arms reminders, and switching off cancels the native alarm. | `state.js`, `notifications.js`, `settings.js`, `tests/notifications.test.js` | Resolved | H1 / ST11 |
 
@@ -1464,8 +1464,10 @@ families without an action. Verify what already answers each question.
 | A8 | Relative strength | `profile-stats.js`, `athlete-profile.js`, `exercise-detail.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | DONE | The exercise drilldown states `X.XX× bodyweight (est. · <weight> on <date>)` for the big three, using the latest DATED weigh-in within 30 days and nothing else. The Profile band is labelled `est.` with the weigh-in note, and the undated per-session bodyweight fallback is gone (`_latestBodyWeight`/`_recentBodyWeight`). Tests: `relative_strength.test.js` + exercise-detail cases + the all-lifts browser check. |
 | A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `view-strength-entity.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | DONE | The hub's 30D/3M/1Y/All bar is the one range control and governs every strength band (sets, muscles, rep mix). The chosen window now carries into the e1RM drilldown — `30d→4w`, `3m→12w`, `1y→1y`, `all→all` — so a one-year question opens on a year instead of resetting to 12 weeks; week-level questions stay on Pulse, the selected-week Strength screen and the Volume Guide, and all-time lives in Records plus the drilldown's All. Every strength metric detail already offers 4 weeks through All time. Tests: `exercise_range_handoff` (mapping, unknown ids, vocabulary), the all-lifts browser check asserts the inherited range, and the hub check covers the band ranges. |
 
-**Data rules (unchanged):** Monday-based calendar weeks unless ST7 ships (then
-the setting); never `state.currentWeek` in analytics; archived weeks count;
+**Data rules (ST7 shipped):** calendar weeks follow `settings.weekStartDay`
+(Monday default, Sunday optional) through the one `calendarWeekStart` rule;
+program weeks are Monday plan indices and never move; never
+`state.currentWeek` in analytics; archived weeks count;
 merge multiple slots per date; holds and carries are volume 0 but count as
 working sets; estimates labelled; an empty range is a true zero.
 
@@ -1648,6 +1650,35 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-27 — H1 ST7: week start (G6) now governs every calendar surface.**
+  - One calendar-week rule: `calendarWeekStart(date, weekStartDay)` in
+    `js/dates.js`; `weekStartOf`/`weekKeyOf` in `weekly-aggregate.js` resolve
+    it through ONE projection that the app applies from
+    `settings.weekStartDay` on every `app:storage-loaded` (boot, import/restore
+    and the Settings change itself). The setting stays the owner; no analytics
+    module keeps its own Monday assumption.
+  - **Program weeks deliberately do NOT move.** `startOfProgramWeek` stays
+    Monday because a program week is a plan index over Monday-indexed slots
+    (and `weekSchedule` moves are keyed by that Monday). "Week 2 of 8" cannot
+    depend on a display preference.
+  - Fixed the surfaces that were only half-right: Home's rail now anchors its
+    seven dates on the real week start (it used to reorder labels over a Monday
+    week, so a Sunday-start rail began on the *next* Sunday); Pulse, the week
+    chart, strength-volume detail, the past-week recap and Strength's session
+    chips derive weekday NAMES from the date, since calendar-week records are
+    keyed by POSITION in the athlete's week.
+  - S-F3 closed: choosing Sunday now repaints the visible surface immediately
+    instead of at the next navigation, and the weekly-summary notification fires
+    at 18:00 on the LAST day of the athlete's week (Sunday, or Saturday for a
+    Sunday-start athlete).
+  - No data migration: dates are already stamped real calendar days, so the
+    setting only changes bucketing; switching back restores the Monday view
+    exactly. No stored field is rewritten.
+  - Tests: `week_start` (both starts, Sunday/Monday attribution, program anchor,
+    labels, wiring), `notifications` (next week-end instant), and the Progress
+    hub browser check now drives the REAL Settings control and asserts the Home
+    rail and Pulse range change without a reload.
+
 - **2026-11-26 — G9 complete: 157/157 core exercises reviewed.**
   - Finished the remaining 66 in three reviewed batches of 25/25/16:
     band/bodyweight push work, kettlebell and band rows/curls, the squat and
@@ -1745,21 +1776,6 @@ device timing it did not measure.
     states, a static wiring guard, and a real browser flow in
     `all-lifts-browser-check` (custom plan, two stalls, week 6 halves to 2 sets,
     Undo restores 4/Week 6).
-
-- **2026-11-26 — H5 slice 1: the block review.**
-  - Review → Month now leads with **Block Review**: the last four completed
-    calendar weeks (sessions, tonnage, per-lift best e1RM and all-time PRs vs
-    the previous block) plus the engine's own progress checks. Status is
-    descriptive — insufficient / on track / mixed / needs a look — with one
-    action to review the plan. No deload write yet.
-  - The window is calendar-based (four completed weeks ending the Sunday before
-    the current week); tonnage and e1RM use the same canonical models as the
-    rest of Progress.
-  - Tests: `block_review` (window, tonnage/e1RM deltas, PRs, warm-ups, status,
-    sparse/empty) and `block_review_view`; the Progress-hub browser check
-    asserts the Month block.
-  - Also in this PR: the README refresh (removed Quick start/renaming, updated
-    what it does, added what's next).
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

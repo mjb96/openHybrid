@@ -109,7 +109,7 @@ export function buildEnduranceModel(state, options = /** @type {any} */ ({})) {
     })
     : [];
 
-  // Twelve weeks of run/walk days, ending on the window's last Monday.
+  // Twelve weeks of run/walk days, ending on the window's last week start.
   const lastWeek = weekStartOf(range.endISO);
   const consistency = [];
   for (let i = 11; i >= 0; i--) {

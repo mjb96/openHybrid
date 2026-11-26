@@ -10,7 +10,7 @@
 // is merged per calendar date. It never reads `state.currentWeek` as a calendar
 // week — that is a program counter, not a date.
 // =============================================================================
-import { addDaysISO, indexSlotsByDate } from '../analytics/weekly-aggregate.js';
+import { addDaysISO, indexSlotsByDate, weekdayKeyOf } from '../analytics/weekly-aggregate.js';
 import { dayVolume, isValidWorkingSet } from '../set-utils.js';
 import { buildSessionMuscles } from './session-muscles.js';
 import { muscleHeatmapHTML } from './body-heatmap.js';
@@ -205,7 +205,9 @@ export function buildPastWeekView(state, options) {
 
   for (let i = 0; i < 7; i++) {
     const date = addDaysISO(startISO, i);
-    const day = DAY_KEYS[i];
+    // The label is the REAL weekday of the date; the index is only the position
+    // inside the athlete's calendar week.
+    const day = weekdayKeyOf(date) || DAY_KEYS[i];
     const slots = index.allByDate?.get(date) || [];
     let daySessions = 0;
     for (const slot of slots) {

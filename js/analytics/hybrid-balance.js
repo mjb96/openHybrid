@@ -8,7 +8,7 @@
 // work split across both disciplines? Tonnage (kg) and distance (km) cannot be
 // added, so the only honest cross-modal currency is sRPE — RPE × minutes. That
 // day formula already has ONE owner (js/metrics/training-load.js); this module
-// only buckets it into Monday-based calendar weeks and classifies the split.
+// only buckets it into the athlete's calendar weeks and classifies the split.
 //
 // It never reads `state.currentWeek`: a training WEEK is not a calendar week.
 // Archived activations and one-off sessions count through the canonical dated

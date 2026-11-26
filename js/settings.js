@@ -1221,6 +1221,10 @@ export function setWeekStartDay(day) {
   saveStateToLocalStorage(true);
   _setToggleActive('[data-action="set-week-start"]', `[data-day="${day}"]`);
   showToast(`Week starts on ${day === 'mon' ? 'Monday' : 'Sunday'}`);
+  // Every calendar surface (Home rail, Progress analytics, History, "this week"
+  // totals) is derived from this preference, so the visible one must repaint
+  // now rather than on the next unrelated navigation (S-F3).
+  document.dispatchEvent(new Event('app:storage-loaded'));
 }
 
 export function setFastingDefault(hours) {

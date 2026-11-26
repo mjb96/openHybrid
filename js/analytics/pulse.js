@@ -14,7 +14,7 @@
 // That rule is owned by §7.2 of the plan and asserted in the tests.
 // =============================================================================
 import { addDaysISO, formatWeekRange, localDayKey } from '../dates.js';
-import { DAY_KEYS, indexSlotsByDate, loggedSessionsByDate, weekStartOf } from './weekly-aggregate.js';
+import { DAY_KEYS, indexSlotsByDate, loggedSessionsByDate, weekStartOf, weekdayKeyOf } from './weekly-aggregate.js';
 // The classifier the Today card, coach and cockpit use: one reading of "is this
 // a planned training day", so Pulse cannot disagree with them.
 import { classifyPlannedSession } from '../workout/completion-policy.js';
@@ -55,7 +55,7 @@ function sessionsIn(counts, startISO, days) {
 }
 
 /**
- * Consecutive Monday-weeks with at least one session, ending at `weekStart`.
+ * Consecutive calendar weeks with at least one session, ending at `weekStart`.
  * When the current week is untrained the streak still counts the run that ended
  * last week — it is not "lost" until the week closes — and `atRisk` says so.
  *
@@ -121,8 +121,11 @@ export function buildPulseModel(state, options = {}) {
   const weekLifts = {};
 
   /** @type {PulseDay[]} */
-  const days = DAY_KEYS.map((day, offset) => {
+  const days = DAY_KEYS.map((_, offset) => {
     const dateISO = /** @type {string} */ (addDaysISO(weekStart, offset));
+    // The weekday NAME comes from the real date: the offset is a position in the
+    // athlete's week, which starts on Sunday when that is their preference.
+    const day = weekdayKeyOf(dateISO) || DAY_KEYS[offset];
     const slots = index.allByDate.get(dateISO) || [];
 
     let workingSets = 0;
