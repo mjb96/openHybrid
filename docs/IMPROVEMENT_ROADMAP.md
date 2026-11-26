@@ -1456,7 +1456,7 @@ families without an action. Verify what already answers each question.
 | A1 | Stall detection | `engine.js`, `templates.js`, `analytics/stall-list.js`, `views/view-exercises.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | DONE | The cockpit already explains its PROGRESS CHECK; the Main exercises band now lists the same fact for the ACTIVE programme. `buildStallList` asks `computeDiagnosticForLift` per programmed lift (no re-derived rule), so each entry carries the engine’s evidence sentence and target; a row opens the exercise drilldown. The list is empty without a programme and is capped with an honest “+N more”. Tests: `stall_list` + the exercises view; the all-lifts browser check asserts the block. |
 | A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js`, `analytics/muscles.js` | Weekly sets per muscle against the volume guide with under/over status and one action | DONE | The range view states the focused muscle's **weekly average** against the typical band (`MEV–MAV`), with the shared `classifyVolume` label (detraining/maintenance/growth/optimal/overreaching) and one action: **Review volume guide**. Copy stays factual — population references are never turned into “add N sets”. The current-week Volume Guide and its target band are unchanged. Tests: `muscles_model` average/landmarks and `muscles_view` focused block; the Progress-hub browser check asserts both. |
 | A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js`, `views/view-strength-entity.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | DONE | The exercise drilldown offers 4 weeks / 12 weeks / 6 months / 1 year / all time, and states the e1RM **rate of change per week** for the selected span (first→latest, never fabricated from one point or for holds/carries). ROI and block PR stay as they were; the program-week-indexed ROI is a separate metric, not this chart. `exercise-detail` tests pin the boundaries and the rate; the all-lifts browser check drives the range control. |
-| A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
+| A4 | Rep-range and intensity mix | `analytics/intensity-mix.js`, `views/view-exercises.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | DONE | The Main exercises band shows stacked rep-range (1–3 / 4–6 / 7–12 / 13+) and effort (RIR 0–1 / 2–3 / 4+) shares, with the unrated-set count and a goal line that states the observed mix without prescribing. Warm-ups are excluded, holds/carries are excluded from rep ranges but keep a recorded RIR, shares add to 100 by largest remainder, and under five rep sets no mix is claimed. `tests/intensity_mix.test.js` + the exercises view; the all-lifts browser check asserts the block. |
 | A5 | Session vs last time | `session-recap.js`, `workout/session-comparison.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | DONE | The recap Summary now carries one “vs last time” block: volume (and %), set delta, best-e1RM delta and the session’s PR count. Identity is the routine when the session came from the library, otherwise the same programmed day; only completed working sets count, a future/empty session is never the baseline, and runs are not compared here. `tests/session_comparison.test.js` + the recap test; verified in the History detail. |
 | A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
 | A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js`, `views/view-muscles.js` | Sessions per muscle per week with the same period comparison as sets | DONE | A session is a training DATE: one compound day trains chest and triceps once each, not once per lift or per set. The model exposes `sessions`, `previousSessions` and `sessionsDelta` per muscle and `sessionsByMuscle` per bucket; the focused muscle states `N sessions (+/− vs previous)` and both data tables carry a Sessions column. Tests: `muscles_model` frequency/previous-window cases; the Progress-hub browser check asserts the focused meta. |
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A4: rep-range and effort mix.**
+  - New `analytics/intensity-mix.js` reports the share of completed working sets
+    by rep range (1–3 / 4–6 / 7–12 / 13+) and by recorded RIR (0–1 / 2–3 / 4+,
+    with unrated counted separately). Holds and carries are not rep sets but
+    keep their effort rating; warm-ups never count.
+  - The exercises band shows both stacked bars with exact shares and a factual
+    goal line (strength / hybrid / endurance) — the observed mix, never a
+    prescription. Under five rep sets the mix is withheld.
+  - Tests: `tests/intensity_mix.test.js` and the exercises view; the all-lifts
+    browser check asserts the rendered block.
+
 - **2026-11-26 — H4 A1: the Progress checks list.**
   - Main exercises now lists the engine's PROGRESS CHECKs for the active
     programme: `buildStallList` calls `computeDiagnosticForLift` for each
@@ -1721,16 +1732,6 @@ device timing it did not measure.
     exercise drilldown. PG5 unblocks HM3's link target.
   - Tests: `tests/all_lifts.test.js`; `scripts/all-lifts-browser-check.mjs`
     (55 checks).
-
-- **2026-11-26 — H3 LG2: logging fields clear the on-screen keyboard.**
-  - The visible viewport is tracked once for the app lifetime; the per-set
-    sheet is capped by `min(88vh, var(--visible-viewport-height) - 24px)`.
-  - A delegated focus handler sets `enterkeyhint="done"` on numeric fields and
-    scrolls the focused field above the keyboard, preferring the nearest
-    scrollable ancestor so a sheet's own scroll is not stolen.
-  - Tests: `revealDelta` maths and the enterkeyhint hook in
-    `visible_viewport.test.js`; `lg2-keyboard-browser-check` shrinks a real
-    Chromium viewport and proves the field and sheet stay visible.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

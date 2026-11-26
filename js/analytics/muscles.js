@@ -20,6 +20,7 @@ import { addDaysISO, daysBetween, formatDayMonthShort } from '../dates.js';
 import { MUSCLE_LABELS, VOLUME_LANDMARKS, classifyVolume } from './calculations/volume-landmarks.js';
 import { MUSCLE_GROUPS, muscleCreditsForExercise } from '../exercises/catalog.js';
 import { buildSessionMuscles } from '../home/session-muscles.js';
+import { allocatePercentages } from './percent.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
 import { indexSlotsByDate, weekStartOf } from './weekly-aggregate.js';
 import { inRange } from './ranges.js';
@@ -235,22 +236,6 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
  * Percentages that sum to exactly 100 (largest remainder), one decimal.
  * @param {Record<string, number>} values @param {number} total
  */
-function allocatePercentages(values, total) {
-  /** @type {Record<string, number>} */
-  const out = {};
-  if (!(total > 0)) return out;
-  const entries = Object.entries(values).map(([key, value]) => {
-    const exact = (value / total) * 1000; // tenths of a percent
-    return { key, floor: Math.floor(exact), remainder: exact - Math.floor(exact) };
-  });
-  let assigned = entries.reduce((sum, entry) => sum + entry.floor, 0);
-  const target = 1000;
-  entries.sort((a, b) => b.remainder - a.remainder);
-  for (let i = 0; assigned < target && i < entries.length; i++, assigned++) entries[i].floor += 1;
-  for (const entry of entries) out[entry.key] = entry.floor / 10;
-  return out;
-}
-
 /** Every dated day's lifts, deduplicated by the shared slot index. */
 function collectDatedLifts(state) {
   /** @type {Map<string, Record<string, any[]>>} */
