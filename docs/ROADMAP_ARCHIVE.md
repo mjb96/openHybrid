@@ -6052,3 +6052,14 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/stall_list.test.js` (flat/improving/no-programme) and the
     exercises view; the all-lifts browser check asserts the rendered block.
 
+- **2026-11-26 — H4 A4: rep-range and effort mix.**
+  - New `analytics/intensity-mix.js` reports the share of completed working sets
+    by rep range (1–3 / 4–6 / 7–12 / 13+) and by recorded RIR (0–1 / 2–3 / 4+,
+    with unrated counted separately). Holds and carries are not rep sets but
+    keep their effort rating; warm-ups never count.
+  - The exercises band shows both stacked bars with exact shares and a factual
+    goal line (strength / hybrid / endurance) — the observed mix, never a
+    prescription. Under five rep sets the mix is withheld.
+  - Tests: `tests/intensity_mix.test.js` and the exercises view; the all-lifts
+    browser check asserts the rendered block.
+

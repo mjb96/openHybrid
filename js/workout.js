@@ -21,6 +21,7 @@ import {
   isValidWorkingSet, parseDuration, setModeOf, setSummary, setVolume,
 } from './set-utils.js';
 import { effectiveSetMode } from './workout/set-shape.js';
+import { perSideRepsLabel } from './workout/load-basis.js';
 import { handleSetSheetAction, openSetSheet } from './workout/set-sheet.js';
 import { handlePlateSheetAction } from './workout/plate-sheet.js';
 import { triggerRestTimerEngine, adjustRestDuration, moveRestTimerToActiveExercise, dismissRestTimer, stopAndResetWorkoutTimer, getWorkoutElapsedSeconds, startWorkoutTimer, bindWorkoutTimerSession, getRestTiers } from './timers.js';
@@ -2594,6 +2595,11 @@ document.addEventListener('input', (e) => {
   // number is still being typed. The verdict is re-taken when they tick.
   if (target.classList?.contains('input-weight-node') || target.classList?.contains('input-set-value-node')) {
     setRowMessage(target.closest?.('.cockpit-set-row'), null);
+  }
+  // G2: a unilateral row states its per-side split as the total is typed.
+  if (target.classList?.contains('input-reps-node')) {
+    const hint = target.closest?.('.cockpit-set-row')?.querySelector('[data-per-side]');
+    if (hint) hint.textContent = perSideRepsLabel(target.value) || 'total reps';
   }
   // The ghost of the next set follows this one, so the athlete sees the load
   // they just used rather than the original prescription.

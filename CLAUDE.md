@@ -467,6 +467,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   Equipment switches, adds, renames and deletes profiles (the last cannot be
   deleted). v6→v7 seeds the optional inventory shape; v5→v6 seeded the first
   profile from the legacy kit.
+- Home quick actions: exactly three — **Empty workout · Weight · History**.
+  Run lives in Train's Quick start (the surface that owns starting an activity),
+  and the module switches hide its Run/Walk offers. HM5's "log a past session"
+  waits for G3; do not add a fourth tile.
+- Per-side reps (G2): a unilateral lift's row states the split of the logged
+  TOTAL (`perSideRepsLabel`: 8 → 4 per side, odd 9 → 4.5 per side honestly). The
+  stored `r`, history and 1RM keep the total — display only, no schema change,
+  and the plan's prescription is never re-interpreted.
 - Home decision surface: `index.html` renders ONE week surface
   (`#homeWeekStrip`) containing the optional seven-day rail
   (`js/home/week-strip.js` → `#homeWeekDays`, `data-home-card="weekStrip"`) and

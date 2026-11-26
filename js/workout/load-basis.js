@@ -30,6 +30,18 @@ export function defaultBasisForExercise(exerciseName) {
   return isUnilateralExercise(exerciseName) ? 'per-side' : 'each';
 }
 
+/**
+ * The per-side split shown beside a logged rep total. History and 1RM keep
+ * meaning the TOTAL; this is a display-only reading of it.
+ * @param {unknown} value total reps
+ */
+export function perSideRepsLabel(value) {
+  const reps = parseInt(String(value ?? ''), 10);
+  if (!(reps > 0)) return '';
+  const half = reps / 2;
+  return `${Number.isInteger(half) ? half : String(Math.round(half * 10) / 10)} per side`;
+}
+
 /** Normalise a stored/selected basis. */
 export function normalizeBasis(basis) {
   return basis === 'each' || basis === 'per-side' || basis === 'total' ? basis : 'total';
