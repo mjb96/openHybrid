@@ -1162,7 +1162,7 @@ export function detectSetPR(parentRow, liftName, setIndex, candidate, appState, 
     storedSet.prKind = kind;
   }
   if (!wasPR && announce) {
-    if (appState?.settings?.haptics !== false) hapticSuccess();
+    if (_getState?.()?.settings?.haptics !== false) hapticSuccess();
     showToast(kind === 'e1rm'
       ? `🏆 New PR — ${liftName}!`
       : `🏆 ${prKindLabel(kind)} — ${liftName}!`);
@@ -1329,7 +1329,7 @@ export function executeOneTapQuickLog(labelNode, liftName, sIdx, options = {}) {
   _ensureWorkoutDateStamp(appState, wk, selectedDay);
 
   parentRow.classList.add('is-complete');
-  if (appState?.settings?.haptics !== false) hapticTick();
+  if (_getState?.()?.settings?.haptics !== false) hapticTick();
 
   try {
     const gymRpeEl = document.getElementById('sessionGymRpeCockpit');
@@ -1422,7 +1422,7 @@ export function logAllAtTarget(liftName) {
         stored.type || '', planRest, setRpe,
       );
     }
-    if (appState?.settings?.haptics !== false) hapticSuccess();
+    if (_getState?.()?.settings?.haptics !== false) hapticSuccess();
     showToast(`Logged ${logged} set${logged > 1 ? 's' : ''} at target ✓`);
   }
 }
@@ -1758,7 +1758,7 @@ export function toggleGymCheckLoggingState(checkboxNode) {
       }
     }
 
-    if (appState?.settings?.haptics !== false) hapticTick();
+    if (_getState?.()?.settings?.haptics !== false) hapticTick();
     // Auto-start only after the set has valid current-session values. A bounced
     // blank check must not create a running timer for work that was never logged.
     try { startWorkoutTimer(workoutSessionKey(lifecycleState, lifecycleWeek, lifecycleDay)); } catch (_) {}

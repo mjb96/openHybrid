@@ -15,7 +15,7 @@ test('Settings applies text size on change and at boot', () => {
 
 test('haptics are off-switchable without touching the timer or logging', () => {
   const workout = read('js/workout.js');
-  assert.equal((workout.match(/settings\?\.haptics !== false/g) || []).length, 4);
+  assert.equal((workout.match(/_getState\?\.\(\)\?\.settings\?\.haptics !== false/g) || []).length, 4);
   // The gated call is still present on both tick paths and both success paths.
   assert.equal((workout.match(/hapticTick\(\)/g) || []).length, 2);
   assert.equal((workout.match(/hapticSuccess\(\)/g) || []).length, 2);
