@@ -63,6 +63,11 @@ try {
     text: document.querySelector('#band-exercises .pg-stalls')?.textContent?.replace(/\s+/g, ' ').trim() || '',
   }));
   check(stalls.shown && /Back Squat/.test(stalls.text), `the band lists the stalled lift (${stalls.text.slice(0, 80)})`);
+  const mix = await page.evaluate(() => ({
+    shown: !!document.querySelector('#band-exercises .pg-mix'),
+    text: document.querySelector('#band-exercises .pg-mix')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+  }));
+  check(mix.shown && /Rep range/.test(mix.text), `the band states the rep-range mix (${mix.text.slice(0, 80)})`);
 
   await page.evaluate(() => document.querySelector('[data-action="open-all-lifts"]')?.click());
   await page.waitForTimeout(400);

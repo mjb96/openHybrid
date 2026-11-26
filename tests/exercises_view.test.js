@@ -92,3 +92,24 @@ test('a stall list renders above the rows with the engine message (A1)', () => {
   const clean = renderExercises({ ...withStalls, stalls: [] });
   assert.doesNotMatch(clean, /class="pg-stalls"/);
 });
+
+test('the rep-range and effort mix renders with honest shares (A4)', () => {
+  const withMix = model();
+  withMix.intensity = {
+    hasRepMix: true, hasEffortMix: false, unratedSets: 0,
+    repBands: [
+      { key: 'max', label: '1–3', count: 1, sharePct: 20 },
+      { key: 'strength', label: '4–6', count: 2, sharePct: 30 },
+      { key: 'hypertrophy', label: '7–12', count: 2, sharePct: 50 },
+      { key: 'endurance', label: '13+', count: 0, sharePct: 0 },
+    ],
+    effortBands: [],
+    goalFit: { tone: 'ok', text: 'Most working sets (50%) sit in the 1–6 strength range.' },
+  };
+  const html = renderExercises(withMix);
+  assert.match(html, /class="pg-mix"/);
+  assert.match(html, /Rep range/);
+  assert.match(html, /7–12/);
+  assert.match(html, /strength range/);
+  assert.doesNotMatch(renderExercises({ ...withMix, intensity: { hasRepMix: false, hasEffortMix: false } }), /class="pg-mix"/);
+});

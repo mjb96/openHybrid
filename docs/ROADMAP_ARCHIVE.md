@@ -5949,3 +5949,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/target_why.test.js` (message, rationale, baseline, program
     fallback, render/dedup); verified in the real cockpit.
 
+- **2026-11-26 — H3 LG2: logging fields clear the on-screen keyboard.**
+  - The visible viewport is tracked once for the app lifetime; the per-set
+    sheet is capped by `min(88vh, var(--visible-viewport-height) - 24px)`.
+  - A delegated focus handler sets `enterkeyhint="done"` on numeric fields and
+    scrolls the focused field above the keyboard, preferring the nearest
+    scrollable ancestor so a sheet's own scroll is not stolen.
+  - Tests: `revealDelta` maths and the enterkeyhint hook in
+    `visible_viewport.test.js`; `lg2-keyboard-browser-check` shrinks a real
+    Chromium viewport and proves the field and sheet stay visible.
+

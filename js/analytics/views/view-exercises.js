@@ -12,6 +12,23 @@ import { esc } from './screen-kit.js';
 import { formatDayMonthShort } from '../../dates.js';
 import { setAllLiftsModel } from '../all-lifts-sheet.js';
 
+const MIX_COLORS = ['var(--data-1)', 'var(--data-2)', 'var(--data-3)', 'var(--data-4)'];
+
+/** Compact stacked bars for the rep-range and effort mix (A4). */
+function intensityHTML(mix) {
+  if (!mix || (!mix.hasRepMix && !mix.hasEffortMix)) return '';
+  const stacked = (bands, colors) => `<div class="pg-mix__bar" role="img" aria-label="${esc(bands.map((b) => `${b.label}: ${b.sharePct}%`).join(', '))}">
+    ${bands.filter((band) => band.count > 0).map((band) => `<span style="width:${band.sharePct}%;background:${colors[bands.indexOf(band) % colors.length]}"></span>`).join('')}
+  </div>`;
+  const legend = (bands, colors) => `<ul class="pg-mix__legend">${bands.filter((band) => band.count > 0).map((band) => `
+    <li><span class="pg-mix__dot" style="background:${colors[bands.indexOf(band) % colors.length]}" aria-hidden="true"></span>${esc(band.label)} <b>${band.sharePct}%</b></li>`).join('')}</ul>`;
+  return `<section class="pg-mix" aria-label="Rep-range and effort mix">
+    ${mix.hasRepMix ? `<p class="pg-mix__label">Rep range</p>${stacked(mix.repBands, MIX_COLORS)}${legend(mix.repBands, MIX_COLORS)}` : ''}
+    ${mix.hasEffortMix ? `<p class="pg-mix__label pg-mix__label--gap">Effort${mix.unratedSets > 0 ? ` · ${mix.unratedSets} set${mix.unratedSets === 1 ? '' : 's'} unrated` : ''}</p>${stacked(mix.effortBands, ['var(--data-4)', 'var(--data-3)', 'var(--data-2)'])}${legend(mix.effortBands, ['var(--data-4)', 'var(--data-3)', 'var(--data-2)'])}` : ''}
+    ${mix.goalFit ? `<p class="pg-mix__fit pg-mix__fit--${esc(mix.goalFit.tone)}">${esc(mix.goalFit.text)}</p>` : ''}
+  </section>`;
+}
+
 const COLORS = Object.freeze({
   up: 'var(--color-green, #10b981)',
   down: 'var(--color-amber, #f59e0b)',
@@ -129,6 +146,7 @@ export function renderExercises(model, options = {}) {
   const body = `
     ${stallsHTML}
     <ul class="pg-ex-list">${rows}</ul>
+    ${intensityHTML(model.intensity)}
     ${actions}
     ${dataTableDisclosure(
       ['Exercise', 'Sessions', `Best e1RM (${model.unit})`, 'Change'],
