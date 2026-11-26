@@ -55,6 +55,8 @@ import { buildTrainLanding } from './train/train-landing.js';
 import { renderTrainLanding } from './train/view-train-landing.js';
 import { initAnalytics, renderAnalytics, saveThresholdPace, saveBodyweightGoal, setBodyweightRangeAction, setAnalyticsContext, shareScoreCard } from './analytics.js';
 import { openAllLiftsSheet } from './analytics/all-lifts-sheet.js';
+import { applyBlockDeload } from './analytics/block-deload.js';
+import { renderBlockReview } from './analytics/views/view-block-review.js';
 import { openRecordsSheet } from './analytics/records-sheet.js';
 import { showMeasurementTrend } from './analytics/views/view-bodyweight.js';
 import { initBodyweightSheet, openBodyweightSheet, closeBodyweightSheet, stepBodyweight, saveBodyweightSheet, deleteBodyweightEntry } from './bodyweight-sheet.js';
@@ -1874,6 +1876,19 @@ document.addEventListener('click', (e) => {
   
   // Settings
   else if (action === 'open-settings') openSettings(target.getAttribute('data-page') || undefined, target.getAttribute('data-anchor') || '');
+  else if (action === 'apply-block-deload') {
+    // H5: the block review's one plan-changing action. Only a personal copy is
+    // offered the control; the plan snapshot + Undo come from the shared bar.
+    const week = parseInt(target.getAttribute('data-week'), 10);
+    const program = getProgramById(appState.activeProgramId);
+    const applied = applyBlockDeload(program, week, {
+      save: () => saveStateToLocalStorage(),
+      // Repaint the block only: a full analytics render re-enters Review on the
+      // Week tab and would hide the Month review the athlete just acted on.
+      rerender: () => renderBlockReview(appState),
+    });
+    if (!applied) showToast('That week could not be changed.', true);
+  }
   else if (action === 'open-settings-profile') openSettings('profile');
   else if (action === 'back-to-settings') backToSettings();
   else if (action === 'close-settings') closeSettings();

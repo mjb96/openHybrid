@@ -111,3 +111,31 @@ test('an empty history is a true zero, not an error', () => {
   assert.equal(model.status, 'insufficient');
   assert.deepEqual(model.lifts, []);
 });
+
+test('the deload is eligible only on stalled evidence with a next week', () => {
+  const state = { ...blockState(), currentWeek: '4' };
+  const program = {
+    id: 'custom_1',
+    totalWeeks: 8,
+    weeklyVolModifiers: { '5': { sets: 4, reps: 5, intensityLabel: 'Week 5' } },
+  };
+  const checks = [
+    { lift: 'Back Squat', message: 'stalled', target: '4 × 5' },
+    { lift: 'Bench Press', message: 'stalled', target: '4 × 5' },
+  ];
+  const stalled = buildBlockReview(state, { todayISO: TODAY, program, checks });
+  assert.equal(stalled.status, 'stalled');
+  assert.equal(stalled.deloadEligible, true);
+  assert.equal(stalled.nextWeek, 5);
+  assert.equal(stalled.nextWeekIsDeload, false);
+
+  const onTrack = buildBlockReview(state, { todayISO: TODAY, program, checks: [] });
+  assert.equal(onTrack.deloadEligible, false, 'evidence is required');
+
+  const lastWeek = buildBlockReview({ ...state, currentWeek: '8' }, { todayISO: TODAY, program, checks });
+  assert.equal(lastWeek.nextWeek, null);
+  assert.equal(lastWeek.deloadEligible, false, 'there is no next week to change');
+
+  const planned = { ...program, weeklyVolModifiers: { '5': { sets: 4, intensityLabel: 'Deload week' } } };
+  assert.equal(buildBlockReview(state, { todayISO: TODAY, program: planned, checks }).nextWeekIsDeload, true);
+});

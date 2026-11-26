@@ -24,8 +24,22 @@ function deltaText(pct) {
   return `${sign}${pct}%`;
 }
 
-/** @param {any} model @param {{ unit?: string }} [options] */
-export function blockReviewHTML(model, { unit = 'kg' } = {}) {
+/** The one action, and its evidence gate. */
+function actionHTML(model, deload) {
+  if (!model.deloadEligible || !model.nextWeek) {
+    return '<button type="button" class="pg-block__action" data-action="switch-tab" data-target="program">Review the plan →</button>';
+  }
+  if (model.nextWeekIsDeload) {
+    return `<p class="pg-block__rec">Week ${model.nextWeek} is already a deload.</p>`;
+  }
+  if (deload?.editable) {
+    return `<button type="button" class="pg-block__action pg-block__action--deload" data-action="apply-block-deload" data-week="${model.nextWeek}">Deload week ${model.nextWeek}</button>`;
+  }
+  return `<button type="button" class="pg-block__action" data-action="switch-tab" data-target="program">Customize to deload →</button>`;
+}
+
+/** @param {any} model @param {{ unit?: string, deload?: { editable?: boolean } }} [options] */
+export function blockReviewHTML(model, { unit = 'kg', deload = null } = {}) {
   if (!model) return '';
   const status = STATUS[model.status] || STATUS.insufficient;
   const volume = formatVolume(model.volumeKg, unit);
@@ -56,7 +70,7 @@ export function blockReviewHTML(model, { unit = 'kg' } = {}) {
     ${lifts ? `<ul class="pg-block__lifts" aria-label="Top lifts this block">${lifts}</ul>` : ''}
     ${checks ? `<ul class="pg-block__checks" aria-label="Progress checks">${checks}</ul>` : ''}
     <p class="pg-block__rec">${esc(model.recommendation)}</p>
-    <button type="button" class="pg-block__action" data-action="switch-tab" data-target="program">Review the plan →</button>
+    ${actionHTML(model, deload)}
   </section>`;
 }
 
@@ -70,8 +84,13 @@ export function renderBlockReview(state) {
   try {
     const program = getProgramById(state?.activeProgramId);
     const model = buildBlockReview(state, { program });
+    const editable = Array.isArray(state?.customPrograms)
+      && state.customPrograms.some((entry) => entry?.id === program?.id);
     host.innerHTML = model.hasData
-      ? `<h2 class="section-header mt-2">Block Review</h2>${blockReviewHTML(model, { unit: weightUnitOf(state) })}`
+      ? `<h2 class="section-header mt-2">Block Review</h2>${blockReviewHTML(model, {
+        unit: weightUnitOf(state),
+        deload: { editable },
+      })}`
       : '<h2 class="section-header mt-2">Block Review</h2><p class="pg-band__sub">Finish a few strength sessions and the last four weeks will be reviewed here.</p>';
     host.hidden = false;
     return true;

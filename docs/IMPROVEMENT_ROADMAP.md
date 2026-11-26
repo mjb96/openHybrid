@@ -1492,11 +1492,14 @@ inventories and the finding register rather than a redundant test.
 G11 / S2: progressive-overload suggestions and a periodic progress report from
 logged performance, with deloads and Undo. Builds on A1, A3, A4 and G10.
 
-**Slice 1 landed (26 Nov 2026):** Review → Month → **Block Review** over the last
-four completed calendar weeks — sessions, tonnage and per-lift e1RM change vs
-the previous block, all-time PR flags and the engine's own progress checks.
-Descriptive status only; the evidence-gated deload action (builder snapshot +
-Undo) is slice 2.
+**Done (26 Nov 2026):** Review → Month → **Block Review** over the last four
+completed calendar weeks — sessions, tonnage and per-lift e1RM change vs the
+previous block, all-time PR flags and the engine's own progress checks.
+**Slice 2** adds one plan-changing action on `stalled` evidence (2+ engine
+checks): **Deload week N** targets the next program week, halves its sets via
+`markWeekDeload`, snapshots the plan and offers the shared Undo. It is offered
+only on a personal copy; a shared catalogue plan gets “Customize to deload”.
+No new engine rule and no background nagging.
 
 ### 18.2 Running matrix (H6, DEFERRED — owner not running)
 
@@ -1635,6 +1638,20 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H5 slice 2: the evidence-gated deload.**
+  - On `stalled` evidence (two or more engine progress checks), the Block Review
+    offers **Deload week N** for the next program week: `markWeekDeload` halves
+    its sets and labels it, the plan is snapshotted with `captureProgramDraft`,
+    and the shared Undo bar restores it exactly.
+  - Only a personal plan (`state.customPrograms`) gets the write; a shared
+    catalogue plan offers “Customize to deload” and opens Plans. The repaint is
+    scoped to the block so the Month tab is not lost.
+  - Tests: `block_deload` (apply/undo exactness, planned deloads are never
+    halved twice, invalid weeks), the model's eligibility cases, the three view
+    states, a static wiring guard, and a real browser flow in
+    `all-lifts-browser-check` (custom plan, two stalls, week 6 halves to 2 sets,
+    Undo restores 4/Week 6).
+
 - **2026-11-26 — H5 slice 1: the block review.**
   - Review → Month now leads with **Block Review**: the last four completed
     calendar weeks (sessions, tonnage, per-lift best e1RM and all-time PRs vs
@@ -1742,15 +1759,6 @@ device timing it did not measure.
     “+N more” rather than an endless band.
   - Tests: `tests/stall_list.test.js` (flat/improving/no-programme) and the
     exercises view; the all-lifts browser check asserts the rendered block.
-
-- **2026-11-26 — H4 A2: volume against the typical band in the range view.**
-  - The focused muscle states its **weekly average** over the selected range and
-    the typical `MEV–MAV` band, classified by the shared `classifyVolume`; the
-    current-week Volume Guide keeps its own week view.
-  - One action: **Review volume guide**. Copy stays factual — the population
-    band is a reference, never an instruction to add sets.
-  - Tests: `muscles_model` weekly average/landmarks and `muscles_view` focused
-    block; the Progress-hub browser check asserts the reference and action.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

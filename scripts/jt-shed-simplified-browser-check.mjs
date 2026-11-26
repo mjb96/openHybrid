@@ -131,7 +131,13 @@ async function previewRows(day = 'mon') {
     };
   }));
   await page.click('#wpmSheet .sheet-close-btn[data-action="close-day-preview"]');
-  await page.waitForSelector('#wpmSheet:not(.active)', { timeout: 3000 });
+  // A closed sheet loses `.active` and is hidden, so waiting for the selector
+  // as VISIBLE was a race. Wait for the class to leave instead.
+  await page.waitForFunction(
+    () => !document.getElementById('wpmSheet')?.classList.contains('active'),
+    null,
+    { timeout: 3000 },
+  );
   return rows;
 }
 

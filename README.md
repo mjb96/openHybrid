@@ -39,8 +39,11 @@ the same training picture.
   them; each band's detail carries the exact rows and tables, and an
   always-available year heatmap shades every day by measured time.
 - **Reviews** — one Week | Month | Year surface: the weekly story (volume,
-  adherence, PRs, next-week focus), the Training Report and consistency log, and
-  a seasonal Year in Review alongside the year calendar.
+  adherence, PRs, next-week focus), a **Block Review** of the last four completed
+  weeks (sessions, tonnage, per-lift e1RM change, PRs and progress checks) with
+  one evidence-gated **Deload week** action and Undo on a personal plan, the
+  Training Report and consistency log, and a seasonal Year in Review alongside
+  the year calendar.
 - **Running** — manual entries, native GPS tracking with a route map, splits,
   FIT-file import and run analytics. Runs, walks and strength are counted
   separately and attributed to the calendar day they happened.
@@ -96,10 +99,6 @@ the same training picture.
 The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
 Logging → Progress**. The short version:
 
-- **H5 — strength coaching.** The **Block Review** now ships in Review → Month:
-  the last four completed weeks (sessions, tonnage, per-lift e1RM change, PRs
-  and the engine's own progress checks). The evidence-gated, undoable deload
-  action follows.
 - **H6 — running completeness.** Verify the existing run surface, then add best
   efforts (fastest 1 km/1 mi/5 km/10 km) and a labelled race-time estimate from
   data the app already holds. Intervals, zones and efficiency follow when
