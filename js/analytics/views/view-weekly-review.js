@@ -14,6 +14,7 @@ import { shareSummaryCard, weeklyReviewShareRows } from '../share-card.js';
 import { statCard } from '../charts/chart-primitives.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
 import { renderYearInReview } from './view-year-review.js';
+import { renderYearHeatmap } from './view-year-heatmap.js';
 import { renderProgressAnalytics, renderStreakDetail, renderGoalProgressDetail } from './view-progress.js';
 import { screenTabBar, mountScreenTabs } from './screen-kit.js';
 import { getSelectedWeekStart } from '../week-nav.js';
@@ -82,6 +83,8 @@ export function renderReview(data, getState, getDays, onTabChange) {
           </table>
         </div>
       </article>
+
+      <div id="yearHeatmapContainer"></div>
     `;
     renderWeeklyReview(review, state);
     // Seasonal (December/January) and independent of the selected week: the
@@ -92,6 +95,18 @@ export function renderReview(data, getState, getDays, onTabChange) {
     } catch (error) {
       console.error('Year in Review failed to render', error);
       const container = document.getElementById('yearReviewContainer');
+      if (container) {
+        container.hidden = true;
+        container.innerHTML = '';
+      }
+    }
+    // The year calendar is always available — unlike Year in Review it is not
+    // seasonal — so it renders independently and cannot blank the rest of Stats.
+    try {
+      renderYearHeatmap(state);
+    } catch (error) {
+      console.error('Year heatmap failed to render', error);
+      const container = document.getElementById('yearHeatmapContainer');
       if (container) {
         container.hidden = true;
         container.innerHTML = '';

@@ -5959,3 +5959,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     `visible_viewport.test.js`; `lg2-keyboard-browser-check` shrinks a real
     Chromium viewport and proves the field and sheet stay visible.
 
+- **2026-11-26 — H4 PG5: the searchable all-lifts index.**
+  - The Main exercises band's “All N lifts” now opens a searchable sheet built
+    from the SAME rows the band already produced (no metric re-derived): name,
+    sessions, best e1RM, window change, last performed, PR and a flat flag.
+  - The flat flag is a window fact — three or more sessions with no e1RM
+    improvement in the selected range — and is deliberately distinct from the
+    engine's per-program PROGRESS CHECK stall.
+  - Search filters live with an honest `N of M` count; a row opens the existing
+    exercise drilldown. PG5 unblocks HM3's link target.
+  - Tests: `tests/all_lifts.test.js`; `scripts/all-lifts-browser-check.mjs`
+    (55 checks).
+
