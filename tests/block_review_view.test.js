@@ -63,3 +63,26 @@ test('one action opens the plan; no deload command exists yet', () => {
 test('a missing model renders nothing', () => {
   assert.equal(blockReviewHTML(null), '');
 });
+
+test('a stalled review offers the deload only on an editable plan', () => {
+  const checks = [
+    { lift: 'Back Squat', message: 'Back Squat has not improved.', target: '4 × 5' },
+    { lift: 'Bench Press', message: 'Bench Press has not improved.', target: '4 × 5' },
+  ];
+  const stalled = { ...modelWith(checks), deloadEligible: true, nextWeek: 5, nextWeekIsDeload: false };
+  const editable = blockReviewHTML(stalled, { unit: 'kg', deload: { editable: true } });
+  assert.match(editable, /data-action="apply-block-deload" data-week="5"/);
+  assert.match(editable, /Deload week 5/);
+
+  const shared = blockReviewHTML(stalled, { unit: 'kg', deload: { editable: false } });
+  assert.match(shared, /Customize to deload/);
+  assert.doesNotMatch(shared, /apply-block-deload/);
+
+  const already = blockReviewHTML({ ...stalled, nextWeekIsDeload: true }, { unit: 'kg', deload: { editable: true } });
+  assert.match(already, /Week 5 is already a deload/);
+  assert.doesNotMatch(already, /apply-block-deload/);
+
+  const notEligible = blockReviewHTML({ ...stalled, deloadEligible: false }, { unit: 'kg', deload: { editable: true } });
+  assert.match(notEligible, /Review the plan/);
+  assert.doesNotMatch(notEligible, /apply-block-deload/);
+});

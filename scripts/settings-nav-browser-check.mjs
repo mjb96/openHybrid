@@ -174,7 +174,11 @@ try {
   const empty = await page.locator('#settingsPageHost .s-empty').textContent();
   ok(/No settings match/.test(empty || ''), 'no-results state is shown');
   await page.click('#settingsOverlay [data-action="close-settings"]');
-  await page.waitForSelector('#settingsOverlay:not(.active)');
+  await page.waitForFunction(
+    () => !document.getElementById('settingsOverlay')?.classList.contains('active'),
+    null,
+    { timeout: 5000 },
+  );
   await page.click('#homeSettingsBtn');
   await page.waitForSelector('#settingsOverlay.active');
   ok((await page.inputValue('#settingsSearch')) === '', 'reopening Settings clears search');

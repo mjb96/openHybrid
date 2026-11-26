@@ -757,9 +757,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   weeks (ending the Sunday before the current week), compared with the four
   before: sessions, tonnage, per-lift best e1RM and all-time PRs, plus the
   engine's progress checks (`buildStallList`, never a re-derived stall rule).
-  Status is descriptive (`insufficient | on_track | mixed | stalled`) and there
-  is deliberately **no deload write yet** — that action is a separate slice and
-  must use the builder snapshot/Undo. The window is calendar-based, never
+  Status is descriptive (`insufficient | on_track | mixed | stalled`). Slice 2
+  adds ONE plan-changing action, gated on `stalled` (two or more engine checks):
+  **Deload week N** targets the NEXT program week (never the week in progress),
+  halves its sets via `markWeekDeload`, snapshots the plan with
+  `captureProgramDraft`, and shows the shared Undo bar (`showUndo`). It is
+  offered ONLY for a program in `state.customPrograms` — a shared catalogue plan
+  gets “Customize to deload” and opens Plans. The repaint after the write is
+  `renderBlockReview` only: a full `renderAnalytics()` re-enters Review on the
+  Week tab and would hide the Month review. The window is calendar-based, never
   `state.currentWeek`.
 - Progress, second-audit facts: the hub's delegated handler dispatches through
   `progressControlTarget(el)` in `js/analytics.js` — **Share, Export photos and

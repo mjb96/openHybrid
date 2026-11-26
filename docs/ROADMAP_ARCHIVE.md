@@ -6032,3 +6032,12 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `muscles_model` frequency and previous-window cases; the Progress-hub
     browser check now requires the focused session count.
 
+- **2026-11-26 — H4 A2: volume against the typical band in the range view.**
+  - The focused muscle states its **weekly average** over the selected range and
+    the typical `MEV–MAV` band, classified by the shared `classifyVolume`; the
+    current-week Volume Guide keeps its own week view.
+  - One action: **Review volume guide**. Copy stays factual — the population
+    band is a reference, never an instruction to add sets.
+  - Tests: `muscles_model` weekly average/landmarks and `muscles_view` focused
+    block; the Progress-hub browser check asserts the reference and action.
+

@@ -18,6 +18,7 @@ import {
 import { estimatedE1rmForSet } from '../strength/e1rm.js';
 import { isValidWorkingSet } from '../set-utils.js';
 import { buildStallList } from './stall-list.js';
+import { isDeloadWeek } from '../programs/progression.js';
 
 export const BLOCK_WEEKS = 4;
 
@@ -141,6 +142,15 @@ export function buildBlockReview(state, { todayISO, weeks = BLOCK_WEEKS, program
     : (program ? buildStallList(state, program) : []);
   const volumeDeltaPct = deltaPct(volumeKg, prevVolumeKg);
 
+  // The deload action always targets the NEXT program week: the review looks
+  // back, so rewriting the week already in progress would change logged work.
+  const currentProgramWeek = parseInt(state?.currentWeek, 10) || 0;
+  const totalWeeks = Number(program?.totalWeeks ?? program?.durationWeeks) || 0;
+  const candidateWeek = currentProgramWeek > 0 ? currentProgramWeek + 1 : null;
+  const nextWeek = candidateWeek && (!totalWeeks || candidateWeek <= totalWeeks) ? candidateWeek : null;
+  const nextModifier = nextWeek ? program?.weeklyVolModifiers?.[String(nextWeek)] : null;
+  const nextWeekIsDeload = !!nextModifier && isDeloadWeek(nextModifier);
+
   let status = 'insufficient';
   if (sessions >= 6 && weeksWithData >= 3) {
     if (progressChecks.length >= 2) status = 'stalled';
@@ -169,6 +179,11 @@ export function buildBlockReview(state, { todayISO, weeks = BLOCK_WEEKS, program
       target: check.target,
     })),
     status,
+    nextWeek,
+    nextWeekIsDeload,
+    // The write is only offered on strong evidence (the engine's own 2+ checks)
+    // and only when there is a next week to change.
+    deloadEligible: status === 'stalled' && !!nextWeek,
     headline: summaryLine(status, sessions, weeksWithData, span),
     recommendation: recommendationFor(status, progressChecks, volumeDeltaPct),
   };

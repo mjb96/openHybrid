@@ -120,6 +120,104 @@ try {
   check(/× bodyweight/.test(relative) && /est\./.test(relative), `relative strength is labelled as an estimate (${relative})`);
   check(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
+
+  // ── H5 slice 2: the deload write, and its Undo ────────────────────────────
+  // A custom plan with two lifts on progress checks (the engine's own rule) and
+  // six completed sessions. The block review must offer the next week, halve it
+  // only when asked, persist it, and restore it exactly from the shared bar.
+  {
+    const lifts = ['Back Squat', 'Bench Press'];
+    const session = (date, reps) => ({
+      activationId: 'act', programId: 'custom_stall', dates: { [date.startsWith('2026-10-28') || date.startsWith('2026-11-04') || date.startsWith('2026-11-11') ? 'wed' : 'sat']: date },
+      lifts: { [date.startsWith('2026-10-28') || date.startsWith('2026-11-04') || date.startsWith('2026-11-11') ? 'wed' : 'sat']: Object.fromEntries(lifts.map((name) => [name, [{
+        w: '100', r: String(reps), tr: 5, c: true,
+      }]])) },
+      gymStats: {}, runSessions: {},
+    });
+    const modifiers = Object.fromEntries(Array.from({ length: 8 }, (_, i) => [String(i + 1), { sets: 4, reps: 5, intensityLabel: `Week ${i + 1}` }]));
+    const custom = {
+      id: 'custom_stall', name: 'Stall Test', totalWeeks: 8,
+      days: {
+        mon: { title: 'Rest', lifts: [] }, tue: { title: 'Rest', lifts: [] },
+        wed: { title: 'Strength', lifts }, thu: { title: 'Rest', lifts: [] },
+        fri: { title: 'Rest', lifts: [] }, sat: { title: 'Strength', lifts }, sun: { title: 'Rest', lifts: [] },
+      },
+      weeklyVolModifiers: modifiers,
+    };
+    const deloadState = {
+      schemaVersion: 17, currentWeek: '5', activeProgramId: 'custom_stall', activeActivationId: 'act',
+      weekStartedAt: '2026-11-23',
+      settings: { ...state.settings, name: 'Deload Athlete' },
+      customPrograms: [custom],
+      weeks: {
+        '1': session('2026-10-28', 5), '2': session('2026-10-31', 5),
+        '3': session('2026-11-04', 5), '4': session('2026-11-07', 5),
+        '5': session('2026-11-11', 3), '6': session('2026-11-14', 3),
+        '7': { activationId: 'act', programId: 'custom_stall', dates: {}, lifts: {}, gymStats: {}, runSessions: {} },
+      },
+      bodyWeightLog: [], bodyMeasurements: [],
+      programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
+      healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
+      hybridScore: { history: [], xp: 0 }, loadMetrics: { atl: 0, ctl: 0 },
+    };
+    const dctx = await createBrowserContext(browser, { viewport: { width: 390, height: 900 }, colorScheme: 'dark' });
+    await dctx.addInitScript(([k, v]) => localStorage.setItem(k, v), ['hybrid_engine_v2_state', JSON.stringify(deloadState)]);
+    await dctx.addInitScript(pinClock, Date.parse('2026-11-25T09:00:00+11:00'));
+    const page2 = await dctx.newPage();
+    const derrors = [];
+    page2.on('pageerror', (error) => derrors.push(error.message));
+    await page2.goto(base, { waitUntil: 'networkidle' });
+    await page2.waitForTimeout(500);
+    await page2.locator('button', { hasText: 'NOT YET' }).click({ timeout: 500 }).catch(() => {});
+    await page2.evaluate(() => document.querySelector('.bottom-nav [data-target="analytics"]')?.click());
+    await page2.waitForTimeout(700);
+    await page2.evaluate(() => document.querySelector('.pg-reviews__seg[data-context="weekly-review"]')?.click());
+    await page2.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 });
+    await page2.click('#analytics-weekly-review [data-an-tab="month"]');
+    await page2.waitForSelector('#blockReviewContainer .pg-block', { timeout: 4000 }).catch(() => {});
+    const review = await page2.evaluate(() => ({
+      status: document.querySelector('#blockReviewContainer .pg-block__status')?.textContent?.trim() || '',
+      action: document.querySelector('#blockReviewContainer [data-action="apply-block-deload"]')?.getAttribute('data-week') || '',
+      text: document.querySelector('#blockReviewContainer .pg-block')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+    }));
+    check(review.status === 'Needs a look', `the block review sees the two stalls (${review.status})`);
+    check(review.action === '6', `the deload targets the next week (${review.action || 'none'})`);
+    check(/2 lifts are on progress checks/.test(review.text), `the engine evidence is quoted (${review.text.slice(0, 120)})`);
+
+    await page2.click('#blockReviewContainer [data-action="apply-block-deload"]');
+    await page2.waitForTimeout(350);
+    const applied = await page2.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+      const program = (stored.customPrograms || []).find((entry) => entry.id === 'custom_stall');
+      return {
+        sets: program?.weeklyVolModifiers?.['6']?.sets,
+        label: program?.weeklyVolModifiers?.['6']?.intensityLabel,
+        undoShown: !!document.querySelector('#activityUndoBar.show'),
+        message: document.getElementById('activityUndoMessage')?.textContent || '',
+        after: document.querySelector('#blockReviewContainer .pg-block')?.textContent?.replace(/\s+/g, ' ') || '',
+      };
+    });
+    check(applied.sets === 2 && /deload/i.test(applied.label || ''), `week 6 is halved and labelled (${applied.sets}/${applied.label})`);
+    check(applied.undoShown && /Deload added to week 6/.test(applied.message), `the undo bar names the change (${applied.message})`);
+    check(/Week 6 is already a deload/.test(applied.after), 'the review reflects the applied deload');
+
+    await page2.click('#activityUndoBar [data-action="undo-activity-delete"]');
+    await page2.waitForTimeout(350);
+    const restored = await page2.evaluate(() => {
+      const stored = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+      const program = (stored.customPrograms || []).find((entry) => entry.id === 'custom_stall');
+      return {
+        sets: program?.weeklyVolModifiers?.['6']?.sets,
+        label: program?.weeklyVolModifiers?.['6']?.intensityLabel,
+        action: !!document.querySelector('#blockReviewContainer [data-action="apply-block-deload"]'),
+      };
+    });
+    check(restored.sets === 4 && restored.label === 'Week 6', `Undo restores the week exactly (${restored.sets}/${restored.label})`);
+    check(restored.action, 'the deload action returns after Undo');
+    check(derrors.length === 0, `block review: no page errors (${derrors.join('; ') || 'none'})`);
+    await dctx.close();
+  }
+
 } finally {
   await browser.close(); server.close();
 }
