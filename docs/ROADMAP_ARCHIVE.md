@@ -6113,3 +6113,24 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     aria-pressed, legacy names land on Week) plus the Week render guard; the
     Progress-hub browser check drives all three tabs.
 
+- **2026-11-26 — H3 G7: favourite exercises.**
+  - Every picker row has a 44px star with `aria-pressed` and an Add/Remove
+    name; the unfiltered library leads with ONE Favourites section (catalogue +
+    custom, never duplicated) and a filtered list sorts favourites first.
+  - One owner: `js/exercises/favourites.js` over the id-keyed
+    `settings.favouriteExercises` map (canonical id, so an alias shares one
+    star; bounded at 120; import keeps only `key: true` on a null-prototype
+    object). The Settings registry entry is read-only.
+  - Tests: `tests/favourites.test.js` plus the real picker check.
+  - Data note: additive settings key with a `{}` default — no schema version
+    bump; the JSON import sanitizer bounds it.
+
+- **2026-11-26 — H1 ST4: contextual Settings shortcuts.**
+  - The router now forwards `data-page`/`data-anchor` to `openSettings`, and
+    Progress, Measures and Plans link to the page that owns the value they show:
+    Units (Progress, Measures) and Equipment (Plans). The logger keeps its
+    registry-driven workout settings sheet.
+  - Shortcuts only — every control reads/writes the same registered setting.
+  - Tests: `tests/contextual_settings_links.test.js` plus real clicks in the
+    Progress-hub, Measures and Plans browser checks.
+
