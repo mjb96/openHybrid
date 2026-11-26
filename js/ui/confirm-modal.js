@@ -214,6 +214,72 @@ export function textPromptModal(opts = {}) {
 }
 
 /**
+ * Ask for one calendar date. Same styled dialog and promise contract; `max`
+ * defaults to today so a past-session flow can never create a future one.
+ * @param {{title?:string, message?:string, label?:string, value?:string,
+ *          min?:string, max?:string, confirmLabel?:string, cancelLabel?:string}} [opts]
+ * @returns {Promise<string|null>} YYYY-MM-DD, or null if dismissed
+ */
+export function datePromptModal(opts = {}) {
+  const {
+    title = 'Choose a date', message = '', label = 'Date', value = '',
+    min = '', max = '', confirmLabel = 'Continue', cancelLabel = 'Cancel',
+  } = opts;
+  if (typeof document === 'undefined') return Promise.resolve(null);
+  ensureStyles();
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'cmodal-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-label', title);
+    overlay.innerHTML = `
+      <div class="cmodal">
+        <div class="cmodal__title">${esc(title)}</div>
+        ${message ? `<div class="cmodal__msg">${esc(message)}</div>` : ''}
+        <label class="cmodal__field">
+          <span class="cmodal__label">${esc(label)}</span>
+          <span class="cmodal__inputwrap">
+            <input class="cmodal__input" type="date" data-cm="input"
+                   value="${esc(value)}" ${min ? `min="${esc(min)}"` : ''} ${max ? `max="${esc(max)}"` : ''}
+                   aria-label="${esc(label || title)}">
+          </span>
+        </label>
+        <div class="cmodal__row">
+          <button class="cmodal__btn cmodal__btn--cancel" data-cm="cancel">${esc(cancelLabel)}</button>
+          <button class="cmodal__btn cmodal__btn--ok" data-cm="ok">${esc(confirmLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const input = /** @type {HTMLInputElement} */ (overlay.querySelector('[data-cm="input"]'));
+    let done = false;
+    const close = (result) => {
+      if (done) return;
+      done = true;
+      closeManagedModal(overlay);
+      overlay.classList.remove('cmodal--in');
+      setTimeout(() => { overlay.remove(); resolve(result); }, 200);
+    };
+    const submit = () => close(input?.value ? String(input.value) : null);
+    overlay.addEventListener('click', (e) => {
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (t === overlay) close(null);
+      else if (t.closest('[data-cm="ok"]')) submit();
+      else if (t.closest('[data-cm="cancel"]')) close(null);
+    });
+    overlay.addEventListener('keydown', (e) => {
+      if (/** @type {KeyboardEvent} */ (e).key === 'Enter') { e.preventDefault(); submit(); }
+    });
+    openManagedModal(overlay, {
+      initialFocus: '[data-cm="input"]',
+      onRequestClose: () => close(null),
+    });
+    requestAnimationFrame(() => overlay.classList.add('cmodal--in'));
+  });
+}
+
+/**
  * Multiline variant of `textPromptModal`, for free text that genuinely needs
  * more than one line (a routine note). Same dialog, focus trap, Escape/backdrop
  * dismissal and promise contract. Plain Enter inserts a newline; Cmd/Ctrl+Enter

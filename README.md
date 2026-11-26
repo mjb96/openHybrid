@@ -86,7 +86,8 @@ the same training picture.
   training log, bodyweight/measurements CSV, or the progress-photo archive.
 - **Correct saved workouts** — History lets you reopen a finished strength
   session or run and fix weights, reps, distance, HR or notes in place without
-  changing its date or identity.
+  changing its date or identity, and **Log past** records a session on the day it
+  actually happened (a one-off that never rewrites the active plan).
 - **Progression styles** — custom programs can choose Double, Linear or Rep-first
   coaching. The suggested next load follows that program's style while keeping
   RPE, fatigue, cutting and stall safeguards.
@@ -101,9 +102,6 @@ the same training picture.
 The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
 Logging → Progress**. H2–H5 and the Progress rebuild are delivered; what remains:
 
-- **Logging** — backdated strength sessions: a one-off archived session with the
-  real date and duration, and an explicit **keep both / cancel** when that day
-  already has one. The plan and the active week are never rewritten.
 - **Settings** — canonical kg/km/cm storage with display-only units (a migration
   with a backup), and week-start consistency across every Progress analytic.
 - **Content** — reviewed exercise instructions, in small human-reviewed batches;

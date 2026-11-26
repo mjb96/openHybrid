@@ -56,6 +56,7 @@ import { renderTrainLanding } from './train/view-train-landing.js';
 import { initAnalytics, renderAnalytics, saveThresholdPace, saveBodyweightGoal, setBodyweightRangeAction, setAnalyticsContext, shareScoreCard } from './analytics.js';
 import { openAllLiftsSheet } from './analytics/all-lifts-sheet.js';
 import { applyBlockDeload } from './analytics/block-deload.js';
+import { backdatedNoon } from './workout/backdated-session.js';
 import { renderBlockReview } from './analytics/views/view-block-review.js';
 import { openRecordsSheet } from './analytics/records-sheet.js';
 import { showMeasurementTrend } from './analytics/views/view-bodyweight.js';
@@ -381,6 +382,18 @@ export function startEmptyWorkout() {
   const session = createOneOffStrengthSession(appState);
   setSelectedDay(session.day);
   saveStateToLocalStorage(true);
+  closeProgramWorkoutPicker();
+  launchActiveWorkoutCockpit();
+}
+
+/** G3: a one-off session stamped with a chosen past date, never the plan. */
+export function startBackdatedSession(dateISO) {
+  const noon = backdatedNoon(dateISO);
+  if (!noon) return;
+  const session = createOneOffStrengthSession(appState, { now: noon, title: 'Logged session' });
+  setSelectedDay(session.day);
+  saveStateToLocalStorage(true);
+  if (isActivitiesOpen()) closeActivities({ force: true });
   closeProgramWorkoutPicker();
   launchActiveWorkoutCockpit();
 }
@@ -2626,6 +2639,7 @@ async function bootstrapApp() {
       openSessionRecap(e.detail?.week, e.detail?.day, e.detail?.sessionId);
     });
     document.addEventListener('app:open-recap',   (e) => openSessionRecap(e.detail?.week, e.detail?.day));
+    document.addEventListener('app:backdate-session', (e) => startBackdatedSession(e.detail?.date));
     document.addEventListener('app:open-activities', (e) => openActivities({
       date: e.detail?.date || null,
       directIfSingle: e.detail?.directIfSingle === true,

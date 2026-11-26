@@ -6088,3 +6088,17 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     `tests/year_heatmap_view.test.js`; the Progress-hub browser check asserts the
     rendered year, no 320/390/412 overflow and a real day tap into History.
 
+- **2026-11-26 — H4 PG9: the hub is an overview again.**
+  - Secondary evidence moved to its detail: the rep-range/effort mix to the
+    Strength detail, the ranked muscle rows + period body map to the Muscle load
+    detail (range-labelled above the weekly recovery list), the body site strip
+    and photo library to Measures, and the Endurance day grid/table to the
+    running detail/year heatmap. The bands keep their headline, one visual and
+    one action; the duplicated `Show data` tables went with them.
+  - Measured at 390px: 2,365px (2.80 screens, was 3,541 / 4.2), tallest band
+    409px; 320px: 2,450px (2.90 screens). The Progress-hub browser check ratchets
+    the total and the tallest band, so a wall cannot come back unnoticed.
+  - Tests updated to the new contract (`body_metrics`, `endurance_view`,
+    `exercises_view`, `muscles_view`) plus `strength_mix_view`; the photo browser
+    check now drives the real photo flow from Measures.
+

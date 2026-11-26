@@ -17,7 +17,8 @@ import { shareWorkoutCard } from './share/workout-share.js';
 import { openSavedWorkoutEditor, closeSavedWorkoutEditor, saveSavedWorkoutEditor } from './workout/edit-saved.js';
 import { deleteMapFromDB } from './db.js';
 import { renderRunMap } from './workout-map.js';
-import { confirmModal } from './ui/confirm-modal.js';
+import { confirmModal, datePromptModal } from './ui/confirm-modal.js';
+import { dayOccupancy, isValidBackdatedDate, localToday } from './workout/backdated-session.js';
 import { getProgramById, showToast } from './state.js';
 import { getWeekModifier } from './schema.js';
 import { prescribeSetsForLift } from './engine.js';
@@ -188,6 +189,33 @@ function fullDayLabel(date) {
     : parsed.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
+async function promptPastSession() {
+  const state = _getState?.();
+  if (!state) return;
+  const today = localToday();
+  const date = await datePromptModal({
+    title: 'Log a past session',
+    message: 'Choose the day you trained. Your plan and the current week are not changed.',
+    label: 'Date',
+    value: today,
+    max: today,
+  });
+  if (!date) return;
+  const valid = isValidBackdatedDate(date, today);
+  if (!valid.ok) { showToast(valid.reason || 'Choose a real date.', true); return; }
+  const occupied = dayOccupancy(state, date);
+  if (occupied.total > 0) {
+    const keepBoth = await confirmModal({
+      title: 'That day already has training',
+      message: `${occupied.total} session${occupied.total === 1 ? '' : 's'} already logged on ${fullDayLabel(date)}. Keep both?`,
+      confirmLabel: 'Keep both',
+      cancelLabel: 'Cancel',
+    });
+    if (!keepBoth) return;
+  }
+  document.dispatchEvent(new CustomEvent('app:backdate-session', { detail: { date } }));
+}
+
 function dayRowsFor(date) {
   const all = activityRows();
   const typed = filterActivityHistory(all, _filter, null, _activationFilter, _origin);
@@ -290,7 +318,9 @@ function renderList() {
   if (!state || !content) return;
   if (title) title.textContent = 'History';
   if (back) back.textContent = '← Done';
-  if (actions) actions.innerHTML = '';
+  if (actions) {
+    actions.innerHTML = '<button type="button" class="history-view-btn" data-action="log-past-session" aria-label="Log a past session">Log past</button>';
+  }
 
   const all = activityRows(state);
   const typed = filterActivityHistory(all, _filter, _view === 'list' ? _dateFilter : null, _activationFilter, _origin);
@@ -476,6 +506,10 @@ export function handleActivityAction(action, element) {
     return true;
   }
   if (action === 'open-activities') { openActivities(); return true; }
+  // G3: a past strength session. The date prompt and the day-collision choice
+  // happen here; app.js owns creating the one-off session and opening the
+  // cockpit, so the plan and the active week are never touched.
+  if (action === 'log-past-session') { void promptPastSession(); return true; }
   // G4: any dated cell (the year heatmap) opens History filtered to that day.
   if (action === 'open-activities-day') {
     const date = element.getAttribute('data-date');
