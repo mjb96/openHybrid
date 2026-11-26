@@ -14,6 +14,7 @@ import { shareSummaryCard, weeklyReviewShareRows } from '../share-card.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
 import { renderYearInReview } from './view-year-review.js';
 import { renderYearHeatmap } from './view-year-heatmap.js';
+import { renderBlockReview } from './view-block-review.js';
 import { renderProgressAnalytics, renderStreakDetail, renderGoalProgressDetail } from './view-progress.js';
 import { mountScreenTabs } from './screen-kit.js';
 import { getSelectedWeekStart } from '../week-nav.js';
@@ -90,6 +91,8 @@ export function renderReview(data, getState, getDays, onTabChange) {
     }
   } else if (_reviewTab === 'month') {
     body.innerHTML = `
+      <div id="blockReviewContainer"></div>
+
       <h2 class="section-header mt-2">Training Report</h2>
       <div id="monthlyReportContainer"></div>
 
@@ -103,6 +106,7 @@ export function renderReview(data, getState, getDays, onTabChange) {
         </div>
       </article>
     `;
+    renderBlockReview(state);
     renderMonthlyReport(getState, getDays, () => program);
     renderProgressAnalytics(data, getState);
   } else {

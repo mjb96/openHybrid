@@ -1492,6 +1492,12 @@ inventories and the finding register rather than a redundant test.
 G11 / S2: progressive-overload suggestions and a periodic progress report from
 logged performance, with deloads and Undo. Builds on A1, A3, A4 and G10.
 
+**Slice 1 landed (26 Nov 2026):** Review → Month → **Block Review** over the last
+four completed calendar weeks — sessions, tonnage and per-lift e1RM change vs
+the previous block, all-time PR flags and the engine's own progress checks.
+Descriptive status only; the evidence-gated deload action (builder snapshot +
+Undo) is slice 2.
+
 ### 18.2 Running matrix (H6, DEFERRED — owner not running)
 
 Do not verify, build or change running features now, other than a no-regression
@@ -1629,6 +1635,21 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H5 slice 1: the block review.**
+  - Review → Month now leads with **Block Review**: the last four completed
+    calendar weeks (sessions, tonnage, per-lift best e1RM and all-time PRs vs
+    the previous block) plus the engine's own progress checks. Status is
+    descriptive — insufficient / on track / mixed / needs a look — with one
+    action to review the plan. No deload write yet.
+  - The window is calendar-based (four completed weeks ending the Sunday before
+    the current week); tonnage and e1RM use the same canonical models as the
+    rest of Progress.
+  - Tests: `block_review` (window, tonnage/e1RM deltas, PRs, warm-ups, status,
+    sparse/empty) and `block_review_view`; the Progress-hub browser check
+    asserts the Month block.
+  - Also in this PR: the README refresh (removed Quick start/renaming, updated
+    what it does, added what's next).
+
 - **2026-11-26 — H1 ST4: contextual Settings shortcuts.**
   - The router now forwards `data-page`/`data-anchor` to `openSettings`, and
     Progress, Measures and Plans link to the page that owns the value they show:
@@ -1730,16 +1751,6 @@ device timing it did not measure.
     band is a reference, never an instruction to add sets.
   - Tests: `muscles_model` weekly average/landmarks and `muscles_view` focused
     block; the Progress-hub browser check asserts the reference and action.
-
-- **2026-11-26 — H4 A7: muscle frequency per bucket.**
-  - `buildMuscleModel` now counts distinct training DATES per muscle (a session),
-    per bucket and for the range, plus the same comparison against the previous
-    window that sets already had. One compound day credits each involved muscle
-    once, never once per lift or set.
-  - The focused muscle headline states `N sessions (+/− vs previous)` and both
-    the focused table and the all-muscles table carry a Sessions column.
-  - Tests: `muscles_model` frequency and previous-window cases; the Progress-hub
-    browser check now requires the focused session count.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

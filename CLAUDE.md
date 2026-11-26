@@ -752,6 +752,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   the screens that really are one calendar week (Strength/Running/Volume/Review
   Week). The hub browser check asserts the navigator is ABSENT there and that
   switching the range changes what the Endurance band reports.
+- H5 block review: `js/analytics/block-review.js` + `views/view-block-review.js`
+  render **Review → Month → Block Review** over the last four COMPLETED calendar
+  weeks (ending the Sunday before the current week), compared with the four
+  before: sessions, tonnage, per-lift best e1RM and all-time PRs, plus the
+  engine's progress checks (`buildStallList`, never a re-derived stall rule).
+  Status is descriptive (`insufficient | on_track | mixed | stalled`) and there
+  is deliberately **no deload write yet** — that action is a separate slice and
+  must use the builder snapshot/Undo. The window is calendar-based, never
+  `state.currentWeek`.
 - Progress, second-audit facts: the hub's delegated handler dispatches through
   `progressControlTarget(el)` in `js/analytics.js` — **Share, Export photos and
   Delete photo are checked BEFORE the range/focus/grouping controls**, because those
