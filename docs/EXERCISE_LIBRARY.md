@@ -73,8 +73,12 @@ Media is deliberately out of scope until there is a licence-compatible source. T
 - **wger** — exercise data is Creative Commons per entry; app is AGPL.
 - **openGym media** — must not be copied.
 
-No media is bundled in the catalogue PR. Any future media addition needs a per-file licence record,
-attribution in `NOTICE.md`, and an APK-size decision.
+**Prototype (10 core lifts).** `assets/exercises/*.webp` holds two public-domain
+stills per lift from Free Exercise DB (Unlicense), crossfaded into a slow loop in
+the exercise detail. The mapping is `js/exercises/media.js`; the files are
+precached by discovery (368 KB for ten lifts). Attributed in `NOTICE.md`. Any
+wider rollout keeps the same rule: per-file licence record, attribution, and a
+size decision before shipping.
 
 ## Integrity tests
 

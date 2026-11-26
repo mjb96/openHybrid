@@ -5164,6 +5164,10 @@ html[data-theme="light"] .el-custom-input {
   text-align: left;
 }
 .exercise-detail__close { position: absolute; z-index: 1; top: 16px; right: 16px; }
+.exercise-media { position: relative; margin: 0 0 14px; aspect-ratio: 520 / 347; overflow: hidden; border: 1px solid var(--border-default); border-radius: 14px; background: var(--surface-2); }
+.exercise-media__frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .45s ease; }
+.exercise-media__frame.is-active { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .exercise-media__frame { transition: none; } }
 .exercise-detail__hero { padding-right: 48px; }
 .exercise-detail__eyebrow {
   margin: 0 0 5px;

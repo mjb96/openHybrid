@@ -25,6 +25,7 @@
 // =============================================================================
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { reachableModules, ROOT } from './module-graph.mjs';
 
@@ -59,7 +60,15 @@ export function computeRequiredAssets() {
   // brand font permanently unapplied on exactly the offline start the precache
   // exists to serve.
   const js = reachableModules(['js/app.js', 'js/sw-reload.js', 'js/font-css.js']).map((m) => './' + m);
-  return [...new Set([...CORE, ...js])].sort();
+  // Exercise demonstration stills (Free Exercise DB, public domain). Discovered
+  // rather than hand-listed so a new lift's frames cannot ship uncached.
+  let exerciseMedia = [];
+  try {
+    exerciseMedia = readdirSync(resolve(ROOT, 'assets/exercises'))
+      .filter((file) => file.endsWith('.webp'))
+      .map((file) => './assets/exercises/' + file);
+  } catch { /* no media directory yet */ }
+  return [...new Set([...CORE, ...exerciseMedia, ...js])].sort();
 }
 
 const SW_PATH = resolve(ROOT, 'sw.js');
