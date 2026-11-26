@@ -214,6 +214,75 @@ try {
   check(copied.done === 0, 'The copied session started with completed sets');
   check(copied.historyOpen === false, 'History stayed open over the repeated workout');
 
+
+  // ── G3: log a past session, and refuse to double-book by accident ────────
+  {
+    const g3 = await createBrowserContext(browser, { viewport: { width: 390, height: 844 } });
+    await g3.addInitScript((seed) => localStorage.setItem('hybrid_engine_v2_state', JSON.stringify(seed)), state);
+    const p = await g3.newPage();
+    const g3Errors = [];
+    p.on('pageerror', (error) => g3Errors.push(error.message));
+    await p.goto(BASE, { waitUntil: 'networkidle' });
+    await p.click('#homeQuickActions [data-action="open-activities"]');
+    await p.waitForSelector('#activitiesScreen', { state: 'visible', timeout: 5000 });
+    await p.click('[data-action="log-past-session"]');
+    await p.waitForSelector('.cmodal-overlay input[data-cm="input"]', { timeout: 3000 });
+    await p.fill('.cmodal-overlay input[data-cm="input"]', '2026-11-10');
+    await p.click('.cmodal-overlay [data-cm="ok"]');
+    await p.waitForSelector('#view-workout.active .cockpit-ex-name', { timeout: 8000 }).catch(() => {});
+    const past = await p.evaluate(() => {
+      const s = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+      const key = s.activeStrengthSessionKey;
+      const week = s.weeks?.[key];
+      return {
+        key,
+        date: week?.dates?.[week.sessionDay] || '',
+        title: week?.sessionTitle || '',
+        programId: week ? week.programId : 'missing',
+        activeWeekDates: s.weeks?.['1']?.dates || {},
+        historyOpen: document.getElementById('activitiesScreen')?.style.display !== 'none',
+      };
+    });
+    check(past.key?.startsWith('session:'), `a past session creates a one-off week (${past.key})`);
+    check(past.date === '2026-11-10', `the session keeps the chosen date (${past.date})`);
+    check(past.title === 'Logged session', `the session is labelled honestly (${past.title})`);
+    check(past.programId === null, 'the one-off is not a program session');
+    check(Object.keys(past.activeWeekDates).length === 0, `the active program week is untouched (${JSON.stringify(past.activeWeekDates)})`);
+    check(past.historyOpen === false, 'History closes when the session opens');
+    check(g3Errors.length === 0, `past session: page errors (${g3Errors.join('; ') || 'none'})`);
+    await g3.close();
+  }
+  {
+    // An occupied day offers Keep both / Cancel, and Cancel changes nothing.
+    const g3 = await createBrowserContext(browser, { viewport: { width: 390, height: 844 } });
+    await g3.addInitScript((seed) => localStorage.setItem('hybrid_engine_v2_state', JSON.stringify(seed)), state);
+    const p = await g3.newPage();
+    await p.goto(BASE, { waitUntil: 'networkidle' });
+    await p.click('#homeQuickActions [data-action="open-activities"]');
+    await p.waitForSelector('#activitiesScreen', { state: 'visible', timeout: 5000 });
+    const before = await p.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}').weeks || {}).filter((key) => key.startsWith('session:')).length);
+    await p.click('[data-action="log-past-session"]');
+    await p.waitForSelector('.cmodal-overlay input[data-cm="input"]', { timeout: 3000 });
+    await p.fill('.cmodal-overlay input[data-cm="input"]', '2026-11-16');
+    await p.click('.cmodal-overlay [data-cm="ok"]');
+    const conflict = await p.waitForFunction(
+      () => /already logged on/i.test(document.querySelector('.cmodal-overlay')?.textContent || ''),
+      null,
+      { timeout: 4000 },
+    ).then(() => true).catch(() => false);
+    check(conflict, 'an occupied day asks before adding a second session');
+    if (conflict) {
+      const text = await p.textContent('.cmodal-overlay');
+      check(/already logged on/.test(text || '') && /Keep both/.test(text || ''), 'the collision copy names the day and the choice');
+      await p.click('.cmodal-overlay [data-cm="cancel"]');
+      await p.waitForTimeout(300);
+      const after = await p.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}').weeks || {}).filter((key) => key.startsWith('session:')).length);
+      check(after === before, `Cancel creates no session (${before} -> ${after})`);
+      check(await p.isVisible('#activitiesScreen'), 'Cancel leaves the athlete in History');
+    }
+    await g3.close();
+  }
+
   check(errors.length === 0, `page errors: ${errors.join(' | ')}`);
   if (failures.length) {
     console.error('History browser check failed:');

@@ -1431,7 +1431,7 @@ Verify first; sources: openGym, Hevy.
 | ID | Gap | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | G2 | Reps per side | `workout/load-basis.js`, `set-utils.js` | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | DONE (display) | A unilateral row (catalogue `unilateral`) states the split beside the entry as the total is typed (`8 → 4 per side`), and an odd total is shown honestly (`4.5 per side`) rather than rounded. Storage, history and 1RM keep the TOTAL, so there is no schema change and no second truth. Target re-interpretation and even-step progression were deliberately not introduced: the plan's prescription stays what it says. |
-| G3 | Log a past session | `run-logger.js`, `workout/one-off-session.js`, `activities.js` | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | PARTIAL | Backdated runs exist; strength sessions stamp today; no replace/keep-both/cancel when the day already has a session. |
+| G3 | Log a past session | `activities.js`, `workout/one-off-session.js`, `ui/confirm-modal.js`, `workout/backdated-session.js` | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | DONE | History now offers **Log past**: one date prompt (never a future date), then the normal cockpit as a one-off `session:` week stamped with the chosen date at noon. The active program, current week and activation are never written. If that day already has training, a **Keep both / Cancel** choice names the day; replace is deliberately not offered for programmed or finished history (a photo-style irreversible delete would need its own Undo). Tests: `backdated_session` (validation, occupancy, noon stamp) + a static wiring guard; the History browser check creates a past session and proves the collision Cancel changes nothing. |
 | G5 | Closed-app rest alerts | `notifications.js`, `timers.js`, Android `ReminderScheduler` | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | PARTIAL | A fixed-time daily OS alarm exists; it is not planned-day, not cancelled by training, and the rest alert cannot fire while WebView timers are paused. |
 | G7 | Favourite exercises | `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | DONE | Every picker row carries a 44px star (`aria-pressed`, Add/Remove <name>), and the unfiltered library leads with ONE **Favourites** section — catalogue and custom together, never duplicated — while a filtered list sorts favourites first. The preference is one id-keyed map (`settings.favouriteExercises`), so a catalogue alias stars the same exercise, toggling is idempotent and the map is bounded at 120; the import sanitizer keeps only `key: true` on a null-prototype object. Tests: `favourites` (alias key, custom key, bound, stable order, star naming, hostile import) and `exercise-picker-browser-check` (star size/state, persisted state, Favourites section, favourite leads). |
 | G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | PARTIAL | 66 reviewed core entries of 157; catalogue is 5,712; target is 300–500; the guard ratchets at >=32. |
@@ -1648,6 +1648,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — G3: log a past strength session.**
+  - History gains **Log past**: a date prompt (never a future date), then the
+    normal cockpit as a one-off `session:` week stamped with the chosen date at
+    noon. The plan, current week and activation are untouched, and History
+    closes when the session opens.
+  - An occupied day offers **Keep both / Cancel** and names the day. Replace is
+    deliberately not offered for programmed or finished history; it needs its
+    own Undo before it can exist.
+  - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
+    static wiring guard, and the History browser check (past session + collision
+    Cancel changes nothing).
+
 - **2026-11-26 — ST8: text size + haptics.**
   - Look & Home gains **Text size** (Default / Large / Extra large) and
     **Haptics**. Text size is one root CSS hook (`html[data-text-size]` scaling
@@ -1752,20 +1764,6 @@ device timing it did not measure.
     week navigator. Tests: `tests/review_tabs.test.js` (three periods,
     aria-pressed, legacy names land on Week) plus the Week render guard; the
     Progress-hub browser check drives all three tabs.
-
-- **2026-11-26 — H4 PG9: the hub is an overview again.**
-  - Secondary evidence moved to its detail: the rep-range/effort mix to the
-    Strength detail, the ranked muscle rows + period body map to the Muscle load
-    detail (range-labelled above the weekly recovery list), the body site strip
-    and photo library to Measures, and the Endurance day grid/table to the
-    running detail/year heatmap. The bands keep their headline, one visual and
-    one action; the duplicated `Show data` tables went with them.
-  - Measured at 390px: 2,365px (2.80 screens, was 3,541 / 4.2), tallest band
-    409px; 320px: 2,450px (2.90 screens). The Progress-hub browser check ratchets
-    the total and the tallest band, so a wall cannot come back unnoticed.
-  - Tests updated to the new contract (`body_metrics`, `endurance_view`,
-    `exercises_view`, `muscles_view`) plus `strength_mix_view`; the photo browser
-    check now drives the real photo flow from Measures.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

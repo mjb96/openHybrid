@@ -805,6 +805,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   persist). `settings.haptics` (default true) gates the four set/PR haptic
   calls in workout.js with `haptics !== false`; it never touches logging, timers
   or PR detection. Sounds stay with the rest timers; demo size is not built.
+- Backdated strength (G3): History's **Log past** opens a date prompt
+  (`datePromptModal`), validates with `workout/backdated-session.js`
+  (no future date, real date, not before 2000) and checks `dayOccupancy`. It
+  then dispatches `app:backdate-session`; `startBackdatedSession` (app.js) creates
+  a one-off via `createOneOffStrengthSession({ now: backdatedNoon(date) })` and
+  opens the cockpit. The active program/week/activation are NEVER written, and a
+  day with training offers **Keep both / Cancel** (replace is not offered for
+  programmed/finished history). The one-off is labelled "Logged session".
 - Backup trust (ST9): `state.lastBackupAt` is ROOT METADATA (ISO timestamp),
   not a setting and not in `NON_SETTINGS_STATE_KEYS`. `exportData()` writes it
   only after `saveTextExport` reports `saved` or `started` — a cancelled/failed
