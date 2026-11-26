@@ -121,23 +121,18 @@ page.on('console', (message) => {
 });
 
 async function previewRows(day = 'mon') {
-  await page.click(`#programDetailScreen [data-action="open-day-preview"][data-day="${day}"]`);
-  await page.waitForSelector('#wpmSheet .wpm-exercise-item', { timeout: 6000 });
-  const rows = await page.$$eval('#wpmSheet .wpm-exercise-item', (elements) => elements.map((element) => {
+  const toggle = `#programDetailScreen [data-action="toggle-plan-day"][data-day="${day}"]`;
+  await page.click(toggle);
+  await page.waitForSelector(`#planDayPanel-${day}:not([hidden]) .wpm-exercise-item`, { timeout: 6000 });
+  const rows = await page.$$eval(`#planDayPanel-${day} .wpm-exercise-item`, (elements) => elements.map((element) => {
     const spans = element.querySelectorAll('span');
     return {
       name: (spans[0]?.textContent || '').trim(),
       spec: (spans[1]?.textContent || '').trim(),
     };
   }));
-  await page.click('#wpmSheet .sheet-close-btn[data-action="close-day-preview"]');
-  // A closed sheet loses `.active` and is hidden, so waiting for the selector
-  // as VISIBLE was a race. Wait for the class to leave instead.
-  await page.waitForFunction(
-    () => !document.getElementById('wpmSheet')?.classList.contains('active'),
-    null,
-    { timeout: 3000 },
-  );
+  await page.click(toggle);
+  await page.waitForTimeout(100);
   return rows;
 }
 
@@ -155,14 +150,16 @@ async function stepToWeek(targetWeek) {
 try {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.click('.nav-item[data-target="program"]');
-  await page.waitForSelector('#progSearchInput', { timeout: 8000 });
-  await page.fill('#progSearchInput', 'Jacked & Tan');
-  await page.waitForSelector(`[data-action="open-program-detail"][data-program-id="${PROGRAM_ID}"]`, { timeout: 8000 });
+  await page.waitForSelector('#plansHome', { timeout: 8000 });
+  await page.click('[data-action="open-browse"]');
+  await page.waitForSelector('#plansBrowseSearch', { timeout: 8000 });
+  await page.fill('#plansBrowseSearch', 'Jacked & Tan');
+  await page.waitForSelector(`#browseResults .browse-row[data-program-id="${PROGRAM_ID}"]`, { timeout: 8000 });
 
-  ok(await page.$(`[data-action="open-program-detail"][data-program-id="${PROGRAM_ID}"]`), 'simplified program appears in discovery');
-  ok(!(await page.$(`[data-action="open-program-detail"][data-program-id="${LEGACY_ID}"]`)), 'retired J&T program is absent from discovery');
+  ok(await page.$(`#browseResults .browse-row[data-program-id="${PROGRAM_ID}"]`), 'simplified program appears in discovery');
+  ok(!(await page.$(`#browseResults .browse-row[data-program-id="${LEGACY_ID}"]`)), 'retired J&T program is absent from discovery');
 
-  await page.click(`[data-action="open-program-detail"][data-program-id="${PROGRAM_ID}"]`);
+  await page.click(`#browseResults .browse-row[data-program-id="${PROGRAM_ID}"]`);
   await page.waitForSelector('#programDetailScreen .detail-title', { timeout: 8000 });
   eq(
     await page.$eval('#programDetailScreen .detail-title', (element) => element.textContent.trim()),

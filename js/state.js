@@ -350,12 +350,61 @@ export function ensureActiveProgramEditable() {
   return personalId;
 }
 
+/**
+ * Has this plan ever been trained? A plan that has recorded runs must not be
+ * deleted: activations store `programId` (not a name), so removing the record
+ * makes History fall back to a generic title and "Previous program runs" lose
+ * the plan's name. Archive it instead — the record stays resolvable and is
+ * simply hidden from Plans.
+ * @param {string} programId
+ */
+export function planHasRecordedRuns(programId) {
+  if (!programId) return false;
+  const activations = Array.isArray(appState.activations) ? appState.activations : [];
+  if (activations.some((record) => record?.programId === programId)) return true;
+  const completions = appState.programLibrary?.completions || [];
+  return completions.some((completion) => completion?.programId === programId);
+}
+
+export function isProgramArchived(programId) {
+  return !!appState.customPrograms?.find((p) => p?.id === programId)?.archived;
+}
+
+/** Hide a personal plan without destroying its history attribution. */
+export function archiveCustomProgram(id) {
+  if (appState.activeProgramId === id) {
+    return { success: false, message: 'Cannot archive the currently active program.' };
+  }
+  const program = appState.customPrograms?.find((p) => p?.id === id);
+  if (!program) return { success: false, message: 'No custom program found.' };
+  program.archived = true;
+  program.archivedAt = new Date().toISOString();
+  saveStateToLocalStorage(true);
+  return { success: true };
+}
+
+export function restoreCustomProgram(id) {
+  const program = appState.customPrograms?.find((p) => p?.id === id);
+  if (!program) return { success: false, message: 'No custom program found.' };
+  delete program.archived;
+  delete program.archivedAt;
+  saveStateToLocalStorage(true);
+  return { success: true };
+}
+
 export function deleteCustomProgram(id) {
   if (appState.activeProgramId === id) {
     return { success: false, message: "Cannot delete the currently active program." };
   }
   if (!appState.customPrograms) return { success: false, message: "No custom programs found." };
-  
+  // A trained plan keeps its identity so History and past runs can still name it.
+  if (planHasRecordedRuns(id)) {
+    return {
+      success: false,
+      needsArchive: true,
+      message: "This plan has recorded training. Archive it instead — that keeps your history intact.",
+    };
+  }
   appState.customPrograms = appState.customPrograms.filter(p => p.id !== id);
   saveStateToLocalStorage(true);
   return { success: true };

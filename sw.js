@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-h370086ff8092';
+const CACHE_NAME = 'openhybrid-v122-h814d4f239e29';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -525,6 +525,7 @@ const REQUIRED_ASSETS = [
   "./js/programs/activation.js",
   "./js/programs/active-plan-banner.js",
   "./js/programs/attribution.js",
+  "./js/programs/browse-model.js",
   "./js/programs/catalog.js",
   "./js/programs/catalog/fitness.js",
   "./js/programs/catalog/hybrid.js",
@@ -534,18 +535,19 @@ const REQUIRED_ASSETS = [
   "./js/programs/catalog/running.js",
   "./js/programs/catalog/shed-pplul.js",
   "./js/programs/catalog/strength.js",
-  "./js/programs/collections.js",
   "./js/programs/compare-ui.js",
   "./js/programs/compare.js",
   "./js/programs/copy-program.js",
   "./js/programs/detail-fit.js",
   "./js/programs/detail.js",
   "./js/programs/editor-model.js",
+  "./js/programs/editor/prescriptions.js",
   "./js/programs/exercise-row.js",
   "./js/programs/jt-shed-model.js",
   "./js/programs/library.js",
   "./js/programs/opengym-plan.js",
   "./js/programs/phase.js",
+  "./js/programs/plans-home-model.js",
   "./js/programs/program-card.js",
   "./js/programs/program-export.js",
   "./js/programs/program-json.js",

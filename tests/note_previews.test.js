@@ -7,7 +7,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { sessionExercisePreview } from '../js/train/train-landing.js';
-import { renderSampleWorkout } from '../js/programs/detail.js';
+import { renderDayTargets } from '../js/programs/detail.js';
 import { setExercisePref } from '../js/workout/exercise-config.js';
 
 function state() {
@@ -44,22 +44,23 @@ test('Train preview carries the pinned exercise note', () => {
   assert.equal(noNote[0].note, '');
 });
 
-test('the plan sample-workout preview shows the pinned note, read-only', () => {
+test('the plan day expansion shows the pinned note, read-only', () => {
   const s = state();
   setExercisePref(s, 'Bench Press', { note: 'Pause at the chest.' });
-  const html = renderSampleWorkout(program(), null, false, s);
-  assert.match(html, /sample-ex-note/);
+  const ctx = { program: program(), week: 1, dayKey: 'mon', state: s };
+  const html = renderDayTargets(program().days.mon, ctx);
+  assert.match(html, /wpm-ex-note/);
   assert.match(html, /Pause at the chest\./);
   assert.doesNotMatch(html, /<button/, 'the preview must stay read-only');
 
-  const noNote = renderSampleWorkout(program(), null, false, state());
-  assert.doesNotMatch(noNote, /sample-ex-note/);
+  const noNote = renderDayTargets(program().days.mon, { ...ctx, state: state() });
+  assert.doesNotMatch(noNote, /wpm-ex-note/);
 });
 
 test('the previews escape the pinned note', () => {
   const s = state();
   setExercisePref(s, 'Bench Press', { note: '<img src=x onerror=alert(1)>' });
-  const html = renderSampleWorkout(program(), null, false, s);
+  const html = renderDayTargets(program().days.mon, { program: program(), week: 1, dayKey: 'mon', state: s });
   assert.match(html, /&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(html, /<img src=x onerror/);
 });

@@ -5683,6 +5683,36 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - No product code changed in H0. The audit found no untested metric
     calculation; the gaps are missing features, dead surfaces and navigation.
 
+- **2026-11-26 — H6a: running completeness, read-only.**
+  - Audited R1–R10 against the current app (R1/R4/R8/R10 verified), then added
+    **R5 best efforts** (fastest 1 km, 1 mi, 5 km, 10 km from recorded splits)
+    and **R6 race estimates** (Riegel, always `(est.)`, basis named, hidden
+    without a measured effort of 3 km+). Walks never contribute; a run without
+    splits says so instead of guessing.
+  - Live GPS splits are km, FIT laps are metres — the model normalises by
+    source; best efforts are lap-aligned and interpolate the final partial lap.
+  - The running Overview owns the block (read-only); R2/R3/R7/R9 stay deferred
+    until running resumes.
+  - Tests: `best_efforts` (normalisation, windows, walk exclusion, all-time
+    best, Riegel math, sparse/empty) and `best_efforts_view`; the running
+    browser check asserts the real block at 360/390/412.
+
+- **2026-11-26 — H5 slice 2: the evidence-gated deload.**
+  - On `stalled` evidence (two or more engine progress checks), the Block Review
+    offers **Deload week N** for the next program week: `markWeekDeload` halves
+    its sets and labels it, the plan is snapshotted with `captureProgramDraft`,
+    and the shared Undo bar restores it exactly.
+  - Only a personal plan (`state.customPrograms`) gets the write; a shared
+    catalogue plan offers “Customize to deload” and opens Plans. The repaint is
+    scoped to the block so the Month tab is not lost.
+  - Tests: `block_deload` (apply/undo exactness, planned deloads are never
+    halved twice, invalid weeks), the model's eligibility cases, the three view
+    states, a static wiring guard, and a real browser flow in
+    `all-lifts-browser-check` (custom plan, two stalls, week 6 halves to 2 sets,
+    Undo restores 4/Week 6).
+
+> Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
 - **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**

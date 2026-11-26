@@ -1079,91 +1079,39 @@
       <!-- ═══════ LIBRARY SCREEN (default entry) ═══════ -->
       <div id="programLibraryScreen">
 
-        <!-- Active plan first: the card for the plan that is actually running. -->
-        <div id="activeProgBanner" class="mb-4" style="display:none;"></div>
+        <!-- PLANS HOME (roadmap §22 / PL1). One surface: the active plan, the
+             recommendations, your plans, routines and one way into Browse.
+             The old Discover | My Plans tabs, the three-button utility row, the
+             always-visible search field and the chip rows are gone: content
+             starts at the top and the library lives behind Browse. -->
+        <div id="plansHome">
+          <header class="plans-home__head">
+            <h1 class="plans-home__title">Plans</h1>
+            <div class="plans-home__actions">
+              <button type="button" class="plans-home__gear" data-action="open-settings" data-page="once.equipment"
+                      aria-label="Open equipment settings" title="Equipment settings">⚙</button>
+              <button type="button" class="plans-home__add" data-action="open-plans-create-menu"
+                      aria-label="New plan or import a plan" aria-haspopup="menu" aria-expanded="false">+</button>
+            </div>
+          </header>
+          <input type="file" id="planImportFile" accept=".json,application/json" class="hidden-input" aria-label="Choose an openHybrid plan JSON file">
 
-        <!-- Plan utility row: create, import, or open the active plan. The active
-             plan's own action stays the only primary on this screen. -->
-        <div id="plansUtilityRow" class="plans-utility"></div>
-        <input type="file" id="planImportFile" accept=".json,application/json" class="hidden-input" aria-label="Choose an openHybrid plan JSON file">
+          <!-- Active plan first: its Start/Resume is the only primary action. -->
+          <div id="activeProgBanner" class="mb-4" style="display:none;"></div>
 
-        <!-- Library Tabs: Discover / My Plans -->
-        <div id="progLibraryTabs"></div>
-
-        <!-- Search Bar — one search across both tabs -->
-        <div class="prog-search-bar mb-3">
-          <div class="prog-search-input-wrap">
-            <svg class="search-icon-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input type="text" id="progSearchInput" aria-label="Search plans" placeholder="Search plans" autocomplete="off" autocorrect="off" spellcheck="false">
-            <button id="progSearchClear" class="hit-target" aria-label="Clear search">✕</button>
-          </div>
+          <section id="plansRecommended" class="plans-section" aria-label="Recommended for you"></section>
+          <section id="progLibraryContent" class="plans-section" aria-label="Your plans"></section>
+          <section id="plansBrowseEntry" class="plans-browse-entry-wrap"></section>
         </div>
 
-        <!-- Category Filter Chips -->
-        <div id="progFilterChips" class="filter-chips-row mb-2"></div>
-
-        <!-- Difficulty Filter Chips -->
-        <div id="progDifficultyChips" class="filter-chips-row filter-chips-row--sm mb-4"></div>
-
-        <!-- Library Content (collections / browse mode) -->
-        <div id="progLibraryContent"></div>
-
-        <!-- Search Results (shown when typing) -->
-        <div id="progSearchResults" style="display:none;"></div>
+        <!-- BROWSE (pushed, roadmap §22 / PL2). -->
+        <div id="plansBrowseScreen" style="display:none;"></div>
 
       </div>
 
       <!-- ═══════ PROGRAM DETAIL SCREEN ═══════ -->
       <div id="programDetailScreen" style="display:none;">
         <div id="programDetailContent"></div>
-      </div>
-
-      <!-- ═══════ ACTIVE PLAN VIEW ═══════ -->
-      <div id="progActivePlanView" style="display:none;">
-
-        <div class="detail-back-bar mb-4">
-          <button class="detail-back-btn" data-action="close-active-plan-view">
-            <span class="detail-back-icon">‹</span> Library
-          </button>
-          <span class="active-plan-label">Active Program</span>
-        </div>
-
-        <!-- Program hero card (populated by JS) -->
-        <div id="activePlanHero" class="aplan-hero mb-3"></div>
-
-        <!-- Week stepper -->
-        <div class="aplan-week-nav mb-4">
-          <button class="aplan-week-btn" data-action="aplan-week-step" data-delta="-1" aria-label="Previous week">‹</button>
-          <div class="aplan-week-center">
-            <div class="aplan-week-label">MACROCYCLE WEEK</div>
-            <div id="aplanWeekNum" class="aplan-week-num">1</div>
-            <div id="aplanPhaseName" class="aplan-phase-name"></div>
-          </div>
-          <button class="aplan-week-btn" data-action="aplan-week-step" data-delta="1" aria-label="Next week">›</button>
-        </div>
-
-        <nav class="segmented-control mb-4" aria-label="Program Views">
-          <button id="btnBrowserTabOverview" class="btn-pad active flex-1 py-2 text-sm font-heavy" data-action="switch-browser-tab" data-tab="overview" aria-current="page">THIS WEEK</button>
-          <button id="btnBrowserTabWeeks" class="btn-pad flex-1 py-2 text-sm font-heavy" data-action="switch-browser-tab" data-tab="weeks">SCHEDULE</button>
-        </nav>
-
-        <!-- Tab content -->
-        <div id="programBrowserDetails"></div>
-
-        <!-- Previous activation continuity (populated by JS) -->
-        <section id="previousProgramRuns" class="previous-program-runs" aria-label="Previous program runs"></section>
-
-        <!-- Hidden select kept for handleMacroWeekSwitch compatibility -->
-        <select id="globalWeekSelect" style="display:none;" data-action="macro-week-switch">
-          <option value="1">Week 1</option><option value="2">Week 2</option><option value="3">Week 3</option>
-          <option value="4">Week 4</option><option value="5">Week 5</option><option value="6">Week 6</option>
-          <option value="7">Week 7</option><option value="8">Week 8</option><option value="9">Week 9</option>
-          <option value="10">Week 10</option><option value="11">Week 11</option><option value="12">Week 12</option>
-        </select>
-
-
       </div>
 
       <!-- ═══════ BUILDER VIEW ═══════ -->
@@ -2139,21 +2087,6 @@
       <button class="btn-action-block btn-green" data-action="save-edit-saved">Save changes</button>
       <button class="btn-action-block btn-ghost" data-action="close-edit-saved">Cancel</button>
     </div>
-  </div>
-
-  <!-- Workout Preview Modal (day detail bottom-sheet) -->
-  <div id="wpmBackdrop" class="sheet-backdrop" data-action="close-day-preview"></div>
-  <div id="wpmSheet" class="bottom-sheet" role="dialog" aria-labelledby="wpmTitle" data-modal-root data-modal-close-action="close-day-preview" data-modal-companion="#wpmBackdrop" data-modal-history="external" inert aria-hidden="true">
-    <div class="bottom-sheet-handle"></div>
-    <div class="bottom-sheet-header">
-      <div class="wpm-header-left">
-        <h3 id="wpmTitle" class="bottom-sheet-title">Workout Preview</h3>
-        <span id="wpmBadge" class="wpm-badge"></span>
-      </div>
-      <button class="sheet-close-btn" data-action="close-day-preview" aria-label="Close">✕</button>
-    </div>
-    <div id="wpmBody" class="wpm-body"></div>
-    <div style="height: 16px;"></div>
   </div>
 
   <!-- Fasting Detail Sheet -->

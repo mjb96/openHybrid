@@ -77,7 +77,7 @@ async function newPage(browser) {
   return { ctx, page, errors };
 }
 
-const previewNames = (page) => page.$$eval('#wpmSheet .wpm-exercise-item > span:first-child', els => els.map(e => e.textContent.trim()));
+const previewNames = (page) => page.$$eval('#programDetailContent .plan-day__panel:not([hidden]) .wpm-exercise-item > span:first-child', els => els.map(e => e.textContent.trim()));
 const cockpitNames = (page) => page.$$eval('#cockpitExercisesContainer .cockpit-ex-name', els => els.map(e => e.textContent.trim()));
 
 async function openDetailById(page, id) {
@@ -94,22 +94,18 @@ async function openDetailById(page, id) {
   await page.waitForTimeout(150);
 }
 
-async function openDayPreview(page, id, day, week) {
-  await page.evaluate(([pid, d, w]) => {
-    const b = document.createElement('button');
-    b.setAttribute('data-action', 'open-day-preview');
-    b.setAttribute('data-day', d);
-    b.setAttribute('data-week', String(w));
-    b.setAttribute('data-program-id', pid);
-    b.style.display = 'none';
-    document.body.appendChild(b); b.click(); b.remove();
-  }, [id, day, week]);
-  await page.waitForSelector('#wpmSheet .wpm-exercise-item', { timeout: 6000 });
+// PL4: the plan page expands a day inline; there is no bottom sheet.
+async function openDayPreview(page, id, day) {
+  const toggle = `#programDetailContent [data-action="toggle-plan-day"][data-day="${day}"]`;
+  const expanded = await page.$eval(toggle, (el) => el.getAttribute('aria-expanded') === 'true').catch(() => false);
+  if (!expanded) await page.click(toggle);
+  await page.waitForSelector(`#programDetailContent .plan-day__panel:not([hidden]) .wpm-exercise-item`, { timeout: 6000 });
 }
 
 async function closePreview(page) {
-  await page.click('#wpmSheet [data-action="close-day-preview"], #wpmBackdrop').catch(() => {});
-  await page.waitForTimeout(150);
+  const open = await page.$('#programDetailContent [data-action="toggle-plan-day"][aria-expanded="true"]');
+  if (open) await open.click();
+  await page.waitForTimeout(120);
 }
 
 // Pick a REAL catalogue exercise by exact name (b-pick-exercise), falling back to
@@ -178,7 +174,7 @@ try {
   }
 
   // The replacement inherits the legacy 3×15 prescription label.
-  const specs = await page.$$eval('#wpmSheet .wpm-exercise-item', els => els.map(e => ({
+  const specs = await page.$$eval('#programDetailContent .plan-day__panel:not([hidden]) .wpm-exercise-item', els => els.map(e => ({
     name: e.querySelector('span:first-child')?.textContent.trim(),
     spec: e.querySelector('span:last-child')?.textContent.trim(),
   })));

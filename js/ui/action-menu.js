@@ -18,6 +18,13 @@ import { escapeHtml } from '../util.js';
 let _state = null;
 
 function buildItem(item) {
+  // Items may carry extra data-* attributes (the builder's row menu needs the
+  // day and row index to route an action back to one exercise).
+  const extra = item.dataset && typeof item.dataset === 'object'
+    ? Object.entries(item.dataset)
+      .filter(([key, value]) => /^[a-z0-9-]+$/i.test(key) && value != null)
+      .map(([key, value]) => `data-${key}="${escapeHtml(String(value))}"`)
+    : [];
   const attrs = [
     'type="button"', 'role="menuitem"', 'class="action-menu__item"',
     item.action ? `data-action="${escapeHtml(item.action)}"` : '',
@@ -25,6 +32,7 @@ function buildItem(item) {
     item.routineId != null ? `data-routine-id="${escapeHtml(String(item.routineId))}"` : '',
     item.folderId != null ? `data-folder-id="${escapeHtml(String(item.folderId))}"` : '',
     item.danger ? 'data-danger="1"' : '',
+    ...extra,
   ].filter(Boolean).join(' ');
   const icon = item.icon ? `<span class="action-menu__icon" aria-hidden="true">${item.icon}</span>` : '';
   return `<button ${attrs}>${icon}<span>${escapeHtml(item.label)}</span></button>`;

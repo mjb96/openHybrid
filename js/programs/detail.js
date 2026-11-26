@@ -1,10 +1,25 @@
 // @ts-check
 // =============================================================================
-// PROGRAM DETAIL PAGE — Full-screen program detail view
+// PLAN PAGE (js/programs/detail.js)
+// -----------------------------------------------------------------------------
+// Roadmap §22 / PL4. One page for one plan, with ONE week control.
+//
+// Before this: the same plan appeared as (a) a catalogue detail page with
+// `Overview | Structure | Plan` tabs, a "sample session" of five lifts and
+// three separate week previews, and (b) a second "Active Program" view with a
+// different hero, its own week stepper and `THIS WEEK | SCHEDULE`. Neither
+// showed what you would actually do on a given day, and the day-preview sheet
+// silently dropped per-lift prescriptions because it called `liftTarget`
+// without the program context.
+//
+// Now: identity → one primary action → the plan's week, each day expanding
+// inline to the exact targets the logger will use (`liftTarget` with ctx) →
+// how it progresses → can I run it (fit + equipment) → what it involves →
+// past runs → similar plans. The bottom sheet is gone; its content is inline.
 // =============================================================================
-import { PROGRAM_CATALOG, CATEGORIES, DIFFICULTY_LABELS, getCatalogEntry } from './catalog.js';
-import { buildProgramTimeline } from './timeline.js';
+import { CATEGORIES, DIFFICULTY_LABELS, getCatalogEntry } from './catalog.js';
 import { buildWeekSchedule, summarizeProgression, diffWeekPrescription } from './schedule.js';
+import { buildProgramTimeline } from './timeline.js';
 import { programStats, equipmentFit, programHasLifts } from './compare.js';
 import { getSimilarPrograms } from './recommendations.js';
 import { buildWhoItsFor } from './detail-fit.js';
@@ -12,7 +27,6 @@ import { renderProgramCard, coverGlyphFor } from './program-card.js';
 import { programAttribution } from './attribution.js';
 import { icon as svgIcon } from '../ui/icons.js';
 import { PROGRAMS } from '../constants.js';
-import { resolveProgramPhase } from './phase.js';
 import { getWeekModifier } from '../schema.js';
 import { liftTarget } from '../engine.js';
 import {
@@ -20,32 +34,45 @@ import {
   t1Prescription, t2aPrescription, t2bcPrescription, t3Prescription, jtLiftTarget,
   isJtShedProgram, simplifiedWeekPlan,
 } from './jt-shed-model.js';
-
-// The tier-aware J&T prescription label for one exercise, or null for non-J&T /
-// unknown lifts (caller then falls back to the generic sets×reps). Keeps the
-// day preview + sample session in lock-step with the cockpit and week brief.
-function jtSpecLabel(ctx, name) {
-  if (!ctx || !isJtShedProgram(ctx.program)) return null;
-  const jt = jtLiftTarget(ctx.program, ctx.week, ctx.dayKey, name);
-  return jt ? jt.label : null;
-}
-import { isBookmarked, toggleBookmark, isProgramCompleted, markProgramCompleted, getProgramById, getPersonalRating, isCustomProgram } from '../state.js';
+import {
+  isBookmarked, toggleBookmark, isProgramCompleted, markProgramCompleted,
+  getProgramById, isCustomProgram,
+} from '../state.js';
 import { escapeHtml, safeCssColor } from '../util.js';
 import { evaluateSessionCompletion } from '../workout/completion-policy.js';
 import { getExerciseNote } from '../workout/exercise-config.js';
+import { buildActivePlanBanner } from './active-plan-banner.js';
+import { priorActivationSummaries } from '../state/activation-identity.js';
+import { showToast } from '../toast.js';
+
+// The tier-aware J&T spec label ("4 × 8 · 3 RIR") for one exercise. The generic
+// liftTarget returns sets/reps only, so the tier label must come from its model.
+function jtSpecLabel(ctx, name) {
+  if (!ctx?.program || !isJtShedProgram(ctx.program)) return null;
+  const jt = jtLiftTarget(ctx.program, ctx.week, ctx.dayKey, name);
+  return jt ? jt.label : null;
+}
 
 let _currentProgramId = null;
 let _appState = null;
-let _detailTab = 'overview';   // V2-6 — 'overview' (what/why) | 'structure' (what you'll do)
-// The week the "This week at a glance" schedule is previewing. PREVIEW ONLY —
-// this never touches appState.currentWeek or program progress. 0 = "pick a
-// sensible default on next render" (active week if active, else Week 1).
+// The week the page is showing. PREVIEW ONLY — never touches appState.currentWeek.
 let _scheduleWeek = 0;
 let _scheduleTotalWeeks = 1;
+// Which day panels are open, so a week step or a re-render keeps the athlete's
+// place instead of collapsing everything.
+/** @type {Set<string>} */
+let _openDays = new Set();
 
-// Neutral origin line for the detail hero. Uses the centralised attribution
-// mapping; falls back to a dossier creator name as "Inspired by …". Never
-// implies verification/endorsement.
+const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const DAY_NAMES = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
+const DAY_SHORT = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+const _WAG_TYPE_ICON = { strength: '🏋️', running: '🏃', mixed: '🔀', rest: '💤' };
+
+function _todayDayKey() {
+  return ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
+}
+
+// Neutral origin line for the hero. Uses the centralised attribution mapping.
 function _detailAttribution(program) {
   const attr = programAttribution(program);
   if (attr) return attr.text;
@@ -53,10 +80,12 @@ function _detailAttribution(program) {
   return creator ? `Inspired by ${creator}` : '';
 }
 
+/** Open a plan page. Same name the app already routes to. */
 export function renderProgramDetail(programId, appState) {
-  // Opening a different program always starts on Overview and resets the
-  // schedule preview to its default week.
-  if (_currentProgramId !== programId) { _detailTab = 'overview'; _scheduleWeek = 0; }
+  if (_currentProgramId !== programId) {
+    _scheduleWeek = 0;
+    _openDays = new Set();
+  }
   _currentProgramId = programId;
   _appState = appState;
 
@@ -64,557 +93,226 @@ export function renderProgramDetail(programId, appState) {
   if (!container) return;
 
   const catalog = getCatalogEntry(programId);
-  const programData = PROGRAMS[programId] || appState?.customPrograms?.find(p => p.id === programId);
-
-  // Merge: use catalog for rich metadata, programData for workout structure
+  const programData = PROGRAMS[programId] || appState?.customPrograms?.find((p) => p.id === programId);
   const program = {
     ...(programData || {}),
     ...(catalog || {}),
     name: (catalog?.name || programData?.name || 'Unknown Program'),
   };
+  const resolved = getProgramById(programId) || program;
 
   const isActive = appState?.activeProgramId === programId;
-  const isCustom = !!appState?.customPrograms?.some(p => p?.id === programId);
-  const saved = isBookmarked(programId);
+  const isCustom = isCustomProgram(programId);
   const completed = isProgramCompleted(programId);
-  const personalRating = getPersonalRating(programId);
-  const diff = DIFFICULTY_LABELS[program.difficulty] || DIFFICULTY_LABELS.intermediate;
-  const category = CATEGORIES[program.category] || { label: program.category || 'Program', icon: '📋', color: '#8b5cf6' };
+  const saved = isBookmarked(programId);
   const wod = program.tags?.includes('hyrox-wod');
-  const safeProgramId = escapeHtml(programId || '');
+  const safeId = escapeHtml(programId || '');
+  const diff = DIFFICULTY_LABELS[program.difficulty] || DIFFICULTY_LABELS.intermediate;
+  const category = CATEGORIES[program.category] || { label: program.category || 'Plan', icon: '📋', color: '#8b5cf6' };
+  const accent = safeCssColor(program.accentColor || category.color, '#8b5cf6');
   const cover = [
     safeCssColor(program.coverGradient?.[0], '#1a0e2e'),
     safeCssColor(program.coverGradient?.[1], '#0d1b2a'),
   ];
-  const accent = safeCssColor(program.accentColor || category.color, '#8b5cf6');
 
-  const similarPrograms = getSimilarPrograms(program, 6);
-
-  // Week-at-a-glance + progression: derived only from real week data. Preview
-  // week defaults to the active week (if this is the active program) else Week 1,
-  // and is clamped whenever the program changes or its length differs.
   const totalWeeks = Number(program.durationWeeks || program.totalWeeks) || 12;
   _scheduleTotalWeeks = totalWeeks;
   if (!_scheduleWeek || _scheduleWeek < 1 || _scheduleWeek > totalWeeks) {
     _scheduleWeek = isActive ? Math.min(totalWeeks, Math.max(1, parseInt(appState?.currentWeek, 10) || 1)) : 1;
   }
-  const weekScheduleHTML = wod ? '' : renderWeekAtAGlance(program, isActive, appState, totalWeeks, _scheduleWeek);
-  const progressionHTML  = wod ? '' : renderProgressionOverview(program);
+  const week = _scheduleWeek;
+  const stats = programStats(program);
+  const fit = buildWhoItsFor(program, appState);
+  const equipment = renderEquipmentFit(program, appState?.settings);
 
-  // V2-6 — collapse the ~13-section marketing stack into a lean identity header
-  // (hero · stats · tags · CTA · one description) + an Overview | Structure tab
-  // body. Dedup: rating shows once (by the CTA), author once (in the hero),
-  // level/equipment once (stat + tag rows) — the old social-proof + author-card +
-  // duplicate-highlights blocks are gone.
+  const daysPerWeek = Number(program.sessionsPerWeek) || Object.values(resolved?.days || {}).filter((day) => {
+    const lifts = Array.isArray(day?.lifts) ? day.lifts.filter((n) => typeof n === 'string' && n.trim()) : [];
+    return lifts.length || (day?.runs && !/^rest$/i.test(day.runs));
+  }).length;
+
+  const facts = [
+    totalWeeks ? `${totalWeeks} week${totalWeeks === 1 ? '' : 's'}` : null,
+    daysPerWeek ? `${daysPerWeek}×/week` : null,
+    program.difficulty ? diff.label : null,
+    stats.totalHours ? `~${stats.totalHours}h total` : null,
+  ].filter(Boolean);
+
+  // The page's primary action comes from the SAME model the Plans home uses, so
+  // a finished session, a rest day or a started workout reads identically here.
+  const activeModel = isActive
+    ? buildActivePlanBanner({ state: appState, program: resolved, catalog })
+    : null;
+
+  const primary = wod
+    ? `<button class="detail-cta-btn" data-action="make-active-from-detail" data-program-id="${safeId}">Start this workout</button>`
+    : isActive
+      ? `<button class="detail-cta-btn" data-action="${escapeHtml(activeModel?.action.action || 'open-program-workout-picker')}"${
+        activeModel?.action.day ? ` data-day="${escapeHtml(activeModel.action.day)}"` : ''
+      }>${escapeHtml(activeModel?.action.label || 'Start workout')}</button>`
+      : completed
+        ? `<button class="detail-cta-btn detail-cta-btn--completed" data-action="make-active-from-detail" data-program-id="${safeId}">Train again</button>`
+        : `<button class="detail-cta-btn" data-action="make-active-from-detail" data-program-id="${safeId}">Start this plan</button>`;
+
+  const editAction = isCustom ? 'open-builder' : (isActive ? 'edit-active-program' : 'customize-program');
+  const editLabel = isCustom || isActive ? 'Edit' : 'Customize';
+
+  const weekHTML = wod ? '' : renderWeek(resolved, { isActive, week, totalWeeks, appState });
+  const progressionHTML = wod ? '' : renderProgressionOverview(resolved);
+  const notesHTML = renderAuthoredProgramNotes(resolved);
   const outcomes = program.expectedOutcomes?.length ? program.expectedOutcomes : (program.highlights || []);
-  const outcomesTitle = program.expectedOutcomes?.length ? "What you'll achieve" : 'Program highlights';
-
-  const overviewHTML = `
-    ${outcomes.length ? `
-      <div class="detail-section">
-        <div class="detail-section-title">${outcomesTitle}</div>
-        <div class="detail-outcomes">
-          ${outcomes.map(o => `<div class="detail-outcome-chip"><span class="detail-outcome-arrow">→</span> ${escapeHtml(o)}</div>`).join('')}
-        </div>
-      </div>` : ''}
-    ${program.metrics ? `
-      <div class="detail-section">
-        <div class="detail-section-title">Training focus</div>
-        ${renderFocusBars(program.metrics)}
-      </div>` : ''}
-    ${renderAuthoredProgramNotes(program)}
-  `;
-  // Equipment is no longer in this tab: 4B puts equipment FIT third, beside the
-  // commitment, so the kit question is answered before the sample week rather
-  // than a tab-click later.
-
-  const structureHTML = `
-    ${!wod && (program.days || programData?.days) ? `
-      <div class="detail-section">
-        <div class="detail-section-title">Weekly structure</div>
-        ${renderDaySplit(program.days || programData?.days)}
-      </div>` : ''}
-    ${renderSampleWorkout(program, programData, wod)}
-  `;
-
-  const planHTML = renderPlanTimeline(program);
-  const hasPlan = !wod && !!planHTML;
-
-  const detailTabBar = `
-    <div class="an-tabbar detail-tabbar">
-      <button class="an-tab ${_detailTab === 'overview' ? 'an-tab--active' : ''}" data-detail-tab="overview">Overview</button>
-      <button class="an-tab ${_detailTab === 'structure' ? 'an-tab--active' : ''}" data-detail-tab="structure">Structure</button>
-      ${hasPlan ? `<button class="an-tab ${_detailTab === 'plan' ? 'an-tab--active' : ''}" data-detail-tab="plan">Plan</button>` : ''}
-    </div>`;
+  const goals = (program.goals || []).slice(0, 3);
+  const similar = getSimilarPrograms(program, 3);
+  const pastRuns = isActive ? renderPastRuns(resolved, programId, appState) : '';
 
   container.innerHTML = `
-    <!-- Back + Header -->
     <div class="detail-back-bar">
       <button class="detail-back-btn" data-action="close-program-detail">
-        <span class="detail-back-icon">‹</span> Library
+        <span class="detail-back-icon">‹</span> Plans
       </button>
       <div class="detail-back-actions">
         ${isActive ? '<span class="detail-active-badge">ACTIVE</span>' : ''}
         ${completed ? '<span class="detail-completed-badge">COMPLETED</span>' : ''}
-        <button class="detail-bookmark-btn"
-                data-action="rate-program"
-                data-program-id="${safeProgramId}"
-                aria-label="Rate this program">⭐</button>
-        <button class="detail-bookmark-btn ${saved ? 'saved' : ''}"
-                data-action="detail-toggle-bookmark"
-                data-program-id="${safeProgramId}"
-                aria-label="${saved ? 'Remove bookmark' : 'Save program'}">
-          ${saved ? '🔖' : '🤍'}
-        </button>
         <button class="detail-bookmark-btn detail-overflow-btn"
                 data-action="open-program-menu"
-                data-program-id="${safeProgramId}"
-                aria-label="More program actions" aria-haspopup="menu" aria-expanded="false">⋯</button>
+                data-program-id="${safeId}"
+                aria-label="More plan actions" aria-haspopup="menu" aria-expanded="false">⋯</button>
       </div>
     </div>
 
-    <!-- Hero -->
-    <div class="detail-hero"
-         style="background: linear-gradient(165deg, ${cover[0]}, ${cover[1]})">
-      <div class="detail-hero-icon" aria-hidden="true">${svgIcon(coverGlyphFor(program), { size: 72 })}</div>
+    <div class="detail-hero" style="background: linear-gradient(165deg, ${cover[0]}, ${cover[1]})">
+      <div class="detail-hero-icon" aria-hidden="true">${svgIcon(coverGlyphFor(program), { size: 64 })}</div>
       <div class="detail-hero-content">
         <span class="detail-category-badge" style="background: ${accent}22; color: ${accent}; border-color: ${accent}40">
           ${escapeHtml(category.icon)} ${escapeHtml(category.label)}
         </span>
         <h1 class="detail-title">${escapeHtml(program.name)}</h1>
-        <p class="detail-tagline">${escapeHtml(program.tagline || program.dossier?.philosophy?.slice(0, 100) || '')}</p>
+        <p class="detail-tagline">${escapeHtml(program.tagline || '')}</p>
         <div class="detail-author">${escapeHtml(_detailAttribution(program))}</div>
       </div>
     </div>
 
-    <!-- Quick Stats Row -->
-    <div class="detail-stats-row">
-      ${wod ? `
-      <div class="detail-stat">
-        <div class="detail-stat-value">${program.sessionDurationMinutes ? `${program.sessionDurationMinutes.min}–${program.sessionDurationMinutes.max}m` : '—'}</div>
-        <div class="detail-stat-label">Duration</div>
-      </div>
-      <div class="detail-stat-divider"></div>
-      <div class="detail-stat">
-        <div class="detail-stat-value" style="color: ${diff.color}">${diff.label}</div>
-        <div class="detail-stat-label">Level</div>
-      </div>
-      <div class="detail-stat-divider"></div>
-      <div class="detail-stat">
-        <div class="detail-stat-value">${program.sessionDurationMinutes ? program.sessionDurationMinutes.max + 'm' : '—'}</div>
-        <div class="detail-stat-label">Per Session</div>
-      </div>
-      <div class="detail-stat-divider"></div>
-      <div class="detail-stat">
-        <div class="detail-stat-value">${{ 'full-gym': 'Full Gym', gym: 'Full Gym', home: 'Home', garage_gym: 'Garage', bodyweight: 'Bodyweight', minimal: 'Minimal' }[program.equipmentTier] || '—'}</div>
-        <div class="detail-stat-label">Equipment</div>
-      </div>
-      ` : `
-      <div class="detail-stat">
-        <div class="detail-stat-value">${program.durationWeeks || program.totalWeeks || '12'}</div>
-        <div class="detail-stat-label">Weeks</div>
-      </div>
-      <div class="detail-stat-divider"></div>
-      <div class="detail-stat">
-        <div class="detail-stat-value">${program.sessionsPerWeek || '—'}</div>
-        <div class="detail-stat-label">Days/Week</div>
-      </div>
-      <div class="detail-stat-divider"></div>
-      <div class="detail-stat">
-        <div class="detail-stat-value" style="color: ${diff.color}">${diff.label}</div>
-        <div class="detail-stat-label">Level</div>
-      </div>
-      <div class="detail-stat-divider"></div>
-      <div class="detail-stat">
-        <div class="detail-stat-value">${program.sessionDurationMinutes ? program.sessionDurationMinutes.max + 'm' : '—'}</div>
-        <div class="detail-stat-label">Per Session</div>
-      </div>
-      `}
+    <div class="plan-facts">
+      ${facts.map((fact) => `<span class="plan-facts__item">${escapeHtml(fact)}</span>`).join('')}
+      <span class="detail-fit-verdict detail-fit-verdict--${fit.verdict?.tone || 'stretch'}">${escapeHtml(fit.verdict?.label || 'Not assessed')}</span>
     </div>
 
-    <!-- 1. Who it's for — the question the page could not previously answer -->
-    ${renderWhoItsFor(program, appState)}
+    <div class="detail-cta-wrap">
+      ${primary}
+      <div class="detail-cta-secondary">
+        <button class="detail-complete-btn" data-action="${editAction}" data-program-id="${safeId}">✏️ ${editLabel}</button>
+      </div>
+    </div>
 
-    <!-- 2. Weekly commitment -->
-    ${wod ? '' : renderCommitmentStrip(program, appState?.settings)}
+    ${weekHTML}
+    ${progressionHTML}
+    ${notesHTML}
 
-    <!-- 3. Equipment fit -->
-    ${wod ? '' : renderEquipmentFit(program, appState?.settings)}
+    <div class="detail-section detail-fit" id="planFit">
+      <div class="detail-section-title detail-fit-head">
+        <span>Is this right for me?</span>
+        ${fit.verdict ? `<span class="detail-fit-verdict detail-fit-verdict--${fit.verdict.tone}">${escapeHtml(fit.verdict.label)}</span>` : ''}
+      </div>
+      <p class="detail-fit-audience">${escapeHtml(fit.audience)}</p>
+      ${fit.reasons.length || fit.cautions.length ? `
+        <ul class="detail-fit-list">
+          ${fit.reasons.map((item) => `<li class="detail-fit-item detail-fit-item--reason"><span class="detail-fit-mark" aria-hidden="true">✓</span>${escapeHtml(item)}</li>`).join('')}
+          ${fit.cautions.map((item) => `<li class="detail-fit-item detail-fit-item--caution"><span class="detail-fit-mark" aria-hidden="true">!</span>${escapeHtml(item)}</li>`).join('')}
+        </ul>` : ''}
+      ${equipment}
+    </div>
 
-    <!-- Goals only. The difficulty tag and the equipment-tier tag were both
-         removed: level is already the stats row's own column and now opens the
-         "Who it's for" verdict, and the coarse tier said less than the equipment
-         section directly above, which names the actual kit and whether you have
-         it. Decorative dots that restate a neighbouring value are exactly the
-         repeated labels 4B asks to remove. -->
-    ${(program.goals || []).length ? `
-      <div class="detail-tags-row">
-        ${(program.goals || []).slice(0, 3).map(g => `<span class="detail-tag detail-tag--goal">${escapeHtml(String(g).replace(/-/g, ' '))}</span>`).join('')}
+    ${outcomes.length ? `
+      <div class="detail-section">
+        <div class="detail-section-title">${program.expectedOutcomes?.length ? "What you'll achieve" : 'Highlights'}</div>
+        <div class="detail-outcomes">
+          ${outcomes.map((o) => `<div class="detail-outcome-chip"><span class="detail-outcome-arrow">→</span> ${escapeHtml(o)}</div>`).join('')}
+        </div>
       </div>` : ''}
 
-    <!-- CTA -->
-    <div class="detail-cta-wrap">
-      ${isActive
-        ? `<button class="detail-cta-btn detail-cta-btn--active" data-action="view-active-program">
-              View Active Program
-           </button>`
-        : completed
-        ? `<button class="detail-cta-btn detail-cta-btn--completed" data-action="make-active-from-detail" data-program-id="${safeProgramId}">
-              Train Again
-           </button>`
-        : `<button class="detail-cta-btn" data-action="make-active-from-detail" data-program-id="${safeProgramId}">
-              ${wod ? 'Start This Workout' : 'Start This Program'}
-           </button>`
-      }
-      ${isActive && !completed ? `
-        <button class="detail-complete-btn" data-action="mark-program-complete" data-program-id="${safeProgramId}">
-          Mark as Complete
-        </button>
-      ` : ''}
-      <div class="detail-cta-secondary" style="display:flex;gap:8px;margin-top:8px;">
-        <button class="detail-complete-btn" style="flex:1;margin-top:0;" data-action="${isCustom ? 'open-builder' : (isActive ? 'edit-active-program' : 'customize-program')}" data-program-id="${safeProgramId}">✏️ ${isCustom || isActive ? 'Edit' : 'Customize'}</button>
-        <button class="detail-complete-btn" style="flex:1;margin-top:0;" data-action="open-compare" data-program-id="${safeProgramId}">⚖️ Compare</button>
-      </div>
-      ${personalRating
-        ? `<div class="detail-your-rating" data-action="rate-program" data-program-id="${safeProgramId}" role="button" tabindex="0">
-             <span class="detail-your-rating-label">Your rating</span>
-             ${renderStars(personalRating.rating)}
-             <span class="detail-rating-value">${personalRating.rating}/5</span>
-           </div>`
-        : `<button class="detail-rating detail-rating--empty" data-action="rate-program" data-program-id="${safeProgramId}">
-             <span class="detail-rating-empty-text">☆ Rate this program</span>
-           </button>`
-      }
-    </div>
-
-    <!-- Week-at-a-glance + progression — the actual training, before prose -->
-    ${weekScheduleHTML}
-    ${progressionHTML}
-
-    <!-- Description — the one-line "what it is" -->
-    <div class="detail-section">
-      <p class="detail-description">${escapeHtml(program.description || program.dossier?.philosophy || '')}</p>
-    </div>
-
-    <!-- Overview | Structure | Plan -->
-    ${detailTabBar}
-    <div class="detail-tabbody">${
-      _detailTab === 'plan' && hasPlan ? planHTML
-      : _detailTab === 'structure' ? structureHTML
-      : overviewHTML
-    }</div>
-
-    <!-- Similar Programs -->
-    ${similarPrograms.length > 0 ? `
+    ${program.metrics ? `
       <div class="detail-section">
-        <div class="detail-section-title">Similar programs</div>
-        <div class="card-scroll-row">
-          ${similarPrograms.map(p => renderProgramCard(p, 'small')).join('')}
-        </div>
-      </div>
-    ` : ''}
+        <div class="detail-section-title">Training focus</div>
+        ${renderFocusBars(program.metrics)}
+      </div>` : ''}
 
-    <!-- Bottom spacer -->
+    ${goals.length ? `
+      <div class="detail-tags-row">
+        ${goals.map((g) => `<span class="detail-tag detail-tag--goal">${escapeHtml(String(g).replace(/-/g, ' '))}</span>`).join('')}
+      </div>` : ''}
+
+    <details class="plan-about">
+      <summary>About this plan</summary>
+      <p class="detail-description">${escapeHtml(program.description || program.dossier?.philosophy || '')}</p>
+    </details>
+
+    ${pastRuns}
+
+    ${similar.length ? `
+      <div class="detail-section">
+        <div class="detail-section-title">Similar plans</div>
+        <div class="card-scroll-row">
+          ${similar.map((p) => renderProgramCard(p, 'small')).join('')}
+        </div>
+      </div>` : ''}
+
     <div style="height: 48px;"></div>
   `;
 
-  // Self-contained tab switching (re-render on switch, like the analytics/profile screens).
-  container.querySelectorAll('[data-detail-tab]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      _detailTab = btn.getAttribute('data-detail-tab');
-      renderProgramDetail(programId, appState);
-    });
-  });
+  // Restore any open panels after a week step / re-render. The toggle itself is
+  // the app's one data-action handler (no second listener, which would toggle
+  // twice and look like a dead control).
+  for (const day of _openDays) {
+    const button = container.querySelector(`[data-action="toggle-plan-day"][data-day="${day}"]`);
+    if (button) openPlanDay(/** @type {HTMLElement} */ (button));
+  }
 }
 
-function renderStars(rating) {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5;
-  const empty = 5 - full - (half ? 1 : 0);
-  return `<span class="detail-stars" aria-label="${rating} out of 5 stars">
-    ${'★'.repeat(full)}${half ? '⯨' : ''}${'☆'.repeat(empty)}
-  </span>`;
-}
+// ── Hero facts ───────────────────────────────────────────────────────────────
 
 function renderFocusBars(metrics) {
-  const qualLabel = v => v >= 80 ? 'Very High' : v >= 60 ? 'High' : v >= 35 ? 'Moderate' : 'Low';
+  const qualLabel = (v) => v >= 80 ? 'Very High' : v >= 60 ? 'High' : v >= 35 ? 'Moderate' : 'Low';
   const bars = [
-    { label: 'Strength',     value: metrics.strengthEmphasis,     color: '#ef4444' },
-    { label: 'Hypertrophy',  value: metrics.hypertrophyEmphasis,  color: '#3b82f6' },
-    { label: 'Endurance',    value: metrics.enduranceEmphasis,    color: '#22d3ee' },
+    { label: 'Strength', value: metrics.strengthEmphasis, color: '#ef4444' },
+    { label: 'Hypertrophy', value: metrics.hypertrophyEmphasis, color: '#3b82f6' },
+    { label: 'Endurance', value: metrics.enduranceEmphasis, color: '#22d3ee' },
     { label: 'Conditioning', value: metrics.conditioningEmphasis, color: '#f59e0b' },
-    { label: 'Recovery',     value: metrics.recoveryDemand,       color: '#8b5cf6' },
-  ].filter(b => b.value > 0);
-
+    { label: 'Recovery', value: metrics.recoveryDemand, color: '#8b5cf6' },
+  ].filter((b) => b.value > 0);
   if (!bars.length) return '';
-
   return `
     <div class="focus-bars">
       ${bars.map((bar, i) => `
         <div class="focus-bar-row">
           <div class="focus-bar-label">${bar.label}</div>
           <div class="focus-bar-track">
-            <div class="focus-bar-fill"
-                 style="--bar-target: ${bar.value}%; background: ${bar.color}; animation-delay: ${i * 70}ms">
-            </div>
+            <div class="focus-bar-fill" style="--bar-target: ${bar.value}%; background: ${bar.color}; animation-delay: ${i * 70}ms"></div>
           </div>
           <div class="focus-bar-qual">${qualLabel(bar.value)}</div>
         </div>
       `).join('')}
-    </div>
-  `;
-}
-
-export function renderSampleWorkout(program, programData, wod = false, state = _appState) {
-  const days = program.days || programData?.days;
-  if (!days) return '';
-
-  const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  const dayNames = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
-
-  let chosenDay = null, chosenKey = null;
-  for (const key of dayOrder) {
-    const day = days[key];
-    if (!day) continue;
-    const isRest = !day.lifts?.length && (!day.runs || day.runs === 'Rest');
-    if (!isRest && day.workoutPreview) { chosenDay = day; chosenKey = key; break; }
-  }
-  // Fallback: any non-rest day without a structured preview
-  if (!chosenDay) {
-    for (const key of dayOrder) {
-      const day = days[key];
-      if (!day) continue;
-      const isRest = !day.lifts?.length && (!day.runs || day.runs === 'Rest');
-      if (!isRest) { chosenDay = day; chosenKey = key; break; }
-    }
-  }
-  if (!chosenDay) return '';
-
-  const preview = chosenDay.workoutPreview;
-  const isRun = preview?.type === 'RUNNING' || (!preview?.type && chosenDay.runs && chosenDay.runs !== 'Rest' && !chosenDay.lifts?.length);
-  let bodyHtml = '';
-
-  if (preview?.type === 'STRENGTH' && preview.exercises?.length) {
-    // Show the SAME target the cockpit prescribes — liftTarget resolves an
-    // inline "(4×8–10)" spec when the program carries one, else the week-1
-    // modifier's uniform sets×reps. Reading the hand-written workoutPreview
-    // sets/reps would promise a per-lift prescription the engine never
-    // delivers. Names come from day.lifts (what the cockpit renders).
-    const mod1 = getWeekModifier(program, 1) || {};
-    const names = (chosenDay.lifts?.length ? chosenDay.lifts : preview.exercises.map(e => e.exercise))
-      .filter(n => typeof n === 'string' && n.trim());
-    const shown = names.slice(0, 5);
-    const extra = names.length - shown.length;
-    bodyHtml = `
-      <div class="sample-exercise-list">
-        ${shown.map(name => {
-          const t = liftTarget(chosenDay.desc, name, mod1);
-          const note = getExerciseNote(state, name);
-          return `
-          <div class="sample-exercise-row">
-            <span class="sample-ex-name">${escapeHtml(name)}</span>
-            <span class="sample-ex-prescription">${t.sets} × ${t.reps}</span>
-            ${note ? `<span class="sample-ex-note">${escapeHtml(note)}</span>` : ''}
-          </div>`;
-        }).join('')}
-        ${extra > 0 ? `<div class="sample-ex-more">+${extra} more exercises</div>` : ''}
-      </div>`;
-  } else if (preview?.type === 'RUNNING' && preview.phases?.length) {
-    bodyHtml = `
-      <div class="sample-run-phases">
-        ${preview.phases.map(ph => `
-          <div class="sample-run-phase">
-            <span class="sample-run-phase-name">${escapeHtml(ph.name)}</span>
-            <span class="sample-run-phase-detail">${escapeHtml(ph.duration)} · ${escapeHtml(ph.pace)}</span>
-          </div>
-        `).join('')}
-      </div>`;
-  } else if (chosenDay.lifts?.length) {
-    const shown = chosenDay.lifts.slice(0, 5);
-    const extra = chosenDay.lifts.length - shown.length;
-    const jtCtx = { program, week: 1, dayKey: chosenKey };
-    bodyHtml = `
-      <div class="sample-exercise-list">
-        ${shown.map(l => {
-          const jt = jtSpecLabel(jtCtx, l);
-          return `<div class="sample-exercise-row"><span class="sample-ex-name">${escapeHtml(l)}</span>${jt ? `<span class="sample-ex-prescription">${escapeHtml(jt)}</span>` : ''}</div>`;
-        }).join('')}
-        ${extra > 0 ? `<div class="sample-ex-more">+${extra} more exercises</div>` : ''}
-      </div>`;
-  } else if (chosenDay.runs && chosenDay.runs !== 'Rest') {
-    bodyHtml = `<div class="sample-run-text">${escapeHtml(chosenDay.runs)}</div>`;
-  }
-
-  if (!bodyHtml) return '';
-
-  const accentColor = chosenDay.color?.startsWith('var(') ? null : safeCssColor(chosenDay.color, '');
-  const badgeStyle = accentColor
-    ? `color: ${accentColor}; border-color: ${accentColor}40`
-    : `color: var(--text-secondary); border-color: rgba(255,255,255,0.12)`;
-
-  // WODs: drop the day-of-week label (it's irrelevant) and use "The Workout" as section title
-  const sectionTitle = wod ? 'The Workout' : 'Sample Session';
-  const headerHtml = wod
-    ? (chosenDay.badge ? `<span class="sample-workout-badge" style="${badgeStyle}">${escapeHtml(chosenDay.badge)}</span>` : '')
-    : `<span class="sample-workout-dayname">${dayNames[chosenKey]}</span>
-       ${chosenDay.badge ? `<span class="sample-workout-badge" style="${badgeStyle}">${escapeHtml(chosenDay.badge)}</span>` : ''}`;
-
-  return `
-    <div class="detail-section">
-      <div class="detail-section-title">${sectionTitle}</div>
-      <div class="sample-workout-card">
-        ${headerHtml ? `<div class="sample-workout-header">${headerHtml}</div>` : ''}
-        <div class="sample-workout-title">${isRun ? '🏃' : '🏋️'} ${escapeHtml(chosenDay.title || 'Training Session')}</div>
-        ${bodyHtml}
-      </div>
-    </div>
-  `;
-}
-
-// A1 — the week-by-week plan. Renders the progression/deload arc that every
-// program already carries in weeklyVolModifiers, tinted by phase so the shape
-// of the block reads at a glance.
-const PLAN_KIND_COLOR = {
-  deload: '#22d3ee', peak: '#ef4444', taper: '#a78bfa',
-  intensify: '#f59e0b', build: '#8b5cf6', work: '#64748b',
-};
-const PLAN_KIND_LABEL = {
-  deload: 'Deload', peak: 'Peak', taper: 'Taper', intensify: 'Intensity', build: 'Build', work: '',
-};
-
-// A2 — the commitment strip: the numbers that actually decide "can/should I do
-// this?" — total time cost, weekly working volume, and whether the athlete owns
-// the kit. Reuses the pure programStats + equipmentFit helpers.
-/**
- * "Who it's for" — Phase 4B's first section, and the question the page could not
- * previously answer at all.
- *
- * The audience line is about the programme. The verdict, reasons and cautions are
- * about the athlete, and come from the same `programFit` scoring the Plans
- * recommendations use. Cautions appear HERE but never in the recommendations row:
- * the row drops an unfitting programme rather than caption it, while someone who
- * opened this page needs to know what it will cost them.
- */
-function renderWhoItsFor(program, appState) {
-  const model = buildWhoItsFor(program, appState);
-  const verdict = model.verdict
-    ? `<span class="detail-fit-verdict detail-fit-verdict--${model.verdict.tone}">${escapeHtml(model.verdict.label)}</span>`
-    : '';
-  const list = (items, kind) => items.map((item) => `
-    <li class="detail-fit-item detail-fit-item--${kind}">
-      <span class="detail-fit-mark" aria-hidden="true">${kind === 'reason' ? '✓' : '!'}</span>
-      ${escapeHtml(item)}
-    </li>`).join('');
-
-  return `
-    <div class="detail-section detail-fit">
-      <div class="detail-section-title detail-fit-head">
-        <span>Who it's for</span>${verdict}
-      </div>
-      <p class="detail-fit-audience">${escapeHtml(model.audience)}</p>
-      ${model.reasons.length || model.cautions.length ? `
-        <ul class="detail-fit-list">
-          ${list(model.reasons, 'reason')}
-          ${list(model.cautions, 'caution')}
-        </ul>` : ''}
     </div>`;
 }
 
-/**
- * Equipment fit — 4B's third section, promoted out of the Overview tab so it sits
- * with the commitment it belongs to. States what the programme needs AND whether
- * the athlete has it, rather than listing kit and leaving them to check.
- */
-function renderEquipmentFit(program, settings) {
-  const needed = program.equipment || [];
-  if (!needed.length) return '';
-  const fit = equipmentFit(needed, settings?.equipment);
-  const missing = new Set(fit.missing);
-  const status = fit.missing.length
-    ? `<span class="detail-fit-verdict detail-fit-verdict--stretch">${fit.missing.length} item${fit.missing.length === 1 ? '' : 's'} missing</span>`
-    : fit.owned.length
-      ? '<span class="detail-fit-verdict detail-fit-verdict--fits">You have the kit</span>'
-      : '';
-  return `
-    <div class="detail-section">
-      <div class="detail-section-title detail-fit-head">
-        <span>Equipment</span>${status}
-      </div>
-      <div class="detail-equipment">
-        ${needed.map((e) => `<span class="detail-equipment-chip${missing.has(e) ? ' detail-equipment-chip--missing' : ''}">${formatEquipment(e)}</span>`).join('')}
-      </div>
-    </div>`;
-}
+// ── The week (one week control, inline day disclosures) ─────────────────────
 
-function renderCommitmentStrip(program, settings) {
-  const s = programStats(program);
-  const fit = equipmentFit(s.equipment, settings?.equipment);
-
-  const tiles = [];
-  if (s.totalHours) {
-    tiles.push({ v: `~${s.totalHours}h`, l: `over ${s.weeks} wks`, c: 'var(--text-inverse)' });
-  }
-  if (s.weeklySets && s.hasLifts) {
-    // This is the week modifier's sets-per-lift, not total weekly sets — label
-    // it honestly (a 5-day program obviously isn't "4 sets a week"). Only shown
-    // for programs that actually lift; a run block's sets/reps are an internal
-    // volume hack, not a prescription (the real one lives in the day/plan label).
-    tiles.push({ v: `~${s.weeklySets}`, l: 'sets per lift', c: 'var(--text-inverse)' });
-  } else if (s.daysPerWeek && !s.hasLifts) {
-    // Running/endurance block: show the session cadence instead of a phantom
-    // "sets per lift" so the strip still reads as three honest decision numbers.
-    tiles.push({ v: `${s.daysPerWeek}×`, l: 'runs per week', c: 'var(--text-inverse)' });
-  }
-  if (s.equipment.length) {
-    if (fit.missing.length) {
-      const names = fit.missing.map(t => t.replace(/-/g, ' ')).join(', ');
-      tiles.push({ v: `✗ ${fit.missing.length} missing`, l: names, c: '#f59e0b' });
-    } else if (fit.owned.length) {
-      tiles.push({ v: '✓ Ready', l: 'you have the kit', c: '#10b981' });
-    }
-  }
-  if (!tiles.length) return '';
-
-  return `
-    <div class="detail-commitment-strip" style="display:flex;gap:8px;margin:14px 16px 0;">
-      ${tiles.map(t => `
-        <div style="flex:1;background:var(--overlay-sm);border-radius:12px;padding:10px 12px;text-align:center;">
-          <div style="font-family:ui-monospace,monospace;font-weight:800;font-size:1.05rem;letter-spacing:-0.02em;color:${t.c};">${t.v}</div>
-          <div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--text-muted);margin-top:2px;">${escapeHtml(t.l)}</div>
-        </div>
-      `).join('')}
-    </div>`;
-}
-
-// ── Week-at-a-glance schedule (main page, week-stepped, tappable) ────────────
-const _WAG_TYPE_ICON = { strength: '🏋️', running: '🏃', mixed: '🔀', rest: '💤' };
-
-function _todayDayKey() {
-  return ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
-}
-
-// Which days of a given week have been trained (any completed set, or a logged
-// run) — used only to mark the ACTIVE program's current week. Never counts
-// prescriptions, previews, or rest days as sessions.
 function _dayCompletionMap(appState, week, program) {
   const out = {};
   const wk = appState?.weeks?.[String(week)];
   if (!wk) return out;
-  for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']) {
+  for (const d of DAY_ORDER) {
     if (evaluateSessionCompletion(appState, program, String(week), d).finished) out[d] = 'done';
   }
   return out;
 }
 
-function renderWeekAtAGlance(program, isActive, appState, totalWeeks, week) {
+function renderWeek(program, { isActive, week, totalWeeks, appState }) {
   const rows = buildWeekSchedule(program, week);
   if (!rows.length) return '';
 
-  const activeWeek = isActive ? Math.max(1, parseInt(appState?.currentWeek, 10) || 1) : null;
-  const isCurrent = activeWeek === week;
+  const currentWeek = isActive ? Math.max(1, parseInt(appState?.currentWeek, 10) || 1) : null;
+  const isCurrent = currentWeek === week;
   const completion = isCurrent ? _dayCompletionMap(appState, week, program) : null;
   const todayKey = isCurrent ? _todayDayKey() : null;
-
   const changes = week !== 1 ? diffWeekPrescription(program, 1, week) : null;
   const showChanges = changes && !(changes.length === 1 && /^No prescription changes$/.test(changes[0]));
 
@@ -630,52 +328,219 @@ function renderWeekAtAGlance(program, isActive, appState, totalWeeks, week) {
       <button class="wag-week-btn" data-action="detail-week-step" data-delta="1" aria-label="Next week"${week >= totalWeeks ? ' disabled' : ''}>›</button>
     </div>` : '';
 
-  const rowsHTML = rows.map(r => {
-    const icon = _WAG_TYPE_ICON[r.type] || '•';
-    const isToday = todayKey === r.dayKey && !r.isRest;
-    const status = completion && completion[r.dayKey] === 'done'
+  const body = rows.map((row) => {
+    const isToday = todayKey === row.dayKey && !row.isRest;
+    const done = completion?.[row.dayKey] === 'done';
+    const status = done
       ? '<span class="wag-status wag-status--done">✓ Done</span>'
       : (isToday ? '<span class="wag-status wag-status--today">Today</span>' : '');
-    const attrs = r.interactive
-      ? `data-action="open-day-preview" data-day="${r.dayKey}" data-week="${week}" data-program-id="${_currentProgramId}" role="button" tabindex="0"`
-      : '';
-    return `
-      <div class="wag-row${r.isRest ? ' wag-row--rest' : ''}${r.interactive ? ' wag-row--interactive' : ''}${isToday ? ' wag-row--today' : ''}" ${attrs}>
-        <div class="wag-day">${r.dayShort}</div>
-        <div class="wag-body">
-          <div class="wag-title-line">
-            <span class="wag-type-icon" aria-hidden="true">${icon}</span>
-            <span class="wag-title">${escapeHtml(r.title)}</span>
-            ${status}
+    const icon = _WAG_TYPE_ICON[row.type] || '•';
+    const key = row.dayKey;
+
+    if (row.isRest) {
+      // A rest day can still be AUTHORED ("Active Recovery", "Mobility"). The
+      // plan's own name must survive; only a plain rest day reads as "Rest".
+      const restTitle = /^rest$/i.test(String(row.title || '').trim()) ? 'Rest' : row.title;
+      return `
+        <div class="wag-row wag-row--rest">
+          <div class="wag-day">${row.dayShort}</div>
+          <div class="wag-body">
+            <div class="wag-title-line"><span class="wag-type-icon" aria-hidden="true">${icon}</span>
+              <span class="wag-title">${escapeHtml(restTitle)}</span>${status}</div>
+            <div class="wag-summary">Recovery day</div>
           </div>
-          <div class="wag-summary">${escapeHtml(r.summary)}</div>
-        </div>
-        ${r.interactive ? '<span class="wag-chevron" aria-hidden="true">›</span>' : ''}
+        </div>`;
+    }
+
+    const panelId = `planDayPanel-${key}`;
+    return `
+      <button type="button" class="wag-row plan-day__toggle${isToday ? ' wag-row--today' : ''}"
+              data-action="toggle-plan-day" data-day="${key}"
+              aria-expanded="${_openDays.has(key) ? 'true' : 'false'}" aria-controls="${panelId}">
+        <span class="wag-day">${row.dayShort}</span>
+        <span class="wag-body">
+          <span class="wag-title-line">
+            <span class="wag-type-icon" aria-hidden="true">${icon}</span>
+            <span class="wag-title">${escapeHtml(row.title)}</span>
+            ${status}
+          </span>
+          <span class="wag-summary">${escapeHtml(row.summary)}</span>
+        </span>
+        <span class="wag-chevron" aria-hidden="true">›</span>
+      </button>
+      <div class="plan-day__panel" id="${panelId}" hidden>
+        ${renderDayTargets(resolvedDay(program, key), { program, week, dayKey: key, state: appState })}
       </div>`;
   }).join('');
 
   return `
-    <div class="detail-section">
-      <div class="detail-section-title">This week at a glance</div>
+    <div class="detail-section plan-week">
+      <div class="detail-section-title">${isActive ? 'This week' : 'The week'}</div>
       ${stepper}
       ${renderAuthoredWeekBrief(program, week)}
-      ${showChanges ? `<div class="wag-changes"><span class="wag-changes-label">Changes from Week 1</span>${changes.map(c => `<span class="wag-change">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
-      <div class="wag-list">${rowsHTML}</div>
+      ${showChanges ? `<div class="wag-changes"><span class="wag-changes-label">Changes from Week 1</span>${changes.map((c) => `<span class="wag-change">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
+      <div class="wag-list">${body}</div>
+      <p class="plan-week__hint">Tap a day to see the exact target for every exercise.</p>
     </div>`;
 }
 
-// ── Jacked & Tan: Shed Edition — tiered progression + notes (additive) ───────
-// Rendered only for the program that carries progressionModel==='jt-shed'. All
-// numbers come from ./jt-shed-model.js so the preview can never disagree with
-// the tests or the cockpit's week label. Never touches user workout notes.
+function resolvedDay(program, dayKey) {
+  return program?.days?.[dayKey] || {};
+}
+
+/**
+ * The exact targets for one day, resolved the same way the logger resolves them
+ * (per-lift prescriptions → progression model → inline spec → week modifier).
+ * Read-only: no controls, no state.
+ *
+ * @param {any} day
+ * @param {{ program?:any, week?:number|string, dayKey?:string, state?:any }} [ctx]
+ * @returns {string}
+ */
+export function renderDayTargets(day, ctx = {}) {
+  const program = ctx.program || null;
+  const week = ctx.week || 1;
+  const dayKey = ctx.dayKey || 'mon';
+  const state = ctx.state || _appState;
+  const modifier = getWeekModifier(program, week) || {};
+  const names = (Array.isArray(day?.lifts) ? day.lifts : []).filter((n) => typeof n === 'string' && n.trim());
+
+  const preview = day?.workoutPreview;
+  if (preview?.type === 'HYROX') return renderHyroxPreview(preview);
+  if (preview?.type === 'RUNNING' && !names.length) return renderRunningPreview(preview.phases);
+
+  const rows = names.map((name) => {
+    const target = liftTarget(day.desc, name, modifier, { program, week, dayKey });
+    const spec = jtSpecLabel({ program, week, dayKey }, name) || `${target.sets} × ${target.reps}`;
+    const note = getExerciseNote(state, name);
+    return `<div class="wpm-exercise-item">
+      <span>${escapeHtml(name)}</span><span>${escapeHtml(spec)}</span>
+      ${note ? `<span class="wpm-ex-note">${escapeHtml(note)}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  const run = day?.runs && !/^rest$/i.test(day.runs)
+    ? `<div class="plan-day__run">🏃 ${escapeHtml(day.runs)}</div>` : '';
+
+  if (!rows && !run) return '<p class="wpm-empty">No exercises listed.</p>';
+  return `<div class="wpm-exercise-list">${rows}</div>${run}`;
+}
+
+function togglePlanDay(button) {
+  const day = button.getAttribute('data-day');
+  if (!day) return;
+  const panel = document.getElementById(`planDayPanel-${day}`);
+  if (!panel) return;
+  const open = panel.hidden;
+  panel.hidden = !open;
+  button.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) _openDays.add(day); else _openDays.delete(day);
+}
+
+function openPlanDay(button) {
+  const day = button.getAttribute('data-day');
+  const panel = day ? document.getElementById(`planDayPanel-${day}`) : null;
+  if (!panel) return;
+  panel.hidden = false;
+  button.setAttribute('aria-expanded', 'true');
+}
+
+// ── Fit + equipment ──────────────────────────────────────────────────────────
+
+function renderEquipmentFit(program, settings) {
+  const needed = program.equipment || [];
+  if (!needed.length) return '';
+  const fit = equipmentFit(needed, settings?.equipment);
+  const missing = new Set(fit.missing);
+  const status = fit.missing.length
+    ? `<span class="detail-fit-verdict detail-fit-verdict--stretch">${fit.missing.length} item${fit.missing.length === 1 ? '' : 's'} missing</span>`
+    : fit.owned.length
+      ? '<span class="detail-fit-verdict detail-fit-verdict--fits">You have the kit</span>'
+      : '';
+  return `
+    <div class="detail-equipment-block">
+      <div class="detail-section-title detail-fit-head"><span>Equipment</span>${status}</div>
+      <div class="detail-equipment">
+        ${needed.map((e) => `<span class="detail-equipment-chip${missing.has(e) ? ' detail-equipment-chip--missing' : ''}">${formatEquipment(e)}</span>`).join('')}
+      </div>
+    </div>`;
+}
+
+function formatEquipment(eq) {
+  const labels = {
+    barbell: '🏋️ Barbell', rack: '🔧 Rack', bench: '🪑 Bench',
+    dumbbells: '💪 Dumbbells', cables: '⚙️ Cables', 'running-shoes': '👟 Running Shoes',
+    'ski-erg': '🎿 Ski Erg', 'rowing-machine': '🚣 Rowing Machine', sled: '🛷 Sled',
+    kettlebell: '🔔 Kettlebell', sandbag: '🎒 Sandbag', 'pull-up-bar': '🔝 Pull-up Bar',
+    'ez-bar': '🏋️ EZ bar', bands: '➰ Bands',
+  };
+  return labels[eq] || eq;
+}
+
+// ── Progression ──────────────────────────────────────────────────────────────
+
+const PLAN_KIND_COLOR = {
+  deload: '#22d3ee', peak: '#ef4444', taper: '#a78bfa',
+  intensify: '#f59e0b', build: '#8b5cf6', work: '#64748b',
+};
+const PLAN_KIND_LABEL = {
+  deload: 'Deload', peak: 'Peak', taper: 'Taper', intensify: 'Intensity', build: 'Build', work: '',
+};
+
+function renderProgressionOverview(program) {
+  const { headline, phases, weeks } = summarizeProgression(program);
+  if (!weeks) return '';
+  const phasesHTML = phases.map((p) => {
+    const color = PLAN_KIND_COLOR[p.kind] || PLAN_KIND_COLOR.work;
+    const range = p.from === p.to ? `Wk ${p.from}` : `Wk ${p.from}–${p.to}`;
+    const tag = PLAN_KIND_LABEL[p.kind];
+    return `
+      <div class="prog-phase" style="--phase-color:${color}">
+        <span class="prog-phase-range">${range}</span>
+        <div class="prog-phase-body">
+          <span class="prog-phase-label">${escapeHtml(p.label)}</span>
+          ${p.spec ? `<span class="prog-phase-spec">${escapeHtml(p.spec)}</span>` : ''}
+        </div>
+        ${tag ? `<span class="prog-phase-tag" style="color:${color};border-color:${color}55">${tag}</span>` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <div class="detail-section plan-progression">
+      <div class="detail-section-title">How it progresses</div>
+      <p class="prog-headline">${escapeHtml(headline)}</p>
+      ${phases.length > 1 ? `<div class="prog-phase-list">${phasesHTML}</div>` : ''}
+      ${renderPlanTimeline(program)}
+    </div>`;
+}
+
+function renderPlanTimeline(program) {
+  const rows = buildProgramTimeline(program);
+  if (!rows.length) return '';
+  const showSpec = programHasLifts(program);
+  const items = rows.map((r) => {
+    const color = PLAN_KIND_COLOR[r.kind] || PLAN_KIND_COLOR.work;
+    const tag = PLAN_KIND_LABEL[r.kind];
+    const spec = (showSpec && r.sets != null) ? `${r.sets}×${r.reps ?? ''}` : '';
+    return `
+      <div class="plan-timeline__row">
+        <span class="plan-timeline__wk">Wk ${r.week}</span>
+        <div class="plan-timeline__body">
+          <div class="plan-timeline__label">${escapeHtml(r.label || '—')}</div>
+          <div class="plan-timeline__track"><div class="plan-timeline__fill" style="width:${r.volumeScore}%;background:${color}"></div></div>
+        </div>
+        ${tag ? `<span class="plan-timeline__tag" style="color:${color};border-color:${color}55">${tag}</span>` : ''}
+        ${spec ? `<span class="plan-timeline__spec">${escapeHtml(spec)}</span>` : ''}
+      </div>`;
+  }).join('');
+  return `<details class="plan-timeline"><summary>Week by week</summary>${items}</details>`;
+}
+
+// ── Authored notes (J&T / Shed) ──────────────────────────────────────────────
 
 function _isJtShed(program) {
   return isJtShedProgram(program);
 }
 
-// The selected week's phase label + week instructions + this week's tier
-// prescriptions — makes the week-at-a-glance preview reflect the chosen week
-// (deload/pivot/assessment weeks read correctly).
 function renderAuthoredWeekBrief(program, week) {
   if (program?.progressionModel === 'shed-pplul') {
     const authored = program?.weekNotes?.[String(week)];
@@ -761,7 +626,6 @@ function renderAuthoredProgramNotes(program) {
     ? (Array.isArray(program?.programNotes) ? program.programNotes : [])
     : jtProgramNotes(program);
   const simplified = program?.progressionModel === 'jt-shed-simplified';
-  const dayNames = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
   const dayKeys = shedPplul ? ['mon', 'tue', 'wed', 'fri', 'sat'] : ['mon', 'tue', 'thu', 'fri', 'sat'];
   const dayBlocks = dayKeys.map((dk) => {
     const exs = shedPplul
@@ -769,31 +633,24 @@ function renderAuthoredProgramNotes(program) {
       : jtDayExercises(program, dk);
     if (!exs.length) return '';
     const rows = exs.map((ex) => `
-      <details class="jt-ex-note" style="border-top:1px solid var(--overlay-sm);padding:6px 0;">
-        <summary style="cursor:pointer;display:flex;align-items:baseline;gap:8px;list-style:none;">
-          <span style="font-family:ui-monospace,monospace;font-size:0.66rem;color:var(--text-muted);min-width:64px;">${escapeHtml(ex.tier)}</span>
-          <span style="font-size:0.84rem;color:var(--text-inverse);flex:1;">${escapeHtml(ex.name)}</span>
-          <span style="font-size:0.66rem;color:var(--text-muted);">${escapeHtml(ex.progression)}</span>
+      <details class="jt-ex-note">
+        <summary>
+          <span class="jt-ex-note__tier">${escapeHtml(ex.tier)}</span>
+          <span class="jt-ex-note__name">${escapeHtml(ex.name)}</span>
+          <span class="jt-ex-note__prog">${escapeHtml(ex.progression)}</span>
         </summary>
-        ${ex.notes.length ? `<ul style="margin:6px 0 2px;padding-left:80px;color:var(--text-secondary);font-size:0.76rem;line-height:1.5;">${ex.notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : ''}
+        ${ex.notes.length ? `<ul>${ex.notes.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : ''}
       </details>`).join('');
-    return `
-      <div class="jt-day-block" style="margin-top:12px;">
-        <div style="font-weight:700;font-size:0.82rem;color:var(--text-inverse);margin-bottom:2px;">${escapeHtml(dayNames[dk])}</div>
-        ${rows}
-      </div>`;
+    return `<div class="jt-day-block"><div class="jt-day-block__name">${escapeHtml(DAY_NAMES[dk])}</div>${rows}</div>`;
   }).join('');
-
   return `
     <div class="detail-section">
       <div class="detail-section-title">Program notes</div>
-      <ul class="jt-program-notes" style="margin:0;padding-left:18px;color:var(--text-secondary);font-size:0.82rem;line-height:1.6;">
-        ${notes.map(n => `<li>${escapeHtml(n)}</li>`).join('')}
-      </ul>
+      <ul class="jt-program-notes">${notes.map((n) => `<li>${escapeHtml(n)}</li>`).join('')}</ul>
     </div>
     <div class="detail-section">
-      <div class="detail-section-title">${simplified || shedPplul ? 'Exercise progression &amp; notes' : 'Tiers &amp; exercise notes'}</div>
-      <p class="text-xs text-muted" style="margin:-6px 0 4px;">${shedPplul
+      <div class="detail-section-title">${simplified || shedPplul ? 'Exercise progression & notes' : 'Tiers & exercise notes'}</div>
+      <p class="text-xs text-muted">${shedPplul
         ? 'Every lift keeps its authored repetition range and progresses from actual performance. Tap an exercise for coaching notes.'
         : simplified
           ? 'Primary lifts use the selected week’s fixed-rep block. Repetition ranges use double progression. Tap an exercise for coaching notes.'
@@ -802,384 +659,43 @@ function renderAuthoredProgramNotes(program) {
     </div>`;
 }
 
-// ── "How this program progresses" — phased, truthful, above the deep Plan tab ─
-function renderProgressionOverview(program) {
-  const { headline, phases, weeks } = summarizeProgression(program);
-  if (!weeks) return '';
+// ── Past runs ────────────────────────────────────────────────────────────────
 
-  const phasesHTML = phases.map(p => {
-    const color = PLAN_KIND_COLOR[p.kind] || PLAN_KIND_COLOR.work;
-    const range = p.from === p.to ? `Wk ${p.from}` : `Wk ${p.from}–${p.to}`;
-    const tag = PLAN_KIND_LABEL[p.kind];
-    return `
-      <div class="prog-phase" style="--phase-color:${color}">
-        <span class="prog-phase-range">${range}</span>
-        <div class="prog-phase-body">
-          <span class="prog-phase-label">${escapeHtml(p.label)}</span>
-          ${p.spec ? `<span class="prog-phase-spec">${escapeHtml(p.spec)}</span>` : ''}
-        </div>
-        ${tag ? `<span class="prog-phase-tag" style="color:${color};border-color:${color}55">${tag}</span>` : ''}
-      </div>`;
-  }).join('');
-
+function renderPastRuns(program, programId, appState) {
+  const runs = priorActivationSummaries(appState).filter((run) => run.programId === programId);
+  if (!runs.length) return '';
   return `
-    <div class="detail-section">
-      <div class="detail-section-title">How this program progresses</div>
-      <p class="prog-headline">${escapeHtml(headline)}</p>
-      ${phases.length > 1 ? `<div class="prog-phase-list">${phasesHTML}</div>` : ''}
-    </div>`;
-}
-
-function renderPlanTimeline(program) {
-  const rows = buildProgramTimeline(program);
-  if (!rows.length) return '';
-
-  // A run block's weekly sets/reps are an internal volume hack (sets:1) — the real
-  // per-week prescription is the row label ("Week 3: 2×(90s run/90s walk…)"), so
-  // suppress the meaningless "1×8" badge on lift-less programs.
-  const showSpec = programHasLifts(program);
-  const items = rows.map(r => {
-    const color = PLAN_KIND_COLOR[r.kind] || PLAN_KIND_COLOR.work;
-    const tag = PLAN_KIND_LABEL[r.kind];
-    const spec = (showSpec && r.sets != null) ? `${r.sets}×${r.reps ?? ''}` : '';
-    return `
-      <div style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--overlay-sm);${r.deload ? 'border-left:3px solid ' + color + ';padding-left:8px;' : ''}">
-        <span style="width:38px;font-family:ui-monospace,monospace;font-size:0.72rem;color:var(--text-muted);font-variant-numeric:tabular-nums;">Wk ${r.week}</span>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:0.82rem;color:var(--text-inverse);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(r.label || '—')}</span>
-            ${tag ? `<span style="font-size:0.6rem;letter-spacing:0.06em;text-transform:uppercase;color:${color};border:1px solid ${color}55;border-radius:99px;padding:1px 6px;flex-shrink:0;">${tag}</span>` : ''}
+    <details class="plan-past">
+      <summary>Past runs (${runs.length})</summary>
+      ${runs.map((run) => {
+        const paused = run.pausedAt ? new Date(run.pausedAt) : null;
+        const pausedLabel = paused && !Number.isNaN(paused.getTime())
+          ? paused.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+          : 'Date unavailable';
+        return `<div class="plan-past__row">
+          <div>
+            <strong>Paused at Week ${run.lastWeek}</strong>
+            <span>${run.loggedWeeks} logged week${run.loggedWeeks === 1 ? '' : 's'} · ${escapeHtml(pausedLabel)}</span>
           </div>
-          <div style="height:5px;border-radius:99px;background:var(--overlay-sm);overflow:hidden;margin-top:5px;">
-            <div style="height:100%;width:${r.volumeScore}%;background:${color};border-radius:99px;"></div>
+          <div class="plan-past__actions">
+            <button class="btn-pad" data-action="view-activation-activities" data-activation-id="${escapeHtml(run.id)}">Activities</button>
+            <button class="btn-pad btn-blue" data-action="resume-program-activation" data-activation-id="${escapeHtml(run.id)}">Resume</button>
           </div>
-        </div>
-        ${spec ? `<span style="font-family:ui-monospace,monospace;font-size:0.72rem;color:var(--text-secondary);flex-shrink:0;">${escapeHtml(spec)}</span>` : ''}
-      </div>`;
-  }).join('');
-
-  return `
-    <div class="detail-section">
-      <div class="detail-section-title">Week-by-week plan</div>
-      <p class="text-xs text-muted" style="margin:-6px 0 10px;">How the plan is organised across the ${rows.length}-week window. Bars show relative weekly working volume.</p>
-      <div class="plan-timeline">${items}</div>
-    </div>`;
-}
-
-function renderDaySplit(days) {
-  if (!days) return '';
-  const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  const dayNames = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
-
-  return `
-    <div class="day-split-list">
-      ${dayOrder.map(dayKey => {
-        const day = days[dayKey];
-        if (!day) return '';
-        const isRest = !day.lifts?.length && (!day.runs || day.runs === 'Rest');
-        const hasPreview = !isRest && !!(day.workoutPreview || day.lifts?.length || (day.runs && day.runs !== 'Rest'));
-        const dayColor = safeCssColor(day.color, 'var(--text-muted)');
-        const interactiveAttrs = hasPreview
-          ? `data-action="open-day-preview" data-day="${dayKey}" data-program-id="${escapeHtml(_currentProgramId || '')}" role="button" tabindex="0"`
-          : '';
-        return `
-          <div class="day-split-row ${isRest ? 'day-split-row--rest' : ''} ${hasPreview ? 'day-split-row--interactive' : ''}" ${interactiveAttrs}>
-            <div class="day-split-day">${dayNames[dayKey]}</div>
-            <div class="day-split-title">${escapeHtml(day.title || dayKey)}</div>
-            <div class="day-split-badge" style="border-color: ${dayColor}; color: ${dayColor}">
-              ${escapeHtml(day.badge || '—')}
-            </div>
-            ${hasPreview ? `<span class="day-split-chevron">›</span>` : ''}
-          </div>
-        `;
-      }).filter(Boolean).join('')}
-    </div>
-    <p class="day-split-hint">Tap a day to preview the full workout</p>
-  `;
-}
-
-function formatEquipment(eq) {
-  const labels = {
-    'barbell': '🏋️ Barbell', 'rack': '🔧 Rack', 'bench': '🪑 Bench',
-    'dumbbells': '💪 Dumbbells', 'cables': '⚙️ Cables', 'running-shoes': '👟 Running Shoes',
-    'ski-erg': '🎿 Ski Erg', 'rowing-machine': '🚣 Rowing Machine', 'sled': '🛷 Sled',
-    'kettlebell': '🔔 Kettlebell', 'sandbag': '🎒 Sandbag', 'pull-up-bar': '🔝 Pull-up Bar',
-  };
-  return labels[eq] || eq;
-}
-
-export function closeProgramDetail() {
-  // Decoupled from library.js (avoids a circular import); app.js owns the
-  // library:return handler and calls returnToLibrary().
-  document.dispatchEvent(new CustomEvent('library:return'));
-}
-
-// ── Workout Preview Modal ─────────────────────────────────────────────────────
-
-// A3 — the previewed day is now anchored to a WEEK. A stepper walks the block so
-// you can see how a given day's phase/volume shifts across the program (e.g. the
-// deload), instead of only ever seeing week 1.
-let _preview = { dayKey: null, programId: null, week: 1 };
-
-// ── Day-preview sheet a11y + scroll lifecycle ────────────────────────────────
-// The sheet is a body-level `position: fixed` bottom-sheet. Two things it must
-// get right on a phone, independent of the day content:
-//   • the background must not scroll behind it, and closing must land the user
-//     back at the exact library/detail scroll position they opened from;
-//   • it must open at the top with the header visible, take focus, close on
-//     Escape / Android back, and return focus to the day that opened it.
-// These were all missing; the state below drives them. `_sheetOpen` guards the
-// one-time setup so week-stepping (which re-renders the same open sheet) doesn't
-// re-lock, re-push history, or steal the user's inner scroll position.
-let _sheetOpen = false;
-let _sheetTrigger = null;      // element to restore focus to on close
-let _sheetLockedScrollY = 0;   // background scroll position captured at open
-let _sheetHistoryPushed = false;
-let _sheetKeyHandler = null;
-let _sheetPopHandler = null;
-
-function _lockBodyScroll() {
-  if (typeof document === 'undefined' || !document.body) return;
-  _sheetLockedScrollY = (typeof window !== 'undefined' && window.scrollY) || 0;
-  const body = document.body;
-  body.classList.add('sheet-scroll-locked');
-  // position:fixed + negative top pins the page without losing the position, so
-  // the background can't scroll and nothing reflows/jumps on lock.
-  body.style.top = `-${_sheetLockedScrollY}px`;
-}
-
-function _unlockBodyScroll() {
-  if (typeof document === 'undefined' || !document.body) return;
-  const body = document.body;
-  body.classList.remove('sheet-scroll-locked');
-  body.style.top = '';
-  if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, _sheetLockedScrollY);
-}
-
-export function stepPreviewWeek(delta) {
-  if (!_preview.dayKey) return;
-  // Same day, different week: keep the reader's place in the sheet.
-  openDayPreviewModal(_preview.dayKey, _preview.programId, _preview.week + delta, { preserveScroll: true });
-}
-
-export function openDayPreviewModal(dayKey, programId, weekIndex, opts = {}) {
-  const resolvedId = programId || _currentProgramId;
-  const catalog = getCatalogEntry(resolvedId);
-  const program = getProgramById(resolvedId);
-  // Source of truth for the previewed day. A personal/editable program's own
-  // definition is AUTHORITATIVE for every mutable training field (exercise
-  // names/order, title, description, run, structured preview) — the source
-  // catalog must never override an edited personal day. Only a shared built-in
-  // that has not been forked falls back to its catalog day (identical anyway,
-  // but the catalog carries the richest presentation metadata).
-  const day = isCustomProgram(resolvedId)
-    ? program?.days?.[dayKey]
-    : (catalog?.days?.[dayKey] || program?.days?.[dayKey]);
-  if (!day) return;
-
-  const isRest = !day.lifts?.length && (!day.runs || day.runs === 'Rest');
-  if (isRest) return;
-
-  const backdrop = document.getElementById('wpmBackdrop');
-  const sheet    = document.getElementById('wpmSheet');
-  const titleEl  = document.getElementById('wpmTitle');
-  const badgeEl  = document.getElementById('wpmBadge');
-  const bodyEl   = document.getElementById('wpmBody');
-
-  if (!sheet || !backdrop) return;
-
-  const totalWeeks = Number(catalog?.durationWeeks || program?.totalWeeks) || 12;
-  const wk = Math.max(1, Math.min(totalWeeks, Number(weekIndex) || 1));
-  _preview = { dayKey, programId: resolvedId, week: wk };
-
-  const mod = getWeekModifier(catalog || program, wk);
-  const phaseLabel = resolveProgramPhase(catalog || program, wk).label;
-
-  const dayLabels = { mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday', fri: 'Friday', sat: 'Saturday', sun: 'Sunday' };
-
-  titleEl.textContent = day.title || dayLabels[dayKey] || dayKey;
-  badgeEl.textContent = day.badge || '';
-  const dayColor = safeCssColor(day.color, 'var(--accent-blue)');
-  badgeEl.style.color = dayColor;
-  badgeEl.style.borderColor = dayColor + '55';
-
-  // Week context bar with a stepper (only when the program spans >1 week).
-  const weekBar = totalWeeks > 1 ? `
-    <div class="wpm-weekbar" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--overlay-sm);border-radius:10px;padding:8px 10px;margin-bottom:12px;">
-      <button data-action="preview-week-step" data-delta="-1" aria-label="Previous week" style="background:none;border:none;color:var(--text-secondary);font-size:1.1rem;padding:2px 8px;cursor:pointer;${wk <= 1 ? 'opacity:0.3;pointer-events:none;' : ''}">‹</button>
-      <div style="text-align:center;flex:1;min-width:0;">
-        <div style="font-family:ui-monospace,monospace;font-size:0.72rem;color:var(--text-muted);">WEEK ${wk} / ${totalWeeks}</div>
-        <div style="font-size:0.82rem;color:var(--text-inverse);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(phaseLabel || '—')}</div>
-      </div>
-      <button data-action="preview-week-step" data-delta="1" aria-label="Next week" style="background:none;border:none;color:var(--text-secondary);font-size:1.1rem;padding:2px 8px;cursor:pointer;${wk >= totalWeeks ? 'opacity:0.3;pointer-events:none;' : ''}">›</button>
-    </div>` : '';
-
-  let previewHtml;
-  if (day.workoutPreview?.type === 'STRENGTH') {
-    previewHtml = renderStrengthPreview(day, mod, day.workoutPreview.exercises);
-  } else if (day.workoutPreview?.type === 'RUNNING') {
-    previewHtml = renderRunningPreview(day.workoutPreview.phases);
-  } else if (day.workoutPreview?.type === 'HYROX') {
-    previewHtml = renderHyroxPreview(day.workoutPreview);
-  } else {
-    previewHtml = renderFallbackPreview(day, mod, { program: catalog || program, week: wk, dayKey });
-  }
-
-  bodyEl.innerHTML = weekBar + previewHtml;
-
-  backdrop.classList.add('active');
-  sheet.classList.add('active');
-
-  // Inner scroll: start at the top on a fresh open (header + first exercise
-  // visible); preserve the reader's place only on a same-day week-step.
-  if (!opts.preserveScroll) {
-    if (bodyEl.scrollTo) bodyEl.scrollTo(0, 0); else bodyEl.scrollTop = 0;
-    if (sheet.scrollTo) sheet.scrollTo(0, 0); else sheet.scrollTop = 0;
-  }
-
-  // One-time setup per open (not re-run while week-stepping the open sheet).
-  if (!_sheetOpen) {
-    _sheetOpen = true;
-    _sheetTrigger = _sheetTrigger ||
-      (typeof document !== 'undefined' ? /** @type {any} */ (document.activeElement) : null);
-    _lockBodyScroll();
-
-    // Escape closes.
-    _sheetKeyHandler = (e) => { if (e.key === 'Escape') closeDayPreviewModal(); };
-    document.addEventListener('keydown', _sheetKeyHandler);
-
-    // Android/browser Back closes the sheet instead of leaving the page. We push
-    // one history entry on open and pop it on close; the popstate handler runs
-    // teardown without pushing back (guarded by _sheetHistoryPushed).
-    if (typeof history !== 'undefined' && history.pushState) {
-      try {
-        history.pushState({ wpmSheet: true }, '');
-        _sheetHistoryPushed = true;
-        _sheetPopHandler = () => { _sheetHistoryPushed = false; closeDayPreviewModal(); };
-        window.addEventListener('popstate', _sheetPopHandler);
-      } catch (_) { /* history unavailable */ }
-    }
-
-    // Move focus into the sheet so keyboard/screen-reader users land inside it.
-    const closeBtn = /** @type {HTMLElement|null} */ (sheet.querySelector('.sheet-close-btn'));
-    if (closeBtn && closeBtn.focus) { try { closeBtn.focus(); } catch (_) {} }
-  }
-}
-
-function renderFallbackPreview(day, mod, ctx) {
-  let html = '';
-  const hasRun = day.runs && day.runs !== 'Rest';
-  const names = (Array.isArray(day.lifts) ? day.lifts : [])
-    .filter(n => typeof n === 'string' && n.trim());
-
-  if (hasRun) {
-    html += `
-      <div class="wpm-type-label wpm-type-label--running">🏃 Running</div>
-      <div class="wpm-fallback-run">${escapeHtml(day.runs)}</div>
-    `;
-  }
-
-  if (names.length) {
-    // Exercise NAMES and ORDER come only from day.lifts — never from a broad
-    // parse of day.desc (which mixes narrative like "Squat + hinge foundation."
-    // with per-lift specs and could keep rendering a removed exercise). Each
-    // current lift resolves its own prescription through liftTarget: the exact
-    // "<name> (<sets×reps>)" label in the description when present, else this
-    // week's modifier — identical to what the cockpit materialises.
-    html += `
-      <div class="wpm-type-label wpm-type-label--strength" style="${hasRun ? 'margin-top:16px;' : ''}">🏋️ Strength Session</div>
-      <div class="wpm-exercise-list">
-        ${names.map(name => {
-          // Tiered J&T model wins so different tiers on one day don't all show the
-          // week modifier's sets×reps; otherwise the generic liftTarget spec.
-          const jt = jtSpecLabel(ctx, name);
-          const t = liftTarget(day.desc, name, mod || {});
-          const spec = jt || `${t.sets} × ${t.reps}`;
-          const note = getExerciseNote(_appState, name);
-          return `<div class="wpm-exercise-item" style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;">
-            <span>${escapeHtml(name)}</span><span style="font-family:ui-monospace,monospace;color:var(--text-secondary);flex-shrink:0;">${escapeHtml(spec)}</span>
-            ${note ? `<span class="wpm-ex-note">${escapeHtml(note)}</span>` : ''}
-          </div>`;
-        }).join('')}
-      </div>
-    `;
-  }
-
-  return html || '<p class="wpm-empty">No preview available for this day.</p>';
-}
-
-export function closeDayPreviewModal() {
-  document.getElementById('wpmBackdrop')?.classList.remove('active');
-  document.getElementById('wpmSheet')?.classList.remove('active');
-
-  if (!_sheetOpen) return; // already torn down (e.g. double close)
-  _sheetOpen = false;
-
-  // Detach listeners.
-  if (_sheetKeyHandler) { document.removeEventListener('keydown', _sheetKeyHandler); _sheetKeyHandler = null; }
-  if (_sheetPopHandler) { window.removeEventListener('popstate', _sheetPopHandler); _sheetPopHandler = null; }
-
-  // Consume the history entry we pushed, unless we're already here because the
-  // user hit Back (popstate cleared the flag) — that avoids a double-pop loop.
-  if (_sheetHistoryPushed) {
-    _sheetHistoryPushed = false;
-    if (typeof history !== 'undefined' && history.back) { try { history.back(); } catch (_) {} }
-  }
-
-  // Unlock the background and restore the exact prior scroll position.
-  _unlockBodyScroll();
-
-  // Return focus to the day button that opened the sheet.
-  const trigger = _sheetTrigger;
-  _sheetTrigger = null;
-  if (trigger && trigger.focus) { try { trigger.focus(); } catch (_) {} }
-}
-
-// Prescription-truthful: renders the SAME sets×reps the cockpit will show for
-// THIS week via liftTarget(desc, name, mod) — an inline "(4×8–10)" spec when the
-// program carries one, otherwise the week modifier's uniform target. Reading the
-// hand-written workoutPreview sets/reps/RPE/rest instead promised a per-lift
-// prescription the engine never delivers, and the columns never changed as you
-// stepped weeks. RPE/Rest columns dropped (the engine produces neither).
-function renderStrengthPreview(day, mod, fallbackExercises) {
-  const names = (day?.lifts?.length ? day.lifts : (fallbackExercises || []).map(e => e.exercise))
-    .filter(n => typeof n === 'string' && n.trim());
-  if (!names.length) return '<p class="wpm-empty">No exercises listed.</p>';
-  return `
-    <div class="wpm-type-label wpm-type-label--strength">🏋️ Strength Session</div>
-    <div class="wpm-strength-grid wpm-strength-grid--compact">
-      <div class="wpm-grid-header">
-        <span>Exercise</span><span>Sets</span><span>Reps</span>
-      </div>
-      ${names.map(name => {
-        const t = liftTarget(day?.desc, name, mod || {});
-        const note = getExerciseNote(_appState, name);
-        return `
-        <div class="wpm-grid-row">
-          <span class="wpm-ex-name">${escapeHtml(name)}</span>
-          <span class="wpm-ex-val">${t.sets}</span>
-          <span class="wpm-ex-val">${t.reps}</span>
-          ${note ? `<span class="wpm-ex-note">${escapeHtml(note)}</span>` : ''}
         </div>`;
       }).join('')}
-    </div>
-  `;
+    </details>`;
 }
+
+// ── Media previews used inside a day panel ───────────────────────────────────
 
 function renderHyroxPreview(preview) {
   const { stations, format, totalTime, notes } = preview;
   const formatLabels = {
-    race: '🏟️ HYROX Singles',
-    half: '🏟️ HYROX Half',
-    doubles: '👥 HYROX Doubles',
-    pro: '🏅 HYROX PRO',
-    wod: '💪 HYROX WOD',
-    circuit: '⚡ Station Circuit',
+    race: '🏟️ HYROX Singles', half: '🏟️ HYROX Half', doubles: '👥 HYROX Doubles',
+    pro: '🏅 HYROX PRO', wod: '💪 HYROX WOD', circuit: '⚡ Station Circuit',
   };
-  const formatLabel = formatLabels[format] || '🏟️ HYROX';
-
   return `
-    <div class="wpm-type-label wpm-type-label--hyrox">${escapeHtml(formatLabel)}</div>
+    <div class="wpm-type-label wpm-type-label--hyrox">${escapeHtml(formatLabels[format] || '🏟️ HYROX')}</div>
     ${totalTime ? `<div class="wpm-hyrox-meta">⏱️ Est. time: <strong>${escapeHtml(totalTime)}</strong></div>` : ''}
     <div class="wpm-hyrox-legs">
       ${(Array.isArray(stations) ? stations : []).map((s, i) => `
@@ -1191,45 +707,49 @@ function renderHyroxPreview(preview) {
             ${s.weight ? `<span class="wpm-hyrox-station-weight">${escapeHtml(s.weight)}</span>` : ''}
             ${s.notes ? `<span class="wpm-hyrox-station-note">${escapeHtml(s.notes)}</span>` : ''}
           </div>
-        </div>
-      `).join('')}
+        </div>`).join('')}
     </div>
-    ${notes ? `<div class="wpm-hyrox-notes">💡 ${escapeHtml(notes)}</div>` : ''}
-  `;
+    ${notes ? `<div class="wpm-hyrox-notes">💡 ${escapeHtml(notes)}</div>` : ''}`;
 }
 
 function renderRunningPreview(phases) {
   if (!phases?.length) return '<p class="wpm-empty">No phases listed.</p>';
   const phaseIcons = { warmup: '🌡️', mainSet: '⚡', strength: '🏋️', cooldown: '🧊' };
   const phaseColors = { warmup: '#22d3ee', mainSet: '#ef4444', strength: '#8b5cf6', cooldown: '#10b981' };
-
   return `
     <div class="wpm-type-label wpm-type-label--running">🏃 Running Session</div>
     <div class="wpm-running-timeline">
       ${phases.map((phase, i) => {
-        const icon  = phaseIcons[phase.type] || '●';
+        const icon = phaseIcons[phase.type] || '●';
         const color = phaseColors[phase.type] || '#94a3b8';
         const isLast = i === phases.length - 1;
-        return `
-          <div class="wpm-phase ${isLast ? 'wpm-phase--last' : ''}">
-            <div class="wpm-phase-connector" style="--phase-color:${color}">
-              <div class="wpm-phase-dot">${icon}</div>
-              ${!isLast ? '<div class="wpm-phase-line"></div>' : ''}
-            </div>
-            <div class="wpm-phase-content">
-              <div class="wpm-phase-header">
-                <span class="wpm-phase-name" style="color:${color}">${escapeHtml(phase.name || '')}</span>
-                <span class="wpm-phase-duration">${escapeHtml(phase.duration || '')}</span>
-              </div>
-              <div class="wpm-phase-pace">${escapeHtml(phase.pace || '')}</div>
-              <div class="wpm-phase-desc">${escapeHtml(phase.description || '')}</div>
-              ${phase.notes ? `<div class="wpm-phase-note">💡 ${escapeHtml(phase.notes)}</div>` : ''}
-            </div>
+        return `<div class="wpm-phase ${isLast ? 'wpm-phase--last' : ''}">
+          <div class="wpm-phase-connector" style="--phase-color:${color}">
+            <div class="wpm-phase-dot">${icon}</div>
+            ${!isLast ? '<div class="wpm-phase-line"></div>' : ''}
           </div>
-        `;
+          <div class="wpm-phase-content">
+            <div class="wpm-phase-header">
+              <span class="wpm-phase-name" style="color:${color}">${escapeHtml(phase.name || '')}</span>
+              <span class="wpm-phase-duration">${escapeHtml(phase.duration || '')}</span>
+            </div>
+            <div class="wpm-phase-pace">${escapeHtml(phase.pace || '')}</div>
+            <div class="wpm-phase-desc">${escapeHtml(phase.description || '')}</div>
+            ${phase.notes ? `<div class="wpm-phase-note">💡 ${escapeHtml(phase.notes)}</div>` : ''}
+          </div>
+        </div>`;
       }).join('')}
-    </div>
-  `;
+    </div>`;
+}
+
+// ── Actions ─────────────────────────────────────────────────────────────────
+
+export function currentPlanId() { return _currentProgramId; }
+
+export function closeProgramDetail() {
+  // Decoupled from library.js (avoids a circular import); app.js owns the
+  // library:return handler and calls returnToLibrary().
+  document.dispatchEvent(new CustomEvent('library:return'));
 }
 
 export function handleDetailAction(action, el) {
@@ -1239,14 +759,7 @@ export function handleDetailAction(action, el) {
       break;
     case 'make-active-from-detail': {
       const id = el.getAttribute('data-program-id');
-      if (id) {
-        document.dispatchEvent(new CustomEvent('library:make-active', { detail: { id } }));
-      }
-      break;
-    }
-    case 'view-active-program': {
-      closeProgramDetail();
-      document.dispatchEvent(new CustomEvent('library:view-active'));
+      if (id) document.dispatchEvent(new CustomEvent('library:make-active', { detail: { id } }));
       break;
     }
     case 'open-program-detail': {
@@ -1254,47 +767,28 @@ export function handleDetailAction(action, el) {
       if (id) renderProgramDetail(id, _appState);
       break;
     }
-    case 'open-day-preview': {
-      const dayKey   = el.getAttribute('data-day');
-      const progId   = el.getAttribute('data-program-id');
-      const wkAttr   = parseInt(el.getAttribute('data-week'), 10);
-      // Remember the exact trigger so focus returns here when the sheet closes.
-      _sheetTrigger = el;
-      // Open at the previewed week when the schedule row carries one (preview
-      // only — never mutates program progress).
-      if (dayKey) openDayPreviewModal(dayKey, progId, Number.isFinite(wkAttr) ? wkAttr : undefined);
-      break;
-    }
     case 'detail-week-step': {
       const delta = parseInt(el.getAttribute('data-delta'), 10);
-      if (!isNaN(delta) && _currentProgramId) {
-        const next = (_scheduleWeek || 1) + delta;
-        _scheduleWeek = Math.min(_scheduleTotalWeeks, Math.max(1, next));
+      if (!Number.isNaN(delta) && _currentProgramId) {
+        _scheduleWeek = Math.min(_scheduleTotalWeeks, Math.max(1, (_scheduleWeek || 1) + delta));
         renderProgramDetail(_currentProgramId, _appState);
       }
       break;
     }
     case 'detail-week-current': {
-      // Jump the schedule PREVIEW back to the active week (does not change it).
       _scheduleWeek = Math.max(1, parseInt(_appState?.currentWeek, 10) || 1);
       renderProgramDetail(_currentProgramId, _appState);
       break;
     }
-    case 'preview-week-step': {
-      const delta = parseInt(el.getAttribute('data-delta'), 10);
-      if (!isNaN(delta)) stepPreviewWeek(delta);
+    case 'toggle-plan-day':
+      togglePlanDay(/** @type {HTMLElement} */ (el));
       break;
-    }
-    case 'close-day-preview':
-      closeDayPreviewModal();
-      break;
-    case 'detail-toggle-bookmark': {
+    case 'toggle-plan-saved': {
       const id = el.getAttribute('data-program-id');
       if (!id) break;
-      const nowSaved = toggleBookmark(id);
-      el.className = `detail-bookmark-btn ${nowSaved ? 'saved' : ''}`;
-      el.setAttribute('aria-label', nowSaved ? 'Remove bookmark' : 'Save program');
-      el.textContent = nowSaved ? '🔖' : '🤍';
+      const saved = toggleBookmark(id);
+      showToast(saved ? 'Saved to your plans' : 'Removed from saved');
+      renderProgramDetail(id, _appState);
       break;
     }
     case 'mark-program-complete': {
@@ -1307,3 +801,4 @@ export function handleDetailAction(action, el) {
     }
   }
 }
+

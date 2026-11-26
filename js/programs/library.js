@@ -1,106 +1,107 @@
+// @ts-check
 // =============================================================================
-// PROGRAM LIBRARY — Training program discovery and management
+// PLANS — home and browse (js/programs/library.js)
+// -----------------------------------------------------------------------------
+// Roadmap §22 (PL1/PL2). This surface used to be a two-tab library
+// (Discover | My Plans) with a three-button utility row, an always-visible
+// search field and a chip wall that could not be reached. Measured at 390px it
+// was 3,216px tall with 21 controls above the fold and no way to filter 58
+// programmes.
+//
+// It is now: ONE home (your plan · recommendations · your plans · routines ·
+// Browse all) and a pushed Browse screen with one search, a Filters sheet and a
+// sort. Nothing is duplicated: the recommendation row keeps the models it had,
+// the plan page keeps the detail renderer, and routines keep their cards.
+//
+// The home's own actions (open, edit, duplicate, delete, make active) are
+// ordinary data-action buttons, so they run through the app's existing handlers
+// rather than a second copy of each behaviour.
 // =============================================================================
-import { PROGRAM_CATALOG, CATEGORIES, DIFFICULTY_LABELS, getCatalogEntry } from './catalog.js';
-import { getHomeCollections, filterByCategory, getCollectionDef } from './collections.js';
-import { searchPrograms, POPULAR_SEARCHES, searchResultsHeading } from './search.js';
+import { PROGRAM_CATALOG, DIFFICULTY_LABELS, getCatalogEntry } from './catalog.js';
 import { getRecommendations } from './recommendations.js';
 import { athleteProfile, recommendationBasis } from './recommendation-fit.js';
-import { renderProgramDetail, closeProgramDetail } from './detail.js';
-import { renderProgramCard, renderProgramCardNode, isWod, coverGlyphFor } from './program-card.js';
-import { icon as svgIcon } from '../ui/icons.js';
-import { toggleBookmark, recordRecentlyViewed, getProgramById, getActiveProgramIssue, saveStateToLocalStorage } from '../state.js';
+import { renderProgramCard } from './program-card.js';
+import { renderProgramDetail } from './detail.js';
+import {
+  recordRecentlyViewed, getProgramById, getActiveProgramIssue, isCustomProgram,
+  saveStateToLocalStorage, planHasRecordedRuns,
+  archiveCustomProgram, restoreCustomProgram,
+} from '../state.js';
+import { showToast } from '../toast.js';
 import { escapeHtml, safeCssColor } from '../util.js';
 import { buildActivePlanBanner } from './active-plan-banner.js';
 import { routineSummary } from '../routines/model.js';
 import {
   normalizeRoutineCategory, orderedFolders, ROUTINE_CATEGORIES, routineCategoryLabel,
 } from '../routines/store.js';
-
-// V2-6 — the curated home rails (in order) shown on the lean Discover surface.
-// Everything else stays reachable via the category chips + Browse-all grid.
-const CURATED_HOME_COLLECTIONS = ['hybridhq-picks', 'highest-rated', 'trending'];
+import { planLibraryGroups, planRowFacts, planKindLabel } from './plans-home-model.js';
+import {
+  BROWSE_DAYS, BROWSE_GOALS, BROWSE_LENGTHS, BROWSE_LEVELS, BROWSE_SORTS,
+  activeFilterCount, browsePlans, defaultBrowseFilters, emptyStateFor,
+  filterSummary, hasEquipmentProfile, programFacts,
+} from './browse-model.js';
+import { openActionMenu } from '../ui/action-menu.js';
+import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
+import { equipmentFit } from './compare.js';
 
 let _appState = null;
-let _activeFilter = 'all';
-let _activeDifficulty = null; // null | 'beginner' | 'intermediate' | 'advanced' | 'elite'
-let _activeTab = 'discover'; // 'discover' | 'my'
-let _showAllPrograms = false;
-let _searchQuery = '';
+
+// Ephemeral Browse state: entering Plans again starts fresh, so a remembered
+// filter can never silently hide most of the catalogue.
+/** @type {ReturnType<typeof defaultBrowseFilters>|null} */
+let _filters = null;
+let _sort = 'recommended';
+let _browseOpen = false;
 let _searchDebounce = null;
-// Routine-library category filter. Ephemeral, like the Progress filters: opening
-// the tab again must not silently hide routines because of last week's choice.
+// Routine-library category filter (ephemeral, like the Progress filters).
 let _routineCategoryFilter = 'all';
 
 export function initProgramLibrary(appState) {
   _appState = appState;
-}
-
-/** Jump the library to Discover or My Plans (used after import/create). */
-export function showLibraryTab(tab) {
-  _activeTab = tab === 'my' ? 'my' : 'discover';
-  _searchQuery = '';
-  _showAllPrograms = false;
-  _routineCategoryFilter = 'all';
-  renderLibrary();
-  persistFilters();
+  initPlansListeners();
 }
 
 export function updateLibraryState(appState) {
   _appState = appState;
 }
 
-// Resolve a program id to its display metadata WITHOUT getProgramById's
-// hybrid_engine fallback — a bookmark/completion for a deleted id should drop
-// out of the list, not silently masquerade as the default program. Covers
-// catalog + system (catalog entries exist for system programs) and custom.
-function resolveProgramMeta(id) {
-  return getCatalogEntry(id) || _appState?.customPrograms?.find(p => p.id === id) || null;
-}
+// ── Home ─────────────────────────────────────────────────────────────────────
 
-// ── Persisted filter state (programLibrary.activeFilters) ─────────────────────
-let _filtersRestored = false;
-
-function restoreFilters() {
-  const f = _appState?.programLibrary?.activeFilters;
-  if (!f || typeof f !== 'object') return;
-  if (typeof f.filter === 'string') _activeFilter = f.filter;
-  if (f.difficulty === null || typeof f.difficulty === 'string') _activeDifficulty = f.difficulty || null;
-  if (typeof f.tab === 'string') _activeTab = f.tab;
-}
-
-function persistFilters() {
-  if (!_appState?.programLibrary) return;
-  _appState.programLibrary.activeFilters = {
-    filter: _activeFilter,
-    difficulty: _activeDifficulty,
-    tab: _activeTab,
-  };
-  saveStateToLocalStorage(true);
-}
-
-// ── Main render ───────────────────────────────────────────────────────────────
-
+/**
+ * Render the Plans home. Entering Plans always lands here (Browse is a pushed
+ * screen); `returnToLibrary` restores Browse when it was open.
+ */
 export function renderLibrary() {
-  const screen = document.getElementById('programLibraryScreen');
-  if (!screen) return;
-
-  // Restore the user's last filter/tab once per session (persisted across reloads).
-  if (!_filtersRestored) { restoreFilters(); _filtersRestored = true; }
-  if (_activeTab === 'saved' || _activeTab === 'completed') _activeTab = 'my';
+  const home = document.getElementById('plansHome');
+  if (!home) return;
+  initPlansListeners();
+  _browseOpen = false;
+  home.style.display = 'block';
+  const browse = document.getElementById('plansBrowseScreen');
+  if (browse) browse.style.display = 'none';
 
   renderActiveProgramBanner();
-  renderUtilityRow();
-  renderLibraryTabs();
-  const chips = document.getElementById('progFilterChips');
-  const diffs = document.getElementById('progDifficultyChips');
-  if (chips) { chips.innerHTML = ''; chips.style.display = 'none'; }
-  if (diffs) { diffs.innerHTML = ''; diffs.style.display = 'none'; }
-  renderLibraryContent();
-  setupLibraryEvents();
+  renderRecommendations();
+  renderMyPlans();
+  renderBrowseEntry();
 }
 
-// ── Active program banner ─────────────────────────────────────────────────────
+/**
+ * Kept for the post-import call site. There is no tab to select any more; the
+ * imported plan appears in "Your plans", so land on the home and bring that
+ * section into view.
+ */
+export function showLibraryTab(_tab) {
+  _browseOpen = false;
+  _filters = null;
+  renderLibrary();
+  const mine = document.getElementById('progLibraryContent');
+  if (mine && typeof mine.scrollIntoView === 'function') {
+    try { mine.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch { /* best effort */ }
+  }
+}
+
+// ── Active plan card (unchanged model; kept as the one primary) ─────────────
 
 export function renderActiveProgramBanner() {
   const banner = document.getElementById('activeProgBanner');
@@ -130,7 +131,7 @@ export function renderActiveProgramBanner() {
     return;
   }
 
-  const catalog = getCatalogEntry(activeId);
+  const catalog = getCatalogEntry(activeId) || null;
   // The resolved program (custom → PROGRAMS → normalized catalog) is
   // authoritative for training content, so an edited personal program shows its
   // edited day and not the pre-edit catalog one.
@@ -145,9 +146,6 @@ export function renderActiveProgramBanner() {
     return;
   }
 
-  // The plan's accent identifies it through the card glow and ring. The action
-  // button keeps the app's contrast-checked action blue rather than an arbitrary
-  // catalogue colour, so it cannot fail the semantic-contrast gate.
   const accent = safeCssColor(model.accent, '#8b5cf6');
   const circumference = 113;
   const dashArray = Math.round((model.week.pct / 100) * circumference);
@@ -195,341 +193,267 @@ export function renderActiveProgramBanner() {
   `;
 }
 
-// ── Plan utility row ─────────────────────────────────────────────────────────
+// ── Recommendations (unchanged models, quieter section) ─────────────────────
 
-/**
- * Plan-level utilities: create, import, and — only while a plan is actually
- * running — open it. Kept quiet and in one row under the active card so the
- * running plan stays the only primary thing on this screen.
- *
- * "Manage plan" VIEWS the active plan. It never activates, switches or restarts
- * anything: those decisions belong to the plan itself.
- */
-function renderUtilityRow() {
-  const row = document.getElementById('plansUtilityRow');
-  if (!row) return;
+function renderRecommendations() {
+  const container = document.getElementById('plansRecommended');
+  if (!container || !_appState) return;
 
-  const activeId = _appState?.activeProgramId;
-  const hasActive = !!activeId && !getActiveProgramIssue(_appState);
-  row.innerHTML = `
-    <button type="button" class="plans-utility-btn" data-action="open-create-program">+ New plan</button>
-    <button type="button" class="plans-utility-btn" data-action="import-plan-json">Import plan (.json)</button>
-    <button type="button" class="plans-utility-btn plans-utility-btn--icon" data-action="open-settings" data-page="once.equipment"
-      aria-label="Open equipment settings" title="Equipment settings">${svgIcon('gear', { size: 18 })}</button>
-    ${hasActive ? '<button type="button" class="plans-utility-btn plans-utility-btn--accent" data-action="open-active-plan-manage">Manage plan</button>' : ''}
-  `;
-}
-
-// ── Library tabs ─────────────────────────────────────────────────────────────
-
-function renderLibraryTabs() {
-  const container = document.getElementById('progLibraryTabs');
-  if (!container) return;
-
-  const savedCount = _appState?.programLibrary?.bookmarks?.length || 0;
-  const completedCount = _appState?.programLibrary?.completions?.length || 0;
-
-  const customCount = _appState?.customPrograms?.length || 0;
-  const routinesCount = _appState?.routines?.length || 0;
-  const myCount = savedCount + completedCount + customCount + routinesCount;
-  container.innerHTML = `
-    <button class="lib-tab ${_activeTab === 'discover' ? 'active' : ''}" data-action="lib-tab" data-tab="discover">
-      Discover
-    </button>
-    <button class="lib-tab ${_activeTab === 'my' ? 'active' : ''}" data-action="lib-tab" data-tab="my">
-      My Plans${myCount > 0 ? ` <span class="lib-tab-count">${myCount}</span>` : ''}
-    </button>
-  `;
-}
-
-// ── Filter chips ──────────────────────────────────────────────────────────────
-
-const FILTER_CHIPS = [
-  { key: 'all',             label: 'All' },
-  { key: 'hybrid',          label: 'Hybrid' },
-  { key: 'strength',        label: 'Strength' },
-  { key: 'hypertrophy',     label: 'Hypertrophy' },
-  { key: 'body_composition',label: 'Fat Loss' },
-  { key: 'running',         label: 'Running' },
-  { key: 'hyrox',           label: 'Hyrox' },
-  { key: 'endurance',       label: 'Endurance' },
-  { key: 'home_gym',        label: 'Home Gym' },
-  { key: 'bodybuilding',    label: 'Bodybuilding' },
-  { key: 'powerlifting',    label: 'Powerlifting' },
-  { key: 'triathlon',       label: 'Triathlon' },
-  { key: 'mobility',        label: 'Mobility' },
-  { key: 'functional',      label: 'Functional' },
-  { key: 'general_fitness', label: 'General' },
-  { key: 'tactical',        label: 'Tactical' },
-];
-
-const DIFFICULTY_CHIPS = [
-  { key: null,           label: 'All Levels', color: null },
-  { key: 'beginner',     label: 'Beginner',   color: '#10b981' },
-  { key: 'intermediate', label: 'Intermediate', color: '#f59e0b' },
-  { key: 'advanced',     label: 'Advanced',   color: '#ef4444' },
-  { key: 'elite',        label: 'Elite',      color: '#dc2626' },
-];
-
-/**
- * Are we BROWSING the catalogue, rather than being recommended a plan?
- *
- * 4A asks Plans to recommend before asking anyone to browse, and the filters are
- * classified as "disclose on demand". Measured before this change, the default
- * Discover surface carried **36 chip controls** — 16 categories and 5 levels at
- * the top, plus the same 15 categories again in the Browse-all grid at the
- * bottom — above a personal recommendation row that began 651px down. The chips
- * are the browse tool, so they belong to browse mode; picking a category (from
- * the Browse-all grid or a collection's "See all") is what enters it.
- */
-function isBrowsing() {
-  return _activeFilter !== 'all';
-}
-
-function renderFilterChips() {
-  const container = document.getElementById('progFilterChips');
-  if (!container) return;
-
-  if (_activeTab !== 'discover' || !isBrowsing()) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = FILTER_CHIPS.map(chip => `
-    <button class="filter-chip ${_activeFilter === chip.key ? 'active' : ''}"
-            data-action="prog-filter"
-            data-filter="${chip.key}">
-      ${chip.label}
-    </button>
-  `).join('');
-}
-
-function renderDifficultyChips() {
-  const container = document.getElementById('progDifficultyChips');
-  if (!container) return;
-
-  if (_activeTab !== 'discover' || !isBrowsing()) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = DIFFICULTY_CHIPS.map(chip => {
-    const isActive = _activeDifficulty === chip.key;
-    const colorStyle = chip.color && isActive ? `style="border-color: ${chip.color}; color: ${chip.color};"` : '';
-    return `
-      <button class="filter-chip filter-chip--sm ${isActive ? 'active' : ''}"
-              data-action="diff-filter"
-              data-difficulty="${chip.key || ''}"
-              ${colorStyle}>
-        ${chip.label}
-      </button>
-    `;
-  }).join('');
-}
-
-// ── Library content ───────────────────────────────────────────────────────────
-
-function renderLibraryContent() {
-  const content = document.getElementById('progLibraryContent');
-  const searchResults = document.getElementById('progSearchResults');
-  if (!content || !searchResults) return;
-
-  // One search: a query searches the whole library from either tab, so it is
-  // checked before the tab rather than being a Discover-only mode.
-  if (_searchQuery.length >= 2) {
-    content.style.display = 'none';
-    searchResults.style.display = 'block';
-    renderSearchResults(_searchQuery);
-    return;
-  }
-
-  if (_activeTab === 'my') {
-    content.style.display = 'block';
-    searchResults.style.display = 'none';
-    renderMyPlans(content);
-    return;
-  }
-
-  content.style.display = 'block';
-  searchResults.style.display = 'none';
-  renderSimpleDiscover(content);
-}
-
-function renderSimpleDiscover(content) {
-  // One three-up row, not a horizontal rail: the third card must be fully
-  // visible at 390px, so the row shows exactly what fits. The engine may return
-  // fewer than three when it has fewer true reasons; the browser contract still
-  // covers three to five.
+  // `getRecommendations` returns nothing when it has no true reason to offer, so
+  // the section is absent rather than a popularity chart wearing a personal
+  // label. The basis line states (and lets the athlete correct) the inputs.
   const recommendations = getRecommendations(_appState, 3);
-  let html = '';
-  if (recommendations.length > 0) {
-    html += `
-      <div class="collection-row collection-row--recommended mb-2">
-        <div class="collection-header mb-2">
-          <div class="collection-title-wrap">
-            <div>
-              <div class="collection-title">Recommended For You</div>
-            </div>
-          </div>
-        </div>
-        ${renderRecommendationBasis(recommendationBasis(athleteProfile(_appState)))}
-        <div class="prog-tile-grid">
-          ${recommendations.map((item) => renderProgramCard(item.program, 'tile', item.reason)).join('')}
+  if (!recommendations.length) {
+    container.innerHTML = '';
+    container.style.display = 'none';
+    return;
+  }
+  container.style.display = 'block';
+  container.innerHTML = `
+    <div class="collection-row collection-row--recommended">
+      <div class="collection-header">
+        <div class="collection-title-wrap">
+          <div><div class="collection-title">Recommended For You</div></div>
         </div>
       </div>
-    `;
-  }
-  const all = PROGRAM_CATALOG.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  const shown = _showAllPrograms ? all : all.slice(0, 12);
-  html += `<div class="filtered-grid-header mb-4">
-    <div class="filtered-grid-title">All programs</div>
-    <div class="filtered-grid-count">${all.length} plans</div>
-  </div>
-  <div class="program-grid">${shown.map((program) => renderProgramCard(program, 'large')).join('')}</div>
-  ${!_showAllPrograms && all.length > 12 ? '<button class="lib-empty-cta mt-4" data-action="prog-show-all">Show all plans</button>' : ''}`;
-  content.innerHTML = html;
-}
-
-function renderMyPlans(content) {
-  const routines = Array.isArray(_appState?.routines) ? _appState.routines : [];
-  const folders = orderedFolders(_appState);
-  const custom = _appState?.customPrograms || [];
-  const savedIds = _appState?.programLibrary?.bookmarks || [];
-  const saved = savedIds.map(resolveProgramMeta).filter(Boolean);
-  const completed = (_appState?.programLibrary?.completions || [])
-    .map((completion) => ({ completion, program: resolveProgramMeta(completion.programId) }))
-    .filter((item) => item.program);
-
-  if (!routines.length && !folders.length && !custom.length && !saved.length && !completed.length) {
-    content.innerHTML = `<div class="lib-empty-state">
-      <div class="lib-empty-icon">${svgIcon('bookmark', { size: 30 })}</div>
-      <div class="lib-empty-title">Nothing here yet</div>
-      <div class="lib-empty-sub">Save a plan, create your own, import an openHybrid plan file, or save a routine from History.</div>
-      <button class="lib-empty-cta" data-action="lib-tab" data-tab="discover">Browse programs</button>
-      <button class="lib-empty-cta" data-action="import-plan-json">Import a plan (.json)</button>
-    </div>`;
-    return;
-  }
-
-  // Build with DOM nodes + textContent. Plan and routine names can come from an
-  // imported JSON file or the athlete, so this surface must never reinterpret
-  // them as markup.
-  const nodes = [];
-  const addSection = (title, items, {
-    gap = true,
-    gridClass = 'program-grid',
-    render = (program) => renderProgramCardNode(program, 'large'),
-  } = {}) => {
-    if (!items.length) return;
-    const header = document.createElement('div');
-    header.className = `filtered-grid-header mb-4${gap ? ' mb-6' : ''}`;
-    const titleEl = document.createElement('div');
-    titleEl.className = 'filtered-grid-title';
-    titleEl.textContent = title;
-    const count = document.createElement('div');
-    count.className = 'filtered-grid-count';
-    count.textContent = String(items.length);
-    header.append(titleEl, count);
-    const grid = document.createElement('div');
-    grid.className = `${gridClass}${gap ? ' mb-6' : ''}`;
-    items.forEach((item) => grid.append(render(item)));
-    nodes.push(header, grid);
-  };
-
-  // Routines are saved SESSIONS, so they lead: they are startable right now,
-  // while a plan is the block they sit inside. They never render as a program
-  // card — that would imply an activation and a week slot they do not own.
-  renderRoutineLibrary(nodes, routines, folders);
-  addSection('Your plans', custom);
-  addSection('Saved', saved);
-  addSection('Completed', completed.map((item) => item.program), { gap: false });
-  content.replaceChildren(...nodes);
+      ${renderRecommendationBasis(recommendationBasis(athleteProfile(_appState)))}
+      <div class="prog-tile-grid">
+        ${recommendations.map((item) => renderProgramCard(item.program, 'tile', item.reason)).join('')}
+      </div>
+    </div>
+  `;
 }
 
 /**
- * One routine card. DOM nodes + textContent only: the name is athlete input.
- * The Start control and the overflow trigger are the card's two actions; both
- * are 44px targets (see css/programs.css).
- * @param {any} routine
+ * The basis of the recommendations, correctable in place. Writes the same
+ * settings fields the Profile owns, so the two can never disagree.
+ * @param {ReturnType<typeof recommendationBasis>} basis
  */
-function renderRoutineCardNode(routine) {
-  const summary = routineSummary(routine);
-  const id = String(routine.id || '');
-  const nameText = String(routine.name || 'Routine');
+function renderRecommendationBasis(basis) {
+  if (!basis.length) return '';
+  const summary = basis.map((b) => b.currentLabel).join(' · ');
+  return `
+    <details class="prog-basis">
+      <summary class="prog-basis__summary">
+        <span class="prog-basis__values">${escapeHtml(summary)}</span>
+        <span class="prog-basis__change">Change</span>
+      </summary>
+      <div class="prog-basis__body">
+        ${basis.map((b) => `
+          <div class="prog-basis__group">
+            <div class="prog-basis__question">${escapeHtml(b.question)}</div>
+            <div class="prog-basis__options">
+              ${b.options.map((o) => `
+                <button class="prog-basis__btn ${o.value === b.current ? 'is-current' : ''}"
+                        data-action="set-profile-answer"
+                        data-field="${escapeHtml(b.id)}"
+                        data-value="${escapeHtml(o.value)}"
+                        aria-pressed="${o.value === b.current}">${escapeHtml(o.label)}</button>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </details>
+  `;
+}
 
+// ── Your plans ───────────────────────────────────────────────────────────────
+
+function sectionHead(title, count) {
+  const head = document.createElement('div');
+  head.className = 'plans-section__head';
+  const h = document.createElement('h2');
+  h.className = 'plans-section__title';
+  h.textContent = title;
+  head.append(h);
+  if (count != null) {
+    const badge = document.createElement('span');
+    badge.className = 'plans-section__count';
+    badge.textContent = String(count);
+    head.append(badge);
+  }
+  return head;
+}
+
+function renderMyPlans() {
+  const container = document.getElementById('progLibraryContent');
+  if (!container || !_appState) return;
+
+  const groups = planLibraryGroups(_appState);
+  const nodes = [sectionHead('Your plans', groups.planCount)];
+
+  if (!groups.rows.length) {
+    nodes.push(emptyPlansCard());
+  } else {
+    const list = document.createElement('div');
+    list.className = 'plan-list';
+    for (const row of groups.rows) list.append(planRowNode(row));
+    nodes.push(list);
+  }
+
+  // Routines are saved SESSIONS, not plans — kept as their own section below
+  // plans, with the existing cards, Start, folder and category controls.
+  renderRoutineLibrary(nodes, groups.routines, orderedFolders(_appState));
+
+  renderArchivedPlans(nodes, groups.archived);
+
+  container.replaceChildren(...nodes);
+}
+
+/**
+ * Archived plans. Archiving is how a trained plan leaves the list without
+ * destroying the record its History attribution depends on, so restoring has to
+ * be reachable — a one-way hide would be a slower delete.
+ * @param {HTMLElement[]} nodes
+ * @param {any[]} archived
+ */
+function renderArchivedPlans(nodes, archived) {
+  if (!archived.length) return;
+  const details = document.createElement('details');
+  details.className = 'plans-archived';
+  const summary = document.createElement('summary');
+  summary.className = 'plans-archived__summary';
+  summary.textContent = `Archived (${archived.length})`;
+  details.append(summary);
+  for (const program of archived) {
+    if (!program?.id) continue;
+    const row = document.createElement('div');
+    row.className = 'plans-archived__row';
+    const name = document.createElement('span');
+    name.className = 'plans-archived__name';
+    name.textContent = String(program.name || 'Plan');
+    const restore = document.createElement('button');
+    restore.type = 'button';
+    restore.className = 'plans-archived__restore';
+    restore.dataset.action = 'restore-program';
+    restore.dataset.programId = String(program.id);
+    restore.textContent = 'Restore';
+    row.append(name, restore);
+    details.append(row);
+  }
+  nodes.push(details);
+}
+
+function emptyPlansCard() {
   const card = document.createElement('div');
-  card.className = 'routine-card';
-  card.setAttribute('data-routine-id', id);
+  card.className = 'plans-empty';
+  const title = document.createElement('div');
+  title.className = 'plans-empty__title';
+  title.textContent = 'No plans yet';
+  const sub = document.createElement('p');
+  sub.className = 'plans-empty__sub';
+  sub.textContent = 'Pick one that fits your goal and kit, or build your own. Saved plans and routines live here.';
+  const browse = document.createElement('button');
+  browse.type = 'button';
+  browse.className = 'plans-empty__cta';
+  browse.dataset.action = 'open-browse';
+  browse.textContent = 'Browse plans';
+  const create = document.createElement('button');
+  create.type = 'button';
+  create.className = 'plans-empty__cta plans-empty__cta--quiet';
+  create.dataset.action = 'open-create-program';
+  create.textContent = 'Build a plan';
+  card.append(title, sub, browse, create);
+  return card;
+}
 
-  const main = document.createElement('div');
-  main.className = 'routine-card__main';
-  const name = document.createElement('div');
-  name.className = 'routine-card__name';
+/**
+ * One plan row. DOM + textContent, because a plan name can come from the athlete
+ * or an imported file. The row's actions are: open (the row), and a `•••` menu
+ * for edit/duplicate/delete/make-active — the same pattern Hevy and Strong use,
+ * and the fix for "My Plans has no management controls".
+ * @param {{program:any, kind:string, active:boolean, completed:boolean, saved:boolean}} row
+ */
+function planRowNode(row) {
+  const program = row.program;
+  const facts = planRowFacts(program);
+  const id = String(program.id || '');
+  const nameText = String(program.name || 'Plan');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = `plan-row${row.active ? ' plan-row--active' : ''}`;
+  wrapper.dataset.programId = id;
+
+  const open = document.createElement('button');
+  open.type = 'button';
+  open.className = 'plan-row__open';
+  open.dataset.action = 'open-program-detail';
+  open.dataset.programId = id;
+
+  const main = document.createElement('span');
+  main.className = 'plan-row__main';
+
+  const nameLine = document.createElement('span');
+  nameLine.className = 'plan-row__name-line';
+  const name = document.createElement('span');
+  name.className = 'plan-row__name';
   name.textContent = nameText;
-  const meta = document.createElement('div');
-  meta.className = 'routine-card__meta';
-  const parts = [
-    `${summary.exercises} exercise${summary.exercises === 1 ? '' : 's'}`,
-    `${summary.workingSets} working set${summary.workingSets === 1 ? '' : 's'}`,
-  ];
-  if (summary.minutes != null) parts.push(`~${summary.minutes} min`);
-  meta.textContent = parts.join(' · ');
-  main.append(name, meta);
-  const category = routineCategoryLabel(routine.category);
-  if (category) {
-    const categoryFlag = document.createElement('span');
-    categoryFlag.className = 'routine-card__category';
-    categoryFlag.textContent = category;
-    main.append(categoryFlag);
-  }
-  // A routine note is context for starting, not a summary: the card only marks
-  // that one exists. Printing the text would break the compact card contract
-  // and put a paragraph in a list.
-  if (String(routine.note || '').trim()) {
-    const noteFlag = document.createElement('span');
-    noteFlag.className = 'routine-card__note-flag';
-    noteFlag.textContent = 'Note';
-    main.append(noteFlag);
+  nameLine.append(name);
+  const kindLabel = planKindLabel(row);
+  if (kindLabel) {
+    const badge = document.createElement('span');
+    const kindClass = row.active ? 'active' : row.completed ? 'done' : row.saved ? 'saved' : 'custom';
+    badge.className = `plan-row__badge plan-row__badge--${kindClass}`;
+    badge.textContent = kindLabel;
+    nameLine.append(badge);
   }
 
-  const actions = document.createElement('div');
-  actions.className = 'routine-card__actions';
+  const meta = document.createElement('span');
+  meta.className = 'plan-row__meta';
+  const bits = [];
+  if (facts.weeks) bits.push(`${facts.weeks} week${facts.weeks === 1 ? '' : 's'}`);
+  if (facts.daysPerWeek) bits.push(`${facts.daysPerWeek}×/week`);
+  if (facts.level) bits.push(DIFFICULTY_LABELS[facts.level]?.label || facts.level);
+  if (facts.focus) bits.push(facts.focus);
+  meta.textContent = bits.join(' · ') || 'No training days set';
 
-  const start = document.createElement('button');
-  start.type = 'button';
-  start.className = 'routine-card__start';
-  start.setAttribute('data-action', 'start-routine');
-  start.setAttribute('data-routine-id', id);
-  start.textContent = 'Start';
+  main.append(nameLine, meta);
+  open.append(main);
+
+  const chevron = document.createElement('span');
+  chevron.className = 'plan-row__chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.textContent = '›';
+  open.append(chevron);
 
   const menu = document.createElement('button');
   menu.type = 'button';
-  menu.className = 'routine-card__menu';
-  menu.setAttribute('data-action', 'open-routine-menu');
-  menu.setAttribute('data-routine-id', id);
+  menu.className = 'plan-row__menu';
+  menu.dataset.action = 'open-plan-menu';
+  menu.dataset.programId = id;
   menu.setAttribute('aria-haspopup', 'menu');
   menu.setAttribute('aria-expanded', 'false');
   menu.setAttribute('aria-label', `Actions for ${nameText}`);
   menu.textContent = '•••';
 
-  actions.append(start, menu);
-  card.append(main, actions);
-  return card;
+  wrapper.append(open, menu);
+  return wrapper;
 }
 
-/**
- * The Routines area of My Plans.
- *
- * With no folders it is the flat list this screen already had. With folders it
- * becomes one section per folder (sortOrder, then name) plus an Unfiled bucket
- * for routines with no folder (or a folder id that no longer exists). Empty
- * folders stay visible — an explicitly created folder must be fillable — and say
- * so quietly. A folder never stores members; grouping reads `routine.folderId`.
- *
- * @param {HTMLElement[]} nodes
- * @param {any[]} routines
- * @param {any[]} folders
- */
+function renderBrowseEntry() {
+  const container = document.getElementById('plansBrowseEntry');
+  if (!container) return;
+  // With no plans yet, the empty card already offers Browse — do not repeat the
+  // same action twice on one screen.
+  const groups = planLibraryGroups(_appState);
+  if (!groups.planCount) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = `
+    <button type="button" class="plans-browse-entry" data-action="open-browse">
+      <span class="plans-browse-entry__text">
+        <strong>Browse all plans</strong>
+        <span>${PROGRAM_CATALOG.length} plans across strength, hybrid and running</span>
+      </span>
+      <span class="plans-browse-entry__chevron" aria-hidden="true">›</span>
+    </button>
+  `;
+}
+
+// ── Routines (unchanged section, now below plans) ───────────────────────────
+
 function routineFilterValue(routine) {
   return normalizeRoutineCategory(routine?.category) || 'uncategorised';
 }
@@ -564,19 +488,72 @@ function routineFilterEmptyNode() {
   return empty;
 }
 
+function renderRoutineCardNode(routine) {
+  const summary = routineSummary(routine);
+  const id = String(routine.id || '');
+  const nameText = String(routine.name || 'Routine');
+
+  const card = document.createElement('div');
+  card.className = 'routine-card';
+  card.setAttribute('data-routine-id', id);
+
+  const main = document.createElement('div');
+  main.className = 'routine-card__main';
+  const name = document.createElement('div');
+  name.className = 'routine-card__name';
+  name.textContent = nameText;
+  const meta = document.createElement('div');
+  meta.className = 'routine-card__meta';
+  const parts = [
+    `${summary.exercises} exercise${summary.exercises === 1 ? '' : 's'}`,
+    `${summary.workingSets} working set${summary.workingSets === 1 ? '' : 's'}`,
+  ];
+  if (summary.minutes != null) parts.push(`~${summary.minutes} min`);
+  meta.textContent = parts.join(' · ');
+  main.append(name, meta);
+  const category = routineCategoryLabel(routine.category);
+  if (category) {
+    const categoryFlag = document.createElement('span');
+    categoryFlag.className = 'routine-card__category';
+    categoryFlag.textContent = category;
+    main.append(categoryFlag);
+  }
+  if (String(routine.note || '').trim()) {
+    const noteFlag = document.createElement('span');
+    noteFlag.className = 'routine-card__note-flag';
+    noteFlag.textContent = 'Note';
+    main.append(noteFlag);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'routine-card__actions';
+
+  const start = document.createElement('button');
+  start.type = 'button';
+  start.className = 'routine-card__start';
+  start.setAttribute('data-action', 'start-routine');
+  start.setAttribute('data-routine-id', id);
+  start.textContent = 'Start';
+
+  const menu = document.createElement('button');
+  menu.type = 'button';
+  menu.className = 'routine-card__menu';
+  menu.setAttribute('data-action', 'open-routine-menu');
+  menu.setAttribute('data-routine-id', id);
+  menu.setAttribute('aria-haspopup', 'menu');
+  menu.setAttribute('aria-expanded', 'false');
+  menu.setAttribute('aria-label', `Actions for ${nameText}`);
+  menu.textContent = '•••';
+
+  actions.append(start, menu);
+  card.append(main, actions);
+  return card;
+}
+
 /**
- * The Routines area of My Plans.
- *
- * With no folders it is the flat list this screen already had. With folders it
- * becomes one section per folder (sortOrder, then name) plus an Unfiled bucket
- * for routines with no folder (or a folder id that no longer exists). Empty
- * folders stay visible — an explicitly created folder must be fillable — and say
- * so quietly. A folder never stores members; grouping reads `routine.folderId`.
- *
- * A category filter narrows the same list and reuses those folder sections;
- * folders with no matches hide while a filter is active, and a filter with no
- * matches says so instead of showing a wall of empty folders.
- *
+ * The Routines area of "Your plans". With no folders it is a flat list; with
+ * folders it is one section per folder (sortOrder, then name) plus Unfiled.
+ * Empty folders stay visible. A category filter narrows the same list.
  * @param {HTMLElement[]} nodes
  * @param {any[]} routines
  * @param {any[]} folders
@@ -593,7 +570,7 @@ function renderRoutineLibrary(nodes, routines, folders) {
     : routines.filter((routine) => routineFilterValue(routine) === active);
 
   const header = document.createElement('div');
-  header.className = 'filtered-grid-header mb-4 routine-library-head';
+  header.className = 'filtered-grid-header routine-library-head';
   const titleWrap = document.createElement('div');
   titleWrap.className = 'routine-library-head__title';
   const title = document.createElement('div');
@@ -634,7 +611,7 @@ function renderRoutineLibrary(nodes, routines, folders) {
   if (!folders.length) {
     if (visible.length) {
       const list = document.createElement('div');
-      list.className = 'routine-list mb-6';
+      list.className = 'routine-list';
       visible.forEach((routine) => list.append(renderRoutineCardNode(routine)));
       nodes.push(list);
     } else if (routines.length) {
@@ -647,8 +624,6 @@ function renderRoutineLibrary(nodes, routines, folders) {
   let rendered = false;
   for (const folder of folders) {
     const members = visible.filter((routine) => routine?.folderId === folder.id);
-    // While filtered, a folder with no matches is noise; when unfiltered, an
-    // explicitly created empty folder stays visible and fillable.
     if (!members.length && active !== 'all') continue;
     nodes.push(renderRoutineFolderNode(folder, members));
     rendered = true;
@@ -661,13 +636,6 @@ function renderRoutineLibrary(nodes, routines, folders) {
   if (!rendered && routines.length) nodes.push(routineFilterEmptyNode());
 }
 
-/**
- * One folder section. `folder` null renders the Unfiled bucket (no menu: it is
- * not a stored record). Built with DOM nodes + textContent — folder names are
- * athlete input.
- * @param {any|null} folder
- * @param {any[]} members
- */
 function renderRoutineFolderNode(folder, members) {
   const section = document.createElement('div');
   section.className = `routine-folder${folder ? '' : ' routine-folder--unfiled'}${members.length ? '' : ' routine-folder--empty'}`;
@@ -714,511 +682,318 @@ function renderRoutineFolderNode(folder, members) {
   return section;
 }
 
-function renderCollectionRows(container) {
-  // Five, not eight: 4A asks for three to five, and a recommendation the athlete
-  // has to scroll sideways to reach is not leading with anything.
-  const recommendations = getRecommendations(_appState, 5);
-  // Don't pass recommendedIds into getHomeCollections: we render the
-  // personalised row ourselves below, and letting getHomeCollections inject its
-  // own "recommended-for-you" collection too would duplicate the row.
-  const collections = getHomeCollections();
+// ── Browse ───────────────────────────────────────────────────────────────────
 
-  // Featured hero (first 3 featured programs). Rendered LATER, not here: it is a
-  // 220px carousel of `featured` programmes — editorial signal, identical for
-  // every athlete — and it used to sit directly above the personalised row, so
-  // the surface led with what the catalogue promotes rather than what fits. The
-  // recommendation rules already keep editorial out of the personal score and out
-  // of the stated reasons; letting it own the top of the screen contradicted them
-  // just as plainly.
-  const featuredPrograms = PROGRAM_CATALOG.filter(p => p.featured).slice(0, 3);
+export function openBrowse() {
+  const home = document.getElementById('plansHome');
+  const screen = document.getElementById('plansBrowseScreen');
+  if (!screen) return;
+  _browseOpen = true;
+  if (!_filters) _filters = defaultBrowseFilters(_appState);
+  if (home) home.style.display = 'none';
+  screen.style.display = 'block';
+  renderBrowseShell();
+  if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo(0, 0);
+}
 
-  let html = '';
+function closeBrowse() {
+  _browseOpen = false;
+  _filters = null;
+  const screen = document.getElementById('plansBrowseScreen');
+  if (screen) screen.style.display = 'none';
+  const home = document.getElementById('plansHome');
+  if (home) home.style.display = 'block';
+  renderLibrary();
+}
 
-  // De-dupe across the discovery rails: a program appears in at most one of
-  // Recommended / the curated rails per render, so the same card can't fill
-  // three rows on one Discover screen. (Recently-Viewed and your custom programs
-  // are a different, clearly-labelled context and stay outside this.)
-  const shown = new Set(_appState?.activeProgramId ? [_appState.activeProgramId] : []);
+function currentFilters() {
+  if (!_filters) _filters = defaultBrowseFilters(_appState);
+  return _filters;
+}
 
-  // ── FIRST: the personalised recommendations ───────────────────────────────
-  // 4A's primary for this surface, after the active plan itself. hideSeeAll:
-  // recommendations aren't a static collection, so there's no valid "see all".
-  //
-  // `getRecommendations` returns nothing when it has no true reason to offer, so
-  // this row simply does not appear rather than labelling a popularity ranking
-  // "Based on your training" — which is what it used to be for every athlete.
-  if (recommendations.length > 0) {
-    const eligible = recommendations.filter(r => r.program && !shown.has(r.program.id));
-    if (eligible.length > 0) {
-      eligible.forEach(r => shown.add(r.program.id));
-      const reasons = new Map(eligible.map(r => [r.program.id, r.reason]));
-      html += renderCollectionRow({
-        id: 'recommended',
-        label: 'Recommended For You',
-        icon: '✨',
-        hideSeeAll: true,
-        // The basis replaces the old "Based on your training" subtitle, which
-        // claimed more than it could back up for an athlete who never answered.
-        afterHeader: renderRecommendationBasis(recommendationBasis(athleteProfile(_appState))),
-      }, eligible.map(r => r.program), reasons);
+function renderBrowseShell() {
+  const screen = document.getElementById('plansBrowseScreen');
+  if (!screen) return;
+  const filters = currentFilters();
+  const query = String(filters.query || '');
+
+  screen.innerHTML = `
+    <div class="browse">
+      <div class="browse__bar">
+        <button type="button" class="browse__back" data-action="close-browse" aria-label="Back to Plans">‹</button>
+        <h1 class="browse__title">Browse plans</h1>
+        <button type="button" class="browse__filter-btn" data-action="open-plan-filters">
+          Filters<span class="browse__filter-count" id="browseFilterCount"></span>
+        </button>
+      </div>
+
+      <div class="browse__search">
+        <input id="plansBrowseSearch" type="search" inputmode="search" autocomplete="off"
+               autocorrect="off" spellcheck="false" value="${escapeHtml(query)}"
+               placeholder="Search plans, your plans, routines" aria-label="Search plans">
+      </div>
+
+      <div class="browse__kinds" role="group" aria-label="Show">
+        ${[['all', 'All'], ['program', 'Plans'], ['wod', 'Workouts']].map(([kind, label]) => `
+          <button type="button" class="browse__kind ${filters.kind === kind ? 'is-active' : ''}"
+                  data-action="browse-kind" data-kind="${kind}"
+                  aria-pressed="${filters.kind === kind}">${label}</button>
+        `).join('')}
+      </div>
+
+      <div class="browse__summary-row">
+        <div id="browseSummary" class="browse__summary" role="status" aria-live="polite"></div>
+        <label class="browse__sort">
+          <span class="sr-only">Sort plans</span>
+          <select id="plansBrowseSort" data-browse-sort aria-label="Sort plans">
+            ${BROWSE_SORTS.map((sort) => `<option value="${sort.id}" ${sort.id === _sort ? 'selected' : ''}>${escapeHtml(sort.label)}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+
+      <div id="browseResults" class="browse__results"></div>
+    </div>
+  `;
+  renderBrowseResults();
+}
+
+function browseRowNode(program) {
+  const facts = programFacts(program);
+  const id = String(program.id || '');
+  const nameText = String(program.name || 'Plan');
+
+  const row = document.createElement('button');
+  row.type = 'button';
+  row.className = 'browse-row';
+  row.dataset.action = 'open-program-detail';
+  row.dataset.programId = id;
+
+  const name = document.createElement('span');
+  name.className = 'browse-row__name';
+  name.textContent = nameText;
+
+  const meta = document.createElement('span');
+  meta.className = 'browse-row__meta';
+  const bits = [];
+  bits.push(facts.wod ? 'Single workout' : (facts.categoryLabel || 'Plan'));
+  if (!facts.wod) {
+    if (facts.weeks) bits.push(`${facts.weeks} wks`);
+    if (facts.daysPerWeek) bits.push(`${facts.daysPerWeek}×/wk`);
+    if (facts.level) bits.push(DIFFICULTY_LABELS[facts.level]?.label || facts.level);
+  }
+  meta.textContent = bits.join(' · ');
+
+  // State the kit honestly: "You have the kit" only when the athlete's list
+  // covers every needed item; otherwise name what is missing.
+  const fit = equipmentFit(facts.equipment, _appState?.settings?.equipment || {});
+  let kitLine = null;
+  if (fit.missing.length) {
+    kitLine = document.createElement('span');
+    kitLine.className = 'browse-row__kit browse-row__kit--missing';
+    kitLine.textContent = `Needs ${fit.missing.map((t) => t.replace(/-/g, ' ')).join(', ')}`;
+  } else if (fit.owned.length) {
+    kitLine = document.createElement('span');
+    kitLine.className = 'browse-row__kit browse-row__kit--ok';
+    kitLine.textContent = 'You have the kit';
+  }
+
+  const chevron = document.createElement('span');
+  chevron.className = 'browse-row__chevron';
+  chevron.setAttribute('aria-hidden', 'true');
+  chevron.textContent = '›';
+
+  row.append(name, meta);
+  if (kitLine) row.append(kitLine);
+  row.append(chevron);
+  return row;
+}
+
+function renderBrowseResults() {
+  const results = document.getElementById('browseResults');
+  const summary = document.getElementById('browseSummary');
+  const count = document.getElementById('browseFilterCount');
+  if (!results) return;
+
+  const filters = currentFilters();
+  const model = browsePlans(_appState, filters, { sort: _sort });
+  const labels = filterSummary(filters, _appState);
+
+  if (count) count.textContent = ` (${activeFilterCount(filters, _appState)})`;
+  if (summary) {
+    const noun = model.total === 1 ? 'plan' : 'plans';
+    summary.textContent = `${model.total} ${noun}${labels.length ? ` · ${labels.join(' · ')}` : ''}`;
+  }
+
+  results.replaceChildren();
+  if (!model.total) {
+    const empty = emptyStateFor(filters, _appState);
+    const box = document.createElement('div');
+    box.className = 'browse-empty';
+    const title = document.createElement('div');
+    title.className = 'browse-empty__title';
+    title.textContent = empty.title;
+    const message = document.createElement('p');
+    message.className = 'browse-empty__message';
+    message.textContent = empty.message;
+    box.append(title, message);
+    if (empty.clearable || String(filters.query || '').trim()) {
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'browse-empty__cta';
+      clear.dataset.action = 'clear-browse-filters';
+      clear.textContent = 'Clear filters and search';
+      box.append(clear);
     }
-  }
-
-  // Recently viewed — surfaces the (previously write-only) recentlyViewed log
-  const recentlyViewed = (_appState?.programLibrary?.recentlyViewed || [])
-    .map(v => resolveProgramMeta(v.programId))
-    .filter(Boolean)
-    .slice(0, 10);
-  if (recentlyViewed.length > 0) {
-    html += renderCollectionRow({
-      id: 'recently-viewed',
-      label: 'Recently Viewed',
-      subtitle: 'Pick up where you left off',
-      icon: '🕘',
-      hideSeeAll: true,
-    }, recentlyViewed);
-  }
-
-  // Your custom programs (created in the builder) — only place they surface
-  const customPrograms = _appState?.customPrograms || [];
-  if (customPrograms.length > 0) {
-    html += renderCustomProgramsSection(customPrograms);
-  }
-
-  // V2-6 — a curated few rails, not the whole catalogue. The old surface stacked
-  // ~25 collection rows into an endless wall; the full library is one tap away via
-  // the Browse-all grid below, so Discover stays lean.
-  const byId = new Map(collections.map(c => [c.id, c]));
-  for (const id of CURATED_HOME_COLLECTIONS) {
-    const collection = byId.get(id);
-    if (!collection || !collection.programs || collection.programs.length === 0) continue;
-    const fresh = collection.programs.filter(p => p && !shown.has(p.id));
-    if (fresh.length === 0) continue;
-    fresh.forEach(p => shown.add(p.id));
-    html += renderCollectionRow(collection, fresh);
-  }
-
-  // The editorial carousel, now BELOW everything personal.
-  if (featuredPrograms.length > 0) {
-    html += renderHeroBanner(featuredPrograms);
-  }
-
-  // Browse-all: every category is reachable here, and this is now the ONLY place
-  // the category set is drawn by default — the top chip rows render solely while
-  // browsing, so the same 15 categories are no longer on screen twice.
-  html += `
-    <div class="collection-row mb-5">
-      <div class="collection-header mb-2">
-        <div class="collection-title-wrap">
-          <span class="collection-icon">🗂️</span>
-          <div>
-            <div class="collection-title">Browse all categories</div>
-            <div class="collection-subtitle">${PROGRAM_CATALOG.length} programs across every discipline</div>
-          </div>
-        </div>
-      </div>
-      <div class="prog-browse-grid">
-        ${FILTER_CHIPS.filter(c => c.key !== 'all').map(c => `
-          <button class="filter-chip" data-action="prog-filter" data-filter="${c.key}">${c.label}</button>
-        `).join('')}
-      </div>
-    </div>
-  `;
-
-  // Create custom program CTA
-  html += `
-    <div class="create-program-cta">
-      <div class="create-cta-inner">
-        <div class="create-cta-text">
-          <div class="create-cta-title">Build Your Own</div>
-          <div class="create-cta-subtitle">Create a custom program from scratch</div>
-        </div>
-        <button class="create-cta-btn" data-action="open-create-program">+ Create</button>
-      </div>
-    </div>
-  `;
-
-  container.innerHTML = html;
-  initHeroCarousel();
-}
-
-// ── Custom programs ("My Programs") ───────────────────────────────────────────
-
-function renderCustomProgramsSection(customPrograms) {
-  return `
-    <div class="collection-row mb-5">
-      <div class="collection-header mb-2">
-        <div class="collection-title-wrap">
-          <span class="collection-icon">🛠️</span>
-          <div>
-            <div class="collection-title">My Programs</div>
-            <div class="collection-subtitle">Programs you've built</div>
-          </div>
-        </div>
-      </div>
-      <div class="flex-col gap-2">
-        ${customPrograms.map(renderCustomProgramCard).join('')}
-      </div>
-    </div>
-  `;
-}
-
-function renderCustomProgramCard(p) {
-  const isActive = _appState?.activeProgramId === p.id;
-  const focus = p.dossier?.focus || 'Custom Program';
-  const weeks = p.totalWeeks || 12;
-  const trainingDays = Object.values(p.days || {}).filter(d =>
-    (d?.lifts || []).some(n => typeof n === 'string' && n.trim()) ||
-    (d?.runs && d.runs !== 'Rest')
-  ).length;
-  const safeId = escapeHtml(p.id || '');
-  // Source attribution lets a user tell apart several personal programs made from
-  // the SAME built-in template (so old "(Copy)" duplicates are identifiable and
-  // can be removed via Delete). No revision jargon is exposed.
-  const sourceName = p.sourceProgramId ? resolveProgramMeta(p.sourceProgramId)?.name : null;
-
-  return `
-    <div class="card-dark p-3" style="border:1px solid var(--overlay-sm);${isActive ? 'border-color:var(--accent-blue);' : ''}">
-      <div class="flex-between align-center mb-2" data-action="open-program-detail" data-program-id="${safeId}" role="button" tabindex="0" style="cursor:pointer;">
-        <div>
-          <div class="font-heavy text-inverse">${escapeHtml(p.name)}${isActive ? ' <span class="prog-badge prog-badge--active">ACTIVE</span>' : ''}</div>
-          <div class="text-xs text-muted">${escapeHtml(focus)} · ${weeks}w · ${trainingDays} training day${trainingDays !== 1 ? 's' : ''}</div>
-          ${sourceName ? `<div class="text-xs text-muted" style="opacity:.75;margin-top:2px;">From ${escapeHtml(sourceName)}</div>` : ''}
-        </div>
-        <span class="text-muted" aria-hidden="true">›</span>
-      </div>
-      <div class="flex gap-2" style="flex-wrap:wrap;">
-        ${isActive ? '' : `<button class="btn-pad btn-blue" style="font-size:0.75rem;" data-action="make-active-program" data-program-id="${safeId}">Make Active</button>`}
-        <button class="btn-pad" style="font-size:0.75rem;" data-action="open-builder" data-program-id="${safeId}">Edit</button>
-        <button class="btn-pad" style="font-size:0.75rem;" data-action="duplicate-program" data-program-id="${safeId}">Duplicate</button>
-        <button class="btn-pad" style="font-size:0.75rem;color:var(--accent-red);border-color:rgba(239,68,68,0.2);" data-action="delete-program" data-program-id="${safeId}">Delete</button>
-      </div>
-    </div>
-  `;
-}
-
-function renderHeroBanner(programs) {
-  const slides = programs.map((p, i) => {
-    const cover = [safeCssColor(p.coverGradient?.[0], '#1a0e2e'), safeCssColor(p.coverGradient?.[1], '#0d1b2a')];
-    return `
-    <div class="hero-slide ${i === 0 ? 'active' : ''}"
-         style="background: linear-gradient(145deg, ${cover[0]}, ${cover[1]})"
-         data-action="open-program-detail"
-         data-program-id="${escapeHtml(p.id)}">
-      <div class="hero-slide-overlay"></div>
-      <div class="hero-slide-icon" aria-hidden="true">${svgIcon(coverGlyphFor(p), { size: 104 })}</div>
-      <div class="hero-slide-content">
-        <span class="hero-badge">${escapeHtml(CATEGORIES[p.category]?.label || p.category)}</span>
-        <h2 class="hero-title">${escapeHtml(p.name)}</h2>
-        <p class="hero-tagline">${escapeHtml(p.tagline)}</p>
-        <div class="hero-meta">
-          <span>${p.durationWeeks} weeks</span>
-          <span class="hero-dot">·</span>
-          <span>${p.sessionsPerWeek} days/week</span>
-          <span class="hero-dot">·</span>
-          <span>${DIFFICULTY_LABELS[p.difficulty]?.label}</span>
-        </div>
-      </div>
-    </div>
-  `; }).join('');
-
-  const dots = programs.map((p, i) => `
-    <button class="hero-dot-btn hit-target ${i === 0 ? 'active' : ''}" data-action="hero-dot" data-slide="${i}"
-      aria-label="Show ${escapeHtml(p.name)} (${i + 1} of ${programs.length})"></button>
-  `).join('');
-
-  return `
-    <div class="hero-banner mb-4">
-      <div class="hero-slides" id="heroSlides">${slides}</div>
-      <div class="hero-dots" id="heroDots">${dots}</div>
-    </div>
-  `;
-}
-
-/**
- * State the basis of the recommendations, and let it be corrected in place.
- *
- * An athlete who upgraded never answered these — onboarding auto-completes for
- * anyone with stored data, and settings ship with hybrid/intermediate/full-gym
- * already filled in. Without this, the row tells them it was built on "your
- * goal, level and kit" when in truth it was built on three assumptions. Kept
- * collapsed so it costs nothing when the assumptions happen to be right.
- *
- * @param {ReturnType<typeof recommendationBasis>} basis
- */
-function renderRecommendationBasis(basis) {
-  if (!basis.length) return '';
-  const summary = basis.map(b => b.currentLabel).join(' · ');
-  return `
-    <details class="prog-basis">
-      <summary class="prog-basis__summary">
-        <span class="prog-basis__values">${escapeHtml(summary)}</span>
-        <span class="prog-basis__change">Change</span>
-      </summary>
-      <div class="prog-basis__body">
-        ${basis.map(b => `
-          <div class="prog-basis__group">
-            <div class="prog-basis__question">${escapeHtml(b.question)}</div>
-            <div class="prog-basis__options">
-              ${b.options.map(o => `
-                <button class="prog-basis__btn ${o.value === b.current ? 'is-current' : ''}"
-                        data-action="set-profile-answer"
-                        data-field="${escapeHtml(b.id)}"
-                        data-value="${escapeHtml(o.value)}"
-                        aria-pressed="${o.value === b.current}">${escapeHtml(o.label)}</button>
-              `).join('')}
-            </div>
-          </div>
-        `).join('')}
-      </div>
-    </details>
-  `;
-}
-
-/**
- * @param {any} collection
- * @param {any[]} programs
- * @param {Map<string,string>} [reasons] programme id → why it fits this athlete
- */
-function renderCollectionRow(collection, programs, reasons = null) {
-  const cards = programs
-    .map(p => renderProgramCard(p, 'small', reasons?.get(p.id) || ''))
-    .join('');
-
-  return `
-    <div class="collection-row mb-5">
-      <div class="collection-header mb-2">
-        <div class="collection-title-wrap">
-          <span class="collection-icon">${collection.icon}</span>
-          <div>
-            <div class="collection-title">${collection.label}</div>
-            ${collection.subtitle ? `<div class="collection-subtitle">${collection.subtitle}</div>` : ''}
-          </div>
-        </div>
-        ${collection.hideSeeAll ? '' : `<button class="collection-see-all" data-action="prog-filter" data-filter="${collection.id}">See all</button>`}
-      </div>
-      ${collection.afterHeader || ''}
-      <div class="card-scroll-row">
-        ${cards}
-      </div>
-    </div>
-  `;
-}
-
-function renderFilteredGrid(container) {
-  let programs;
-  let titleText;
-
-  const collectionDef = getCollectionDef(_activeFilter);
-  if (collectionDef) {
-    // "See All" came from a collection row — apply that collection's filter without a limit
-    programs = PROGRAM_CATALOG.filter(collectionDef.filter).sort(collectionDef.sort);
-    titleText = `${collectionDef.icon} ${collectionDef.label}`;
-  } else {
-    programs = filterByCategory(_activeFilter);
-    const categoryInfo = _activeFilter === 'home_gym'
-      ? { label: 'Home Gym', icon: '🏠' }
-      : (CATEGORIES[_activeFilter] || { label: _activeFilter, icon: '📋' });
-    const titleParts = [categoryInfo.icon, categoryInfo.label];
-    const diffLabel = _activeDifficulty ? DIFFICULTY_LABELS[_activeDifficulty]?.label : null;
-    if (diffLabel) titleParts.push(`· ${diffLabel}`);
-    titleText = titleParts.join(' ');
-  }
-
-  if (_activeDifficulty) {
-    programs = programs.filter(p => p.difficulty === _activeDifficulty);
-  }
-
-  const allWods = programs.length > 0 && programs.every(p => isWod(p));
-  const countNoun = allWods ? 'workout' : 'program';
-  const countLabel = `${programs.length} ${countNoun}${programs.length !== 1 ? 's' : ''}`;
-
-  const cards = programs.map(p => renderProgramCard(p, 'large')).join('');
-
-  container.innerHTML = `
-    <div class="filtered-grid-header mb-4">
-      <div class="filtered-grid-title">${titleText}</div>
-      <div class="filtered-grid-count">${countLabel}</div>
-    </div>
-    <div class="program-grid">
-      ${cards || '<div class="lib-empty-state"><div class="lib-empty-icon">🔍</div><div class="lib-empty-title">No programs found</div><div class="lib-empty-sub">Try adjusting your filters</div></div>'}
-    </div>
-  `;
-}
-
-// ── Program cards ─────────────────────────────────────────────────────────────
-
-// ── Search results ─────────────────────────────────────────────────────────────
-
-function renderSearchResults(query) {
-  const container = document.getElementById('progSearchResults');
-  if (!container) return;
-
-  const results = searchPrograms(query);
-
-  if (results.length === 0) {
-    container.innerHTML = `
-      <div class="search-empty">
-        <div class="search-empty-icon">🔍</div>
-        <div class="search-empty-title">No programs found</div>
-        <div class="search-empty-sub">Try different keywords or browse collections</div>
-        ${renderPopularSearches()}
-      </div>
-    `;
+    results.append(box);
     return;
   }
 
-  container.innerHTML = `
-    <div class="search-results-count mb-3">${searchResultsHeading(query, results.length)}</div>
-    <div class="program-grid">
-      ${results.map(p => renderProgramCard(p, 'large')).join('')}
-    </div>
-  `;
+  if (model.mine.length) {
+    results.append(browseGroupHeading('Your plans'));
+    for (const program of model.mine) results.append(browseRowNode(program));
+  }
+  if (model.library.length) {
+    results.append(browseGroupHeading(model.mine.length ? 'Library' : 'Plans'));
+    for (const program of model.library) results.append(browseRowNode(program));
+  }
 }
 
-function renderPopularSearches() {
+function browseGroupHeading(label) {
+  const h = document.createElement('h2');
+  h.className = 'browse-group';
+  h.textContent = label;
+  return h;
+}
+
+// ── Filters sheet ────────────────────────────────────────────────────────────
+
+function ensureFiltersSheet() {
+  let root = document.getElementById('plansFilterSheet');
+  if (root) return root;
+  root = document.createElement('div');
+  root.id = 'plansFilterSheet';
+  root.className = 'modal-overlay plans-filter-sheet';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-modal', 'true');
+  root.setAttribute('aria-labelledby', 'plansFilterSheetTitle');
+  root.setAttribute('data-modal-root', '');
+  root.setAttribute('data-modal-close-action', 'close-plan-filters');
+  root.setAttribute('inert', '');
+  root.setAttribute('aria-hidden', 'true');
+  root.innerHTML = `
+    <div class="modal-content plans-filter-panel">
+      <div class="plans-filter-head">
+        <h2 id="plansFilterSheetTitle">Filters</h2>
+        <button type="button" data-action="close-plan-filters" aria-label="Close filters">×</button>
+      </div>
+      <div id="plansFilterBody" class="plans-filter-body"></div>
+      <div class="plans-filter-foot">
+        <button type="button" class="plans-filter-clear" data-action="clear-browse-filters">Clear all</button>
+        <button type="button" class="plans-filter-done btn-blue" data-action="close-plan-filters" id="plansFilterDone">Show plans</button>
+      </div>
+    </div>`;
+  document.body.appendChild(root);
+  return root;
+}
+
+function openFilters() {
+  const root = ensureFiltersSheet();
+  renderFilterSheet();
+  root.classList.add('active');
+  openManagedModal(root, { initialFocus: '.plans-filter-option' });
+}
+
+function closeFilters() {
+  const root = document.getElementById('plansFilterSheet');
+  if (!root) return;
+  root.classList.remove('active');
+  closeManagedModal(root);
+}
+
+function filterGroup(title, options, facet, value) {
   return `
-    <div class="popular-searches mt-4">
-      <div class="popular-searches-title">Popular searches</div>
-      <div class="popular-searches-chips">
-        ${POPULAR_SEARCHES.map(s => `
-          <button class="popular-search-chip" data-action="prog-quick-search" data-query="${s.query}">
-            ${s.label}
-          </button>
+    <div class="plans-filter-group" role="group" aria-label="${escapeHtml(title)}">
+      <div class="plans-filter-label">${escapeHtml(title)}</div>
+      <div class="plans-filter-options">
+        <button type="button" class="plans-filter-option ${value === 'all' ? 'is-active' : ''}"
+                data-action="browse-facet" data-facet="${facet}" data-value="all"
+                aria-pressed="${value === 'all'}">Any</button>
+        ${options.map((option) => `
+          <button type="button" class="plans-filter-option ${value === option.id ? 'is-active' : ''}"
+                  data-action="browse-facet" data-facet="${facet}" data-value="${option.id}"
+                  aria-pressed="${value === option.id}">${escapeHtml(option.label)}</button>
         `).join('')}
       </div>
-    </div>
+    </div>`;
+}
+
+function renderFilterSheet() {
+  const body = document.getElementById('plansFilterBody');
+  const done = document.getElementById('plansFilterDone');
+  if (!body) return;
+  const filters = currentFilters();
+  const model = browsePlans(_appState, filters, { sort: _sort });
+
+  // ST4: the equipment facet edits the SAME kit the Settings page owns — a
+  // second copy of the checkbox list here would drift.
+  const equipmentGroup = `
+    <div class="plans-filter-group">
+      <div class="plans-filter-label">Equipment</div>
+      ${hasEquipmentProfile(_appState?.settings)
+        ? filterGroup('', [{ id: 'mine', label: 'Only what I have' }], 'equipment', filters.equipment)
+          + '<button type="button" class="plans-filter-kit" data-action="open-settings" data-page="once.equipment">Edit my kit</button>'
+        : '<p class="plans-filter-hint">Tell the app what kit you have to filter by it.</p>'
+          + '<button type="button" class="plans-filter-kit" data-action="open-settings" data-page="once.equipment">Add my kit in Settings</button>'}
+    </div>`;
+
+  body.innerHTML = `
+    ${filterGroup('Goal', BROWSE_GOALS, 'goal', filters.goal)}
+    ${filterGroup('Level', BROWSE_LEVELS, 'level', filters.level)}
+    ${filterGroup('Days per week', BROWSE_DAYS.map(({ id, label }) => ({ id, label })), 'days', filters.days)}
+    ${filterGroup('Length', BROWSE_LENGTHS, 'length', filters.length)}
+    ${equipmentGroup}
   `;
+  if (done) done.textContent = `Show ${model.total} plan${model.total === 1 ? '' : 's'}`;
 }
 
-export function renderSearchEmpty() {
-  const container = document.getElementById('progSearchResults');
-  if (!container) return;
+// ── Detail / navigation ─────────────────────────────────────────────────────
 
-  container.innerHTML = `
-    <div class="search-landing">
-      ${renderPopularSearches()}
-    </div>
-  `;
+export function openProgramDetail(programId) {
+  const libraryScreen = document.getElementById('programLibraryScreen');
+  const detailScreen = document.getElementById('programDetailScreen');
+  if (!libraryScreen || !detailScreen) return;
+
+  recordRecentlyViewed(programId);
+  libraryScreen.style.display = 'none';
+  detailScreen.style.display = 'block';
+  detailScreen.scrollTop = 0;
+  renderProgramDetail(programId, _appState);
 }
 
-// ── Hero carousel ─────────────────────────────────────────────────────────────
+export function returnToLibrary() {
+  const libraryScreen = document.getElementById('programLibraryScreen');
+  const detailScreen = document.getElementById('programDetailScreen');
+  if (!libraryScreen || !detailScreen) return;
 
-let _heroInterval = null;
-let _heroIndex = 0;
-
-function prefersReducedMotion() {
-  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
-  catch (_) { return false; }
-}
-
-// Start (or restart) autoplay — but never auto-advance for users who asked for
-// reduced motion; they still get manual dot navigation.
-function startHeroAutoplay() {
-  clearInterval(_heroInterval);
-  if (prefersReducedMotion()) return;
-  _heroInterval = setInterval(advanceHero, 4000);
-}
-
-function initHeroCarousel() {
-  _heroIndex = 0;
-  startHeroAutoplay();
-  // Pause on hover/focus (a native carousel courtesy), resume on leave/blur.
-  const banner = document.querySelector('.hero-banner');
-  if (banner && !banner._pauseWired) {
-    banner._pauseWired = true;
-    banner.addEventListener('mouseenter', () => clearInterval(_heroInterval));
-    banner.addEventListener('mouseleave', startHeroAutoplay);
-    banner.addEventListener('focusin', () => clearInterval(_heroInterval));
-    banner.addEventListener('focusout', startHeroAutoplay);
+  detailScreen.style.display = 'none';
+  libraryScreen.style.display = 'block';
+  if (_browseOpen) {
+    // Return to the Browse the athlete left, with its filters and query intact.
+    renderBrowseShell();
+  } else {
+    renderLibrary();
   }
 }
 
-function advanceHero() {
-  const slides = document.querySelectorAll('.hero-slide');
-  const dots = document.querySelectorAll('.hero-dot-btn');
-  if (slides.length === 0) return;
+// ── Actions ─────────────────────────────────────────────────────────────────
 
-  slides[_heroIndex].classList.remove('active');
-  dots[_heroIndex]?.classList.remove('active');
-  _heroIndex = (_heroIndex + 1) % slides.length;
-  slides[_heroIndex].classList.add('active');
-  dots[_heroIndex]?.classList.add('active');
-}
-
-// ── Event handling ─────────────────────────────────────────────────────────────
-
-function setupLibraryEvents() {
-  // Routine category filter. Delegated on the stable screen because the select
-  // is recreated whenever the list renders.
-  const screen = document.getElementById('programLibraryScreen');
-  if (screen && !screen._routineFilterEvt) {
-    screen._routineFilterEvt = true;
-    screen.addEventListener('change', (event) => {
-      const select = event.target instanceof Element ? event.target.closest('[data-routine-category]') : null;
-      if (!select) return;
-      const value = select.value;
-      _routineCategoryFilter = value === 'uncategorised' || ROUTINE_CATEGORIES.some((category) => category.id === value)
-        ? value
-        : 'all';
-      renderLibraryContent();
-    });
-  }
-
-  // Search input
-  const searchInput = document.getElementById('progSearchInput');
-  const searchClear = document.getElementById('progSearchClear');
-
-  if (searchInput && !searchInput._libEvt) {
-    searchInput._libEvt = true;
-
-    searchInput.addEventListener('focus', () => {
-      if (searchInput.value.length === 0) {
-        document.getElementById('progLibraryContent').style.display = 'none';
-        document.getElementById('progSearchResults').style.display = 'block';
-        renderSearchEmpty();
-      }
-    });
-
-    searchInput.addEventListener('input', () => {
-      const q = searchInput.value.trim();
-      _searchQuery = q;
-      searchClear.style.display = q ? 'flex' : 'none';
-
-      clearTimeout(_searchDebounce);
-      _searchDebounce = setTimeout(() => {
-        renderLibraryContent();
-      }, 180);
-    });
-  }
-
-  if (searchClear && !searchClear._libEvt) {
-    searchClear._libEvt = true;
-    searchClear.addEventListener('click', () => {
-      const inp = document.getElementById('progSearchInput');
-      if (inp) inp.value = '';
-      _searchQuery = '';
-      searchClear.style.display = 'none';
-      renderLibraryContent();
-    });
-  }
-}
-
-function jumpHeroSlide(index) {
-  const slides = document.querySelectorAll('.hero-slide');
-  const dots = document.querySelectorAll('.hero-dot-btn');
-  if (index < 0 || index >= slides.length) return;
-  slides[_heroIndex].classList.remove('active');
-  dots[_heroIndex]?.classList.remove('active');
-  _heroIndex = index;
-  slides[_heroIndex].classList.add('active');
-  dots[_heroIndex]?.classList.add('active');
-  // Reset the auto-advance timer (respecting reduced-motion).
-  startHeroAutoplay();
-}
-
-// ── Event delegation entry point (called from app.js) ─────────────────────────
-
+/**
+ * Route a Plans action. Returns nothing; the app's global handler calls this for
+ * its whitelist of actions.
+ * @param {string} action
+ * @param {HTMLElement} el
+ * @param {Event} [event]
+ */
 export function handleLibraryAction(action, el, event) {
   switch (action) {
     case 'open-program-detail': {
@@ -1238,127 +1013,146 @@ export function handleLibraryAction(action, el, event) {
       else if (field === 'equipment') _appState.settings.equipmentTier = value;
       else break;
       saveStateToLocalStorage(true);
-      renderLibraryContent();
-      break;
-    }
-    case 'prog-show-all': {
-      _showAllPrograms = true;
-      renderLibraryContent();
+      renderRecommendations();
       break;
     }
     case 'clear-routine-filter': {
       _routineCategoryFilter = 'all';
-      renderLibraryContent();
+      renderMyPlans();
       break;
     }
-    case 'prog-filter': {
-      const filter = el.getAttribute('data-filter');
-      setActiveFilter(filter);
+    case 'open-browse':
+      openBrowse();
+      break;
+    case 'close-browse':
+      closeBrowse();
+      break;
+    case 'open-plan-filters':
+      openFilters();
+      break;
+    case 'close-plan-filters':
+      closeFilters();
+      break;
+    case 'browse-facet': {
+      const facet = el.getAttribute('data-facet');
+      const value = el.getAttribute('data-value') || 'all';
+      if (!facet) break;
+      const filters = currentFilters();
+      // Tapping the active value clears it (one-tap undo of a facet).
+      filters[facet] = (filters[facet] === value && value !== 'all') ? 'all' : value;
+      renderFilterSheet();
+      renderBrowseResults();
       break;
     }
-    case 'diff-filter': {
-      const diff = el.getAttribute('data-difficulty') || null;
-      setActiveDifficulty(diff || null);
-      break;
-    }
-    // `continue-active-program` was removed with the banner rewrite: it
-    // dispatched a bare tab switch, so "Continue" opened the cockpit on whatever
-    // day it happened to have selected last. The banner now emits the same
-    // day-carrying actions Home does (`select-program-workout` /
-    // `start-today-workout` / `open-program-workout-picker`), all of which are
-    // handled globally in app.js.
-    case 'hero-dot': {
-      const slide = parseInt(el.getAttribute('data-slide'), 10);
-      if (!isNaN(slide)) jumpHeroSlide(slide);
-      break;
-    }
-    case 'prog-quick-search': {
-      const q = el.getAttribute('data-query');
-      const inp = document.getElementById('progSearchInput');
-      if (inp) {
-        inp.value = q;
-        _searchQuery = q;
-        document.getElementById('progSearchClear').style.display = 'flex';
-        renderLibraryContent();
+    case 'browse-kind': {
+      const kind = el.getAttribute('data-kind');
+      if (!kind) break;
+      currentFilters().kind = kind;
+      for (const button of document.querySelectorAll('.browse__kind')) {
+        const isActive = button.getAttribute('data-kind') === kind;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       }
+      renderBrowseResults();
       break;
     }
-    case 'open-active-plan-manage': {
-      // VIEW the running plan; never activate or switch it. The plan view owns
-      // its own actions once open.
-      document.dispatchEvent(new CustomEvent('library:view-active'));
+    case 'clear-browse-filters': {
+      const defaults = defaultBrowseFilters(_appState);
+      _filters = { ...defaults, query: '' };
+      const input = /** @type {HTMLInputElement|null} */ (document.getElementById('plansBrowseSearch'));
+      if (input) input.value = '';
+      renderFilterSheet();
+      renderBrowseShell();
       break;
     }
-    case 'lib-tab': {
-      const tab = el.getAttribute('data-tab') === 'my' ? 'my' : 'discover';
-      if (tab !== _activeTab) {
-        _activeTab = tab;
-        _showAllPrograms = false;
-        _searchQuery = '';
-        _activeDifficulty = null;
-        _routineCategoryFilter = 'all';
-        const inp = document.getElementById('progSearchInput');
-        if (inp) inp.value = '';
-        renderLibrary();
-        persistFilters();
-      }
+    case 'open-plans-create-menu': {
+      openActionMenu(/** @type {HTMLElement} */ (el), [
+        { label: 'New plan', action: 'open-create-program' },
+        { label: 'Import plan (.json)', action: 'import-plan-json' },
+      ], { label: 'Create' });
       break;
     }
-    case 'toggle-bookmark': {
-      event?.stopPropagation();
+    case 'open-plan-menu': {
       const id = el.getAttribute('data-program-id');
       if (!id) break;
-      const nowSaved = toggleBookmark(id);
-      el.className = `prog-card-bookmark ${nowSaved ? 'saved' : ''}`;
-      el.setAttribute('aria-label', nowSaved ? 'Remove bookmark' : 'Save program');
-      el.innerHTML = svgIcon('bookmark', { size: 16, cls: nowSaved ? 'is-saved' : '' });
-      renderLibraryTabs();
+      const custom = isCustomProgram(id);
+      const active = _appState?.activeProgramId === id;
+      // A plan that has been trained cannot be deleted without orphaning its
+      // history attribution, so it offers Archive instead of Delete.
+      const trained = planHasRecordedRuns(id);
+      openActionMenu(/** @type {HTMLElement} */ (el), [
+        { label: 'Open plan', action: 'open-program-detail', programId: id },
+        { label: custom ? 'Edit plan' : 'Customize', action: custom ? 'open-builder' : 'customize-program', programId: id },
+        ...(active ? [] : [{ label: 'Make active', action: 'make-active-program', programId: id }]),
+        ...(custom ? [{ label: 'Duplicate', action: 'duplicate-program', programId: id }] : []),
+        ...(custom && trained ? [{ label: 'Archive (keeps history)', action: 'archive-program', programId: id }] : []),
+        ...(custom && !trained ? [{ label: 'Delete', action: 'delete-program', programId: id, danger: true }] : []),
+      ], { label: 'Plan actions' });
+      break;
+    }
+    case 'archive-program': {
+      const id = el.getAttribute('data-program-id');
+      if (!id) break;
+      const result = archiveCustomProgram(id);
+      if (result.success) {
+        showToast('Plan archived — your history is kept');
+        renderLibrary();
+      } else {
+        showToast(result.message, true);
+      }
+      break;
+    }
+    case 'restore-program': {
+      const id = el.getAttribute('data-program-id');
+      if (!id) break;
+      const result = restoreCustomProgram(id);
+      if (result.success) {
+        showToast('Plan restored');
+        renderLibrary();
+      } else {
+        showToast(result.message, true);
+      }
       break;
     }
   }
 }
 
-function setActiveFilter(filter) {
-  _activeFilter = filter;
-  _activeDifficulty = null;
-  _searchQuery = '';
-  const inp = document.getElementById('progSearchInput');
-  if (inp) inp.value = '';
-  renderFilterChips();
-  renderDifficultyChips();
-  renderLibraryContent();
-  persistFilters();
+// ── DOM listeners (search, sort, routine filter) ─────────────────────────────
+
+let _listenersReady = false;
+
+export function initPlansListeners() {
+  const screen = document.getElementById('programLibraryScreen');
+  if (!screen || _listenersReady) return;
+  _listenersReady = true;
+
+  // Routine category filter (recreated with the list, so delegated).
+  screen.addEventListener('change', (event) => {
+    const target = /** @type {HTMLSelectElement|null} */ (event.target instanceof HTMLSelectElement ? event.target : null);
+    if (!target) return;
+    if (target.hasAttribute('data-routine-category')) {
+      const value = target.value;
+      _routineCategoryFilter = value === 'uncategorised' || ROUTINE_CATEGORIES.some((category) => category.id === value)
+        ? value
+        : 'all';
+      renderMyPlans();
+      return;
+    }
+    if (target.hasAttribute('data-browse-sort')) {
+      _sort = BROWSE_SORTS.some((sort) => sort.id === target.value) ? target.value : 'recommended';
+      renderBrowseResults();
+    }
+  });
+
+  // Browse search: re-render results only, so focus and caret survive.
+  screen.addEventListener('input', (event) => {
+    const target = /** @type {HTMLInputElement|null} */ (event.target instanceof HTMLInputElement ? event.target : null);
+    if (!target || target.id !== 'plansBrowseSearch') return;
+    const value = target.value;
+    clearTimeout(_searchDebounce);
+    _searchDebounce = setTimeout(() => {
+      currentFilters().query = value.trim();
+      renderBrowseResults();
+    }, 160);
+  });
 }
-
-function setActiveDifficulty(difficulty) {
-  _activeDifficulty = difficulty || null;
-  renderDifficultyChips();
-  renderLibraryContent();
-  persistFilters();
-}
-
-function openProgramDetail(programId) {
-  const libraryScreen = document.getElementById('programLibraryScreen');
-  const detailScreen = document.getElementById('programDetailScreen');
-  if (!libraryScreen || !detailScreen) return;
-
-  recordRecentlyViewed(programId);
-  libraryScreen.style.display = 'none';
-  detailScreen.style.display = 'block';
-  detailScreen.scrollTop = 0;
-  renderProgramDetail(programId, _appState);
-}
-
-export function returnToLibrary() {
-  const libraryScreen = document.getElementById('programLibraryScreen');
-  const detailScreen = document.getElementById('programDetailScreen');
-  if (!libraryScreen || !detailScreen) return;
-
-  detailScreen.style.display = 'none';
-  libraryScreen.style.display = 'block';
-  renderActiveProgramBanner();
-  renderUtilityRow();
-}
-
-// Expose for use from detail page
-export { openProgramDetail };
