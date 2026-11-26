@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-import { buildRoutineFromSession, prescriptionForSets, routineSourceWeek, routineSummary } from '../js/routines/model.js';
+import { buildRoutineFromPlanDay, buildRoutineFromSession, prescriptionForSets, routineSourceWeek, routineSummary } from '../js/routines/model.js';
 import {
   createFolder, deleteFolder, ensureRoutines, findFolder, hasRoutineCapacity,
   MAX_ROUTINE_LIFTS, MAX_ROUTINES, MAX_ROUTINE_SETS, moveFolder, moveRoutineToFolder,
@@ -478,6 +478,40 @@ test('a new folder appends after an imported library with offset sortOrder', () 
   assert.equal(charlie.sortOrder, 2, 'the imported 10/20 list is normalised before appending');
   assert.deepEqual(orderedFolders(state).map((folder) => folder.name), ['Able', 'Baker', 'Charlie']);
   assert.deepEqual(state.libraryFolders.map((folder) => folder.sortOrder), [0, 1, 2]);
+});
+
+test('a plan day becomes a routine with its targets preserved', () => {
+  const program = {
+    id: 'prog_plan_day',
+    name: 'Audit Block',
+    totalWeeks: 4,
+    days: {
+      mon: {
+        title: 'Upper Strength', badge: 'UPPER', color: '#38bdf8', desc: '', runs: 'Rest',
+        lifts: ['Bench Press', 'Barbell Row'],
+      },
+    },
+    prescriptions: { mon: { 'Bench Press': { sets: 4, reps: '6-8', restSec: 150, weight: 80 } } },
+    weeklyVolModifiers: { 1: { sets: 3, reps: '10', intensityLabel: 'Build' } },
+  };
+  const routine = buildRoutineFromPlanDay(program, 'mon');
+  assert.equal(routine.kind, 'routine');
+  assert.equal(routine.name, 'Audit Block · Upper Strength');
+  assert.deepEqual(routine.days.mon.lifts, ['Bench Press', 'Barbell Row']);
+  assert.deepEqual(routine.prescriptions.mon['Bench Press'], { sets: 4, reps: '6-8', weight: 80, restSec: 150 });
+  assert.deepEqual(routine.prescriptions.mon['Barbell Row'], { sets: 3, reps: '10', weight: null, restSec: null });
+  // The routine can be started as a one-off session with those sets.
+  const source = routineSourceWeek(routine);
+  assert.equal(source.sourceWeek.lifts.mon['Bench Press'].length, 4);
+  assert.equal(source.sourceWeek.lifts.mon['Barbell Row'].length, 3);
+});
+
+test('a rest or run-only plan day does not become a routine', () => {
+  const program = {
+    days: { mon: { title: 'Rest', lifts: [], runs: 'Rest' }, tue: { title: 'Easy run', lifts: [], runs: '5 km' } },
+  };
+  assert.equal(buildRoutineFromPlanDay(program, 'mon'), null);
+  assert.equal(buildRoutineFromPlanDay(program, 'tue'), null);
 });
 
 test('the store seeds and repairs both root arrays, and Undo can remove a routine', () => {

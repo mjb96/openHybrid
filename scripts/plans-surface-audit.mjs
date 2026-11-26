@@ -248,13 +248,24 @@ try {
   report.surfaces.editor.detail = await page.evaluate(() => {
     const root = document.getElementById('builderViewContainer');
     if (!root) return null;
+    return {
+      sectionLinks: [...root.querySelectorAll('.program-editor__section-link')].map((el) => el.textContent.trim()),
+      planDayRows: root.querySelectorAll('.program-editor__day-row').length,
+      dayCardsOnPlan: root.querySelectorAll('.program-editor__day-card').length,
+      saveStatusText: (root.querySelector('[role="status"]')?.textContent || '').trim().slice(0, 60),
+    };
+  });
+  // The exercise rows live one level down (Plan → Week → Day).
+  await tap('#builderViewContainer [data-action="b-select-day"]', 400);
+  report.surfaces.editor.day = await page.evaluate(() => {
+    const root = document.getElementById('builderViewContainer');
+    if (!root) return null;
     const rows = root.querySelectorAll('.program-editor__exercise-row, [data-editor-row]').length;
     return {
-      tabs: [...root.querySelectorAll('.program-editor__tab')].map((el) => el.textContent.trim()),
       exerciseRows: rows,
       controlsPerRow: rows ? Math.round(root.querySelectorAll('button, input, select').length / rows) : null,
       perLiftTargets: root.querySelectorAll('.program-editor__target').length,
-      saveStatusText: (root.querySelector('[role="status"]')?.textContent || '').trim().slice(0, 60),
+      dayCards: root.querySelectorAll('.program-editor__day-card').length,
     };
   });
   // The per-lift gap is stated on the Progression tab, not the Schedule tab.
@@ -309,8 +320,9 @@ if (asJson) {
   row('Plan page example targets', (p.expanded?.sample || []).join(' | ') || '—');
   const e = report.surfaces.editor || {};
   row('Editor height / controls', `${pad(e.documentHeight)} px / ${pad(e.visibleControls)}`);
-  row('Editor rows / controls per row', `${pad(e.detail?.exerciseRows)} / ${pad(e.detail?.controlsPerRow)}`);
-  row('Editor per-lift target controls', pad(e.detail?.perLiftTargets));
+  row('Editor plan day rows / cards', `${pad(e.detail?.planDayRows)} / ${pad(e.detail?.dayCardsOnPlan)}`);
+  row('Editor day rows / controls per row', `${pad(e.day?.exerciseRows)} / ${pad(e.day?.controlsPerRow)}`);
+  row('Editor per-lift target controls', pad(e.day?.perLiftTargets));
   row('Editor says "coming" (progression)', pad(e.progression?.hasDeclaredGap));
   row('Progression tab controls', pad(e.progression?.controls));
   if (report.errors.length) {

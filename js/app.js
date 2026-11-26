@@ -5,6 +5,7 @@ import { devWarn } from './debug.js';
 import { openBuilder } from './program_builder.js';
 import { initProgramLibrary, updateLibraryState, renderLibrary, handleLibraryAction, returnToLibrary, showLibraryTab, openProgramDetail } from './programs/library.js';
 import { handleDetailAction, renderProgramDetail, currentPlanId } from './programs/detail.js';
+import { openPlanStartingSheet } from './programs/create-sheet.js';
 import { copyProgramAsText, handleProgramTextAction } from './programs/copy-program.js';
 import { buildPlanFile, parsePlanFile, createImportedProgram, planFilename } from './programs/program-json.js';
 import { isOpenGymPlan, parseOpenGymPlan, createOpenGymProgram } from './programs/opengym-plan.js';
@@ -1175,22 +1176,20 @@ export function cancelWeekAdvance() {
   saveStateToLocalStorage(true);
 }
 
-export function openCreateProgramModal() { document.getElementById('createProgramModal').classList.add('active'); }
-export function closeCreateProgramModal() { document.getElementById('createProgramModal').classList.remove('active'); }
+export function openCreateProgramModal() {
+  // "New plan" asks WHERE TO START, not for a name and a week count before the
+  // athlete can see anything (roadmap §22 / PL6). The name is edited inline in
+  // the editor.
+  openPlanStartingSheet({
+    open: (programId) => {
+      switchProgramMode('builder');
+      openBuilder(programId);
+    },
+  });
+}
 
-export function executeCreateProgram() {
-  const name = document.getElementById('cpInputName').value;
-  const focus = document.getElementById('cpInputFocus').value;
-  const wks = document.getElementById('cpInputWeeks').value;
-  const newId = createCustomProgram(name, wks, focus, "");
-  closeCreateProgramModal();
-  document.getElementById('cpInputName').value = '';
-  document.getElementById('cpInputFocus').value = '';
-  document.getElementById('cpInputWeeks').value = '12';
-  showToast('Custom Program Created!');
-  // Drop straight into the builder so the (empty) program is actually fillable.
-  switchProgramMode('builder');
-  openBuilder(newId);
+export function closeCreateProgramModal() {
+  document.getElementById('plansStartSheet')?.classList.remove('active');
 }
 
 export async function executeDeleteProgram(id) {
@@ -1507,8 +1506,6 @@ document.addEventListener('click', (e) => {
 
   // Programs & Library
   else if (action === 'open-create-program') openCreateProgramModal();
-  else if (action === 'close-create-program') closeCreateProgramModal();
-  else if (action === 'execute-create-program') executeCreateProgram();
   else if (action === 'cancel-week-advance') cancelWeekAdvance();
   else if (action === 'confirm-week-advance') confirmWeekAdvance();
   else if (action === 'make-active-program') triggerMakeActiveProgram(progId);
@@ -1668,7 +1665,7 @@ document.addEventListener('click', (e) => {
   else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage', 'clear-routine-filter', 'open-browse', 'close-browse', 'open-plan-filters', 'close-plan-filters', 'browse-facet', 'browse-kind', 'clear-browse-filters', 'open-plans-create-menu', 'open-plan-menu', 'archive-program', 'restore-program'].includes(action)) {
     handleLibraryAction(action, target, e);
   }
-  else if (['close-program-detail', 'make-active-from-detail', 'mark-program-complete', 'detail-week-step', 'detail-week-current', 'toggle-plan-day', 'toggle-plan-saved'].includes(action)) {
+  else if (['close-program-detail', 'make-active-from-detail', 'mark-program-complete', 'detail-week-step', 'detail-week-current', 'toggle-plan-day', 'toggle-plan-saved', 'save-day-as-routine'].includes(action)) {
     handleDetailAction(action, target);
   }
   

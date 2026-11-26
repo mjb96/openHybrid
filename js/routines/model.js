@@ -28,6 +28,8 @@ import { buildSavedWorkoutDraft } from '../workout/edit-saved.js';
 import { getExerciseRestOverride } from '../workout/exercise-config.js';
 import { normaliseGroupId, pruneSingleMemberGroups } from '../workout/superset.js';
 import { MAX_ROUTINE_LIFTS, MAX_ROUTINE_SETS, newRoutineId } from './store.js';
+import { liftTarget } from '../engine.js';
+import { getWeekModifier } from '../schema.js';
 
 const ROUTINE_BADGE = 'Routine';
 const ROUTINE_COLOR = 'var(--accent-blue)';
@@ -242,6 +244,76 @@ export function buildRoutineFromSession(state, week, day, options = {}) {
       },
     },
     prescriptions: { [day]: prescriptions },
+    totalWeeks: 1,
+    weeklyVolModifiers: { 1: { sets: 3, reps: 10, intensityLabel: '' } },
+  };
+}
+
+/**
+ * Build a routine from ONE day of a plan (roadmap §22 / PL6). The plan already
+ * owns the intent — exercises, order, sets/reps and any per-exercise target —
+ * so this copies that intent into a reusable session template instead of
+ * waiting for the athlete to log it first.
+ *
+ * A day with no lifts returns null (a run-only or rest day is not a routine).
+ *
+ * @param {any} program
+ * @param {string} dayKey
+ * @param {{ name?: string, now?: Date }} [options]
+ */
+export function buildRoutineFromPlanDay(program, dayKey, options = {}) {
+  const day = program?.days?.[dayKey];
+  if (!day) return null;
+  const names = (Array.isArray(day.lifts) ? day.lifts : [])
+    .filter((name) => typeof name === 'string' && name.trim())
+    .slice(0, MAX_ROUTINE_LIFTS);
+  if (!names.length) return null;
+
+  const modifier = getWeekModifier(program, '1') || {};
+  /** @type {Record<string, any>} */
+  const prescriptions = {};
+  const lifts = [];
+  for (const name of names) {
+    const stored = program?.prescriptions?.[dayKey]?.[name];
+    const target = liftTarget(day.desc, name, modifier, { program, week: '1', dayKey });
+    const sets = Math.min(MAX_ROUTINE_SETS, Math.max(1, Math.round(Number(stored?.sets ?? target.sets) || 1)));
+    /** @type {any} */
+    const prescription = {
+      sets,
+      reps: String(stored?.reps ?? target.reps ?? '').trim(),
+      weight: Number.isFinite(Number(stored?.weight)) && Number(stored.weight) > 0 ? Number(stored.weight) : null,
+      restSec: Number.isFinite(Number(stored?.restSec)) && Number(stored.restSec) > 0 ? Number(stored.restSec) : null,
+    };
+    const groupId = normaliseGroupId(stored?.groupId);
+    if (groupId) prescription.groupId = groupId;
+    prescriptions[name] = prescription;
+    lifts.push(name);
+  }
+  pruneSingleMemberGroups(prescriptions);
+
+  const now = options.now instanceof Date ? options.now : new Date();
+  const stamp = now.toISOString();
+  const name = String(options.name || '').trim()
+    || `${String(program?.name || 'Plan').trim()} · ${String(day.title || 'Session').trim()}`;
+  return {
+    kind: 'routine',
+    id: newRoutineId(),
+    name,
+    folderId: null,
+    createdAt: stamp,
+    updatedAt: stamp,
+    source: { activityId: null, programId: program?.id || null, day: dayKey, date: null },
+    days: {
+      [dayKey]: {
+        title: String(day.title || 'Session').trim() || 'Session',
+        badge: ROUTINE_BADGE,
+        color: ROUTINE_COLOR,
+        desc: '',
+        runs: 'Rest',
+        lifts,
+      },
+    },
+    prescriptions: { [dayKey]: prescriptions },
     totalWeeks: 1,
     weeklyVolModifiers: { 1: { sets: 3, reps: 10, intensityLabel: '' } },
   };

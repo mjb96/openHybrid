@@ -5711,7 +5711,27 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     `all-lifts-browser-check` (custom plan, two stalls, week 6 halves to 2 sets,
     Undo restores 4/Week 6).
 
+- **2026-11-26 — ST8: text size + haptics.**
+  - Look & Home gains **Text size** (Default / Large / Extra large) and
+    **Haptics**. Text size is one root CSS hook (`html[data-text-size]` scaling
+    the root font) applied at boot and on change; haptics gates the set/PR
+    feedback without touching logging, timers or PR detection.
+  - Sounds stay with the rest timers they belong to; demo size (G8) is not
+    built, so the row stays PARTIAL rather than claiming otherwise.
+  - Tests: `text_size` + a static wiring guard; the Settings browser check
+    toggles Extra large and asserts the root font grows to 20px.
+
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
+
+- **2026-11-26 — ST8: text size + haptics.**
+  - Look & Home gains **Text size** (Default / Large / Extra large) and
+    **Haptics**. Text size is one root CSS hook (`html[data-text-size]` scaling
+    the root font) applied at boot and on change; haptics gates the set/PR
+    feedback without touching logging, timers or PR detection.
+  - Sounds stay with the rest timers they belong to; demo size (G8) is not
+    built, so the row stays PARTIAL rather than claiming otherwise.
+  - Tests: `text_size` + a static wiring guard; the Settings browser check
+    toggles Extra large and asserts the root font grows to 20px.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

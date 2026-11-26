@@ -137,7 +137,7 @@ try {
 
   // Edit the ACTIVE built-in → forks an editable personal backing program.
   await page.click('#programDetailScreen [data-action="edit-active-program"]');
-  await page.waitForSelector('#builderViewContainer .program-editor__exercise-name', { timeout: 8000 });
+  await page.waitForSelector('#builderViewContainer .program-editor__day-list', { timeout: 8000 });
   const forked = await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem('hybrid_engine_v2_state'));
     return { active: s.activeProgramId, count: s.customPrograms.length, source: s.customPrograms[0]?.sourceProgramId, week: s.currentWeek };
