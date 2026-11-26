@@ -208,3 +208,14 @@ test('frequency compares with the previous window like sets do', () => {
   assert.equal(chest.previousSessions, 1);
   assert.equal(chest.sessionsDelta, 1);
 });
+
+test('the range view states a weekly average against the typical band (A2)', () => {
+  const model = buildMuscleModel(
+    stateWith([day('2026-11-20', { 'Barbell Bench Press': [done(100), done(100)] })]),
+    { range: range30 },
+  );
+  const chest = model.muscles.find((m) => m.key === 'chest');
+  assert.ok(chest.weeklyAverage > 0 && chest.weeklyAverage < 2, `weekly average is per week (${chest.weeklyAverage})`);
+  assert.deepEqual(chest.landmarks, { mv: 8, mev: 10, mav: 20, mrv: 22 });
+  assert.equal(chest.volumeZone, 'detraining');
+});

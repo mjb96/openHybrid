@@ -1454,7 +1454,7 @@ families without an action. Verify what already answers each question.
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
 | A1 | Stall detection | `engine.js`, `templates.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | PARTIAL | The cockpit now renders the evidence/action message under the target, so a PROGRESS CHECK badge explains itself. No analytics surface lists stalls yet. |
-| A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js` | Weekly sets per muscle against the volume guide with under/over status and one action | PARTIAL | Weekly credited sets vs MV/MEV/MAV/MRV with zones; no action by design; current-week only and no target band in the range view. |
+| A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js`, `analytics/muscles.js` | Weekly sets per muscle against the volume guide with under/over status and one action | DONE | The range view states the focused muscle's **weekly average** against the typical band (`MEV–MAV`), with the shared `classifyVolume` label (detraining/maintenance/growth/optimal/overreaching) and one action: **Review volume guide**. Copy stays factual — population references are never turned into “add N sets”. The current-week Volume Guide and its target band are unchanged. Tests: `muscles_model` average/landmarks and `muscles_view` focused block; the Progress-hub browser check asserts both. |
 | A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js`, `views/view-strength-entity.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | DONE | The exercise drilldown offers 4 weeks / 12 weeks / 6 months / 1 year / all time, and states the e1RM **rate of change per week** for the selected span (first→latest, never fabricated from one point or for holds/carries). ROI and block PR stay as they were; the program-week-indexed ROI is a separate metric, not this chart. `exercise-detail` tests pin the boundaries and the rate; the all-lifts browser check drives the range control. |
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
 | A5 | Session vs last time | `session-recap.js`, `workout/session-comparison.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | DONE | The recap Summary now carries one “vs last time” block: volume (and %), set delta, best-e1RM delta and the session’s PR count. Identity is the routine when the session came from the library, otherwise the same programmed day; only completed working sets count, a future/empty session is never the baseline, and runs are not compared here. `tests/session_comparison.test.js` + the recap test; verified in the History detail. |
@@ -1629,6 +1629,15 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A2: volume against the typical band in the range view.**
+  - The focused muscle states its **weekly average** over the selected range and
+    the typical `MEV–MAV` band, classified by the shared `classifyVolume`; the
+    current-week Volume Guide keeps its own week view.
+  - One action: **Review volume guide**. Copy stays factual — the population
+    band is a reference, never an instruction to add sets.
+  - Tests: `muscles_model` weekly average/landmarks and `muscles_view` focused
+    block; the Progress-hub browser check asserts the reference and action.
+
 - **2026-11-26 — H4 A7: muscle frequency per bucket.**
   - `buildMuscleModel` now counts distinct training DATES per muscle (a session),
     per bucket and for the range, plus the same comparison against the previous
@@ -1721,16 +1730,6 @@ device timing it did not measure.
     engine remains the only owner of the reason.
   - Tests: `tests/target_why.test.js` (message, rationale, baseline, program
     fallback, render/dedup); verified in the real cockpit.
-
-- **2026-11-25 — H2 HM6: honest first-session, offline and partial-data states.**
-  - A brand-new athlete (no completed work anywhere) gets a `First session`
-    eyebrow and a baseline-setting line; one completed set removes it.
-  - The offline reassurance moved from the collapsed detail into the card head,
-    so it is visible on the compact row.
-  - A one-signal readiness score reads as `limited signal — add a check-in for a
-    sharper read` rather than a settled number. Rest / no plan / unresolved /
-    completed / past-week states were already distinct.
-  - Tests: four new `home_today_card` cases; Home Today browser check passes.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

@@ -5929,3 +5929,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - `tests/home_metric_ownership.test.js` fails if the coach repeats any of
     those figures; the Home Today browser check still passes.
 
+- **2026-11-25 — H2 HM6: honest first-session, offline and partial-data states.**
+  - A brand-new athlete (no completed work anywhere) gets a `First session`
+    eyebrow and a baseline-setting line; one completed set removes it.
+  - The offline reassurance moved from the collapsed detail into the card head,
+    so it is visible on the compact row.
+  - A one-signal readiness score reads as `limited signal — add a check-in for a
+    sharper read` rather than a settled number. Rest / no plan / unresolved /
+    completed / past-week states were already distinct.
+  - Tests: four new `home_today_card` cases; Home Today browser check passes.
+

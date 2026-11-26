@@ -11,6 +11,7 @@
 // vocabulary the app already browses with.
 // =============================================================================
 import { band, dataTableDisclosure, legend, rankedRows, stateBlock } from './band-kit.js';
+import { zoneLabel } from '../calculations/volume-landmarks.js';
 import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { muscleHeatmapHTML } from '../../home/body-heatmap.js';
@@ -249,6 +250,8 @@ export function renderMuscles(model, options = {}) {
     ${stackHTML(model, series)}
     ${legend(series.map((entry) => ({ label: entry.label, color: entry.color, muted: entry.muted })))}
     ${focused ? `<p class="pg-muscle-meta">Rank ${rank} of ${model.muscles.length} · ${focused.sharePct}% of credited sets · ${focused.sessions} session${focused.sessions === 1 ? '' : 's'}${focused.sessionsDelta == null ? '' : ` (${focused.sessionsDelta > 0 ? '+' : ''}${focused.sessionsDelta} vs previous)`}</p>` : ''}
+    ${focused?.landmarks ? `<p class="pg-muscle-target"><b>${focused.weeklyAverage}</b> sets/week averaged over this range · typical <b>${focused.landmarks.mev}–${focused.landmarks.mav}</b> · ${esc(zoneLabel(focused.volumeZone))}</p>` : ''}
+    ${focused ? '<button type="button" class="pg-band__action pg-muscle-action" data-action="open-analytics" data-context="strength">Review volume guide →</button>' : ''}
     ${rows}
     ${extra > 0 && !(Array.isArray(options.hidden) && options.hidden.includes('muscleLoadDetail')) ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
     ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData

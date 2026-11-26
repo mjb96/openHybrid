@@ -17,7 +17,7 @@
 // set-utils and are not re-implemented here.
 // =============================================================================
 import { addDaysISO, daysBetween, formatDayMonthShort } from '../dates.js';
-import { MUSCLE_LABELS } from './calculations/volume-landmarks.js';
+import { MUSCLE_LABELS, VOLUME_LANDMARKS, classifyVolume } from './calculations/volume-landmarks.js';
 import { MUSCLE_GROUPS, muscleCreditsForExercise } from '../exercises/catalog.js';
 import { buildSessionMuscles } from '../home/session-muscles.js';
 import { isValidWorkingSet, setVolume } from '../set-utils.js';
@@ -168,6 +168,7 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
   // Largest-remainder keeps the column honest: the parts add up to the whole.
   const shareOf = allocatePercentages(totals, totalSets);
 
+  const weeksInWindow = weeksInRange(range);
   const muscles = Object.entries(totals)
     .map(([key, sets]) => {
       const sharePct = shareOf[key] || 0;
@@ -188,6 +189,9 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
         deltaPct,
         status: deltaPct == null ? 'none' : deltaPct >= 10 ? 'up' : deltaPct <= -10 ? 'down' : 'steady',
         lastTrainedISO: lastTrained[key] || null,
+        weeklyAverage: weeksInWindow > 0 ? round1(sets / weeksInWindow) : 0,
+        landmarks: VOLUME_LANDMARKS[key] || null,
+        volumeZone: VOLUME_LANDMARKS[key] ? classifyVolume(weeksInWindow > 0 ? sets / weeksInWindow : 0, VOLUME_LANDMARKS[key]) : null,
         sessions: sessions[key] || 0,
         previousSessions: previousSessions ? (previousSessions[key] ?? 0) : null,
         sessionsDelta: previousSessions ? (sessions[key] || 0) - (previousSessions[key] ?? 0) : null,

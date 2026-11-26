@@ -365,12 +365,16 @@ try {
         return {
           value: band?.querySelector('[data-pg-muscle]')?.value || '',
           meta: band?.querySelector('.pg-muscle-meta')?.textContent?.trim() || '',
+          target: band?.querySelector('.pg-muscle-target')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+          action: !!band?.querySelector('.pg-muscle-action'),
           headline: band?.querySelector('.pg-band__value')?.textContent?.trim() || '',
         };
       });
       if (focused.value !== focusKey) failures.push(`${width}px: muscle focus did not stick (${focused.value} vs ${focusKey})`);
       if (!/Rank \d+ of \d+/.test(focused.meta)) failures.push(`${width}px: focused muscle has no rank context (${focused.meta})`);
       if (!/\d+ session/.test(focused.meta)) failures.push(`${width}px: focused muscle has no session frequency (${focused.meta})`);
+      if (!/sets\/week/.test(focused.target) || !/typical/.test(focused.target)) failures.push(`${width}px: focused muscle has no weekly reference (${focused.target})`);
+      if (!focused.action) failures.push(`${width}px: focused muscle has no action`);
       if (!focused.headline) failures.push(`${width}px: focused muscle has no headline`);
       await page.selectOption('#analytics-hub [data-band="muscles"] [data-pg-muscle]', 'all');
       await page.waitForTimeout(250);
