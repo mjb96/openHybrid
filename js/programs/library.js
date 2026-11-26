@@ -214,6 +214,8 @@ function renderUtilityRow() {
   row.innerHTML = `
     <button type="button" class="plans-utility-btn" data-action="open-create-program">+ New plan</button>
     <button type="button" class="plans-utility-btn" data-action="import-plan-json">Import plan (.json)</button>
+    <button type="button" class="plans-utility-btn plans-utility-btn--icon" data-action="open-settings" data-page="once.equipment"
+      aria-label="Open equipment settings" title="Equipment settings">${svgIcon('gear', { size: 18 })}</button>
     ${hasActive ? '<button type="button" class="plans-utility-btn plans-utility-btn--accent" data-action="open-active-plan-manage">Manage plan</button>' : ''}
   `;
 }

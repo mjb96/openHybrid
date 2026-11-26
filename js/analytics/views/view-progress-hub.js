@@ -67,6 +67,8 @@ function headerActions(extras) {
   return `<div class="hub-head__actions">
     <button type="button" class="hub-icon-btn" data-action="open-activities"
       aria-label="History" title="History">${icon('history', { size: 20 })}</button>
+    <button type="button" class="hub-icon-btn" data-action="open-settings" data-page="once.units"
+      aria-label="Units settings" title="Units settings">${icon('gear', { size: 20 })}</button>
     <details class="pg-method">
       <summary class="hub-icon-btn" aria-label="How this page is calculated"
         title="How this page is calculated">${icon('info', { size: 20 })}</summary>

@@ -15,6 +15,7 @@
 // Units come from the models, never from a literal in this file.
 // =============================================================================
 import { dataTableDisclosure, rangeBar, stateBlock } from './band-kit.js';
+import { icon } from '../../ui/icons.js';
 import { esc } from './screen-kit.js';
 import { hydratePhotoThumbs, photoTileHTML } from './view-body.js';
 import { siteTrendHTML } from '../charts.js';
@@ -232,6 +233,8 @@ export function measuresHTML(model, options = {}) {
       <p class="ms-screen__sub">Weight, body fat, tape and photos — one dated entry.</p>
     </div>
     <div class="ms-screen__actions">
+      <button type="button" class="ms-screen__gear" data-action="open-settings" data-page="once.units"
+        aria-label="Measurement settings" title="Measurement settings">${icon('gear', { size: 16 })}</button>
       ${toggle}
       <button type="button" class="ms-screen__add" data-action="open-ms-sheet"
         aria-label="Add a new entry">+</button>

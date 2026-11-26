@@ -574,6 +574,25 @@ try {
     // PG4: the Week tab owns the weekly story + streak calendar; Month owns the
     // twelve-week log and the report. The three periods are the hub's own words.
     await openHub(page);
+    // ST4: the Progress gear opens Settings at the SAME Units owner.
+    const unitsGear = await page.$('#analytics-hub [data-action="open-settings"][data-page="once.units"]');
+    if (!unitsGear) failures.push(`${width}px: Progress has no Units settings control`);
+    else {
+      await unitsGear.click();
+      await page.waitForSelector('#settingsOverlay.active', { timeout: 4000 }).catch(() => {});
+      const settingsState = await page.evaluate(() => ({
+        active: document.getElementById('settingsOverlay')?.classList.contains('active') || false,
+        hash: location.hash,
+        text: document.getElementById('settingsPanel')?.textContent?.replace(/\s+/g, ' ') || '',
+      }));
+      if (!settingsState.active) failures.push(`${width}px: the Progress gear did not open Settings`);
+      if (settingsState.hash !== '#/settings/units') failures.push(`${width}px: the Progress gear opened ${settingsState.hash}, not Units`);
+      if (!/Units/.test(settingsState.text)) failures.push(`${width}px: the Units page did not render`);
+      await page.keyboard.press('Escape').catch(() => {});
+      await page.waitForTimeout(250);
+      await openHub(page);
+      await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {});
+    }
     await page.click('.pg-reviews__seg[data-context="weekly-review"]');
     await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => {
       failures.push(`${width}px: Review domain card did not open the Review screen`);

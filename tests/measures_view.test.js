@@ -154,7 +154,9 @@ test('a range with no readings offers Show all instead of a chart', () => {
   const html = measuresHTML(model(), { explorer: noRecent });
   assert.match(html, /No Waist readings in this range\./);
   assert.match(html, /data-ms-range="all">Show all/);
-  assert.doesNotMatch(html, /<svg/);
+  // The header's gear is an icon; the claim is that no CHART is drawn.
+  assert.doesNotMatch(html, /class="ms-trend__chart"/);
+  assert.doesNotMatch(html, /site-trend|wrev-spark|bw-ms-trend svg/);
 });
 
 test('the photo library keeps its own mode and does not grow a trend block', () => {
