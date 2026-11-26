@@ -82,35 +82,34 @@ try {
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('.bottom-nav [data-target="analytics"]', { timeout: 15000 });
     await page.click('.bottom-nav [data-target="analytics"]');
-    await page.waitForSelector('[data-band="body"]', { timeout: 15000 });
-    await page.locator('[data-band="body"]').scrollIntoViewIfNeeded();
+    // PG9: photos live in Measures (the dated record), not on the Body band.
+    await page.click('[data-band="body"] [data-context="measures"]');
+    await page.waitForSelector('#analytics-measures.active', { timeout: 15000 });
+    await page.locator('#analytics-measures').scrollIntoViewIfNeeded();
 
-    // The add control must say what it does, be keyboard reachable, and be a
-    // real 44px target. It opens the DATED ENTRY — the same action the same tile
-    // has on Measures — rather than jumping straight to a camera, so a photo
-    // always gets the chance to carry that day's numbers.
-    const add = await page.$eval('[data-band="body"]', (band) => {
-      const button = band.querySelector('.pg-photo--add button');
+    // The add control is a real 44px button that opens the DATED ENTRY, so a
+    // photo always gets the chance to carry that day's numbers.
+    const add = await page.$eval('#analytics-measures', (host) => {
+      const button = host.querySelector('[data-action="open-ms-sheet"]');
       const rect = button?.getBoundingClientRect();
       return {
-        text: (button?.textContent || '').trim(),
+        label: button?.getAttribute('aria-label') || '',
         buttonTag: button?.tagName || '',
         action: button?.getAttribute('data-action') || '',
         height: Math.round(rect?.height || 0),
         tabbable: button ? button.tabIndex >= 0 : false,
-        strayInputs: band.querySelectorAll('[data-photo-input]').length,
+        strayInputs: host.querySelectorAll('[data-photo-input]').length,
       };
     });
-    ok(/add photo/i.test(add.text), `${width}px: the add control does not say "Add photo" (${add.text})`);
+    ok(/add a new entry/i.test(add.label), `${width}px: the add control is not named (${add.label})`);
     ok(add.buttonTag === 'BUTTON' && add.tabbable, `${width}px: the add control is not a focusable button`);
     ok(add.height >= 44, `${width}px: the add control is ${add.height}px tall, under 44px`);
-    ok(add.action === 'open-ms-sheet', `${width}px: the add tile does not open the dated entry (${add.action})`);
-    ok(add.strayInputs === 0, `${width}px: the band still carries a bare file input`);
+    ok(add.action === 'open-ms-sheet', `${width}px: the add control does not open the dated entry (${add.action})`);
+    ok(add.strayInputs === 0, `${width}px: Measures still carries a bare file input`);
 
     // A tile must open the photo; it must not carry its own delete control.
-    const tileState = await page.$eval('[data-band="body"]', (band) => ({
-      viewButtons: band.querySelectorAll('[data-photo-view]').length,
-      deleteOnTile: band.querySelectorAll('.pg-photo [data-photo-delete]').length,
+    const tileState = await page.$eval('#analytics-measures', (host) => ({
+      deleteOnTile: host.querySelectorAll('.pg-photo [data-photo-delete]').length,
     }));
     ok(tileState.deleteOnTile === 0, `${width}px: a photo tile still carries a delete control`);
 
@@ -127,7 +126,7 @@ try {
       return canvas.toDataURL('image/png');
     });
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
-    await page.click('[data-band="body"] .pg-photo--add button');
+    await page.click('#analytics-measures [data-action="open-ms-sheet"]');
     await page.waitForSelector('#measurementsSheet.active', { timeout: 5000 });
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser', { timeout: 5000 }),
@@ -140,13 +139,13 @@ try {
 
     // The thumbnail must hydrate from IndexedDB, not just exist.
     const hydrated = await page.waitForFunction(() => {
-      const img = document.querySelector('[data-band="body"] .pg-photo__img');
+      const img = document.querySelector('#analytics-measures .pg-photo__img');
       return img && img.getAttribute('src') && img.naturalWidth > 0;
     }, null, { timeout: 8000 }).then(() => true).catch(() => false);
     ok(hydrated, `${width}px: the photo was saved but its thumbnail never loaded`);
     // The tile must be a VIEW control. This was collected and never asserted,
     // so removing `data-photo-view` entirely would have passed.
-    const viewButtons = await page.$$eval('[data-band="body"] [data-photo-view]', (nodes) => nodes.length);
+    const viewButtons = await page.$$eval('#analytics-measures [data-photo-view]', (nodes) => nodes.length);
     ok(viewButtons === 1, `${width}px: expected one photo tile that opens the viewer, got ${viewButtons}`);
 
     const stored = await page.evaluate((key) => {
@@ -156,7 +155,7 @@ try {
     ok(stored === 1, `${width}px: expected one photo record, got ${stored}`);
 
     // Open it. This is the path that did not exist.
-    await page.click('[data-band="body"] [data-photo-view]');
+    await page.click('#analytics-measures [data-photo-view]');
     const opened = await page.waitForSelector('#photoViewer.active', { timeout: 4000 }).then(() => true).catch(() => false);
     ok(opened, `${width}px: tapping a photo did not open the viewer`);
     if (opened) {
@@ -180,7 +179,7 @@ try {
     }
 
     // Delete from the viewer: confirm, then the record and its blob are gone.
-    await page.click('[data-band="body"] [data-photo-view]');
+    await page.click('#analytics-measures [data-photo-view]');
     await page.waitForSelector('#photoViewer.active', { timeout: 3000 }).catch(() => {});
     await page.click('#photoViewerDelete');
     await page.waitForSelector('.cmodal', { timeout: 3000 }).catch(() => {});

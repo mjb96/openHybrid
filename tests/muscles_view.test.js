@@ -31,14 +31,24 @@ function fullModel() {
   ]), { range, previous, grouping: 'week' });
 }
 
-test('a trained window renders chart, legend, rows and the text table', () => {
+test('a trained window renders one chart and the legend', () => {
   const html = renderMuscles(fullModel());
   assert.match(html, /data-band="muscles"/);
   assert.match(html, /class="pg-stack"/);
   assert.match(html, /class="pg-legend"/);
-  assert.match(html, /class="pg-rows"/);
-  assert.match(html, /Show data/);
   assert.match(html, /credited sets/);
+});
+
+test('PG9: the body map moved to the band detail with the rows', () => {
+  assert.doesNotMatch(renderMuscles(fullModel()), /session-map/);
+});
+
+test('PG9: the ranked rows and table live in the band detail, not here', () => {
+  const html = renderMuscles(fullModel());
+  assert.doesNotMatch(html, /class="pg-rows"/);
+  assert.doesNotMatch(html, /Show data/);
+  assert.doesNotMatch(html, /Show all \d+ muscles/);
+  assert.match(html, /data-band__head--detail|pg-band__head--detail/);
 });
 
 test('the legend never exceeds six series plus Other', () => {
@@ -70,16 +80,6 @@ test('the grouping chips carry the active state', () => {
   assert.match(html, /data-pg-grouping="year" aria-pressed="false"/);
 });
 
-test('ranked rows show sets and the change against the previous window', () => {
-  const mutated = buildMuscleModel(stateWith([
-    day('2026-11-16', { 'Back Squat': [done(140)] }),
-    day('2026-10-20', { 'Barbell Bench Press': [done(100)] }),
-  ]), { range, previous, grouping: 'week' });
-  const html = renderMuscles(mutated);
-  assert.match(html, /Quads/);
-  assert.match(html, /\+\d+(\.\d+)? pts/, 'a delta in points, not a percentage of a percentage');
-});
-
 test('warm-ups never reach the chart', () => {
   const withWarmups = renderMuscles(buildMuscleModel(stateWith([
     day('2026-11-16', { 'Back Squat': [warm(60), warm(80), done(140)] }),
@@ -97,7 +97,6 @@ test('one muscle can be focused without hiding the rest of the band', () => {
   assert.match(html, /<option value="chest" selected>Chest<\/option>/);
   assert.match(html, /class="pg-muscle-meta">Rank \d+ of \d+ · [\d.]+% of credited sets · \d+ session/);
   assert.match(html, /aria-label="Chest credited sets/);
-  assert.match(html, /Chest \(credited sets\)/);
   assert.match(html, /sets\/week averaged over this range/);
   assert.match(html, /typical <b>/);
   assert.match(html, /Review volume guide/);
@@ -110,7 +109,7 @@ test('an unknown muscle focus falls back to All muscles', () => {
   const html = renderMuscles(fullModel(), { selected: 'not-a-muscle' });
   assert.match(html, /<option value="all" selected>All muscles<\/option>/);
   assert.doesNotMatch(html, /class="pg-muscle-meta"/);
-  assert.match(html, /Credited sets per muscle/);
+  assert.match(html, /<option value="all" selected>All muscles<\/option>/);
 });
 
 test('an empty window offers one action and no axes', () => {

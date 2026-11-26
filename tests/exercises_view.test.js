@@ -35,7 +35,7 @@ test('rows state their numbers in text and draw no self-scaled sparkline', () =>
   // row already states the change — so the row carries no sparkline at all.
   assert.doesNotMatch(html, /pg-ex__spark/);
   assert.match(html, /best/);
-  assert.match(html, /Show data/);
+  assert.doesNotMatch(html, /Show data/, 'PG9: the duplicate table moved to the all-lifts sheet');
 });
 
 test('a lift with no measurable load says nothing rather than "0 kg best"', () => {
@@ -91,25 +91,4 @@ test('a stall list renders above the rows with the engine message (A1)', () => {
   assert.match(html, /data-entity="back_squat"/);
   const clean = renderExercises({ ...withStalls, stalls: [] });
   assert.doesNotMatch(clean, /class="pg-stalls"/);
-});
-
-test('the rep-range and effort mix renders with honest shares (A4)', () => {
-  const withMix = model();
-  withMix.intensity = {
-    hasRepMix: true, hasEffortMix: false, unratedSets: 0,
-    repBands: [
-      { key: 'max', label: '1–3', count: 1, sharePct: 20 },
-      { key: 'strength', label: '4–6', count: 2, sharePct: 30 },
-      { key: 'hypertrophy', label: '7–12', count: 2, sharePct: 50 },
-      { key: 'endurance', label: '13+', count: 0, sharePct: 0 },
-    ],
-    effortBands: [],
-    goalFit: { tone: 'ok', text: 'Most working sets (50%) sit in the 1–6 strength range.' },
-  };
-  const html = renderExercises(withMix);
-  assert.match(html, /class="pg-mix"/);
-  assert.match(html, /Rep range/);
-  assert.match(html, /7–12/);
-  assert.match(html, /strength range/);
-  assert.doesNotMatch(renderExercises({ ...withMix, intensity: { hasRepMix: false, hasEffortMix: false } }), /class="pg-mix"/);
 });

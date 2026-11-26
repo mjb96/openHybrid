@@ -1356,7 +1356,7 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 | PG6 | Records row | `strength/records.js`, `set-records.js`, `strength/pr-index.js`, `analytics/records-sheet.js` | PR table and dated feed (A6) | DONE | “Records →” opens one sheet with the all-time best e1RM per lift (date and PR count) and the dated PR feed, both from `buildRecordIndex`; Year in Review now reads the same collector. Search filters table and feed; a row opens the exercise drilldown. `tests/pr_index.test.js` + `scripts/records-browser-check.mjs`. |
 | PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | DONE | Default order is Pulse → Main exercises → Muscles → Body → Reviews, then Balance/Endurance/Fasting. Customize reads the registry for top-level rows and indented detail switches, keeps the reorder column at one x, and disables module-off rows with "module off" copy. Saved old orders preserve their position (`reports` → `reviews`). |
 | PG8 | Navigation contract | `analytics/navigation.js`, `analytics.js` | At most 2 levels to any evidence; origin-aware Back; scroll position and range preserved; range label on every drilldown; last row clear of the fixed bottom nav | DONE | Band-origin Back returns to and scrolls to the originating band; every detail shows the inherited `Progress · <range>` chip; the last band still clears the fixed nav. The browser check asserts all three. |
-| PG9 | Overview concision | `views/view-progress-hub.js`, `analytics.js` | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | PARTIAL | Slice 1 removed the 9 trailing links, collapsed Reports into Reviews and gave each band one header drilldown. Each band still carries its chart + rows + table (the next slice moves the secondary evidence into the detail) and there is no scannability test; `buildProgressLanding` still computes the retired domain model. |
+| PG9 | Overview concision | `views/view-progress-hub.js`, `analytics.js` | Move secondary charts and tables out of the Overview into band detail; keep the Overview scannable in one screen of scrolling per three bands | DONE | Slice 2 completed the split: the Main exercises band keeps its stall list and ranked rows but the rep-range/effort mix moved to the Strength detail (`#strengthMixSection`); Muscles keeps one chart + legend and its ranked rows + period body map moved to the Muscle load detail (`#muscleLoadMap`, range-labelled above the weekly recovery rows); the Body band keeps the weight chart, entered body fat and a **Measurements (N) →** action while the site strip, photo library and site table stay in Measures; Endurance keeps its bars/stats and lost its duplicated 12-week day grid + table (the G4 year heatmap owns day-level history); the four duplicated `Show data` tables were removed from those bands. Measured at 390px: 2,365px total (2.80 screens, from 3,541 / 4.2), max band 409px; at 320px 2,450px (2.90 screens, max 435px Pulse). The Progress-hub browser check now ratchets total ≤ 3.15 screens and no band > 470px at 320/390/412, and asserts the moved evidence in its new home. |
 
 ### 16.6 Rules and acceptance
 
@@ -1629,6 +1629,20 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 PG9: the hub is an overview again.**
+  - Secondary evidence moved to its detail: the rep-range/effort mix to the
+    Strength detail, the ranked muscle rows + period body map to the Muscle load
+    detail (range-labelled above the weekly recovery list), the body site strip
+    and photo library to Measures, and the Endurance day grid/table to the
+    running detail/year heatmap. The bands keep their headline, one visual and
+    one action; the duplicated `Show data` tables went with them.
+  - Measured at 390px: 2,365px (2.80 screens, was 3,541 / 4.2), tallest band
+    409px; 320px: 2,450px (2.90 screens). The Progress-hub browser check ratchets
+    the total and the tallest band, so a wall cannot come back unnoticed.
+  - Tests updated to the new contract (`body_metrics`, `endurance_view`,
+    `exercises_view`, `muscles_view`) plus `strength_mix_view`; the photo browser
+    check now drives the real photo flow from Measures.
+
 - **2026-11-26 — H4 A9: the Progress range carries into the lift.**
   - The hub's 30D/3M/1Y/All bar now hands its window to the exercise drilldown
     (`30d→4w`, `3m→12w`, `1y→1y`, `all→all`), so a one-year question opens on a
@@ -1725,18 +1739,6 @@ device timing it did not measure.
   - Tests: range boundaries and rate direction/withholding in
     `exercise_detail.test.js`; the all-lifts browser check asserts the five
     ranges and the rate line.
-
-- **2026-11-26 — H4 PG6/A6: one Records table and dated PR feed.**
-  - The Main exercises band's “Records →” now opens a dedicated sheet: all-time
-    best e1RM per lift (date + PR count) and a newest-first dated feed.
-  - `js/strength/pr-index.js` is the ONE date-strict e1RM PR collector; Year in
-    Review was refactored onto it, so the recap and Records cannot disagree.
-    First date is a baseline, ties do not fire, same-date sessions merge to the
-    best, aliases collapse and `isE1rmPr` owns the epsilon.
-  - Search filters table and feed; rows open the exercise drilldown.
-  - Tests: `tests/pr_index.test.js` (baseline/tie/beat, same-date, aliases,
-    year baseline, table/feed, sheet filter) and
-    `scripts/records-browser-check.mjs` (56 checks).
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
