@@ -797,6 +797,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   charts (104 weeks / 60 months) keep the NEWEST buckets. Balance's "was this
   modality trained?" comes from the slot index, never from the split currency.
   Exercises take their unit from `state.settings.weightUnit` via the composer.
+- Backup trust (ST9): `state.lastBackupAt` is ROOT METADATA (ISO timestamp),
+  not a setting and not in `NON_SETTINGS_STATE_KEYS`. `exportData()` writes it
+  only after `saveTextExport` reports `saved` or `started` — a cancelled/failed
+  export must not refresh it. `js/portability/backup-status.js`
+  (`describeLastBackup`) owns the wording: Today / Yesterday / N days ago, a
+  stale warning at `BACKUP_STALE_DAYS` (7), and "Never" when absent. Settings →
+  Data shows it under Export. Automatic backup keeps its own status/time and
+  photos remain device-local.
 - Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
   has a DSN), PII-scrubbed for health/location data.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside

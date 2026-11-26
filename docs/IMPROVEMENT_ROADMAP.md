@@ -999,7 +999,7 @@ or corrects it.
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
-| ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | PARTIAL | Backup status, one restore point and all exports exist. The JSON export now says progress photos are device-local and outside the file, pointing to Measures → Export photos. No manual last-backup timestamp yet. |
+| ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | DONE | Settings → Data now states the **last manual backup** (Today / Yesterday / N days ago) and gives one calm warning at 7+ days or when none exists. The timestamp is root metadata (`lastBackupAt`), written only after the platform confirms a saved/started export — never after a cancel or failure — and it is not a setting, so it never appears in the settings registry. Automatic backup keeps its own status/time; progress photos stay device-local with the Measures zip. Restore remains the JSON import + the previous-import snapshot. Tests: `backup_status` (wording, ISO timestamps, stale line, junk) and a static wiring guard. |
 | ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | DONE | Delete-all now requires typing DELETE after the first confirmation; the Data page shows every export beside it. Simple pages have a confirmed Reset to defaults with an Undo snackbar; Units is excluded so a reset cannot relabel history without conversion. |
 | ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist. The master switch is now `settings.notificationsEnabled` and survives reload (S-F5); no planned-day preference yet. Delivery is G5. |
 
@@ -1647,6 +1647,15 @@ device timing it did not measure.
   the exact gaps instead of merging.
 
 ## 21. Session log
+
+- **2026-11-26 — ST9: backup trust.**
+  - Settings → Data states the **last manual backup** ("Today / Yesterday / N
+    days ago") with one calm warning at 7+ days or when none exists.
+  - The timestamp is root metadata (`lastBackupAt`), written only when the
+    platform confirms a saved/started export — never a cancel or failure — and
+    it is not a setting (no registry row). Automatic backup keeps its own
+    status; photos remain device-local with the Measures zip.
+  - Tests: `backup_status` plus a static wiring guard. Verify: 2,886 tests.
 
 - **2026-11-26 — H3 HM5 + G2: Home shortcuts and the per-side split.**
   - Home's three shortcuts are **Empty workout · Weight · History**; Run moved
