@@ -16,11 +16,31 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-h2724dfcc04cc';
+const CACHE_NAME = 'openhybrid-v122-h40b126a3088e';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
   "./",
+  "./assets/exercises/back_squat-0.webp",
+  "./assets/exercises/back_squat-1.webp",
+  "./assets/exercises/barbell_bench_press-0.webp",
+  "./assets/exercises/barbell_bench_press-1.webp",
+  "./assets/exercises/barbell_overhead_press-0.webp",
+  "./assets/exercises/barbell_overhead_press-1.webp",
+  "./assets/exercises/barbell_row-0.webp",
+  "./assets/exercises/barbell_row-1.webp",
+  "./assets/exercises/conventional_deadlift-0.webp",
+  "./assets/exercises/conventional_deadlift-1.webp",
+  "./assets/exercises/dumbbell_bench_press-0.webp",
+  "./assets/exercises/dumbbell_bench_press-1.webp",
+  "./assets/exercises/leg_press-0.webp",
+  "./assets/exercises/leg_press-1.webp",
+  "./assets/exercises/plank-0.webp",
+  "./assets/exercises/plank-1.webp",
+  "./assets/exercises/pull_up-0.webp",
+  "./assets/exercises/pull_up-1.webp",
+  "./assets/exercises/romanian_deadlift-0.webp",
+  "./assets/exercises/romanian_deadlift-1.webp",
   "./css/analytics.css",
   "./css/brand-consistency.css",
   "./css/hybrid-score.css",
@@ -173,6 +193,7 @@ const REQUIRED_ASSETS = [
   "./js/exercises/catalog.js",
   "./js/exercises/detail.js",
   "./js/exercises/favourites.js",
+  "./js/exercises/media.js",
   "./js/exercises/opengym-catalogue.js",
   "./js/fasting.js",
   "./js/fasting/fasting-achievements.js",

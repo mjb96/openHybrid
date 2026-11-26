@@ -6,6 +6,7 @@ import {
   EXERCISE_CATEGORY_LABELS, equipmentLabel, resolveExercise,
 } from './catalog.js';
 import { closeManagedModal, openManagedModal } from '../ui/modal-stack.js';
+import { exerciseMediaHTML, mountExerciseMedia } from './media.js';
 
 let obscuredParentModal = null;
 
@@ -41,6 +42,7 @@ export function exerciseDetailHtml(value) {
       <h2 id="exerciseDetailTitle">${escapeHtml(item.name)}</h2>
       <div class="exercise-detail__chips">${chips.map((chip) => `<span>${escapeHtml(chip)}</span>`).join('')}</div>
     </header>
+    ${exerciseMediaHTML(item.name)}
     <section class="exercise-detail__section">
       <h3>Muscles</h3>
       <dl class="exercise-detail__muscles">
@@ -61,6 +63,7 @@ export function openExerciseDetail(value) {
     : null;
   if (obscuredParentModal === modal) obscuredParentModal = null;
   body.innerHTML = exerciseDetailHtml(value);
+  mountExerciseMedia(body);
   modal.classList.add('active');
   openManagedModal(modal, { initialFocus: '[data-action="close-exercise-detail"]' });
   // Only the topmost dialog is exposed to assistive technology. The shared
