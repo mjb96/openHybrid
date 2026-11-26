@@ -180,3 +180,31 @@ test('the unbounded range charts its whole history, not one bucket', () => {
   assert.ok(Math.abs(charted - model.totalSets) < 0.1,
     `the chart (${charted}) must account for the headline (${model.totalSets})`);
 });
+
+test('frequency counts training dates per muscle, not sets or lifts (A7)', () => {
+  const model = buildMuscleModel(
+    stateWith([
+      day('2026-11-18', { 'Barbell Bench Press': [done(100)], 'Barbell Row': [done(80)] }),
+      day('2026-11-20', { 'Barbell Bench Press': [done(100), done(100)] }),
+    ]),
+    { range: range30 },
+  );
+  const chest = model.muscles.find((m) => m.key === 'chest');
+  assert.equal(chest.sessions, 2, 'two training dates, not three sets');
+  const week = model.buckets.reduce((sum, bucket) => sum + (Number(bucket.sessionsByMuscle?.chest) || 0), 0);
+  assert.equal(week, 2, 'bucket sessions add up to the range count');
+});
+
+test('frequency compares with the previous window like sets do', () => {
+  const model = buildMuscleModel(
+    stateWith([
+      day('2026-10-01', { 'Barbell Bench Press': [done(100)] }),
+      day('2026-11-18', { 'Barbell Bench Press': [done(100)] }),
+      day('2026-11-20', { 'Barbell Bench Press': [done(100)] }),
+    ]),
+    { range: range30, previous: prev30 },
+  );
+  const chest = model.muscles.find((m) => m.key === 'chest');
+  assert.equal(chest.previousSessions, 1);
+  assert.equal(chest.sessionsDelta, 1);
+});
