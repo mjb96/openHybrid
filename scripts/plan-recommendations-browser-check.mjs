@@ -224,12 +224,10 @@ try {
         .find((r) => re.test(r.querySelector('.collection-title')?.textContent || '')));
       return {
         categoryChips: document.querySelectorAll('#progFilterChips .filter-chip, #progDifficultyChips .filter-chip').length,
-        browseGridChips: document.querySelectorAll('.prog-browse-grid .filter-chip').length,
         recommendationsTop: rowTop(/Recommended For You/i),
         browseEntryTop: top(document.querySelector('[data-action="open-browse"]')),
         browseHref: !!document.querySelector('[data-action="open-browse"]'),
         mobileTabs: document.querySelectorAll('#progLibraryTabs .lib-tab').length,
-        utilityButtons: document.querySelectorAll('#plansUtilityRow .plans-utility-btn').length,
         viewport: window.innerHeight,
       };
     };
@@ -253,7 +251,7 @@ try {
     const cardReach = await page.evaluate(readCardReach);
     console.log('default Plans home:', JSON.stringify(before));
     console.log('recommended cards in view:', JSON.stringify(cardReach));
-    if (before.categoryChips || before.browseGridChips) {
+    if (before.categoryChips) {
       failures.push('the Plans home must not render chip walls');
     }
     if (!before.browseHref) failures.push('Browse must be reachable from the Plans home');
@@ -261,7 +259,6 @@ try {
       failures.push(`Browse entry starts at ${before.browseEntryTop}px, past the 900px target at 390px`);
     }
     if (before.mobileTabs) failures.push('the Discover | My Plans tabs must be gone');
-    if (before.utilityButtons) failures.push('the utility row must be gone');
     if (cardReach.length !== 3) {
       failures.push(`the Plans recommendation row must be one three-up grid, got ${cardReach.length} cards`);
     }

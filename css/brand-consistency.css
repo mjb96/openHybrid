@@ -233,7 +233,7 @@ select:focus {
 :focus-visible { outline-color: rgba(var(--brand-cobalt-rgb), 0.78); }
 
 /* Program chrome keeps its successful layout but joins the approved palette. */
-.prog-search-input-wrap { background: var(--brand-gunmetal); }
+.plan-row { background: var(--surface-1); }
 .prog-card--small .prog-card-info,
 .prog-card--large .prog-card-info { background: var(--surface-1); }
 
