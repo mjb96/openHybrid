@@ -12,6 +12,7 @@ import { computeDashboardModel } from '../home/dashboard-model.js';
 import { forEachLoggedDay } from '../analytics/logged-days.js';
 import { buildPredictions, topPredictionLine } from './predictions.js';
 import { addDaysISO, dateKey } from '../dates.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -203,7 +204,8 @@ export function reportToText(r, distUnit = 'km', weightUnit = 'kg') {
     : span >= 365 ? '12-month' : span > 0 ? `${span}-day` : 'training';
   if (!r.hasData) return `Your ${windowWord} report will build as you train.`;
   const dist = distUnit === 'mi' ? `${Math.round(r.totals.distanceKm * 0.621371)} mi` : `${r.totals.distanceKm} km`;
-  const bits = [`${r.totals.sessions} sessions`, `${r.totals.volume.toLocaleString()} ${weightUnit}`, dist];
+  const volumeText = `${Math.round(fromCanonicalWeight(r.totals.volume, weightUnit) ?? 0).toLocaleString('en-AU')} ${weightUnit}`;
+  const bits = [`${r.totals.sessions} sessions`, volumeText, dist];
   const label = r.window?.label || windowLabel(span);
   const comparisonWord = r.window?.comparisonLabel || `prior ${r.window?.comparisonWord || 'month'}`;
   let txt = `${label} on openHybrid: ${bits.join(' · ')}.`;

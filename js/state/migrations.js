@@ -20,6 +20,7 @@
 
 import { isInternalLiftId, UNKNOWN_LIFT_NAME } from './lift-id.js';
 import { startOfProgramWeek } from '../dates.js';
+import { convertStoredWeights } from '../metrics/weight-unit.js';
 import { normalizeUi } from '../ui/customize.js';
 import { reportHandledError } from '../monitoring/report-error.js';
 import { hasRunData, migrateLegacyRunSessions } from './run-sessions.js';
@@ -430,9 +431,29 @@ const MIGRATIONS = [
     if (!('sex' in state.settings)) state.settings.sex = null;
     if (!('trainingStartDate' in state.settings)) state.settings.trainingStartDate = null;
   },
+
+  // v17 → v18: CANONICAL WEIGHT STORAGE (ST6). From here on every stored weight
+  // is kilograms and `settings.weightUnit` is a DISPLAY preference only — a
+  // unit change rewrites nothing.
+  //
+  // An existing lbs state is converted EXACTLY once (no rounding, so the stored
+  // kilogram value is the athlete's real mass and a display round-trip cannot
+  // drift). `unitBasis` records what the store is in, so this step is
+  // idempotent and restoring an older backup upgrades it safely.
+  (state) => {
+    if (!state.settings || typeof state.settings !== 'object' || Array.isArray(state.settings)) {
+      state.settings = {};
+    }
+    if (state.unitBasis === 'kg') return;
+    const display = state.settings.weightUnit === 'lbs' ? 'lbs' : 'kg';
+    if (display === 'lbs') convertStoredWeights(state, 'lbs', 'kg', { exact: true });
+    // The athlete's chosen unit is preserved — it now only decides display.
+    state.settings.weightUnit = display;
+    state.unitBasis = 'kg';
+  },
 ];
 
-export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 17
+export const CURRENT_SCHEMA_VERSION = MIGRATIONS.length; // 18
 
 /** Error raised when a state upgrade cannot safely commit. */
 export class StateMigrationError extends Error {

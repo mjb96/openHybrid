@@ -10,6 +10,7 @@ import { renderBodyWeightWithMA, renderSiteTrend } from '../charts.js';
 import { buildBodyweightModel } from '../../metrics/bodyweight.js';
 import { buildMeasurementModel, cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
 import { formatDayMonth, todayKey } from '../../dates.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 let rangeDays = 90;
 /** The model the last full render built, so a site tap never re-collects state. */
@@ -30,7 +31,9 @@ export function getBodyweightRange() {
 }
 
 /** @param {number} value @param {string} unit */
-const fmtWeight = (value, unit) => `${Number(value).toFixed(1)} ${unit}`;
+// Stored kilograms -> the athlete's display unit, one decimal.
+const fmtWeight = (kg, unit) => `${(fromCanonicalWeight(kg, unit) ?? 0).toFixed(1)} ${unit}`;
+const toDisplayUnit = (stored, unit) => fromCanonicalWeight(stored, unit) ?? 0;
 
 /** @param {number} value */
 const signed = (value) => `${value > 0 ? '+' : ''}${value.toFixed(2)}`;
@@ -52,7 +55,7 @@ function summaryHtml(model, state) {
   const rate = model.rate;
   const missing = Math.max(0, 6 - (rate.n || 0));
   const rateText = rate.enough
-    ? `Trend ${signed(rate.perWeek)} ${unit}/week (${signed(rate.pct)}%)`
+    ? `Trend ${signed(toDisplayUnit(rate.perWeek, unit))} ${unit}/week (${signed(rate.pct)}%)`
     : rate.n >= 6
       ? 'Spread your weigh-ins across at least 10 days for a weekly trend.'
       : model.points.length > rate.n
@@ -68,10 +71,12 @@ function summaryHtml(model, state) {
     off: 'Outside your range',
   }[model.status] || '';
   const goalText = model.targetWeight
-    ? `Goal ${fmtWeight(model.targetWeight, unit)} · ${Math.abs(model.latest.weight - model.targetWeight).toFixed(1)} ${unit} to go`
+    ? `Goal ${fmtWeight(model.targetWeight, unit)} · ${Math.abs(toDisplayUnit(model.latest.weight, unit) - toDisplayUnit(model.targetWeight, unit)).toFixed(1)} ${unit} to go`
     : 'No goal weight set';
-  const low = Math.min(Math.abs(model.corridor?.min || 0), Math.abs(model.corridor?.max || 0));
-  const high = Math.max(Math.abs(model.corridor?.min || 0), Math.abs(model.corridor?.max || 0));
+  const corridorIsWeight = model.corridor?.by === 'w';
+  const corridorValue = (value) => (corridorIsWeight ? toDisplayUnit(value, unit) : value);
+  const low = Math.min(Math.abs(corridorValue(model.corridor?.min || 0)), Math.abs(corridorValue(model.corridor?.max || 0)));
+  const high = Math.max(Math.abs(corridorValue(model.corridor?.min || 0)), Math.abs(corridorValue(model.corridor?.max || 0)));
   const corridor = model.corridor
     ? `${model.corridor.dir === 'hold' ? 'Hold within ±' : model.corridor.dir === 'gain' ? 'Gain ' : 'Lose '}${low === high ? low : `${low}–${high}`} ${model.corridor.by === '%' ? '% / week' : `${unit} / week`}`
     : 'No rate range set';
@@ -79,7 +84,7 @@ function summaryHtml(model, state) {
   return `<div class="bw-summary" aria-live="polite">
     <div class="bw-summary__row"><span>Latest · ${formatDayMonth(model.latest.date)}</span><strong>${fmtWeight(model.latest.weight, unit)}</strong></div>
     <div class="bw-summary__row"><span>7-day average</span><strong>${fmtWeight(avg7, unit)}</strong></div>
-    <div class="bw-summary__row"><span>Change over this range</span><strong>${delta == null ? '—' : `${signed(delta)} ${unit}`}</strong></div>
+    <div class="bw-summary__row"><span>Change over this range</span><strong>${delta == null ? '—' : `${signed(toDisplayUnit(delta, unit))} ${unit}`}</strong></div>
     <div class="bw-summary__row"><span>${rateText}</span>${statusText ? `<strong class="bw-summary__status" style="color:${model.status === 'in' ? 'var(--color-green)' : 'var(--color-amber)'}">${statusText}</strong>` : ''}</div>
     <div class="bw-summary__row"><span>${goalText}</span><strong>${corridor}</strong></div>
   </div>`;
@@ -91,7 +96,7 @@ function summaryHtml(model, state) {
 function weeklyHtml(model) {
   if (!model.weekly.length) return '';
   const rows = model.weekly.slice(0, 10).map((week) => {
-    const delta = week.delta == null ? '' : `<small>${signed(week.delta)} ${model.unit}</small>`;
+    const delta = week.delta == null ? '' : `<small>${signed(toDisplayUnit(week.delta, model.unit))} ${model.unit}</small>`;
     return `<button type="button" class="bw-week-row" data-action="edit-bw-row" data-date="${week.key}">
       <span>Week of ${formatDayMonth(week.key)} <small>· ${week.n} weigh-in${week.n === 1 ? '' : 's'}</small></span>
       <strong>${fmtWeight(week.avg, model.unit)} ${delta}</strong>
@@ -247,8 +252,10 @@ function measurementsHtml(model) {
  * @param {any} state
  */
 function syncGoalEditor(model, state) {
+  const editorUnit = model.unit;
+  const toDisplay = (stored) => fromCanonicalWeight(stored, editorUnit) ?? '';
   const target = document.getElementById('bwGoalWeight');
-  if (target && document.activeElement !== target) target.value = model.targetWeight || '';
+  if (target && document.activeElement !== target) target.value = model.targetWeight ? Number(toDisplay(model.targetWeight)).toFixed(1) : '';
   const goal = state.settings?.rateGoal || null;
   const dir = document.getElementById('bwRateDir');
   const by = document.getElementById('bwRateBy');
@@ -256,8 +263,8 @@ function syncGoalEditor(model, state) {
   const hi = document.getElementById('bwRateHi');
   if (dir && document.activeElement !== dir) dir.value = goal?.dir || '';
   if (by && document.activeElement !== by) by.value = goal?.by || '%';
-  if (lo && document.activeElement !== lo) lo.value = goal?.lo ?? '';
-  if (hi && document.activeElement !== hi) hi.value = goal?.hi ?? '';
+  if (lo && document.activeElement !== lo) lo.value = goal?.lo == null ? '' : (goal?.by === 'w' ? Number(toDisplay(goal.lo)).toFixed(1) : goal.lo);
+  if (hi && document.activeElement !== hi) hi.value = goal?.hi == null ? '' : (goal?.by === 'w' ? Number(toDisplay(goal.hi)).toFixed(1) : goal.hi);
 }
 
 /**

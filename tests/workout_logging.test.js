@@ -7,6 +7,8 @@
 // Run with `node --test`.
 // ==========================================
 import assert from 'node:assert/strict';
+import { toCanonicalWeight } from '../js/metrics/weight-unit.js';
+import { displayWeight } from '../js/workout/units.js';
 import { test, before } from 'node:test';
 
 // ── Minimal DOM/globals stub so workout.js runs headless ──────────────────────
@@ -121,14 +123,16 @@ test('appendDropSetRow skips warm-ups and rounds to the lb step', () => {
   stateWithLb.settings.weightUnit = 'lbs';
   initWith(stateWithLb);
   workout.appendCustomSetRow(null, 'Squat');
-  sets('Squat')[0].w = '135';
+  // ST6: storage is kilograms, so 135 lb is stored as its kg equivalent.
+  sets('Squat')[0].w = String(toCanonicalWeight(135, 'lbs'));
   sets('Squat')[0].r = '5';
   sets('Squat')[0].c = true;
   workout.appendWarmupSetRow(null, 'Squat');   // inserted at the front
   workout.appendDropSetRow(null, 'Squat');
 
   assert.deepEqual(sets('Squat').map((set) => set.type), ['W', undefined, 'D']);
-  assert.equal(sets('Squat')[2].w, '110');     // 135 × 0.8 = 108 → 110 lb step
+  // 135 × 0.8 = 108 → 110 lb step, stored back as canonical kilograms.
+  assert.equal(displayWeight(stateWithLb, sets('Squat')[2].w), '110');
   assert.equal(sets('Squat')[2].r, '5');
 });
 

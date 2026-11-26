@@ -7,6 +7,7 @@ import { getFastingContext, fmtHoursLabel, FASTING_ZONES } from './fasting.js';
 import { showToast } from './state.js';
 import { computeStreak } from './home/dashboard-model.js';
 import { levelFromXp } from './brain/hybrid-score/levels.js';
+import { displayWeightString } from './metrics/weight-unit.js';
 import { screenTabBar, mountScreenTabs } from './analytics/views/screen-kit.js';
 import { buildActivityHistory } from './activities/model.js';
 import { addDaysISO } from './dates.js';
@@ -109,7 +110,7 @@ export function renderAthleteProfile(targetId = 'profileContent') {
 
   // Dynamic subtitle: identity + key live facts (bodyweight, current streak).
   const subParts = ['Hybrid Athlete'];
-  if (bodyWeight)  subParts.push(`${bodyWeight} ${weightUnit}`);
+  if (bodyWeight)  subParts.push(`${displayWeightString(bodyWeight, weightUnit, { decimals: 1 })} ${weightUnit}`);
   if (streak > 0)  subParts.push(`🔥 ${streak}-day streak`);
   const heroSub = subParts.join('  ·  ');
 
@@ -422,7 +423,7 @@ function shareProfileCard() {
   ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(120, 1180); ctx.lineTo(W - 120, 1180); ctx.stroke();
   ctx.fillStyle = '#64748b'; ctx.font = `600 26px ${FONT}`;
-  ctx.fillText(bodyWeight ? `${bodyWeight} ${unit} · Hybrid Athlete` : 'Hybrid Athlete', W / 2, 1250);
+  ctx.fillText(bodyWeight ? `${displayWeightString(bodyWeight, unit, { decimals: 1 })} ${unit} · Hybrid Athlete` : 'Hybrid Athlete', W / 2, 1250);
 
   const finish = (blob) => {
     const file = blob && typeof File !== 'undefined' ? new File([blob], 'openhybrid-profile.png', { type: 'image/png' }) : null;

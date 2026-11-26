@@ -114,6 +114,7 @@ import { renderRunMap } from './workout-map.js';
 import { orderedLiftNames } from './workout-order.js';
 import { isCompletedSet } from './set-utils.js';
 import { setCalendarWeekStart, strengthDayStats } from './analytics/weekly-aggregate.js';
+import { fromCanonicalWeight } from './metrics/weight-unit.js';
 import { dateKey, todayKey, todayProgramDay, startOfProgramWeek, localDayKey, daysBetween, addDaysISO } from './dates.js';
 import { resolveDateToSlot, resolveSlotDate } from './analytics/logged-days.js';
 import { newRunSessionId, runDaySummary, upsertRunSession, findImportedRunSession } from './state/run-sessions.js';
@@ -1620,7 +1621,8 @@ export function openTodaySummaryModal() {
 
       let rows = '';
       if (hasLift && (prevVol > 0 || volume > 0)) {
-        rows += `<div class="flex-between text-sm mb-1"><span class="text-muted">Volume vs last week</span>${fmt(volDelta, 'kg')}</div>`;
+        const volUnit = weightUnitLabel(appState);
+        rows += `<div class="flex-between text-sm mb-1"><span class="text-muted">Volume vs last week</span>${fmt(fromCanonicalWeight(volDelta, volUnit) || 0, volUnit)}</div>`;
         rows += `<div class="flex-between text-sm mb-1"><span class="text-muted">Sets vs last week</span>${fmt(setsDelta, 'sets')}</div>`;
       }
       if (hasRun && (prevDist > 0 || (runDist || 0) > 0)) {
@@ -2460,7 +2462,9 @@ async function handlePlanImportFile(file) {
         if (!ok) return;
       }
       program = createOpenGymProgram(parsed, {
-        unit: appState.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
+        // Starting loads are stored canonically; the plan's own unit is read
+        // from the file and converted into kilograms here.
+        unit: 'kg',
         existingIds,
       });
     } else {

@@ -29,6 +29,7 @@ import { formatWeight, weightUnitOf } from '../utils.js';
 import { getCalendarWeekOffset, getSelectedWeekStart } from '../week-nav.js';
 import { collectCalendarWeek, weekStartOf, localDayKey, addDaysISO, weekdayKeyOf } from '../weekly-aggregate.js';
 import { formatWeekRange } from '../../dates.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 import { calendarStrengthSummary, calendarWeekE1rmSeriesForLift, bestE1rmByLiftForWeek } from '../../metrics/metrics-strength.js';
 import { canonicalExerciseId } from '../../exercises/catalog.js';
 import { estimatedE1rmForSet, isE1rmPr } from '../../strength/e1rm.js';
@@ -502,7 +503,7 @@ export function weeklyE1rmCard(cs, unit) {
     return { label: 'e1RM Change', value: 'No sets', sub: `No strength work logged ${period}`, color: '#64748b' };
   }
   if (cs.topChange) {
-    const d = Math.round(cs.topChange.deltaKg);
+    const d = Math.round(fromCanonicalWeight(cs.topChange.deltaKg, unit) ?? 0);
     return {
       label: 'e1RM Change',
       value: `${d >= 0 ? '+' : ''}${d} ${unit}`,
@@ -513,7 +514,7 @@ export function weeklyE1rmCard(cs, unit) {
   // Trained in the selected week, but no same-exercise result the week before.
   return {
     label: 'Best e1RM',
-    value: `${Math.round(cs.bestThisWeek.e1rm)} ${unit}`,
+    value: `${Math.round(fromCanonicalWeight(cs.bestThisWeek.e1rm, unit) ?? 0)} ${unit}`,
     sub: `Best ${cs.bestThisWeek.exerciseName} · no prior week`,
     color: '#3b82f6',
   };

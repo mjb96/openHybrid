@@ -9,6 +9,7 @@
 
 import { computePlateBreakdown } from './plates.js';
 import { isWarmupSet } from '../set-utils.js';
+import { toCanonicalWeight } from '../metrics/weight-unit.js';
 
 export const RAMP_SETS = Object.freeze([
   Object.freeze({ pct: 0.4, reps: 5 }),
@@ -130,7 +131,10 @@ export function addWarmupRamp(weekData, day, liftName, workingWeight, setup = {}
   if (meta?.autoRamp) return false;
   const rows = buildWarmupRamp(workingWeight, setup);
   if (!rows.length) return false;
-  sets.unshift(...rows);
+  // The ramp is built in the DISPLAY unit (bars, plates and steps are per unit)
+  // and stored canonically as kilograms.
+  const unit = setup.unit === 'lb' || setup.unit === 'lbs' ? 'lbs' : 'kg';
+  sets.unshift(...rows.map((row) => ({ ...row, w: toCanonicalWeight(row.w, unit) })));
   if (!weekData.liftMeta) weekData.liftMeta = {};
   if (!weekData.liftMeta[day]) weekData.liftMeta[day] = {};
   if (!weekData.liftMeta[day][liftName]) weekData.liftMeta[day][liftName] = {};

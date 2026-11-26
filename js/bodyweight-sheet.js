@@ -12,9 +12,13 @@ import { openManagedModal, closeManagedModal } from './ui/modal-stack.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatDayMonth, todayKey } from './dates.js';
 import { showToast } from './toast.js';
+import {
+  displayWeightString, fromCanonicalWeight, toCanonicalWeight,
+} from './metrics/weight-unit.js';
 
 // Matches MAX_MEASURE_WEIGHT in js/metrics/measures.js: one mistyped 9999 would
-// rescale every chart, mean and rate.
+// rescale every chart, mean and rate. Canonical kilograms; the sheet converts it
+// to the athlete's unit for the input bound.
 const MAX_WEIGHT = 500;
 
 let _render = () => {};
@@ -55,7 +59,7 @@ export function openBodyweightSheet(date) {
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetDate'));
   if (dateInput) { dateInput.value = chosen; dateInput.max = todayKey(); }
   const weightInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'));
-  if (weightInput) weightInput.value = Number(weight).toFixed(1);
+  if (weightInput) weightInput.value = displayWeightString(weight, unit(), { decimals: 1 });
   const unitLabel = document.getElementById('bwSheetUnit');
   if (unitLabel) unitLabel.textContent = unit();
   const title = document.getElementById('bwSheetTitle');
@@ -92,7 +96,7 @@ function renderRecent(recent) {
 
     const right = document.createElement('span');
     const value = document.createElement('strong');
-    value.textContent = `${Number(entry.weight).toFixed(1)} ${unit()}`;
+    value.textContent = `${displayWeightString(entry.weight, unit(), { decimals: 1 })} ${unit()}`;
 
     const edit = document.createElement('button');
     edit.type = 'button';
@@ -127,7 +131,8 @@ export function stepBodyweight(delta) {
   const input = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'));
   if (!input) return;
   const current = parseFloat(input.value) || 0;
-  const next = Math.min(500, Math.max(1, Math.round((current + Number(delta) || 0) * 10) / 10));
+  const maxDisplay = Math.round(fromCanonicalWeight(MAX_WEIGHT, unit()) || MAX_WEIGHT);
+  const next = Math.min(maxDisplay, Math.max(1, Math.round((current + Number(delta) || 0) * 10) / 10));
   input.value = next.toFixed(1);
 }
 
@@ -135,13 +140,16 @@ export function saveBodyweightSheet() {
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetDate'));
   const weightInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'));
   const date = validDate(dateInput?.value) ? dateInput.value : todayKey();
-  const weight = parseFloat(weightInput?.value || '');
-  // Same bound the Measures entry uses: one mistyped 9999 permanently rescales
-  // every chart, mean and rate.
-  if (!Number.isFinite(weight) || weight <= 0 || weight > MAX_WEIGHT) {
-    showToast(`Enter a weight between 1 and ${MAX_WEIGHT}`, true);
+  const entered = parseFloat(weightInput?.value || '');
+  // Same bound the Measures entry uses, expressed in the unit being typed: one
+  // mistyped 9999 permanently rescales every chart, mean and rate.
+  const maxDisplay = Math.round(fromCanonicalWeight(MAX_WEIGHT, unit()) || MAX_WEIGHT);
+  if (!Number.isFinite(entered) || entered <= 0 || entered > maxDisplay) {
+    showToast(`Enter a weight between 1 and ${maxDisplay}`, true);
     return;
   }
+  // The input is the athlete's unit; storage is canonical kilograms.
+  const weight = toCanonicalWeight(entered, unit());
   if (date > todayKey()) {
     showToast('Choose today or an earlier date');
     return;
@@ -161,7 +169,7 @@ export async function deleteBodyweightEntry(date) {
   if (!entry) return;
   const confirmed = await confirmModal({
     title: 'Delete weigh-in?',
-    message: `${date} · ${Number(entry.weight).toFixed(1)} ${unit()}`,
+    message: `${date} · ${displayWeightString(entry.weight, unit(), { decimals: 1 })} ${unit()}`,
     confirmLabel: 'Delete',
     danger: true,
   });

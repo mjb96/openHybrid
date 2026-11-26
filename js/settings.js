@@ -20,8 +20,7 @@ import { releaseWorkoutWakeLock } from './workout/keep-awake.js';
 import { parseWorkoutCsv, applyWorkoutCsvImport, CSV_IMPORT_LIMITS, decodeCsvBytes } from './portability/import-workout-csv.js';
 import { moduleEnabled, setModuleEnabled, applyModuleVisibility, hybridTrainingEnabled, setHybridTraining } from './modules.js';
 import * as equipmentProfiles from './equipment-profiles.js';
-import { convertStoredWeights, normalizeWeightUnit } from './metrics/weight-unit.js';
-import { computeExercisePRs } from './engine.js';
+import { displayWeightString, normalizeWeightUnit, toCanonicalWeight } from './metrics/weight-unit.js';
 import { latestWeighIn } from './metrics/bodyweight.js';
 import { applyPalette, normalizePalette } from './theme.js';
 import { applyThemeTokens } from './theme/tokens.js';
@@ -159,10 +158,18 @@ function _openSettingResult(key) {
  * @param {any} value
  */
 function _applySettingControl(key, value) {
-  if (!settingsEntry(key)) return;
+  const entry = settingsEntry(key);
+  if (!entry) return;
+  // ST6: a canonical-weight setting is stored in kilograms; every control hands
+  // us a display number, so convert once here before any setter or validator.
+  if (entry.canonicalWeight === true && value != null && value !== '') {
+    const appState = _ensureSettings();
+    const kg = toCanonicalWeight(value, appState.settings.weightUnit);
+    if (kg != null) value = kg;
+  }
   const done = () => { _refreshSettingsSurface(); };
   switch (key) {
-    case 'weightUnit': void setWeightUnit(value).then(done, done); return;
+    case 'weightUnit': setWeightUnit(value); done(); return;
     case 'distanceUnit': setDistanceUnit(value); done(); return;
     case 'theme': setTheme(value); done(); return;
     case 'palette': setPalette(value); done(); return;
@@ -734,7 +741,10 @@ function _syncSettingsUI() {
   const bwInput = document.getElementById('settingsBodyWeight');
   if (bwInput) {
     const latest = latestWeighIn(appState.bodyWeightLog || []);
-    bwInput.value = latest ? latest.weight : (s.defaultBodyWeight || '');
+    // Storage is kilograms; the field shows the athlete's unit.
+    bwInput.value = latest
+      ? displayWeightString(latest.weight, s.weightUnit, { decimals: 1 })
+      : (s.defaultBodyWeight ? displayWeightString(s.defaultBodyWeight, s.weightUnit, { decimals: 1 }) : '');
   }
 
   const bwUnit = document.getElementById('settingsBodyWeightUnit');
@@ -1023,9 +1033,12 @@ export function saveName() {
 }
 
 export function saveBodyWeight() {
-  const val = parseFloat(document.getElementById('settingsBodyWeight')?.value);
-  if (isNaN(val)) return;
   const appState = _ensureSettings();
+  const display = parseFloat(document.getElementById('settingsBodyWeight')?.value);
+  if (isNaN(display)) return;
+  // The field is in the athlete's unit; storage is canonical kilograms.
+  const val = toCanonicalWeight(display, appState.settings.weightUnit);
+  if (val == null) return;
   appState.settings.defaultBodyWeight = val;
   if (!appState.bodyWeightLog) appState.bodyWeightLog = [];
   const today = todayKey();
@@ -1033,7 +1046,7 @@ export function saveBodyWeight() {
   if (idx >= 0) appState.bodyWeightLog[idx].weight = val;
   else appState.bodyWeightLog.push({ date: today, weight: val });
   saveStateToLocalStorage(true);
-  showToast(`Body weight saved: ${val} ${appState.settings.weightUnit || 'kg'}`);
+  showToast(`Body weight saved: ${display} ${appState.settings.weightUnit || 'kg'}`);
 }
 
 function _syncWeightUnitSelection(unit) {
@@ -1043,42 +1056,18 @@ function _syncWeightUnitSelection(unit) {
   _syncPlateSetupUI(_ensureSettings());
 }
 
-export async function setWeightUnit(unit) {
+export function setWeightUnit(unit) {
   const appState = _ensureSettings();
   const from = normalizeWeightUnit(appState.settings.weightUnit);
   const to = normalizeWeightUnit(unit);
-  if (from === to) { _syncWeightUnitSelection(from); return; }
-
-  const ok = await confirmModal({
-    title: 'Convert stored weights?',
-    message: `Every logged set, bodyweight entry, goal and routine prescription will be converted from ${from} to ${to}. A recovery copy is saved on this device first.`,
-    confirmLabel: `Convert to ${to}`,
-  });
-  if (!ok) { _syncWeightUnitSelection(from); return; }
-
-  const backupKey = STORAGE_KEY + '_unit_backup';
-  try {
-    localStorage.setItem(backupKey, JSON.stringify({ savedAt: new Date().toISOString(), from, to, state: appState }));
-  } catch {
-    // The recovery copy is the guard for this rewrite. Without it, do nothing.
-    showToast('Not enough storage to save a recovery copy. Export a backup first.', true);
-    _syncWeightUnitSelection(from);
-    return;
-  }
-
-  const report = convertStoredWeights(appState, from, to);
+  // DISPLAY ONLY (ST6): stored weights are always kilograms, so this rewrites
+  // nothing, needs no confirmation and cannot drift. Every weight on screen is
+  // derived from that one value, so repaint now.
   appState.settings.weightUnit = to;
-  // exerciseStats is derived from the sets and must not keep old-unit maxima.
-  if (appState.exerciseStats && typeof appState.exerciseStats === 'object') {
-    appState.exerciseStats = {};
-    computeExercisePRs(appState, appState.exerciseStats);
-  }
   saveStateToLocalStorage(true);
   _syncWeightUnitSelection(to);
-  const changed = report.sets + report.bodyWeights + report.prescriptions + report.settings + report.goals;
-  showToast(changed
-    ? `Weight unit: ${to} — ${changed} stored value${changed === 1 ? '' : 's'} converted`
-    : `Weight unit: ${to}`);
+  if (from !== to) showToast(`Showing weights in ${to} — stored data unchanged`);
+  document.dispatchEvent(new Event('app:storage-loaded'));
 }
 
 // Clear all remembered per-exercise rest adjustments.
@@ -1800,7 +1789,9 @@ export async function handleExternalCsvFile(file) {
       return;
     }
   }
-  const unit = (_getState()?.settings?.weightUnit === 'lbs') ? 'lbs' : 'kg';
+  // Storage is canonical kilograms; the parsers convert whatever unit the file
+  // declares into that target, so a lb export imports exactly.
+  const unit = 'kg';
 
   if (looksLikeBodyCsv(text)) {
     let body;

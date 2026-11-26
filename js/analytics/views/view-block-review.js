@@ -9,6 +9,7 @@ import { esc } from './screen-kit.js';
 import { buildBlockReview } from '../block-review.js';
 import { formatVolume, weightUnitOf } from '../utils.js';
 import { getProgramById } from '../../state.js';
+import { displayWeightString } from '../../metrics/weight-unit.js';
 
 const STATUS = Object.freeze({
   insufficient: { label: 'Not enough data', tone: 'muted' },
@@ -47,7 +48,7 @@ export function blockReviewHTML(model, { unit = 'kg', deload = null } = {}) {
   const lifts = (model.lifts || []).slice(0, 5).map((lift) => `
     <li class="pg-block__lift">
       <span class="pg-block__lift-name">${esc(lift.name)}${lift.isPr ? ' <span class="pg-block__pr">PR</span>' : ''}</span>
-      <span class="pg-block__lift-value">${lift.bestE1rm > 0 ? `${esc(String(lift.bestE1rm))} ${esc(unit)}` : '—'}</span>
+      <span class="pg-block__lift-value">${lift.bestE1rm > 0 ? `${esc(displayWeightString(lift.bestE1rm, unit, { decimals: 1 }))} ${esc(unit)}` : '—'}</span>
       <span class="pg-block__lift-delta pg-block__lift-delta--${lift.deltaPct > 0 ? 'up' : lift.deltaPct < 0 ? 'down' : 'flat'}">${esc(deltaText(lift.deltaPct) || '—')}</span>
     </li>`).join('');
   const checks = (model.progressChecks || []).slice(0, 3).map((check) => `

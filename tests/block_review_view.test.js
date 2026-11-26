@@ -49,7 +49,7 @@ test('engine progress checks are quoted and change the status', () => {
 
 test('the unit comes from the caller, never a literal', () => {
   const html = blockReviewHTML(modelWith(), { unit: 'lbs' });
-  assert.match(html, /122\.5 lbs/);
+  assert.match(html, /270\.1 lbs/);
   assert.doesNotMatch(html, /122\.5 kg/);
 });
 

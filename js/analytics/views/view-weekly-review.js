@@ -9,6 +9,7 @@
 // =============================================================================
 import { showToast, getProgramById } from '../../state.js';
 import { weightUnitOf, formatVolume } from '../utils.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 import { reviewToText, buildWeeklyReview } from '../../brain/weekly-review.js';
 import { shareSummaryCard, weeklyReviewShareRows } from '../share-card.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
@@ -215,7 +216,7 @@ export function renderWeeklyReview(review, state) {
     <h3 class="section-header mt-4">New records</h3>
     ${review.prs.map(p => `<article class="card-dark p-3 mb-2 flex-between">
       <span style="font-weight:700;color:var(--text-inverse);">🏆 ${esc(p.lift)}</span>
-      <span style="color:var(--text-muted);font-size:0.8rem;">e1RM <b style="color:var(--color-amber);">${p.e1rm} ${weightUnitOf(state)}</b> (was ${p.prevBest})</span>
+      <span style="color:var(--text-muted);font-size:0.8rem;">e1RM <b style="color:var(--color-amber);">${Math.round(fromCanonicalWeight(p.e1rm, weightUnitOf(state)) ?? 0)} ${weightUnitOf(state)}</b> (was ${Math.round(fromCanonicalWeight(p.prevBest, weightUnitOf(state)) ?? 0)})</span>
     </article>`).join('')}` : '';
 
   // A completed week has no "next week" — the focus card is advice for the week

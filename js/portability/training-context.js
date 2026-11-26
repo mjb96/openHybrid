@@ -186,7 +186,9 @@ export function buildTrainingContext(state, options = {}) {
     equipmentTier: settings.equipmentTier || 'gym',
     weekStartDay: settings.weekStartDay === 'sun' ? 'sun' : 'mon',
     units: {
-      weight: settings.weightUnit === 'lbs' ? 'lbs' : 'kg',
+      // ST6: values in this file are canonical kilograms, so the declared unit
+      // is the DATA unit, not the athlete's display preference.
+      weight: 'kg',
       distance: settings.distanceUnit === 'mi' ? 'mi' : 'km',
       measurements: settings.measurementUnit === 'in' ? 'in' : 'cm',
     },
@@ -202,7 +204,7 @@ export function buildTrainingContext(state, options = {}) {
     generated: today,
     profile,
     body: latestWeight
-      ? { weight: latestWeight.weight, unit: profile.units.weight, ...(settings.targetWeight != null ? { targetWeight: settings.targetWeight } : {}) }
+      ? { weight: latestWeight.weight, unit: 'kg', ...(settings.targetWeight != null ? { targetWeight: settings.targetWeight } : {}) }
       : null,
     activePlan: contextPlan(state, options.program),
     recent: {

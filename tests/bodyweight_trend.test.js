@@ -88,20 +88,24 @@ test('rateStatus says on pace, slow, fast or off', () => {
 });
 
 test('buildBodyweightModel filters the range, carries the goal and unit', () => {
+  // ST6: the model carries CANONICAL KILOGRAMS and the display unit; views
+  // convert through formatWeight/fromCanonicalWeight exactly once.
   const state = {
     settings: {
-      weightUnit: 'lbs', weekStartDay: 'mon', targetWeight: 180,
-      rateGoal: { dir: 'lose', by: 'w', lo: 0.5, hi: 1 },
+      weightUnit: 'lbs', weekStartDay: 'mon', targetWeight: 81.6,
+      rateGoal: { dir: 'lose', by: 'w', lo: 0.2, hi: 0.5 },
       bodyWeightLog: [],
     },
     bodyWeightLog: [
-      entry('2026-08-01', 200), entry('2026-11-01', 190), entry('2026-11-19', 185),
+      entry('2026-08-01', 90.7), entry('2026-11-01', 86.2), entry('2026-11-19', 83.9),
     ],
   };
   const model = buildBodyweightModel(state, { now: Date.parse('2026-11-19T12:00:00'), rangeDays: 30 });
   assert.equal(model.unit, 'lb');
-  assert.equal(model.targetWeight, 180);
+  assert.equal(model.targetWeight, 81.6, 'the goal stays canonical kilograms');
   assert.deepEqual(model.points.map((p) => p.date), ['2026-11-01', '2026-11-19']);
-  assert.equal(model.latest.weight, 185);
+  assert.equal(model.latest.weight, 83.9);
   assert.equal(model.weekly.length, 2);
+  // `lose` keeps a signed min/max corridor in the stored unit.
+  assert.ok(Math.abs(model.corridor.min - -0.5) < 0.001, `corridor min ${model.corridor.min}`);
 });

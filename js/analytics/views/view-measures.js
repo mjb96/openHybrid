@@ -22,13 +22,16 @@ import { siteTrendHTML } from '../charts.js';
 import { RANGE_PRESETS } from '../ranges.js';
 import { cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
 import { formatDayMonthShort } from '../../dates.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 /** How many site names fit on one scannable row before "+N more". */
 const MAX_SITE_LABELS = 3;
 
 /** @param {number|null} weight @param {any} model */
 function weightLabel(weight, model) {
-  return weight == null ? '' : `${Number(weight).toFixed(1)} ${model.weightUnit}`;
+  // Stored kilograms -> the athlete's display unit.
+  if (weight == null) return '';
+  return `${(fromCanonicalWeight(weight, model.weightUnit) ?? 0).toFixed(1)} ${model.weightUnit}`;
 }
 
 /**
@@ -78,7 +81,7 @@ function entrySites(entry, model) {
  */
 function entrySummaryText(entry, model) {
   const bits = [];
-  if (entry.weight != null) bits.push(`${Number(entry.weight).toFixed(1)} ${model.weightUnit}`);
+  if (entry.weight != null) bits.push(weightLabel(entry.weight, model));
   if (entry.bodyFat != null) bits.push(`${roundDisplay(entry.bodyFat)}% body fat`);
   if (entry.sites.length) {
     bits.push(entry.sites.map((site) => `${site.label} ${roundDisplay(cmToDisplay(site.cm, model.measurementUnit))} ${model.measurementUnit}`).join(', '));

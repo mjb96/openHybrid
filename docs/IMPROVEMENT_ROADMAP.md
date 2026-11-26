@@ -996,7 +996,7 @@ or corrects it.
 | ST3 | **Settings search** | `js/settings/render.js`, `js/settings/registry.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | DONE | Search is one field under the profile card. It matches registry labels and keywords, tolerates an in-order subsequence ("thm" → Theme), shows the section › page path, and selecting opens the page and pulses the exact row. Settings is tap 1 from Home. |
 | ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | DONE | The router forwards `data-page`/`data-anchor` to `openSettings`, and the surfaces link to the page that owns the value: Progress and Measures → **Units & language** (`once.units`, the same measurement/weight unit), Plans → **Equipment** (`once.equipment`, the kit a plan is built around). The logger keeps the registry-driven Workout settings sheet (`open-workout-settings`), so no value has a second writer. Tests: `contextual_settings_links` (router forwarding + each page target + the logger sheet); the Progress-hub, Measures and Plans browser checks open the real pages. |
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | DONE | Profile now leads with editable Identity, Body metrics (weigh-in, height, DOB, sex, target/rate) and Training goal groups, with links to weight history and Measures. Schema v17 adds the optional fields as null; the weigh-in writes the canonical `bodyWeightLog` and stays in sync with Home. |
-| ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
+| ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | DONE | **Weight is canonical kilograms.** `js/metrics/weight-unit.js` owns both boundaries; the v17→v18 migration converts an existing lbs state exactly once and stamps `state.unitBasis='kg'` (idempotent), and `setWeightUnit` is now display-only — no confirm, no rewrite, no recovery copy. Every weight-shaped value converts: set loads, bodyweight/target, `prGoals`, prescriptions, `progressionIncrement` and a weight-based `rateGoal`. Distance (km) and tape (cm) were already canonical; plate setups and dumbbell/machine/band ladders stay per-unit UI data by design. Exports are unambiguous: training CSV `WeightKg`/`BodyWeightKg`, bodyweight CSV `Date,WeightKg`, importers accept both and store kilograms. `scripts/weight-unit-browser-check.mjs` proves a typed 225 lb persists as 102.06 kg while a stored 90.72 kg reads "200" on Home and in the weigh-in sheet. Time/date format remains a separate, unbuilt item (not weight). |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | DONE | `calendarWeekStart(date, weekStartDay)` is the one rule; `weekStartOf`/`weekKeyOf` resolve the setting through one projection applied on every `app:storage-loaded` (boot, import, Settings change), so Home's rail, History, bodyweight, Pulse, the week chart, strength volume, Muscles, Balance, Reports and the Year heatmap share it. Changing it repaints immediately (S-F3), and the weekly-summary notification follows the week end. **Program weeks stay Monday plan indices** (`startOfProgramWeek`, `weekSchedule`) by design. **No migration:** stored dates are already real calendar days, so the setting only changes bucketing and reverting restores the Monday view. Tests: `week_start` (both starts; Pulse, strength-week and Weekly Review attribution; Home rail; weekday labels; program anchor; wiring), `notifications` (week-end instant), and the Progress-hub browser check drives the real Settings control and asserts the rail + Pulse range change without a reload. |
 | ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `ui/text-size.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette, System/Reduce/Full motion, **text size** (Default / Large / Extra large scaling the root font) and **haptics** (on/off for set/PR feedback) now share Look & Home. Sounds still live with the rest timers they belong to (Training → Logging), and demo size (G8) is not built. Tests: `text_size` + a static wiring guard; the Settings browser check toggles Extra large and asserts the root font grows.
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | DONE | Settings → Data now states the **last manual backup** (Today / Yesterday / N days ago) and gives one calm warning at 7+ days or when none exists. The timestamp is root metadata (`lastBackupAt`), written only after the platform confirms a saved/started export — never after a cancel or failure — and it is not a setting, so it never appears in the settings registry. Automatic backup keeps its own status/time; progress photos stay device-local with the Measures zip. Restore remains the JSON import + the previous-import snapshot. Tests: `backup_status` (wording, ISO timestamps, stale line, junk) and a static wiring guard. |
@@ -1098,7 +1098,7 @@ P0 and must be closed before H1's acceptance is claimed.
 | S-F1 | **Fixed 24 Nov (#319):** onboarding now writes its equipment answer through `applyActiveEquipment`, so boot reprojects the profile without reverting it. | `equipment-profiles.js`, `onboarding.js`, `tests/equipment_profiles.test.js` | Resolved | H1 / ST5 |
 | S-F2 | **Fixed 24 Nov (#319):** both readers use `latestWeighIn`, which orders by date and still accepts legacy undated readings. Back-dated entries no longer become current. | `metrics/bodyweight.js`, `workout/set-mutations.js`, `settings.js`, `tests/bodyweight_current.test.js` | Resolved | H1 / ST5 |
 | S-F3 | **Fixed 27 Nov (ST7):** every calendar surface now resolves `settings.weekStartDay` through one rule (`calendarWeekStart`), the change repaints immediately, and the weekly-summary notification lands at the athlete's week end. Program weeks stay Monday plan indices. | `js/dates.js`, `js/analytics/weekly-aggregate.js`, `js/app.js`, `js/settings.js`, `tests/week_start.test.js` | Resolved | H1 / ST7; one calendar-week owner + tests |
-| S-F4 | **Fixed 24 Nov (#321):** the kg↔lb switch converts stored sets, bodyweight, goals, PR targets and prescriptions after a confirmation and a localStorage recovery copy. Canonical display-only units remain a later migration. | `metrics/weight-unit.js`, `settings.js`, `settings-nav-browser-check.mjs` | Resolved | H1 / ST6 |
+| S-F4 | **Fixed 24 Nov (#321); superseded by ST6 27 Nov:** the switch used to convert stored weights behind a confirmation and recovery copy. Storage is now canonical kilograms, so the switch rewrites nothing and needs neither. | `metrics/weight-unit.js`, `settings.js`, `tests/week_start.test.js`, `tests/canonical_weight.test.js` | Resolved | H1 / ST6 |
 | S-F5 | **Fixed 24 Nov (#319):** `settings.notificationsEnabled` is the persisted master switch; a granted OS permission alone never arms reminders, and switching off cancels the native alarm. | `state.js`, `notifications.js`, `settings.js`, `tests/notifications.test.js` | Resolved | H1 / ST11 |
 
 ### 14.9 Settings & Profile rebuild — Phase 0 audit (25 Nov 2026)
@@ -1464,7 +1464,8 @@ families without an action. Verify what already answers each question.
 | A8 | Relative strength | `profile-stats.js`, `athlete-profile.js`, `exercise-detail.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | DONE | The exercise drilldown states `X.XX× bodyweight (est. · <weight> on <date>)` for the big three, using the latest DATED weigh-in within 30 days and nothing else. The Profile band is labelled `est.` with the weigh-in note, and the undated per-session bodyweight fallback is gone (`_latestBodyWeight`/`_recentBodyWeight`). Tests: `relative_strength.test.js` + exercise-detail cases + the all-lifts browser check. |
 | A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `view-strength-entity.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | DONE | The hub's 30D/3M/1Y/All bar is the one range control and governs every strength band (sets, muscles, rep mix). The chosen window now carries into the e1RM drilldown — `30d→4w`, `3m→12w`, `1y→1y`, `all→all` — so a one-year question opens on a year instead of resetting to 12 weeks; week-level questions stay on Pulse, the selected-week Strength screen and the Volume Guide, and all-time lives in Records plus the drilldown's All. Every strength metric detail already offers 4 weeks through All time. Tests: `exercise_range_handoff` (mapping, unknown ids, vocabulary), the all-lifts browser check asserts the inherited range, and the hub check covers the band ranges. |
 
-**Data rules (ST7 shipped):** calendar weeks follow `settings.weekStartDay`
+**Data rules (ST6/ST7 shipped):** every stored weight is KILOGRAMS and
+`settings.weightUnit` is display-only (distance km, tape cm); calendar weeks follow `settings.weekStartDay`
 (Monday default, Sunday optional) through the one `calendarWeekStart` rule;
 program weeks are Monday plan indices and never move; never
 `state.currentWeek` in analytics; archived weeks count;
@@ -1650,6 +1651,36 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-27 — H1 ST6: canonical weight storage (units are display-only).**
+  - `state` now stores **kilograms** everywhere and `settings.weightUnit` is a
+    display preference. The v17→v18 migration converts an existing lbs state
+    once, exactly (no rounding), and stamps `state.unitBasis='kg'`, so a
+    restored older backup upgrades safely and the step is idempotent.
+  - `setWeightUnit` is display-only: no confirmation, no rewrite, no recovery
+    copy. Every boundary goes through one module
+    (`js/metrics/weight-unit.js` for data, `js/workout/units.js` for the
+    logger); `progressionIncrement` and a weight-based `rateGoal` are canonical
+    too, and the engine returns display suggestions because the cockpit puts
+    them straight in the weight field.
+  - Fixed the read/write surfaces that assumed stored == displayed: the set row
+    (value, ghost, prescription, PREVIOUS column), the stored `tw` adherence
+    target, bodyweight and Measures sheets, Settings profile steppers, warm-up
+    ramp, drop sets, engine suggestions, recap/History/share, Profile stats,
+    Year/Week/Month reviews, Progress body/exercise/block views, session
+    previews, and the training-context/CSV exports.
+  - **Export fix (part of this):** the training CSV writes `WeightKg` /
+    `BodyWeightKg` and the bodyweight CSV `Date,WeightKg`; the importers accept
+    both spellings and convert everything into kilograms. Before this, a lb
+    export re-imported into a kg app was silently read as kg.
+  - Tests: `canonical_weight` (helpers, migration incl. archived weeks and
+    routines, idempotence, render/write boundaries, engine copy, CSV round trip)
+    plus updates to the volume/recap/activity/bodyweight expectations.
+    `scripts/weight-unit-browser-check.mjs` drives the real cockpit: 225 lb
+    typed stores 102.06 kg, and 90.72 kg reads as 200 lb on Home and in the
+    weigh-in sheet. A static guard fails the suite if a module uses a
+    weight-unit boundary helper without importing it — the failure mode that a
+    `checkJs:false` typecheck cannot see.
+
 - **2026-11-27 — H1 ST7: week start (G6) now governs every calendar surface.**
   - One calendar-week rule: `calendarWeekStart(date, weekStartDay)` in
     `js/dates.js`; `weekStartOf`/`weekKeyOf` in `weekly-aggregate.js` resolve
@@ -1678,16 +1709,6 @@ device timing it did not measure.
     labels, wiring), `notifications` (next week-end instant), and the Progress
     hub browser check now drives the REAL Settings control and asserts the Home
     rail and Pulse range change without a reload.
-
-- **2026-11-26 — G9 complete: 157/157 core exercises reviewed.**
-  - Finished the remaining 66 in three reviewed batches of 25/25/16:
-    band/bodyweight push work, kettlebell and band rows/curls, the squat and
-    hinge variants (tempo, paused, pin, deficit, rack pull, RDLs, good mornings,
-    hip thrusts, calves), core (planks, dead bug, bird dog, carries, crunches,
-    TGU) and conditioning (swings, clean, snatch, windmill, rowing, sled).
-  - Every core entry now has instructions + difficulty + safety notes; the
-    reviewed ratchet is 157 and the shape guards still pass. The core stays at
-    157 — no catalogue promotion.
 
 - **2026-11-26 — G9 scope decision: the core stays at 157.**
   - The owner chose not to promote catalogue entries into the curated core;

@@ -14,6 +14,7 @@
 import { openManagedModal, closeManagedModal } from '../ui/modal-stack.js';
 import { escapeHtml } from '../util.js';
 import { formatDayMonthShort } from '../dates.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 /** @type {any} */
 let _model = null;
@@ -52,7 +53,7 @@ export function allLiftsListHTML(rows, unit) {
     ].join('');
     const meta = [
       `${row.sessions} session${row.sessions === 1 ? '' : 's'}`,
-      row.bestE1rm > 0 ? `${row.bestE1rm} ${unit} best` : '',
+      row.bestE1rm > 0 ? `${Math.round(fromCanonicalWeight(row.bestE1rm, unit) ?? 0)} ${unit} best` : '',
       row.lastPerformedISO ? `last ${formatDayMonthShort(row.lastPerformedISO)}` : '',
     ].filter(Boolean).join(' · ');
     return `<li class="all-lifts__row">

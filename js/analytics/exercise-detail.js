@@ -20,6 +20,7 @@ import { resolveExercise } from '../exercises/catalog.js';
 import {
   SET_MODE, formatDistance, formatDuration, isRepSet, setModeOf, setVolume,
 } from '../set-utils.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 const RANGE_DAYS = { '4w': 28, '12w': 84, '6m': 183, '1y': 365, all: null };
 const fmtd = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -32,11 +33,13 @@ function topForShape(shape, sets, exerciseName, unit) {
   let top = null;
   let e1rm = 0;
   for (const set of sets || []) {
-    const weight = parseFloat(set?.w) || 0;
+    // ST6: this is a VIEW model, so the top set is assembled in display units.
+    // The PR baseline and record detection stay canonical (separate path).
+    const weight = fromCanonicalWeight(parseFloat(set?.w) || 0, unit) || 0;
     const reps = parseInt(set?.r, 10) || 0;
     const sec = Number(set?.sec) || 0;
     const dist = Number(set?.dist) || 0;
-    const estimate = estimatedE1rmForSet(exerciseName, set);
+    const estimate = fromCanonicalWeight(estimatedE1rmForSet(exerciseName, set), unit) || 0;
     if (estimate > e1rm) e1rm = estimate;
     const candidate = shape === SET_MODE.TIME
       ? { value: sec, weight, reps, sec, dist, set }
@@ -110,7 +113,7 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
       shape,
       sets: sets.length,
       reps,
-      volume: Math.round(volume),
+      volume: Math.round(fromCanonicalWeight(volume, unit) || 0),
       holdSeconds: Math.round(seconds),
       distanceM: Math.round(metres),
       top,
@@ -208,9 +211,11 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     const weighIn = weighIns[weighIns.length - 1];
     const age = weighIn ? daysBetween(weighIn.date, today) : null;
     if (weighIn && age != null && age >= 0 && age <= 30) {
+      // The ratio is unitless: both sides are display values.
+      const bodyDisplay = fromCanonicalWeight(weighIn.weight, unit) || 0;
       relative = {
-        ratio: Math.round((latest.e1rm / weighIn.weight) * 100) / 100,
-        weight: weighIn.weight,
+        ratio: bodyDisplay > 0 ? Math.round((latest.e1rm / bodyDisplay) * 100) / 100 : null,
+        weight: bodyDisplay,
         date: weighIn.date,
       };
     }
@@ -237,7 +242,11 @@ export function buildExerciseDetailModel(state, exerciseName, opts = {}) {
     rate,
     relative,
     totals,
-    setRecords,
+    // Set records come from the canonical records model; the drilldown prints
+    // their loads in the athlete's unit.
+    setRecords: Array.isArray(setRecords)
+      ? setRecords.map((record) => ({ ...record, weight: fromCanonicalWeight(record.weight, unit) }))
+      : setRecords,
     chart: {
       kind: chartKind,
       unit: latestShape === SET_MODE.TIME ? 'seconds'

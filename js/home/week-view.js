@@ -17,6 +17,7 @@ import { muscleHeatmapHTML } from './body-heatmap.js';
 import { sessionSummaryHTML, countPrLifts } from './session-summary.js';
 import { escapeHtml } from '../util.js';
 import { parseStrengthDurationSeconds } from '../strength/duration.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 /** How many weeks before the current one the Home rail can show. */
 export const HOME_WEEK_HISTORY = 4;
@@ -340,7 +341,7 @@ export function weekRecapHTML(view, options = {}) {
     : 'No training logged';
   const statItems = [];
   if (view.sessions > 0) statItems.push(`<div class="session-summary__stat"><b>${view.sessions}</b><span>${view.sessions === 1 ? 'Session' : 'Sessions'}</span></div>`);
-  if (view.volume > 0) statItems.push(`<div class="session-summary__stat"><b>${Math.round(view.volume).toLocaleString('en-AU')} ${unit}</b><span>Volume</span></div>`);
+  if (view.volume > 0) statItems.push(`<div class="session-summary__stat"><b>${Math.round(fromCanonicalWeight(view.volume, unit) || 0).toLocaleString('en-AU')} ${unit}</b><span>Volume</span></div>`);
   if (view.distanceKm > 0) statItems.push(`<div class="session-summary__stat"><b>${distanceText(view.distanceKm, distanceUnit)}</b><span>Distance</span></div>`);
   if (view.sets > 0) statItems.push(`<div class="session-summary__stat"><b>${view.sets}</b><span>Sets</span></div>`);
   const stats = statItems.length

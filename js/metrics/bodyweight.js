@@ -214,6 +214,9 @@ export function buildBodyweightModel(state, { now = Date.now(), rangeDays = 90 }
   const goal = rateCorridor(state?.settings?.rateGoal);
   const status = rateStatus(rate, state?.settings?.rateGoal);
   const target = Number(state?.settings?.targetWeight);
+  // Values stay CANONICAL KILOGRAMS: this model is shared with rate maths and
+  // thresholds. Display surfaces convert through `formatWeight` / `fromCanonicalWeight`
+  // exactly once, so a view can never double-convert.
   return {
     unit,
     points,

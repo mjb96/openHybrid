@@ -82,7 +82,11 @@ test('an empty body offers one action and no chart', () => {
 });
 
 test('the band takes its units from state, never a hardcoded kg', () => {
-  const imperial = buildBodyMetricsModel(state({ settings: { weightUnit: 'lbs', measurementUnit: 'in' } }), { range });
+  // ST6: storage is kilograms, so 78.4 lb is stored as 35.56 kg.
+  const imperial = buildBodyMetricsModel(state({
+    settings: { weightUnit: 'lbs', measurementUnit: 'in' },
+    bodyWeightLog: [{ date: '2026-11-01', weight: 36.3 }, { date: '2026-11-20', weight: 35.56 }],
+  }), { range });
   const html = renderBody(imperial);
   // The tape strip moved to Measures, so the band's only unit is weight.
   assert.doesNotMatch(html, /<small>cm<\/small>/);

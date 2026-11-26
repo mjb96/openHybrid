@@ -121,8 +121,11 @@ test('weightUnitOf normalises to the two units settings actually stores', () => 
   assert.equal(weightUnitOf({ settings: { weightUnit: 'stone' } }), 'kg', 'unknown units fall back, never leak through');
 });
 
-test('formatWeight labels in the athlete\'s unit and stays honest about no data', () => {
-  assert.equal(formatWeight(102.4, 'lbs'), '102 lbs');
+test('formatWeight converts canonical kilograms and stays honest about no data', () => {
+  // ST6: the argument is a STORED kilogram value, so a lb reader sees pounds.
+  assert.equal(formatWeight(102.4, 'kg'), '102 kg');
+  assert.equal(formatWeight(102.4, 'lbs'), '226 lbs');
+  assert.equal(formatWeight(46.5, 'lbs'), '103 lbs');
   assert.equal(formatWeight(1500, 'kg'), '1,500 kg');
   assert.equal(formatWeight(2.75, 'kg', { decimals: 1 }), '2.8 kg');
   // No value must never render as "0 kg".

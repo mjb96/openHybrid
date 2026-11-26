@@ -6,6 +6,7 @@
 // =============================================================================
 import { buildPredictions } from '../../brain/predictions.js';
 import { weightUnitOf } from '../utils.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const etaLabel = (w) => w == null ? null : w === 0 ? 'reached' : `~${w} week${w === 1 ? '' : 's'}`;
@@ -53,10 +54,10 @@ export function renderProjections(getState, getDays) {
   if (pred.strength.length) {
     strHTML = '<h3 class="section-header mt-4">Strength milestones</h3>' + pred.strength.map(s => `
       <article class="card-dark p-3 mb-2 proj-lift">
-        <div class="proj-lift__head"><span class="proj-lift__name">${esc(s.lift)}</span><span class="proj-lift__now">${s.current} ${unit}</span></div>
+        <div class="proj-lift__head"><span class="proj-lift__name">${esc(s.lift)}</span><span class="proj-lift__now">${Math.round(fromCanonicalWeight(s.current, unit) ?? 0)} ${unit}</span></div>
         <div class="proj-lift__bar"><div class="proj-lift__fill" style="width:${Math.min(100, Math.round((s.current / s.target) * 100))}%"></div></div>
         <div class="proj-lift__foot">
-          <span>Next: <b>${s.target} ${unit}</b></span>
+          <span>Next: <b>${Math.round(fromCanonicalWeight(s.target, unit) ?? 0)} ${unit}</b></span>
           <span class="${s.etaWeeks == null ? 'proj-muted' : 'proj-eta-chip'}">${s.etaWeeks == null ? 'keep progressing' : etaLabel(s.etaWeeks)}</span>
         </div>
         ${s.etaWeeks == null ? '' : `<div class="proj-lift__confidence">${confidenceChip(s.confidence)}<span>${esc(s.confidenceNote || '')}</span></div>`}

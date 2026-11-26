@@ -3,6 +3,7 @@
 // ANALYTICS UTILS (analytics/utils.js)
 // ==========================================
 import { CONFIG } from '../constants.js';
+import { fromCanonicalWeight, normalizeWeightUnit } from '../metrics/weight-unit.js';
 
 const KM_TO_MI = 0.621371;
 
@@ -44,23 +45,33 @@ export function weightUnitOf(state) {
  * @param {string} unit  from weightUnitOf ('kg' | 'lbs')
  */
 export function formatVolume(volume, unit = 'kg') {
-  const value = Number(volume);
-  if (!Number.isFinite(value) || value <= 0) return unit === 'lbs' ? '0 lb' : '0 kg';
-  if (unit === 'lbs') return `${Math.round(value).toLocaleString('en-AU')} lb`;
+  // ST6: tonnage is stored in kilograms. Convert, then compact in the unit the
+  // athlete reads. A lb athlete keeps whole pounds (their `t` would be 2,205 lb).
+  const stored = Number(volume);
+  if (!Number.isFinite(stored) || stored <= 0) return normalizeWeightUnit(unit) === 'lbs' ? '0 lb' : '0 kg';
+  const value = fromCanonicalWeight(stored, unit);
+  if (value == null) return normalizeWeightUnit(unit) === 'lbs' ? '0 lb' : '0 kg';
+  if (normalizeWeightUnit(unit) === 'lbs') return `${Math.round(value).toLocaleString('en-AU')} lb`;
   if (value >= 1000) return `${(value / 1000).toFixed(1)}t`;
   return `${Math.round(value)} kg`;
 }
 
 /**
- * Format a weight for display in the athlete's unit.
- * @param {number|string|null|undefined} value
+ * Format a STORED weight (kilograms) for display in the athlete's unit.
+ *
+ * ST6: storage is canonical kg, so this converts. Every caller passes the
+ * stored value; none of them may pre-convert.
+ * @param {number|string|null|undefined} kg
  * @param {string} unit  from weightUnitOf
  * @param {{decimals?:number, empty?:string}} [opts]
  */
-export function formatWeight(value, unit = 'kg', { decimals = 0, empty = '--' } = {}) {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) return empty;
-  return `${decimals > 0 ? number.toFixed(decimals) : Math.round(number).toLocaleString()} ${unit}`;
+export function formatWeight(kg, unit = 'kg', { decimals = 0, empty = '--' } = {}) {
+  const stored = Number(kg);
+  if (!Number.isFinite(stored) || stored <= 0) return empty;
+  const number = fromCanonicalWeight(stored, unit);
+  if (number == null) return empty;
+  const label = normalizeWeightUnit(unit);
+  return `${decimals > 0 ? number.toFixed(decimals) : Math.round(number).toLocaleString()} ${label}`;
 }
 
 export function parsePaceSeconds(distKm, timeStr) {

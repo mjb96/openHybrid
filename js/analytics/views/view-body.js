@@ -12,6 +12,7 @@ import { esc } from './screen-kit.js';
 import { bodyWeightChartSVG } from '../charts.js';
 import { formatDayMonthShort } from '../../dates.js';
 import { photoObjectUrl } from '../../photos/library.js';
+import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
 
 /**
  * One photo tile. Its ONLY job is to open the photo — Delete lives in the
@@ -66,12 +67,16 @@ export function renderBody(model, options = {}) {
     });
   }
 
-  const weightText = model.weight.latest != null ? `${model.weight.latest} ${model.unit}` : '—';
+  // The body model is canonical kilograms; the band reads the display unit.
+  const showWeight = (stored) => fromCanonicalWeight(stored, model.unit);
+  const weightText = model.weight.latest != null
+    ? `${(showWeight(model.weight.latest) ?? 0).toFixed(1)} ${model.unit}`
+    : '—';
   const changeLine = model.weight.change == null
     ? ''
     : model.weight.change === 0
       ? `<p class="pg-pulse__delta pg-pulse__delta--flat">Unchanged over ${esc(model.range?.spanLabel || 'this period')}</p>`
-      : `<p class="pg-pulse__delta pg-pulse__delta--${model.weight.change > 0 ? 'down' : 'up'}">${esc(`${model.weight.change > 0 ? '+' : ''}${model.weight.change} ${model.unit} over ${model.range?.spanLabel || 'this period'}`)}</p>`;
+      : `<p class="pg-pulse__delta pg-pulse__delta--${model.weight.change > 0 ? 'down' : 'up'}">${esc(`${model.weight.change > 0 ? '+' : ''}${(showWeight(model.weight.change) ?? 0).toFixed(1)} ${model.unit} over ${model.range?.spanLabel || 'this period'}`)}</p>`;
 
   const chart = model.weight.points.length >= 2
     ? `<div class="pg-body__chart">${bodyWeightChartSVG(model.weight.points, {

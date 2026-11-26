@@ -12,6 +12,7 @@ import { getWeekModifier } from '../schema.js';
 import { liftTarget } from '../engine.js';
 import { getExerciseNote } from './exercise-config.js';
 import { latestExercisePerformance } from './exercise-history.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 
 /**
  * @typedef {{
@@ -36,6 +37,13 @@ export function sessionExercisePreview(state, program, day) {
   if (!lifts.length) return [];
   const week = String(state?.currentWeek || '1');
   const modifier = getWeekModifier(program, week);
+  const unit = state?.settings?.weightUnit;
+  // A PREVIEW is display-only: the starting load and last performance leave here
+  // in the athlete's unit, stored history stays canonical.
+  const show = (stored) => {
+    const value = fromCanonicalWeight(stored, unit);
+    return value == null ? null : Math.round(value * 10) / 10;
+  };
   return lifts.map((name) => {
     const target = liftTarget(blueprint?.desc, name, modifier, { program, week, dayKey: day });
     const last = latestExercisePerformance(state, String(name));
@@ -44,14 +52,14 @@ export function sessionExercisePreview(state, program, day) {
       sets: Number(target?.sets) || 0,
       reps: target?.reps == null ? '' : String(target.reps),
       weight: Number.isFinite(Number(target?.weight)) && Number(target.weight) > 0
-        ? Number(target.weight)
+        ? show(Number(target.weight))
         : null,
       note: getExerciseNote(state, name),
       // The heaviest/e1RM-best set from the most recent dated session. Holds and
       // carries have no comparable weight×rep line, so they stay out of the
       // compact Home preview rather than inventing a number.
       last: last && Number(last.weight) > 0 && Number(last.reps) > 0
-        ? { weight: Number(last.weight), reps: Number(last.reps), date: last.date }
+        ? { weight: show(Number(last.weight)), reps: Number(last.reps), date: last.date }
         : null,
     };
   });

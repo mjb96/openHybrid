@@ -42,7 +42,10 @@ export function looksLikeBodyCsv(text) {
   const headers = headersOf(text);
   if (!headers.includes('date')) return false;
   if (headers.includes('exercise') || headers.includes('exercise_name') || headers.includes('exercise_title')) return false;
-  return headers.includes('weight_kg') || headers.includes('weight_lb') || headers.includes('weight_lbs') || headers.includes('weight');
+  return headers.includes('weight_kg') || headers.includes('weightkg')
+    || headers.includes('weight_lb') || headers.includes('weight_lbs')
+    || headers.includes('weightlb') || headers.includes('weightlbs')
+    || headers.includes('weight');
 }
 
 /**
@@ -60,8 +63,13 @@ export function parseBodyCsv(text, opts = {}) {
   const headers = rows[0].map(normalizeHeader);
   const idx = {
     date: headers.indexOf('date'),
-    kg: headers.indexOf('weight_kg'),
-    lb: headers.indexOf('weight_lb') >= 0 ? headers.indexOf('weight_lb') : headers.indexOf('weight_lbs'),
+    // `WeightKg` normalises to `weightkg`; accept both spellings so the app's
+    // own canonical export is never misread as an unknown unit.
+    kg: headers.indexOf('weight_kg') >= 0 ? headers.indexOf('weight_kg') : headers.indexOf('weightkg'),
+    lb: headers.indexOf('weight_lb') >= 0 ? headers.indexOf('weight_lb')
+      : headers.indexOf('weight_lbs') >= 0 ? headers.indexOf('weight_lbs')
+      : headers.indexOf('weightlb') >= 0 ? headers.indexOf('weightlb')
+      : headers.indexOf('weightlbs'),
     weight: headers.indexOf('weight'),
     unit: headers.indexOf('unit') >= 0 ? headers.indexOf('unit') : headers.indexOf('weight_unit'),
   };

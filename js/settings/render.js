@@ -12,6 +12,7 @@ import { APP_VERSION } from '../constants.js';
 import { moduleEnabled, hybridTrainingEnabled } from '../modules.js';
 import { getActiveEquipmentProfile, ensureEquipmentProfiles, EQUIPMENT_KEYS } from '../equipment-profiles.js';
 import { latestWeighIn } from '../metrics/bodyweight.js';
+import { fromCanonicalWeight } from '../metrics/weight-unit.js';
 import { DEFAULT_REST_TIERS } from '../workout/rest-duration.js';
 import { describeLastBackup } from '../portability/backup-status.js';
 import {
@@ -124,7 +125,7 @@ export function profileSettingsHTML(state, store) {
     ${settingsGroup({
       label: 'Body metrics',
       rows: [
-        settingsRow({ label: 'Latest weight', icon: 'scale', tone: 'teal', control: `<span class="s-input-wrap"><input id="settingsBodyWeight" class="s-input" type="number" min="30" max="300" step="0.1" value="${latest ? latest.weight : (state?.settings?.defaultBodyWeight || '')}" aria-label="Body weight"><span class="s-input-unit" id="settingsBodyWeightUnit">${unit}</span></span>`, footnote: 'Saves today\'s weigh-in.' }),
+        settingsRow({ label: 'Latest weight', icon: 'scale', tone: 'teal', control: `<span class="s-input-wrap"><input id="settingsBodyWeight" class="s-input" type="number" min="${unit === 'lb' ? 66 : 30}" max="${unit === 'lb' ? 661 : 300}" step="0.1" value="${latest ? fromCanonicalWeight(latest.weight, unit) : (state?.settings?.defaultBodyWeight ? fromCanonicalWeight(state.settings.defaultBodyWeight, unit) : '')}" aria-label="Body weight"><span class="s-input-unit" id="settingsBodyWeightUnit">${unit}</span></span>`, footnote: 'Saves today\'s weigh-in.' }),
         controlRow('heightCm', state, store, { icon: 'scale', tone: 'teal' }),
         controlRow('birthDate', state, store, { icon: 'calendar', tone: 'purple' }),
         controlRow('sex', state, store, { icon: 'user', tone: 'slate' }),
@@ -286,7 +287,24 @@ function controlRow(key, state, store, meta = {}) {
           ? (state?.settings?.weightUnit === 'lbs' ? 'lb' : 'kg')
           : entry.key === 'sessionMinutes' ? 'min'
             : entry.key === 'fastingDefault' ? 'h' : '';
-      control = stepperControl({ key, label, value: Number(value ?? entry.default ?? 0), min: entry.min ?? 0, max: entry.max ?? 999, step: entry.step ?? 1, unit, disabled: !enabled.ok });
+      // ST6: a canonical-weight setting is STORED in kilograms; the stepper is
+      // a display control, so its value, bounds and step are converted here and
+      // the write path converts back.
+      if (entry.canonicalWeight === true) {
+        const toDisplay = (stored) => Number(fromCanonicalWeight(stored, unit) ?? 0);
+        control = stepperControl({
+          key,
+          label,
+          value: Number(toDisplay(value == null || value === '' ? 0 : value).toFixed(1)),
+          min: Number(toDisplay(entry.min ?? 0).toFixed(1)),
+          max: Number(toDisplay(entry.max ?? 999).toFixed(1)),
+          step: unit === 'lb' ? 0.5 : (entry.step ?? 0.1),
+          unit,
+          disabled: !enabled.ok,
+        });
+      } else {
+        control = stepperControl({ key, label, value: Number(value ?? entry.default ?? 0), min: entry.min ?? 0, max: entry.max ?? 999, step: entry.step ?? 1, unit, disabled: !enabled.ok });
+      }
     }
   } else if (entry.type === 'time') {
     const v = value || {};
