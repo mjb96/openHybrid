@@ -230,10 +230,10 @@ try {
     await context.close();
   }
 
-  // ── ST4: the Plans utility row opens the Equipment owner ─────────────────
+  // ── ST4: the Plans home gear opens the Equipment owner ───────────────────
   {
     const { context, page, errors } = await plans({});
-    const gear = await page.$('#plansUtilityRow [data-action="open-settings"][data-page="once.equipment"]');
+    const gear = await page.$('#plansHome [data-action="open-settings"][data-page="once.equipment"]');
     if (!gear) failures.push('Plans has no equipment settings link');
     else {
       await gear.click();
