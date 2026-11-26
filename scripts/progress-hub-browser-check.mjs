@@ -185,7 +185,7 @@ async function openYearReview(browser, { todayISO, width, theme = 'dark', weight
   await page.waitForSelector('#analytics-hub.active .pg-band');
   await page.click('.pg-reviews__seg[data-context="weekly-review"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Review row did not open`));
   await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => failures.push(`${label}: Review did not open`));
-  await page.click('#analytics-weekly-review [data-an-tab="stats"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Stats tab did not open`));
+  await page.click('#analytics-weekly-review [data-an-tab="year"]', { timeout: 2000 }).catch(() => failures.push(`${label}: Year tab did not open`));
   await page.waitForFunction(() => {
     const el = document.getElementById('yearReviewContainer');
     return !!el && (el.hidden === true || el.children.length > 0);
@@ -468,14 +468,14 @@ try {
       const reviewOpen = await page.waitForSelector('#analytics-weekly-review.active', { timeout: 3000 })
         .then(() => true).catch(() => false);
       if (!reviewOpen) failures.push(`${width}px: Week in Review did not open`);
-      await page.click('#analytics-weekly-review [data-an-tab="overview"]').catch(() => {});
-      await page.waitForSelector('#wrevOverviewShareBtn', { timeout: 2000 }).catch(() => {});
-      const weekShare = await page.locator('#wrevOverviewShareBtn').count();
+      await page.click('#analytics-weekly-review [data-an-tab="week"]').catch(() => {});
+      await page.waitForSelector('#wrevShareBtn', { timeout: 2000 }).catch(() => {});
+      const weekShare = await page.locator('#wrevShareBtn').count();
       if (weekShare !== 1) failures.push(`${width}px: Week in Review has no share action`);
       else {
         const [download] = await Promise.all([
           page.waitForEvent('download', { timeout: 8000 }).catch(() => null),
-          page.click('#wrevOverviewShareBtn'),
+          page.click('#wrevShareBtn'),
         ]);
         if (!download || !/^openhybrid-week-\d{4}-\d{2}-\d{2}\.png$/.test(download.suggestedFilename())) {
           failures.push(`${width}px: the week card did not download (${download?.suggestedFilename?.() || 'none'})`);
@@ -571,22 +571,33 @@ try {
     }
 
 
-    // Review → Stats must show a twelve-week calendar log, not a program-week
-    // grid that hides imported/archived sessions.
+    // PG4: the Week tab owns the weekly story + streak calendar; Month owns the
+    // twelve-week log and the report. The three periods are the hub's own words.
     await openHub(page);
     await page.click('.pg-reviews__seg[data-context="weekly-review"]');
     await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 }).catch(() => {
       failures.push(`${width}px: Review domain card did not open the Review screen`);
     });
-    await page.click('#analytics-weekly-review [data-an-tab="stats"]');
+    const weekTab = await page.evaluate(() => ({
+      active: document.querySelector('#analytics-weekly-review [data-an-tab].an-tab--active')?.getAttribute('data-an-tab') || '',
+      tabs: [...document.querySelectorAll('#analytics-weekly-review [data-an-tab]')].map((el) => el.getAttribute('data-an-tab')).join(','),
+      story: !!document.querySelector('#weeklyReviewContainer .wrev-stats, #weeklyReviewContainer .card-dark'),
+      calendarCells: document.querySelectorAll('#streakHeatmapContainer rect').length,
+      streak: !!document.querySelector('#streakCurrent'),
+    }));
+    if (weekTab.tabs !== 'week,month,year') failures.push(`${width}px: Review periods are not Week|Month|Year (${weekTab.tabs})`);
+    if (weekTab.active !== 'week') failures.push(`${width}px: the Reviews Week row did not open Week (${weekTab.active})`);
+    if (!weekTab.story) failures.push(`${width}px: the Week tab has no weekly story`);
+    if (!weekTab.streak) failures.push(`${width}px: the Week tab has no streak block`);
+    if (weekTab.calendarCells < 2) failures.push(`${width}px: the Week tab training calendar is empty`);
+
+    await page.click('#analytics-weekly-review [data-an-tab="month"]');
     await page.waitForSelector('#analyticsTimelineTableBody tr', { timeout: 4000 }).catch(() => {});
     const reviewStats = await page.$eval('#analytics-weekly-review', (section) => ({
       rows: section.querySelectorAll('#analyticsTimelineTableBody tr').length,
-      calendarCells: section.querySelectorAll('#streakHeatmapContainer rect').length,
       firstRow: section.querySelector('#analyticsTimelineTableBody tr')?.textContent?.trim() || '',
     }));
     if (reviewStats.rows !== 12) failures.push(`${width}px: Review log should have 12 calendar weeks (got ${reviewStats.rows})`);
-    if (reviewStats.calendarCells < 2) failures.push(`${width}px: Review training calendar is empty`);
     if (!/[A-Za-z]{3}/.test(reviewStats.firstRow)) failures.push(`${width}px: Review log does not label calendar weeks`);
 
     // The training report starts on the current calendar month and switches to
@@ -807,7 +818,7 @@ try {
       await page.waitForSelector('#analytics-weekly-review.active', { timeout: 4000 });
       const activeTab = await page.$eval('#analytics-weekly-review .an-tab--active', (el) => el.getAttribute('data-an-tab')).catch(() => '');
       const yearVisible = await page.$eval('#yearReviewContainer', (el) => !el.hidden && el.getBoundingClientRect().height > 0).catch(() => false);
-      if (activeTab !== 'stats') failures.push(`year review 390kg: Reports opened Review "${activeTab}" instead of Stats`);
+      if (activeTab !== 'year') failures.push(`year review 390kg: Reports opened Review "${activeTab}" instead of Year`);
       if (!yearVisible) failures.push('year review 390kg: Reports opened a tab without the year section');
     }
     // A shaded day opens that date in History, not a second Progress calendar.
@@ -902,7 +913,14 @@ try {
     if (seen.yearHeadings.length !== 0 || seen.headingHeight !== 0 || seen.text !== '') {
       failures.push('year review off-season: a Year in Review heading or copy survived');
     }
-    if (!seen.weeklyReviewVisible) failures.push('year review off-season: hiding the year blanked the rest of Stats');
+    // Off-season the Year tab still exists (Year at a glance); Week must still
+    // carry its story when the athlete switches to it.
+    const weekStillRenders = await page.evaluate(async () => {
+      document.querySelector('#analytics-weekly-review [data-an-tab="week"]')?.click();
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      return !!document.querySelector('#weeklyReviewContainer');
+    });
+    if (!weekStillRenders) failures.push('year review off-season: the Week tab no longer renders');
     if (errors.length) failures.push(`year review off-season: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }

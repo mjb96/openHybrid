@@ -1,12 +1,12 @@
 // =============================================================================
-// WEEK IN REVIEW — RENDER GUARD (Stats tab block)
+// WEEK IN REVIEW — RENDER GUARD (Week tab block)
 //
 // The builder resolve alone does not stop the view from re-introducing the
-// defect: the Stats "Week in Review" block used to print a plan-adherence bar
-// and "Next week's focus" for ANY review, so a week from an old programme was
-// scored against the active plan and given advice for a week that had already
-// happened. These tests render the block through a minimal DOM and assert that a
-// historical week contains neither claim, while the live week keeps both.
+// defect: the Week tab used to print a plan-adherence bar and "Next week's
+// focus" for ANY review, so a week from an old programme was scored against the
+// active plan and given advice for a week that had already happened. These
+// tests render the block through a minimal DOM and assert that a historical
+// week contains neither claim, while the live week keeps both.
 // =============================================================================
 import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
@@ -125,34 +125,4 @@ test('an empty historical week renders the empty state, not a zero-score story',
   assert.doesNotMatch(html, /builds itself as you train/);
   assert.doesNotMatch(html, /wrev-stat/);
   assert.doesNotMatch(html, /Next week/i);
-});
-
-test('the Overview tab drops the plan and focus cards for a historical week', () => {
-  const state = makeState();
-  const body = getEl('review-tab-body');
-
-  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: W2 }), state);
-  const past = body.innerHTML;
-  assert.match(past, /9–15 Nov/);
-  assert.match(past, /logged that week/);
-  assert.doesNotMatch(past, /Adherence/);
-  assert.doesNotMatch(past, /planned/);
-  assert.doesNotMatch(past, /next week/i);
-  assert.doesNotMatch(past, /Hybrid Score/);
-
-  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: W3 }), state);
-  const live = body.innerHTML;
-  assert.match(live, /Adherence/);
-  assert.match(live, /2\/5 planned/);
-  assert.match(live, /next week/i);
-  assert.match(live, /wrevOverviewShareBtn/);
-});
-
-test('an empty historical Overview says so in the past tense', () => {
-  const state = makeState();
-  const body = getEl('review-tab-body');
-  view.renderReviewOverview(body, buildWeeklyReview(state, DAYS, PROGRAM5, { today: TODAY, weekStart: '2026-06-01' }), state);
-  assert.match(body.innerHTML, /No training was recorded that week/);
-  assert.doesNotMatch(body.innerHTML, /builds itself as you train/);
-  assert.doesNotMatch(body.innerHTML, /next week/i);
 });

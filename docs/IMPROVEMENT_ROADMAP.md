@@ -1351,7 +1351,7 @@ band choices keep working (`PROGRESS_CARD_ALIASES` pattern).
 | PG1 | Inventory | `analytics/views/view-progress-hub.js` | List everything under the bottom "More detail" section and every Progress destination: label, target screen, route ID, owning module, how many taps from landing, duplicates | DONE | Inventory in §16.7: 22 entries; the five fixed footer links sit outside the existing guard arrays. |
 | PG2 | One home per destination | `analytics/views/view-progress-hub.js`, `progress-landing.js` | Classify each PG1 entry: attach to a band, merge into Reviews, promote to Records, move to Settings, or retire. No entry left unassigned | DONE | `js/analytics/progress-sections.js` is the one registry; the footer and "More detail" list are gone. Reviews is one Week \| Month \| Year row, History is the header icon, and `tests/progress_registry_guard.test.js` fails on any unregistered section/destination. |
 | PG3 | Band-header drilldown | `analytics/views/band-kit.js` | Same pattern on every band; extra content moves from the Overview and the footer into the band detail | DONE | Every band with a detail renders its whole header as a 44px "Details ›" control; the detail inherits the range (header chip) and Back scrolls to the originating band (`data-band-origin`). The browser check asserts the chip and the restored position. |
-| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reviews.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | PARTIAL | The hub now has ONE Reviews row (Week \| Month \| Year, all legacy route ids) and the Reports band is deleted. The screen itself is still Overview \| Stats rather than a merged Week \| Month \| Year surface. |
+| PG4 | Reviews surface | `views/view-weekly-review.js`, `views/view-reviews.js` | One Week \| Month \| Year recap surface replacing the duplicated recap entries; the share card still draws from the same models as the screen | DONE | The hub's Reviews row and the screen now speak the same three periods. Week = the weekly story (stats, adherence, PRs, focus, share) + Streak + Goal progress; Month = the Training Report (month / trailing 12 months) + the Consistency Log; Year = Year in Review (seasonal) + the always-available year calendar. The duplicated Overview block was removed (it re-stated the weekly story), and the share card still draws from `buildWeeklyReview`. Legacy contexts open the period they name (`weekly-review`→Week, `monthly-report`/`weekly-summary`→Month, `year-review`→Year, `progress`/`streak`/`goal-progress`→Week); only Week follows the shared week navigator. Tests: `review_tabs` (period bar, aria-pressed, legacy names) and the Week render guard; the Progress-hub browser check drives all three tabs. |
 | PG5 | All lifts index | `views/view-exercises.js`, `analytics/exercises-summary.js`, `analytics/all-lifts-sheet.js` | Searchable list of every lift with last performed, e1RM trend and stall flag; opens the exercise detail | DONE | “All N lifts” opens a searchable sheet over the SAME rows the band built: name, sessions, best e1RM, window change, last performed, PR badge and a **flat** badge (≥3 sessions with no e1RM improvement in the selected range — a window fact, not the engine's per-program PROGRESS CHECK). Search filters live with an honest “N of M” count, and a row opens the existing exercise drilldown. `tests/all_lifts.test.js` + `scripts/all-lifts-browser-check.mjs`. |
 | PG6 | Records row | `strength/records.js`, `set-records.js`, `strength/pr-index.js`, `analytics/records-sheet.js` | PR table and dated feed (A6) | DONE | “Records →” opens one sheet with the all-time best e1RM per lift (date and PR count) and the dated PR feed, both from `buildRecordIndex`; Year in Review now reads the same collector. Search filters table and feed; a row opens the exercise drilldown. `tests/pr_index.test.js` + `scripts/records-browser-check.mjs`. |
 | PG7 | Strength-first defaults | `ui/customize.js`, `customize-sheet.js`, `progress-dashboard.js` | Order per §16.4; Customize lists each band's detail switches; hidden modules are labelled "module off", not "no data" | DONE | Default order is Pulse → Main exercises → Muscles → Body → Reviews, then Balance/Endurance/Fasting. Customize reads the registry for top-level rows and indented detail switches, keeps the reorder column at one x, and disables module-off rows with "module off" copy. Saved old orders preserve their position (`reports` → `reviews`). |
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 PG4: one Week | Month | Year Review surface.**
+  - The Review screen stopped speaking Overview | Stats while the hub row speaks
+    Week | Month | Year. Week = weekly story + streak + goal progress; Month =
+    Training Report + consistency log; Year = Year in Review + the year
+    calendar. The duplicated Overview block is gone; the weekly share is the
+    story's own button.
+  - Legacy contexts open the period they name, and only Week follows the shared
+    week navigator. Tests: `tests/review_tabs.test.js` (three periods,
+    aria-pressed, legacy names land on Week) plus the Week render guard; the
+    Progress-hub browser check drives all three tabs.
+
 - **2026-11-26 — H4 PG9: the hub is an overview again.**
   - Secondary evidence moved to its detail: the rep-range/effort mix to the
     Strength detail, the ranked muscle rows + period body map to the Muscle load
@@ -1728,17 +1739,6 @@ device timing it did not measure.
     count; a future or empty session is never the baseline; runs are excluded.
   - Tests: `tests/session_comparison.test.js` and the recap render test; checked
     in the History detail.
-
-- **2026-11-26 — H4 A3: complete the e1RM trend ranges and rate.**
-  - The exercise drilldown now offers 4 weeks, 12 weeks, 6 months, 1 year and
-    all time (the old control stopped at 12w/6m/all and normalized anything else
-    back to 12 weeks).
-  - A weekly **rate of change** is stated for e1RM trends: first→latest over the
-    selected span, withheld for a single point and for holds/carries so no
-    precision is invented.
-  - Tests: range boundaries and rate direction/withholding in
-    `exercise_detail.test.js`; the all-lifts browser check asserts the five
-    ranges and the rate line.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

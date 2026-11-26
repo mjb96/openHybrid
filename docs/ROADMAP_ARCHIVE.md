@@ -5991,3 +5991,14 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     year baseline, table/feed, sheet filter) and
     `scripts/records-browser-check.mjs` (56 checks).
 
+- **2026-11-26 — H4 A3: complete the e1RM trend ranges and rate.**
+  - The exercise drilldown now offers 4 weeks, 12 weeks, 6 months, 1 year and
+    all time (the old control stopped at 12w/6m/all and normalized anything else
+    back to 12 weeks).
+  - A weekly **rate of change** is stated for e1RM trends: first→latest over the
+    selected span, withheld for a single point and for holds/carries so no
+    precision is invented.
+  - Tests: range boundaries and rate direction/withholding in
+    `exercise_detail.test.js`; the all-lifts browser check asserts the five
+    ranges and the rate line.
+

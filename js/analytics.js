@@ -802,7 +802,7 @@ function applyWeekNavVisibility(context) {
   const weekNav = document.getElementById('analyticsWeekNav');
   if (!weekNav) return;
   const visible = WEEK_SCOPED_CONTEXTS.includes(context)
-    || (context === 'weekly-review' && getReviewTab() === 'overview');
+    || (context === 'weekly-review' && getReviewTab() === 'week');
   weekNav.style.display = visible ? '' : 'none';
 }
 
@@ -945,21 +945,23 @@ export function renderAnalytics() {
       }
       break;
     }
-    // V2 (S2): the Review screen — weekly-review (Overview) + weekly-summary and
-    // monthly-report (Stats) collapse into one weekly/monthly story.
+    // PG4: one Review surface with the SAME three periods as the hub row.
+    // Each legacy context opens the tab it actually names.
     case 'weekly-review':
-      setReviewTab('overview');
+      setReviewTab('week');
       document.getElementById('analytics-weekly-review').classList.add('active');
-      // The in-screen Overview | Stats switch can make the navigator irrelevant,
-      // so the tab bar reports back rather than leaving a stale control.
+      // Week is the only period that follows the shared navigator, so the tab
+      // bar reports back rather than leaving a stale control.
+      renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
+      break;
+    case 'monthly-report':
+    case 'weekly-summary':
+      setReviewTab('month');
+      document.getElementById('analytics-weekly-review').classList.add('active');
       renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
     case 'year-review':
-    case 'weekly-summary':
-    case 'monthly-report':
-      // The year lives on Stats, not Overview. The Reports band used to send
-      // "Year in Review" to the Overview tab, which contains no year section.
-      setReviewTab('stats');
+      setReviewTab('year');
       document.getElementById('analytics-weekly-review').classList.add('active');
       renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
@@ -1099,11 +1101,12 @@ export function renderAnalytics() {
       renderMuscleLoad(_getState(), { rangeId: _progressRangeId });
       break;
     // V2 (S2): progress, streak and goal-progress are folded into the Review
-    // screen's Stats tab — redirect so deep links still resolve.
+    // screen's Week tab (streak + goal live there) — redirect so deep links
+    // still resolve.
     case 'progress':
     case 'streak':
     case 'goal-progress':
-      setReviewTab('stats');
+      setReviewTab('week');
       document.getElementById('analytics-weekly-review').classList.add('active');
       renderReview(analyticsData(), _getState, _getDays, onReviewTabChange);
       break;
