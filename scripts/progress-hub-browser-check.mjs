@@ -334,30 +334,34 @@ try {
       band: !!document.querySelector('#analytics-hub [data-band="body"] [data-context="measures"]'),
     }));
     if (!measuresRoutes.band) failures.push(`${width}px: the Body band does not open Measures`);
-    // A key site is a control, not a static label: it opens Measures on that
-    // site. The old cells were <li>s with no target at all.
-    const bodySites = await page.evaluate(() => {
+    // PG9: the per-site strip and the photo library are the record's job. The
+    // band links to Measures instead of duplicating them.
+    const bodyMoved = await page.evaluate(() => {
       const band = document.querySelector('#analytics-hub [data-band="body"]');
-      const buttons = [...(band?.querySelectorAll('[data-action="open-analytics"][data-context="measures"][data-entity]') || [])];
       return {
-        count: buttons.length,
-        entities: buttons.map((button) => button.getAttribute('data-entity')),
-        heights: buttons.map((button) => Math.round(button.getBoundingClientRect().height)),
+        entityCells: band?.querySelectorAll('[data-entity]').length || 0,
+        photos: band?.querySelectorAll('.pg-photos-block').length || 0,
+        measures: band?.querySelectorAll('[data-action="open-analytics"][data-context="measures"]').length || 0,
       };
     });
-    if (bodySites.count < 2) failures.push(`${width}px: the Body band has no per-site controls (${bodySites.entities.join(',')})`);
-    if (bodySites.heights.some((height) => height < 44)) failures.push(`${width}px: a Body site control is under 44px (${bodySites.heights.join(',')})`);
-    if (bodySites.entities.includes('waist')) {
-      await page.click('#analytics-hub [data-band="body"] [data-context="measures"][data-entity="waist"]');
-      const opened = await page.waitForSelector('#analytics-measures.active', { timeout: 4000 }).then(() => true).catch(() => false);
-      if (!opened) failures.push(`${width}px: a Body site did not open Measures`);
-      else {
-        const selectedSite = await page.$eval('#analytics-measures [data-ms-site]', (el) => el.value).catch(() => '');
-        if (selectedSite !== 'waist') failures.push(`${width}px: Measures opened on "${selectedSite}", not waist`);
-      }
-      await openHub(page);
-      await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {});
+    if (bodyMoved.entityCells || bodyMoved.photos) {
+      failures.push(`${width}px: the Body band still duplicates the site strip or photo library`);
     }
+    if (!bodyMoved.measures) failures.push(`${width}px: the Body band does not open Measures`);
+    await page.click('#analytics-hub [data-band="body"] [data-context="measures"]');
+    const measuresOpened = await page.waitForSelector('#analytics-measures.active', { timeout: 4000 }).then(() => true).catch(() => false);
+    if (!measuresOpened) failures.push(`${width}px: the Body band did not open Measures`);
+    else {
+      const owns = await page.evaluate(() => ({
+        sites: document.querySelectorAll('#analytics-measures [data-ms-site]').length,
+        addEntry: !!document.querySelector('#analytics-measures [data-action="open-ms-sheet"]'),
+        entries: document.querySelectorAll('#analytics-measures .ms-entries, #analytics-measures .ms-screen__body').length,
+      }));
+      if (!owns.sites) failures.push(`${width}px: Measures does not own the site control`);
+      if (!owns.addEntry || !owns.entries) failures.push(`${width}px: Measures is not the dated record`);
+    }
+    await openHub(page);
+    await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {});
 
     // The Muscles band can focus ONE muscle without leaving the hub. A native
     // select keeps 19 options usable; the chart and table answer for that muscle
@@ -432,10 +436,26 @@ try {
     if (beforeRange && afterRange && beforeRange === afterRange) {
       failures.push(`${width}px: changing the range did not change the Endurance band`);
     }
+    const enduranceTrimmed = await page.evaluate(() => ({
+      days: document.querySelectorAll('#analytics-hub [data-band="endurance"] .pg-days').length,
+      table: document.querySelectorAll('#analytics-hub [data-band="endurance"] .pg-data').length,
+    }));
+    if (enduranceTrimmed.days || enduranceTrimmed.table) failures.push(`${width}px: the Endurance band still duplicates its detail evidence`);
     const selectedRange = await page.$eval('[data-pg-range][aria-pressed="true"]', (el) => el.getAttribute('data-pg-range'));
     if (selectedRange !== '1y') failures.push(`${width}px: the range control did not mark 1y as pressed (${selectedRange})`);
     await page.click('[data-pg-range="30d"]', { timeout: 2000 });
     await page.waitForTimeout(250);
+
+    // PG9 scannability: the whole hub is ~3 screens at every phone width, and
+    // no single band can grow into a wall. Heights are read from the real DOM.
+    const scan = await page.evaluate(() => {
+      const bands = [...document.querySelectorAll('#analytics-hub [data-band]')];
+      const rows = bands.map((band) => ({ id: band.getAttribute('data-band'), h: Math.round(band.getBoundingClientRect().height) }));
+      const total = rows.reduce((sum, row) => sum + row.h, 0);
+      return { rows, total, viewports: total / window.innerHeight, tallest: rows.reduce((max, row) => row.h > max.h ? row : max, { id: '', h: 0 }) };
+    });
+    if (scan.viewports > 3.15) failures.push(`${width}px: the hub is ${scan.viewports.toFixed(2)} screens tall (${scan.total}px)`);
+    if (scan.tallest.h > 470) failures.push(`${width}px: the ${scan.tallest.id} band is ${scan.tallest.h}px tall`);
 
     // Week in Review opens from the single Reviews row.
     const reviewLink = await page.$('.pg-reviews__seg[data-context="weekly-review"]');
@@ -477,6 +497,12 @@ try {
     if (rangeChip.hidden || !/Progress · 30D/.test(rangeChip.text)) {
       failures.push(`${width}px: the band detail did not inherit/show the range (${rangeChip.text})`);
     }
+    const detailMap = await page.evaluate(() => ({
+      map: !!document.querySelector('#analytics-muscle-load #muscleLoadMap .session-map'),
+      rows: document.querySelectorAll('#analytics-muscle-load .muscle-load-row').length,
+    }));
+    if (!detailMap.map) failures.push(`${width}px: the Muscles detail does not carry the body map`);
+    if (!detailMap.rows) failures.push(`${width}px: the Muscles detail does not carry the ranked rows`);
     await page.click('#view-analytics .subview-back-btn');
     await page.waitForSelector('#analytics-hub.active', { timeout: 4000 }).catch(() => {
       failures.push(`${width}px: Back from a band detail did not return to Progress`);
@@ -495,6 +521,12 @@ try {
     });
     await page.click('#analytics-strength [data-an-tab="stats"]');
     await page.waitForTimeout(250);
+    const mixMoved = await page.evaluate(() => ({
+      detail: !!document.querySelector('#analytics-strength-entity, #analytics-strength')?.querySelector('#strengthMixSection .pg-mix'),
+      band: !!document.querySelector('#analytics-hub [data-band="exercises"] .pg-mix'),
+    }));
+    if (!mixMoved.detail) failures.push(`${width}px: the Strength detail does not carry the training mix`);
+    if (mixMoved.band) failures.push(`${width}px: the exercises band still renders the training mix`);
     const exerciseLink = await page.$('#analytics-strength [data-action="open-analytics"][data-context="exercise"]');
     if (!exerciseLink) {
       failures.push(`${width}px: Strength has no exercise drilldown link`);

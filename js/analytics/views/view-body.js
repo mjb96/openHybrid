@@ -6,11 +6,10 @@
 // and any entered body fat. The chart is the SAME bodyWeightChartSVG Home and
 // Progress already draw, so there is never a second sparkline implementation.
 // =============================================================================
-import { band, dataTableDisclosure, stateBlock } from './band-kit.js';
+import { band, stateBlock } from './band-kit.js';
 import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
 import { bodyWeightChartSVG } from '../charts.js';
-import { cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
 import { formatDayMonthShort } from '../../dates.js';
 import { photoObjectUrl } from '../../photos/library.js';
 
@@ -83,33 +82,6 @@ export function renderBody(model, options = {}) {
     })}</div>`
     : '';
 
-  const sites = model.keySites.map((site) => {
-    const value = site.latestCm == null
-      ? null
-      : roundDisplay(cmToDisplay(site.latestCm, model.measurementUnit));
-    const deltaValue = site.deltaCm == null
-      ? null
-      : roundDisplay(cmToDisplay(site.deltaCm, model.measurementUnit));
-    const delta = deltaValue == null
-      ? ''
-      : `<span class="pg-site__delta">${esc(`${deltaValue > 0 ? '+' : ''}${deltaValue}`)}</span>`;
-    const aria = `${site.label}: ${value == null ? 'no reading' : `${value} ${model.measurementUnit}`}`
-      + (deltaValue == null
-        ? ''
-        : deltaValue === 0
-          ? ', unchanged since the previous reading'
-          : `, ${deltaValue > 0 ? 'up' : 'down'} ${Math.abs(deltaValue)} ${model.measurementUnit} since the previous reading`)
-      + '. Open the trend.';
-    return `<li class="pg-site"><button type="button" class="pg-site__btn"
-      data-action="open-analytics" data-context="measures" data-entity="${esc(site.key)}" data-entity-name="${esc(site.label)}"
-      aria-label="${esc(aria)}" title="Open the ${esc(site.label)} trend">
-      <span class="pg-site__label">${esc(site.label)}</span>
-      <b class="pg-site__value">${value == null ? '—' : esc(String(value))}</b>
-      <small>${esc(model.measurementUnit)}</small>${delta}
-    </button></li>`;
-  }).join('');
-
-  const hasTapeDelta = model.keySites.some((site) => site.deltaCm != null);
   const bodyFatDelta = model.bodyFat?.deltaPp == null
     ? ''
     : ` · ${model.bodyFat.deltaPp > 0 ? '+' : ''}${model.bodyFat.deltaPp} pp`
@@ -117,30 +89,6 @@ export function renderBody(model, options = {}) {
   const bodyFat = model.bodyFat
     ? `<p class="pg-body__fat">Body fat <b>${esc(String(model.bodyFat.latestPct))}%</b>${bodyFatDelta ? esc(bodyFatDelta) : ''} <small>entered, never estimated</small></p>`
     : '';
-
-  // A privacy switch, not a layout one: some athletes do not want photos on
-  // screen when handing the phone over.
-  const photosHidden = Array.isArray(options.hidden) && options.hidden.includes('bodyPhotos');
-  const photos = photosHidden ? [] : (model.photos || []).slice(0, 12);
-  // A tile's ONLY job is to open the photo. Delete lives in the viewer: the old
-  // 44px delete button covered a 64px tile, so a tap asked "delete?" and there
-  // was no way to look at the photo at all.
-  const photoStrip = `<div class="pg-photos-block">
-      <p class="pg-photos__head"><span>Progress photos</span>${photos.length ? `<span>${photos.length}</span>` : ''}</p>
-      <ul class="pg-photos" aria-label="Progress photos">
-        ${photos.map(photoTileHTML).join('')}
-        <li class="pg-photo pg-photo--add">
-          <!-- The SAME tile does the SAME thing here and on Measures: it opens the
-               dated entry, where Add picture is the first control. A camera
-               shortcut that skipped the numbers produced a photo with no
-               context — the exact split this screen exists to close. -->
-          <button type="button" class="pg-photo__add" data-action="open-ms-sheet">
-            <span class="pg-photo__plus" aria-hidden="true">+</span>
-            <span class="pg-photo__addlabel">Add photo</span>
-          </button>
-        </li>
-      </ul>
-    </div>`;
 
   // Weight and tape are the latest RECORDED values; the chart, change and photos
   // are range-scoped. Saying "as of <date>" stops the newest reading being read
@@ -152,25 +100,12 @@ export function renderBody(model, options = {}) {
   const body = `
     ${changeLine}
     ${chart}
-    ${model.keySites.length ? `<ul class="pg-sites">${sites}</ul>` : ''}
-    ${hasTapeDelta ? '<p class="pg-sites__note">Tape changes are since each site\'s previous reading.</p>' : ''}
     ${bodyFat}
-    ${photosHidden ? '' : photoStrip}
     <div class="pg-band__actions">
-      ${Array.isArray(options.hidden) && options.hidden.includes('bodyMeasures') ? '' : `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="measures">${model.siteCount > model.keySites.length ? `All ${model.siteCount} sites →` : 'Measures →'}</button>`}
+      ${Array.isArray(options.hidden) && options.hidden.includes('bodyMeasures') ? '' : `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="measures">${model.siteCount ? `Measurements (${model.siteCount}) →` : 'Measures →'}</button>`}
       ${Array.isArray(options.hidden) && options.hidden.includes('bodyWeight') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="bodyweight">Weight trend</button>'}
       <button type="button" class="pg-band__action" data-action="open-bw-sheet">Log weigh-in</button>
-    </div>
-    ${dataTableDisclosure(
-      ['Site', `Latest (${model.measurementUnit})`, 'Change since previous', 'Previous reading'],
-      model.sites.map((site) => [
-        site.label,
-        site.latestCm == null ? '—' : String(roundDisplay(cmToDisplay(site.latestCm, model.measurementUnit))),
-        site.deltaCm == null ? '—' : String(roundDisplay(cmToDisplay(site.deltaCm, model.measurementUnit))),
-        site.previousDate ? formatDayMonthShort(site.previousDate) : '—',
-      ]),
-      'Body measurements — latest recorded per site',
-    )}`;
+    </div>`;
 
   return band({
     id: 'body',

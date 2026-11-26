@@ -5979,3 +5979,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - The hybrid-dashboard browser check asserts the landing (band visible in the
     viewport) in addition to the existing card metrics.
 
+- **2026-11-26 — H4 PG6/A6: one Records table and dated PR feed.**
+  - The Main exercises band's “Records →” now opens a dedicated sheet: all-time
+    best e1RM per lift (date + PR count) and a newest-first dated feed.
+  - `js/strength/pr-index.js` is the ONE date-strict e1RM PR collector; Year in
+    Review was refactored onto it, so the recap and Records cannot disagree.
+    First date is a baseline, ties do not fire, same-date sessions merge to the
+    best, aliases collapse and `isE1rmPr` owns the epsilon.
+  - Search filters table and feed; rows open the exercise drilldown.
+  - Tests: `tests/pr_index.test.js` (baseline/tie/beat, same-date, aliases,
+    year baseline, table/feed, sheet filter) and
+    `scripts/records-browser-check.mjs` (56 checks).
+

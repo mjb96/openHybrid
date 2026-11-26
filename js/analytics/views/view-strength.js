@@ -34,6 +34,41 @@ import { canonicalExerciseId } from '../../exercises/catalog.js';
 import { estimatedE1rmForSet, isE1rmPr } from '../../strength/e1rm.js';
 import { buildStrengthMetricDetail } from '../strength-detail.js';
 import { buildVolumeGuideModel, musclePriorityLabel } from '../volume-guide.js';
+import { buildIntensityMix } from '../intensity-mix.js';
+import { resolveRange } from '../ranges.js';
+
+// ---- Training mix (A4, moved off the Main exercises band by PG9) ----------
+// The band answers "which lifts are moving?"; this screen owns the distribution
+// evidence. One renderer, one model (analytics/intensity-mix.js).
+const MIX_COLORS = ['var(--data-1)', 'var(--data-2)', 'var(--data-3)', 'var(--data-4)'];
+
+/** @param {any} mix */
+export function intensityMixHTML(mix) {
+  if (!mix || (!mix.hasRepMix && !mix.hasEffortMix)) return '';
+  const stacked = (bands, colors) => `<div class="pg-mix__bar" role="img" aria-label="${esc(bands.map((b) => `${b.label}: ${b.sharePct}%`).join(', '))}">
+    ${bands.filter((band) => band.count > 0).map((band) => `<span style="width:${band.sharePct}%;background:${colors[bands.indexOf(band) % colors.length]}"></span>`).join('')}
+  </div>`;
+  const legend = (bands, colors) => `<ul class="pg-mix__legend">${bands.filter((band) => band.count > 0).map((band) => `
+    <li><span class="pg-mix__dot" style="background:${colors[bands.indexOf(band) % colors.length]}" aria-hidden="true"></span>${esc(band.label)} <b>${band.sharePct}%</b></li>`).join('')}</ul>`;
+  return `<section class="pg-mix" aria-label="Rep-range and effort mix">
+    ${mix.hasRepMix ? `<p class="pg-mix__label">Rep range</p>${stacked(mix.repBands, MIX_COLORS)}${legend(mix.repBands, MIX_COLORS)}` : ''}
+    ${mix.hasEffortMix ? `<p class="pg-mix__label pg-mix__label--gap">Effort${mix.unratedSets > 0 ? ` · ${mix.unratedSets} set${mix.unratedSets === 1 ? '' : 's'} unrated` : ''}</p>${stacked(mix.effortBands, ['var(--data-4)', 'var(--data-3)', 'var(--data-2)'])}${legend(mix.effortBands, ['var(--data-4)', 'var(--data-3)', 'var(--data-2)'])}` : ''}
+    ${mix.goalFit ? `<p class="pg-mix__fit pg-mix__fit--${esc(mix.goalFit.tone)}">${esc(mix.goalFit.text)}</p>` : ''}
+  </section>`;
+}
+
+/** Mount the mix for the Progress range the screen was entered with. */
+function renderStrengthMix(appState, rangeId) {
+  const host = qs('strengthMixSection');
+  if (!host) return;
+  const range = resolveRange(rangeId || '30d', localDayKey(new Date()));
+  if (!range) { host.innerHTML = ''; return; }
+  const mix = buildIntensityMix(appState, { range, goal: appState?.settings?.fitnessGoal || 'hybrid' });
+  const body = intensityMixHTML(mix);
+  host.innerHTML = `<h2 class="section-header mt-2">Training mix</h2>
+    <p class="pg-band__sub">Rep range and effort · ${esc(range.spanLabel)}</p>
+    ${body || '<p class="pg-band__sub">Not enough completed sets in this range to show a mix.</p>'}`;
+}
 
 function qs(id) { return document.getElementById(id); }
 function setText(id, val) { const el = qs(id); if (el) el.textContent = val; }
@@ -372,7 +407,7 @@ function _topLift(dynamicStats) {
   return entries[0] ? { name: entries[0][0], ...entries[0][1] } : null;
 }
 
-export function renderStrengthAnalytics(data, getState, getDays) {
+export function renderStrengthAnalytics(data, getState, getDays, options = {}) {
   const appState  = getState ? getState() : {};
   const days      = getDays ? getDays() : [];
   const maxWeek   = data.weekLabels.length;
@@ -396,12 +431,14 @@ export function renderStrengthAnalytics(data, getState, getDays) {
   section.innerHTML = screenTabBar(_strengthTab) + `<div id="strength-tab-body"></div>`;
   const body = qs('strength-tab-body');
 
-  if (_strengthTab === 'stats') _renderStrengthStats(body, data, sa, la, appState);
+  if (_strengthTab === 'stats') _renderStrengthStats(body, data, sa, la, appState, options);
   else _renderStrengthOverview(body, data, sa, allInsights, appState, days, maxWeek);
 
   mountScreenTabs('analytics-strength', (tab) => {
     _strengthTab = tab;
-    renderStrengthAnalytics(data, getState, getDays);
+    // The in-screen switch keeps the range the screen was entered with, so the
+    // mix cannot silently fall back to 30 days after one tab tap.
+    renderStrengthAnalytics(data, getState, getDays, options);
   });
 }
 
@@ -550,7 +587,7 @@ export function strengthSessionChipModels(appState, days, opts = {}) {
 
 // Stats: the full strength engine, one tap deeper. Absorbs the old 1RM (strength_pr)
 // and Weekly-Volume leaves so each fact lives in exactly one place.
-function _renderStrengthStats(body, data, sa, la, appState) {
+function _renderStrengthStats(body, data, sa, la, appState, options = {}) {
   const unit = weightUnitOf(appState);
   body.innerHTML = `
     <div id="strengthTrainingLoadDashboard"></div>
@@ -558,6 +595,7 @@ function _renderStrengthStats(body, data, sa, la, appState) {
     <div id="strengthProgressionSection"></div>
     <div id="muscleGroupAnalysisSection"></div>
     <div id="strengthHeatmapSection"></div>
+    <div id="strengthMixSection"></div>
     <h2 class="section-header mt-2">Lift PRs · est. 1RM</h2>
     <div id="allLiftsRmContainer"></div>
   `;
@@ -566,6 +604,7 @@ function _renderStrengthStats(body, data, sa, la, appState) {
   renderStrengthProgression(sa, data.weekLabels, appState);
   renderMuscleGroupAnalysis(sa, appState);
   renderStrengthHeatmap(data);
+  renderStrengthMix(appState, options.rangeId);
   // Calendar-week per-lift maxes for the selected week + its predecessor, plus the
   // set of lifts at a new calendar-week PR — so "this week / vs last week / PR" in
   // the list are all real-date based (same-exercise), never program-week buckets.

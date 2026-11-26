@@ -981,12 +981,12 @@ export function renderAnalytics() {
     case 'strength':
       setStrengthTab('overview');
       document.getElementById('analytics-strength').classList.add('active');
-      renderStrengthAnalytics(analyticsData(), _getState, _getDays);
+      renderStrengthAnalytics(analyticsData(), _getState, _getDays, { rangeId: _progressRangeId });
       break;
     case 'strength_pr':
       setStrengthTab('stats');
       document.getElementById('analytics-strength').classList.add('active');
-      renderStrengthAnalytics(analyticsData(), _getState, _getDays);
+      renderStrengthAnalytics(analyticsData(), _getState, _getDays, { rangeId: _progressRangeId });
       break;
     // Phase 3B: one Strength Volume destination. The legacy contexts choose
     // the opening tab so every existing entry point still lands correctly.
@@ -1036,7 +1036,7 @@ export function renderAnalytics() {
     }
     case 'muscle':
       document.getElementById('analytics-strength-entity').classList.add('active');
-      renderMuscleDetail(_getState(), _analyticsEntity || {}, getSelectedWeekStart());
+      renderMuscleDetail(_getState(), _analyticsEntity || {}, getSelectedWeekStart(), { rangeId: _progressRangeId });
       break;
     case 'strength-metric':
       document.getElementById('analytics-strength-metric').classList.add('active');
@@ -1096,7 +1096,7 @@ export function renderAnalytics() {
     }
     case 'muscle-load':
       document.getElementById('analytics-muscle-load').classList.add('active');
-      renderMuscleLoad(_getState());
+      renderMuscleLoad(_getState(), { rangeId: _progressRangeId });
       break;
     // V2 (S2): progress, streak and goal-progress are folded into the Review
     // screen's Stats tab — redirect so deep links still resolve.

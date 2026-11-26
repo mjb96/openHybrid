@@ -46,11 +46,10 @@ test('distance is converted, not relabelled', () => {
   assert.match(mi, /6\.21 mi/, '10 km shown as 6.21 mi');
 });
 
-test('the data table keeps run and walk columns apart', () => {
+test('PG9: the band leaves the per-bucket table to the running detail', () => {
   const html = renderEndurance(model());
-  assert.match(html, /Run \(km\)/);
-  assert.match(html, /Walk \(km\)/);
-  assert.match(html, /Show data/);
+  assert.doesNotMatch(html, /Show data/);
+  assert.match(html, /data-context="running"/);
 });
 
 test('the band links to the full metric screen', () => {

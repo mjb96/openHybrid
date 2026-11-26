@@ -47,16 +47,6 @@ function stackHTML(model, distanceUnit) {
 /**
  * @param {any} model
  */
-function consistencyHTML(model) {
-  const cells = model.consistency.map((week) => {
-    const marks = week.days.map((kind) => `<i class="pg-daycell${kind ? ` is-${kind}` : ''}"></i>`).join('');
-    const label = `${week.weekISO}: ${week.days.filter(Boolean).length} active day${week.days.filter(Boolean).length === 1 ? '' : 's'}`;
-    return `<div class="pg-days__week" aria-hidden="true">${marks}</div>`;
-  }).join('');
-  return `<div class="pg-days" aria-label="Run days over the last 12 weeks">${cells}</div>
-    <p class="pg-band__sub" style="margin-top:6px">12 weeks · a filled cell is a run day, an outlined cell a walk-only day</p>`;
-}
-
 /**
  * @param {ReturnType<import('../endurance.js').buildEnduranceModel>|null} model
  * @param {{ error?: string|null, distanceUnit?: string, hidden?: string[] }} [options]
@@ -122,21 +112,10 @@ export function renderEndurance(model, options = {}) {
     <div class="pg-statrow">${stats}</div>
     ${deltaText ? `<p class="pg-pulse__delta pg-pulse__delta--${model.deltaKm > 0 ? 'up' : model.deltaKm < 0 ? 'down' : 'flat'}">${esc(deltaText)}</p>` : ''}
     ${walks}
-    ${consistencyHTML(model)}
     <div class="pg-band__actions">
       ${Array.isArray(options.hidden) && options.hidden.includes('enduranceRunning') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="running">All running metrics →</button>'}
       ${Array.isArray(options.hidden) && options.hidden.includes('enduranceProjections') ? '' : '<button type="button" class="pg-band__action" data-action="open-analytics" data-context="projections">Projections →</button>'}
-    </div>
-    ${dataTableDisclosure(
-      ['Period', `Run (${distanceUnit})`, `Walk (${distanceUnit})`, 'Runs'],
-      model.buckets.map((bucket) => [
-        bucket.label,
-        formatRunDistance(bucket.runKm, distanceUnit),
-        bucket.walkKm ? formatRunDistance(bucket.walkKm, distanceUnit) : '—',
-        String(bucket.runCount),
-      ]),
-      `Run and walk distance for ${model.range?.spanLabel || 'the selected period'}`,
-    )}`;
+    </div>`;
 
   return band({
     id: 'endurance',

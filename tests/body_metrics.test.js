@@ -52,18 +52,19 @@ test('body fat is an entered reading and is shown with its own unit', () => {
   assert.match(html, /entered, never estimated/);
 });
 
-test('the tape delta states its baseline and each site opens its trend', () => {
+test('PG9: the band links to Measures instead of duplicating every site', () => {
   const model = buildBodyMetricsModel(state(), { range });
   const waist = model.keySites.find((site) => site.key === 'waist');
   assert.equal(waist.previousDate, '2026-11-01');
-  assert.equal(waist.deltaCm, -2);
+  assert.equal(waist.deltaCm, -2, 'the model still owns the delta');
 
   const html = renderBody(model);
-  assert.match(html, /Tape changes are since each site's previous reading\./);
-  assert.match(html, /Change since previous/);
-  assert.match(html, /Previous reading/);
-  assert.match(html, /data-action="open-analytics"[^>]*data-context="measures"[^>]*data-entity="waist"/);
-  assert.match(html, /class="pg-site__btn"/);
+  // The measurement strip and its table moved to Measures; the band's action
+  // still names how many sites are there, so the destination is not a guess.
+  assert.doesNotMatch(html, /pg-site__btn/);
+  assert.doesNotMatch(html, /Change since previous/);
+  assert.match(html, /data-action="open-analytics"[^>]*data-context="measures"/);
+  assert.match(html, /Measurements \(\d+\) →/);
 });
 
 test('no body fat reads as nothing, not as zero', () => {
@@ -83,9 +84,7 @@ test('an empty body offers one action and no chart', () => {
 test('the band takes its units from state, never a hardcoded kg', () => {
   const imperial = buildBodyMetricsModel(state({ settings: { weightUnit: 'lbs', measurementUnit: 'in' } }), { range });
   const html = renderBody(imperial);
-  // Precise: the metric render contains BOTH "cm" and "kg"; a loose /in/ regex
-  // matched "weigh-in" and could never fail.
-  assert.match(html, /<small>in<\/small>/, 'tape sites use inches');
+  // The tape strip moved to Measures, so the band's only unit is weight.
   assert.doesNotMatch(html, /<small>cm<\/small>/);
   assert.match(html, /78\.4 lb|78\.4 lbs/, 'weight uses pounds');
   assert.doesNotMatch(html, /78\.4 kg/);

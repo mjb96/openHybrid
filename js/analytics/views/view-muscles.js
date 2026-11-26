@@ -2,19 +2,18 @@
 // =============================================================================
 // MUSCLES BAND (js/analytics/views/view-muscles.js)
 //
-// "Is the volume where I need it?" — a stacked chart over the selected window,
-// a legend, and ranked rows carrying the exact numbers so the chart is never the
-// only place a value exists.
+// "Is the volume where I need it?" — one stacked chart over the selected window,
+// a legend, and the body map. The exact per-muscle rows and tables live in the
+// band detail (PG9): the overview answers, the detail proves.
 //
 // Colour carries GROUP and lightness carries the muscle within it, because 19
 // distinguishable hues do not exist on a 390px screen. Six groups are the
 // vocabulary the app already browses with.
 // =============================================================================
-import { band, dataTableDisclosure, legend, rankedRows, stateBlock } from './band-kit.js';
+import { band, legend, stateBlock } from './band-kit.js';
 import { zoneLabel } from '../calculations/volume-landmarks.js';
 import { progressDetailFor } from '../progress-sections.js';
 import { esc } from './screen-kit.js';
-import { muscleHeatmapHTML } from '../../home/body-heatmap.js';
 
 /**
  * Colour carries the GROUP; a SHADE within it carries the muscle.
@@ -207,42 +206,7 @@ export function renderMuscles(model, options = {}) {
   const selectedKey = focused?.key || 'all';
   const colours = colourMapFor(model.muscles);
   const series = seriesFor(model.muscles, colours, selectedKey);
-  const limit = Number.isFinite(Number(options.limit)) ? Number(options.limit) : 5;
-  const shown = focused ? [focused] : model.muscles.slice(0, limit);
-  const extra = focused ? 0 : model.muscles.length - shown.length;
   const rank = focused ? model.muscles.findIndex((muscle) => muscle.key === focused.key) + 1 : 0;
-
-  const rows = rankedRows(shown.map((muscle) => ({
-    label: muscle.label,
-    value: muscle.sets,
-    // Bar length is relative to the biggest muscle, not to 100 % of the window.
-    pct: model.muscles[0]?.sets > 0 ? (muscle.sets / model.muscles[0].sets) * 100 : 0,
-    color: colours.get(muscle.key) || 'var(--text-secondary)',
-    status: muscle.deltaPct == null ? '' : `${muscle.deltaPct > 0 ? '+' : ''}${muscle.deltaPct} pts`,
-    action: { action: 'open-analytics', context: 'muscle-load' },
-  })));
-
-  const table = focused
-    ? dataTableDisclosure(
-      ['Period', `${focused.label} (credited sets)`, 'Sessions'],
-      model.buckets.map((bucket) => [
-        bucket.label,
-        String(round1(Number(bucket.setsByMuscle?.[focused.key]) || 0)),
-        String(Number(bucket.sessionsByMuscle?.[focused.key]) || 0),
-      ]),
-      `${focused.label} credited sets in ${model.range?.spanLabel || 'the selected period'}`,
-    )
-    : dataTableDisclosure(
-      ['Muscle', 'Sets', 'Sessions', 'Share', 'vs previous'],
-      model.muscles.map((muscle) => [
-        muscle.label,
-        String(muscle.sets),
-        String(muscle.sessions),
-        `${muscle.sharePct}%`,
-        muscle.deltaPct == null ? '—' : `${muscle.deltaPct > 0 ? '+' : ''}${muscle.deltaPct}`,
-      ]),
-      `Credited sets per muscle for ${model.range?.spanLabel || 'the selected period'}`,
-    );
 
   const body = `
     ${muscleBar(model, selectedKey)}
@@ -252,12 +216,7 @@ export function renderMuscles(model, options = {}) {
     ${focused ? `<p class="pg-muscle-meta">Rank ${rank} of ${model.muscles.length} · ${focused.sharePct}% of credited sets · ${focused.sessions} session${focused.sessions === 1 ? '' : 's'}${focused.sessionsDelta == null ? '' : ` (${focused.sessionsDelta > 0 ? '+' : ''}${focused.sessionsDelta} vs previous)`}</p>` : ''}
     ${focused?.landmarks ? `<p class="pg-muscle-target"><b>${focused.weeklyAverage}</b> sets/week averaged over this range · typical <b>${focused.landmarks.mev}–${focused.landmarks.mav}</b> · ${esc(zoneLabel(focused.volumeZone))}</p>` : ''}
     ${focused ? '<button type="button" class="pg-band__action pg-muscle-action" data-action="open-analytics" data-context="strength">Review volume guide →</button>' : ''}
-    ${rows}
-    ${extra > 0 && !(Array.isArray(options.hidden) && options.hidden.includes('muscleLoadDetail')) ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
-    ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData
-      ? muscleHeatmapHTML(model.bodyMap, { label: 'Muscles trained in this period' })
-      : ''}
-    ${table}`;
+    `;
 
   return band({
     id: 'muscles',

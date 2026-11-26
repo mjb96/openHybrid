@@ -3,6 +3,11 @@
 // MUSCLE LOAD VIEW (analytics/views/view-muscle-load.js)
 // ==========================================
 import { buildMuscleLoadModel } from '../muscle-load.js';
+import { buildMuscleModel } from '../muscles.js';
+import { muscleHeatmapHTML } from '../../home/body-heatmap.js';
+import { resolveRange } from '../ranges.js';
+import { localDayKey } from '../../dates.js';
+import { esc } from './screen-kit.js';
 
 const RECOVERY_LABEL = {
   recovering: 'Recovering',
@@ -19,9 +24,22 @@ function trainedText(days) {
   return `${days} days ago`;
 }
 
-/** @param {any} state */
-export function renderMuscleLoad(state) {
+/** @param {any} state @param {{rangeId?:string}} [options] */
+export function renderMuscleLoad(state, options = {}) {
   const model = buildMuscleLoadModel(state);
+
+  // PG9: the period's body map lives here now, labelled with its own range so
+  // it cannot be mistaken for the weekly recovery list below.
+  const mapHost = document.getElementById('muscleLoadMap');
+  if (mapHost) {
+    const hidden = Array.isArray(state?.settings?.ui?.progress?.hidden) ? state.settings.ui.progress.hidden : [];
+    const range = resolveRange(options.rangeId || '30d', localDayKey(new Date()));
+    let volume = null;
+    try { volume = range ? buildMuscleModel(state, { range }) : null; } catch { volume = null; }
+    mapHost.innerHTML = (!hidden.includes('musclesBody') && volume?.bodyMap?.hasData)
+      ? `<p class="pg-band__sub">${esc(range.spanLabel)} · shaded by credited sets</p>${muscleHeatmapHTML(volume.bodyMap, { label: 'Muscles trained in this period' })}`
+      : '';
+  }
   const summary = document.getElementById('muscleLoadSummary');
   const host = document.getElementById('muscleLoadList');
   if (!summary || !host) return;

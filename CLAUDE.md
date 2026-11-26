@@ -336,22 +336,22 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   post-merge photo-browser-check hang).
   The screen is `js/analytics/views/view-measures.js`: `+`, See All ⇄ Entries,
   entry rows, a photo library, and a **Trends** block above the list. It is the
-  RECORD; the Body band's strip is a preview — and its add tile opens the same
-  dated entry, so there is no second capture path that skips the numbers.
+  RECORD and, since PG9, the Body band no longer duplicates it: the band carries
+  the weight chart, the entered body fat and a **Measurements (N) →** action, so
+  there is no second capture path that skips the numbers.
   `js/analytics/measurement-explorer.js` is the pure read model behind Trends:
   choose ONE measured site (or body fat), filter its points through the shared
   `ranges.js` vocabulary, and keep the headline's "since previous reading"
   baseline even when the chart is narrowed. Its range is LEAF-LOCAL
   (`data-ms-range`, default `all`), never the hub's `_progressRangeId`, and it
-  resets on entry. The Body band's key-site cells are buttons carrying
-  `data-entity`; the app router passes that through `_analyticsEntity` and the
-  explorer opens on that site. `saveMeasureEntry` accepts `unchangedSites`
+  resets on entry. `saveMeasureEntry` accepts `unchangedSites`
   (canonical cm for fields the sheet prefilled but the athlete did not edit):
   without it, 76.0 cm shown as 29.9 in saved back as 75.9 cm on every edit
   (audit AUD-R6-1).
   It needs a route that does NOT depend on body data existing: the Body band is
-  range-scoped and only renders with something to say, so the Progress footer
-  also links to Measures — a fresh athlete must be able to log a first entry.
+  range-scoped and only renders with something to say, so Measures is also
+  reached from the Progress Customize sheet and the page footer — a fresh
+  athlete must be able to log a first entry.
   `js/ui/photo-viewer.js` is the one viewer for both: compare two photos side
   by side, replace, edit the entry, delete (confirmed; a photo has no Undo).
   Replace = same id, new bytes (one photo per date). The visible control is
@@ -639,12 +639,18 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   lives in `views/view-muscles.js`; the grouping chips are ephemeral
   `data-pg-grouping` state alongside the range and focus controls. The band has
   a native one-muscle select (`data-pg-muscle`, 44px): a selected muscle becomes
-  the whole chart/headline/legend/table, with its rank and share of credited
-  sets; All muscles restores the six-group + Other stack. The selection is
-  ephemeral and resets on hub entry. No new metric
+  the whole chart/headline/legend, with its rank and share of credited sets; All
+  muscles restores the six-group + Other stack. The selection is ephemeral and
+  resets on hub entry. **PG9:** the band is one chart + legend; the ranked rows
+  and the period body map live in the `muscle-load` detail (`#muscleLoadMap`,
+  range-labelled above the weekly recovery rows), so the hub never duplicates
+  them. No new metric
   ids were needed: `strength.muscle-set-credits`, `strength.per-muscle-volume` and
   `strength.weekly-volume` already classify and inventory these numbers.
-- Progress exercises (P4 landed): `js/analytics/exercises-summary.js` ranks the
+- Progress exercises (P4 landed): the band keeps the stall list and the ranked
+  rows; **PG9** moved its rep-range/effort mix to the Strength detail
+  (`#strengthMixSection`, rendered from the same `analytics/intensity-mix.js`
+  model for the Progress range). `js/analytics/exercises-summary.js` ranks the
   lifts trained most in the selected range by sessions (best e1RM, change across
   the range, PR flag) and `views/view-exercises.js` renders five rows that link
   into the drilldown via `data-entity` / `data-entity-name`. The PR flag compares
