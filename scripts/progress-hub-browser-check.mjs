@@ -538,6 +538,7 @@ try {
       if (allPressed !== 'true') failures.push(`${width}px: exercise range did not switch to All time`);
     }
 
+
     // Review → Stats must show a twelve-week calendar log, not a program-week
     // grid that hides imported/archived sessions.
     await openHub(page);

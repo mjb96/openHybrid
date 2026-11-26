@@ -1462,7 +1462,7 @@ families without an action. Verify what already answers each question.
 | A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js`, `views/view-muscles.js` | Sessions per muscle per week with the same period comparison as sets | DONE | A session is a training DATE: one compound day trains chest and triceps once each, not once per lift or per set. The model exposes `sessions`, `previousSessions` and `sessionsDelta` per muscle and `sessionsByMuscle` per bucket; the focused muscle states `N sessions (+/− vs previous)` and both data tables carry a Sessions column. Tests: `muscles_model` frequency/previous-window cases; the Progress-hub browser check asserts the focused meta. |
 | G4 | Year heatmap | `analytics/year-heatmap.js`, `views/view-year-heatmap.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | DONE | Review → Stats ends with **Year at a glance**: twelve month grids (the rolling year, Monday- or Sunday-first from the athlete's setting) shading each day by MEASURED training time — strength gym time plus run time. A day with training but no recorded duration is outlined as “logged, time not recorded” rather than shaded as a short session, and a run-only day is one session, never two. Every past day is a 44px button that opens History filtered to that date; future days are inert. It renders independently of the seasonal Year in Review, so off-season the year is still available. Tests: `year_heatmap` (shade bands, mixed/run-only/unmeasured days, archived weeks, window edges, week start) and `year_heatmap_view`; the Progress-hub browser check asserts 12 months, shaded days, the measured total, no overflow at 320/390/412 and a real day tap into History. |
 | A8 | Relative strength | `profile-stats.js`, `athlete-profile.js`, `exercise-detail.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | DONE | The exercise drilldown states `X.XX× bodyweight (est. · <weight> on <date>)` for the big three, using the latest DATED weigh-in within 30 days and nothing else. The Profile band is labelled `est.` with the weigh-in note, and the undated per-session bodyweight fallback is gone (`_latestBodyWeight`/`_recentBodyWeight`). Tests: `relative_strength.test.js` + exercise-detail cases + the all-lifts browser check. |
-| A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `exercise-detail.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | PARTIAL | Range vocabulary covers bands; strength volume has 4w–all; e1RM stops at 12w/6m/all and the legacy Strength screen is the only 4w–all home. |
+| A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `view-strength-entity.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | DONE | The hub's 30D/3M/1Y/All bar is the one range control and governs every strength band (sets, muscles, rep mix). The chosen window now carries into the e1RM drilldown — `30d→4w`, `3m→12w`, `1y→1y`, `all→all` — so a one-year question opens on a year instead of resetting to 12 weeks; week-level questions stay on Pulse, the selected-week Strength screen and the Volume Guide, and all-time lives in Records plus the drilldown's All. Every strength metric detail already offers 4 weeks through All time. Tests: `exercise_range_handoff` (mapping, unknown ids, vocabulary), the all-lifts browser check asserts the inherited range, and the hub check covers the band ranges. |
 
 **Data rules (unchanged):** Monday-based calendar weeks unless ST7 ships (then
 the setting); never `state.currentWeek` in analytics; archived weeks count;
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A9: the Progress range carries into the lift.**
+  - The hub's 30D/3M/1Y/All bar now hands its window to the exercise drilldown
+    (`30d→4w`, `3m→12w`, `1y→1y`, `all→all`), so a one-year question opens on a
+    year instead of the leaf's remembered 12 weeks. Unknown ids leave the leaf's
+    own choice alone.
+  - Week questions stay on Pulse, the selected-week Strength screen and the
+    Volume Guide; all-time lives in Records and the drilldown's All. Every
+    strength metric detail already spans 4 weeks to All time.
+  - Tests: `tests/exercise_range_handoff.test.js`; `all-lifts-browser-check`
+    proves the inherited range in the real drilldown.
+
 - **2026-11-26 — H4 G4: the always-available year heatmap.**
   - Review → Stats ends with **Year at a glance**: twelve month grids over the
     rolling year, shaded by measured training time (strength gym time + run
@@ -1726,14 +1737,6 @@ device timing it did not measure.
   - Tests: `tests/pr_index.test.js` (baseline/tie/beat, same-date, aliases,
     year baseline, table/feed, sheet filter) and
     `scripts/records-browser-check.mjs` (56 checks).
-
-- **2026-11-26 — H4 HM3: the Strength card links to its Progress home.**
-  - The Home Strength card no longer routes to the legacy Strength screen: it
-    opens the Progress hub and scrolls to the Main exercises band, whose
-    all-lifts sheet is the PG5 index. Bands gained stable `id="band-*"` anchors
-    and `open-analytics` accepts a `data-scroll-target`.
-  - The hybrid-dashboard browser check asserts the landing (band visible in the
-    viewport) in addition to the existing card metrics.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

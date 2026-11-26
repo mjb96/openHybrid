@@ -5971,3 +5971,11 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/all_lifts.test.js`; `scripts/all-lifts-browser-check.mjs`
     (55 checks).
 
+- **2026-11-26 — H4 HM3: the Strength card links to its Progress home.**
+  - The Home Strength card no longer routes to the legacy Strength screen: it
+    opens the Progress hub and scrolls to the Main exercises band, whose
+    all-lifts sheet is the PG5 index. Bands gained stable `id="band-*"` anchors
+    and `open-analytics` accepts a `data-scroll-target`.
+  - The hybrid-dashboard browser check asserts the landing (band visible in the
+    viewport) in addition to the existing card metrics.
+
