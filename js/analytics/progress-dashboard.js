@@ -24,6 +24,7 @@ import { buildPulseModel } from './pulse.js';
 import { buildBalanceModel } from './balance.js';
 import { buildMuscleModel } from './muscles.js';
 import { buildExerciseSummaryModel } from './exercises-summary.js';
+import { buildStallList } from './stall-list.js';
 import { buildEnduranceModel } from './endurance.js';
 import { buildBodyMetricsModel } from './body-metrics.js';
 import { buildFastingBandModel } from './fasting-band.js';
@@ -65,10 +66,11 @@ export const BAND_BUILDERS = Object.freeze({
     previous: ctx.previous,
     grouping: ctx.grouping,
   }),
-  exercises: (state, ctx) => buildExerciseSummaryModel(state, {
-    range: ctx.range,
-    unit: ctx.unit,
-  }),
+  exercises: (state, ctx) => {
+    const model = buildExerciseSummaryModel(state, { range: ctx.range, unit: ctx.unit });
+    try { model.stalls = buildStallList(state, ctx.program); } catch { model.stalls = []; }
+    return model;
+  },
   endurance: (state, ctx) => buildEnduranceModel(state, {
     range: ctx.range,
     previous: ctx.previous,

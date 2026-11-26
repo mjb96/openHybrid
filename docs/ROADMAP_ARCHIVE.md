@@ -5939,3 +5939,13 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     completed / past-week states were already distinct.
   - Tests: four new `home_today_card` cases; Home Today browser check passes.
 
+- **2026-11-25 — H3 G10: the cockpit explains today's target.**
+  - `js/workout/target-why.js` turns the engine's existing evidence into one
+    line under `Target: …`: the diagnostic message (stall/fatigue), the
+    progression rationale, a baseline line for a first performance, or the
+    program prescription when no progression applies.
+  - The card renders it once and never repeats the diagnostic message; the
+    engine remains the only owner of the reason.
+  - Tests: `tests/target_why.test.js` (message, rationale, baseline, program
+    fallback, render/dedup); verified in the real cockpit.
+

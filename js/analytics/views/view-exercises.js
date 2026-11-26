@@ -113,7 +113,21 @@ export function renderExercises(model, options = {}) {
       ${hidden.includes('liftRecords') ? '' : '<button type="button" class="pg-band__action" data-action="open-records">Records →</button>'}
     </div>`;
 
+  const stalls = Array.isArray(model.stalls) ? model.stalls : [];
+  const stallsHTML = stalls.length ? `<div class="pg-stalls" role="group" aria-label="Progress checks">
+    <p class="pg-stalls__title">Progress checks</p>
+    ${stalls.slice(0, 4).map((stall) => `
+      <button type="button" class="pg-stall" data-action="open-analytics" data-context="exercise"
+        data-entity="${esc(stall.liftId)}" data-entity-name="${esc(stall.lift)}"
+        aria-label="${esc(`${stall.lift}: ${stall.message} Open exercise detail.`)}">
+        <span class="pg-stall__head"><b>${esc(stall.lift)}</b><span>${esc(stall.target)}</span></span>
+        <span class="pg-stall__msg">${esc(stall.message)}</span>
+      </button>`).join('')}
+    ${stalls.length > 4 ? `<p class="pg-stalls__more">+${stalls.length - 4} more lift${stalls.length - 4 === 1 ? '' : 's'} on a progress check</p>` : ''}
+  </div>` : '';
+
   const body = `
+    ${stallsHTML}
     <ul class="pg-ex-list">${rows}</ul>
     ${actions}
     ${dataTableDisclosure(

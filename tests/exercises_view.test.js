@@ -80,3 +80,15 @@ test('loading and error are explicit', () => {
   assert.match(error, /role="alert"/);
   assert.match(error, /Try again/);
 });
+
+test('a stall list renders above the rows with the engine message (A1)', () => {
+  const withStalls = model();
+  withStalls.stalls = [{ lift: 'Back Squat', liftId: 'back_squat', day: 'wed', target: '4 × 5', message: 'Back Squat has not improved — hold the load.' }];
+  const html = renderExercises(withStalls);
+  assert.match(html, /class="pg-stalls"/);
+  assert.match(html, /Progress checks/);
+  assert.match(html, /has not improved/);
+  assert.match(html, /data-entity="back_squat"/);
+  const clean = renderExercises({ ...withStalls, stalls: [] });
+  assert.doesNotMatch(clean, /class="pg-stalls"/);
+});
