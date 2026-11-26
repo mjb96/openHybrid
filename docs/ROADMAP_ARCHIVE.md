@@ -6002,3 +6002,14 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     `exercise_detail.test.js`; the all-lifts browser check asserts the five
     ranges and the rate line.
 
+- **2026-11-26 — H4 A5: the recap compares the session with last time.**
+  - `js/workout/session-comparison.js` finds the last completed session of the
+    SAME workout — the routine when the session came from the library, otherwise
+    the same programmed day — and compares volume (with %), sets, best e1RM and
+    the current PR count.
+  - The recap Summary shows one “vs last time” block with an up/down tone;
+    per-lift Last time/Next time stays unchanged. Only completed working sets
+    count; a future or empty session is never the baseline; runs are excluded.
+  - Tests: `tests/session_comparison.test.js` and the recap render test; checked
+    in the History detail.
+

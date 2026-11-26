@@ -38,6 +38,7 @@ import {
   rerenderWorkout,
 } from './context.js';
 import { weightUnitLabel } from './units.js';
+import { favouriteStarHTML, isFavourite, setFavourite, sortFavouritesFirst } from '../exercises/favourites.js';
 
 
 /**
@@ -58,6 +59,7 @@ function _exChip(item, appState) {
     <button class="el-chip tactile-scale" data-action="el-pick" data-exname="${escapeHtml(item.name)}">
       <span class="el-chip-copy"><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(meta)}</small></span>${prStr}
     </button>
+    ${favouriteStarHTML(appState, item.name)}
     <button class="el-info-btn" data-action="el-info" data-exname="${escapeHtml(item.name)}" aria-label="View details for ${escapeHtml(item.name)}">i</button>
   </div>`;
 }
@@ -65,7 +67,7 @@ function _exChip(item, appState) {
 function _customExChip(name, appState) {
   const pr = isE1rmExercise(name) ? _bestKnownE1rm(appState, name) : 0;
   const prStr = pr ? `<span class="el-pr">${Math.round(pr)}${weightUnitLabel(appState)} PR</span>` : '';
-  return `<div class="el-exercise-row el-exercise-row--custom"><button class="el-chip tactile-scale" data-action="el-pick" data-exname="${escapeHtml(name)}"><span class="el-chip-copy"><strong>${escapeHtml(name)}</strong><small>Custom exercise</small></span>${prStr}</button></div>`;
+  return `<div class="el-exercise-row el-exercise-row--custom"><button class="el-chip tactile-scale" data-action="el-pick" data-exname="${escapeHtml(name)}"><span class="el-chip-copy"><strong>${escapeHtml(name)}</strong><small>Custom exercise</small></span>${prStr}</button>${favouriteStarHTML(appState, name)}</div>`;
 }
 
 export function renderExerciseLibraryList(query = '') {
@@ -88,21 +90,38 @@ export function renderExerciseLibraryList(query = '') {
   if (!matches.length && !customMatches.length) {
     html = '<div class="el-empty">No matches. Try another search or clear a filter.</div>';
   } else if (q || category || equipment || muscleGroup) {
-    html = matches.map((item) => _exChip(item, appState)).join('');
+    // A filtered list is one flat result set: favourites lead it, and the rest
+    // keep the catalogue's order. Nothing is duplicated.
+    html = sortFavouritesFirst(matches, appState).map((item) => _exChip(item, appState)).join('');
     if (customMatches.length) {
-      html += '<div class="el-cat-label">⭐ Custom</div>';
-      html += [...customMatches].sort().map((name) => _customExChip(name, appState)).join('');
+      html += '<div class="el-cat-label">Custom</div>';
+      html += sortFavouritesFirst(
+        [...customMatches].sort().map((name) => ({ name })),
+        appState,
+      ).map(({ name }) => _customExChip(name, appState)).join('');
     }
   } else {
+    // The unfiltered library leads with ONE Favourites section (catalogue and
+    // custom together), then the usual categories without those rows, so a
+    // starred lift is never rendered twice.
+    const favouriteMatches = matches.filter((item) => isFavourite(appState, item.name));
+    const otherMatches = matches.filter((item) => !isFavourite(appState, item.name));
+    const favouriteCustom = [...(appState.customExercises || [])].sort().filter((name) => isFavourite(appState, name));
+    const otherCustom = [...(appState.customExercises || [])].sort().filter((name) => !isFavourite(appState, name));
+    if (favouriteMatches.length || favouriteCustom.length) {
+      html += '<div class="el-cat-label">Favourites</div>';
+      html += favouriteMatches.map((item) => _exChip(item, appState)).join('');
+      html += favouriteCustom.map((name) => _customExChip(name, appState)).join('');
+    }
     for (const categoryKey of Object.keys(EXERCISE_CATEGORY_LABELS)) {
-      const items = matches.filter((item) => item.category === categoryKey);
+      const items = otherMatches.filter((item) => item.category === categoryKey);
       if (!items.length) continue;
       html += `<div class="el-cat-label">${EXERCISE_CATEGORY_LABELS[categoryKey]}</div>`;
       html += items.map((item) => _exChip(item, appState)).join('');
     }
-    if (appState.customExercises?.length) {
-      html += `<div class="el-cat-label">⭐ Custom</div>`;
-      html += [...appState.customExercises].sort().map((name) => _customExChip(name, appState)).join('');
+    if (otherCustom.length) {
+      html += `<div class="el-cat-label">Custom</div>`;
+      html += otherCustom.map((name) => _customExChip(name, appState)).join('');
     }
   }
   container.innerHTML = html;
@@ -115,6 +134,16 @@ export function renderExerciseLibraryList(query = '') {
 
 export function handleExerciseSearch(query) {
   renderExerciseLibraryList(query);
+}
+
+/** Toggle the star and repaint the list in place, preserving the live search. */
+export function toggleExerciseFavourite(name) {
+  const appState = _getState();
+  if (!appState || !name) return false;
+  setFavourite(appState, name);
+  _saveState();
+  renderExerciseLibraryList(/** @type {HTMLInputElement|null} */ (document.getElementById('elSearchInput'))?.value || '');
+  return true;
 }
 
 export function addExerciseToDayFromLibrary(name) {

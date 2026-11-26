@@ -77,6 +77,21 @@ export function sanitizeImportedState(state) {
       }
       s.exercisePrefs = prefs;
     }
+    // Favourites are a bounded id→true map. A hostile/oversized import cannot
+    // smuggle arbitrary values or a prototype key into the star state.
+    if (s.favouriteExercises != null) {
+      const source = isRecord(s.favouriteExercises) ? s.favouriteExercises : {};
+      const favourites = Object.create(null);
+      let count = 0;
+      for (const [key, value] of Object.entries(source)) {
+        if (count >= 120) break;
+        if (!key || key.length > 120) continue;
+        if (value !== true) continue;
+        favourites[key] = true;
+        count += 1;
+      }
+      s.favouriteExercises = favourites;
+    }
     out.settings = s;
   }
   // Progress-photo METADATA only (the bytes live in IndexedDB and are never in

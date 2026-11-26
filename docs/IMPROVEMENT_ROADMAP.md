@@ -1433,7 +1433,7 @@ Verify first; sources: openGym, Hevy.
 | G2 | Reps per side | `workout/load-basis.js`, `set-utils.js` | Log the total, show the per-side split, step targets so a side never gets a fractional rep; history and 1RM keep meaning the total | MISSING | Only load basis each/per-side/total exists; a set stores one `r`; no per-side rep model or stepper. |
 | G3 | Log a past session | `run-logger.js`, `workout/one-off-session.js`, `activities.js` | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | PARTIAL | Backdated runs exist; strength sessions stamp today; no replace/keep-both/cancel when the day already has a session. |
 | G5 | Closed-app rest alerts | `notifications.js`, `timers.js`, Android `ReminderScheduler` | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | PARTIAL | A fixed-time daily OS alarm exists; it is not planned-day, not cancelled by training, and the rest alert cannot fire while WebView timers are paused. |
-| G7 | Favourite exercises | new `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | MISSING | No favourite field, star control, persistence or favourites-first sort anywhere. |
+| G7 | Favourite exercises | `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | DONE | Every picker row carries a 44px star (`aria-pressed`, Add/Remove <name>), and the unfiltered library leads with ONE **Favourites** section — catalogue and custom together, never duplicated — while a filtered list sorts favourites first. The preference is one id-keyed map (`settings.favouriteExercises`), so a catalogue alias stars the same exercise, toggling is idempotent and the map is bounded at 120; the import sanitizer keeps only `key: true` on a null-prototype object. Tests: `favourites` (alias key, custom key, bound, stable order, star naming, hostile import) and `exercise-picker-browser-check` (star size/state, persisted state, Favourites section, favourite leads). |
 | G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | PARTIAL | 66 reviewed core entries of 157; catalogue is 5,712; target is 300–500; the guard ratchets at >=32. |
 | G10 | Explained targets | `engine.js`, `templates.js`, `workout/target-why.js` | Every progression target states in one line why today's number is today's number | DONE | The cockpit card now shows one why line under the target: the engine's message for a stall/fatigue hold, the progression rationale behind the suggested load, a baseline line for a first performance, or the program prescription when history exists but no progression applies. It never invents a reason and never duplicates the diagnostic message; `tests/target_why.test.js` pins the cases and the render. |
 | LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
@@ -1629,6 +1629,18 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H3 G7: favourite exercises.**
+  - Every picker row has a 44px star with `aria-pressed` and an Add/Remove
+    name; the unfiltered library leads with ONE Favourites section (catalogue +
+    custom, never duplicated) and a filtered list sorts favourites first.
+  - One owner: `js/exercises/favourites.js` over the id-keyed
+    `settings.favouriteExercises` map (canonical id, so an alias shares one
+    star; bounded at 120; import keeps only `key: true` on a null-prototype
+    object). The Settings registry entry is read-only.
+  - Tests: `tests/favourites.test.js` plus the real picker check.
+  - Data note: additive settings key with a `{}` default — no schema version
+    bump; the JSON import sanitizer bounds it.
+
 - **2026-11-26 — H4 PG4: one Week | Month | Year Review surface.**
   - The Review screen stopped speaking Overview | Stats while the hub row speaks
     Week | Month | Year. Week = weekly story + streak + goal progress; Month =
@@ -1728,17 +1740,6 @@ device timing it did not measure.
     weight is not current bodyweight and made the ratio a false claim.
   - Tests: `tests/relative_strength.test.js`, exercise-detail cases, and the
     all-lifts browser check's relative-strength assertion.
-
-- **2026-11-26 — H4 A5: the recap compares the session with last time.**
-  - `js/workout/session-comparison.js` finds the last completed session of the
-    SAME workout — the routine when the session came from the library, otherwise
-    the same programmed day — and compares volume (with %), sets, best e1RM and
-    the current PR count.
-  - The recap Summary shows one “vs last time” block with an up/down tone;
-    per-lift Last time/Next time stays unchanged. Only completed working sets
-    count; a future or empty session is never the baseline; runs are excluded.
-  - Tests: `tests/session_comparison.test.js` and the recap render test; checked
-    in the History detail.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

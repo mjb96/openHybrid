@@ -5019,11 +5019,10 @@ html[data-theme="light"] .ob-prog-card.active {
 }
 .el-exercise-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(0, 1fr) 44px 44px;
   gap: 7px;
   margin: 0 0 7px;
 }
-.el-exercise-row--custom .el-chip { grid-column: 1 / -1; }
 .el-chip-copy {
   display: grid;
   min-width: 0;
@@ -5039,6 +5038,22 @@ html[data-theme="light"] .ob-prog-card.active {
   font-size: .62rem;
   font-weight: 600;
   text-transform: capitalize;
+}
+.el-star {
+  width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--border-medium);
+  border-radius: 11px;
+  background: var(--overlay-md);
+  color: var(--text-faint);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.el-star.is-favourite {
+  color: var(--color-amber);
+  border-color: color-mix(in srgb, var(--color-amber) 45%, transparent);
+  background: color-mix(in srgb, var(--color-amber) 12%, transparent);
 }
 .el-info-btn {
   width: 44px;

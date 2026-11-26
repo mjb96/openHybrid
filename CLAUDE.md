@@ -113,8 +113,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   cancels the native alarm (S-F5).
   `js/settings/registry.js` is the declarative descriptor list for every stored
   setting — key/path, section/page in the 13-row IA, label, type, default,
-  validator, keywords, visible/enabled rules and summary formatter. It covers all
-  48 `settings.*` keys, the settings-like root paths and deprecated legacy
+  validator, keywords, visible/enabled rules and summary formatter. It covers every stored
+  `settings.*` key, the settings-like root paths and deprecated legacy
   stores. `js/settings/store.js` is the validated write path: `set`/`setMany`
   (atomic), selector `subscribe` by key/page/section, `describe`, `resetPage`
   with an undo snapshot, and cross-tab sync that copies registered settings only
@@ -868,6 +868,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   entry with instructions must have a valid difficulty and a safety note, and
   every line must read as a sentence. Safety notes are a claim shown to someone
   loading a barbell: keep batches small enough to review, never bulk-generate.
+- Favourite exercises: `js/exercises/favourites.js` owns
+  `settings.favouriteExercises` — an id-keyed map (canonical catalogue id, or a
+  custom exercise's trimmed name) so an alias shares one star, toggling is
+  idempotent and the map is bounded at `MAX_FAVOURITES` (120). The exercise
+  picker (`workout/exercise-picker.js`) stars every row and leads the unfiltered
+  library with ONE **Favourites** section (catalogue + custom, never duplicated);
+  a filtered list sorts favourites first. The star is a 44px button with
+  `aria-pressed` and an Add/Remove name; the import sanitizer keeps only
+  `key: true` entries on a null-prototype object. The Settings registry entry is
+  read-only (no second copy of the value).
 - Exercise browsing: `MUSCLES` has 19 anatomical keys and is for volume analytics,
   NOT for pickers. Browsing uses `MUSCLE_GROUPS` (six training words, every
   anatomical key in exactly one) and `primaryMuscleGroups`, which claims a group
