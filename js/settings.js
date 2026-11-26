@@ -26,6 +26,7 @@ import { latestWeighIn } from './metrics/bodyweight.js';
 import { applyPalette, normalizePalette } from './theme.js';
 import { applyThemeTokens } from './theme/tokens.js';
 import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
+import { applyTextSize } from './ui/text-size.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
 import {
   looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport, hasBodyFatColumn,
@@ -166,6 +167,15 @@ function _applySettingControl(key, value) {
     case 'theme': setTheme(value); done(); return;
     case 'palette': setPalette(value); done(); return;
     case 'reducedMotion': setReducedMotion(value); done(); return;
+    case 'textSize':
+      try { settingsStore()?.set('textSize', value); } catch { /* validated by the store */ }
+      applyTextSize(document.documentElement, value);
+      done();
+      return;
+    case 'haptics':
+      try { settingsStore()?.set('haptics', value); } catch { /* validated by the store */ }
+      done();
+      return;
     case 'fitnessGoal': setFitnessGoal(value); done(); return;
     case 'weightGoal': setWeightGoal(value); done(); return;
     case 'fitnessLevel': setFitnessLevel(value); done(); return;
@@ -2227,6 +2237,7 @@ export function applySettingsOnBoot(appState) {
   });
   _applyTheme(s.theme || 'dark');
   applyPalette(document.documentElement, s.palette);
+  applyTextSize(document.documentElement, s.textSize);
   const motionPref = normalizeMotionPreference(s.reducedMotion);
   applyMotionPreference(motionPref);
   if (motionPref === 'system') {

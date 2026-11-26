@@ -998,7 +998,7 @@ or corrects it.
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | DONE | Profile now leads with editable Identity, Body metrics (weigh-in, height, DOB, sex, target/rate) and Training goal groups, with links to weight history and Measures. Schema v17 adds the optional fields as null; the weigh-in writes the canonical `bodyWeightLog` and stays in sync with Home. |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
-| ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette and a System/Reduce/Full motion preference now share the Appearance card. Text size, haptics, demo size and a sounds group are still missing. |
+| ST8 | **Appearance and feel** | `settings.js`, `theme.js`, `ui/motion.js`, `ui/text-size.js`, `haptics.js` | Theme, text size, reduced motion, haptics, sounds, demo size (G8) on one screen | PARTIAL | Theme, palette, System/Reduce/Full motion, **text size** (Default / Large / Extra large scaling the root font) and **haptics** (on/off for set/PR feedback) now share Look & Home. Sounds still live with the rest timers they belong to (Training → Logging), and demo size (G8) is not built. Tests: `text_size` + a static wiring guard; the Settings browser check toggles Extra large and asserts the root font grows.
 | ST9 | **Data safety screens** | `settings.js`, `portability/auto-backup.js`, `photos/library.js` | Backup status, last backup, restore, export; honest about what each does and does not carry (photos are device-local) | DONE | Settings → Data now states the **last manual backup** (Today / Yesterday / N days ago) and gives one calm warning at 7+ days or when none exists. The timestamp is root metadata (`lastBackupAt`), written only after the platform confirms a saved/started export — never after a cancel or failure — and it is not a setting, so it never appears in the settings registry. Automatic backup keeps its own status/time; progress photos stay device-local with the Measures zip. Restore remains the JSON import + the previous-import snapshot. Tests: `backup_status` (wording, ISO timestamps, stale line, junk) and a static wiring guard. |
 | ST10 | **Destructive actions** | `settings.js`, `ui/confirm-modal.js` | Reset and delete-all behind an explicit two-step confirm with a plain description of what is lost; recoverable actions use Undo instead (§4.5) | DONE | Delete-all now requires typing DELETE after the first confirmation; the Data page shows every export beside it. Simple pages have a confirmed Reset to defaults with an Undo snackbar; Units is excluded so a reset cannot relabel history without conversion. |
 | ST11 | **Notifications screens** | `settings.js`, `notifications.js` | UI and preferences only; delivery work is G5 in H3 | PARTIAL | Four toggles + two time pickers exist. The master switch is now `settings.notificationsEnabled` and survives reload (S-F5); no planned-day preference yet. Delivery is G5. |
@@ -1648,6 +1648,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — ST8: text size + haptics.**
+  - Look & Home gains **Text size** (Default / Large / Extra large) and
+    **Haptics**. Text size is one root CSS hook (`html[data-text-size]` scaling
+    the root font) applied at boot and on change; haptics gates the set/PR
+    feedback without touching logging, timers or PR detection.
+  - Sounds stay with the rest timers they belong to; demo size (G8) is not
+    built, so the row stays PARTIAL rather than claiming otherwise.
+  - Tests: `text_size` + a static wiring guard; the Settings browser check
+    toggles Extra large and asserts the root font grows to 20px.
+
 - **2026-11-26 — ST9: backup trust.**
   - Settings → Data states the **last manual backup** ("Today / Yesterday / N
     days ago") with one calm warning at 7+ days or when none exists.
@@ -1756,31 +1766,6 @@ device timing it did not measure.
   - Tests updated to the new contract (`body_metrics`, `endurance_view`,
     `exercises_view`, `muscles_view`) plus `strength_mix_view`; the photo browser
     check now drives the real photo flow from Measures.
-
-- **2026-11-26 — H4 A9: the Progress range carries into the lift.**
-  - The hub's 30D/3M/1Y/All bar now hands its window to the exercise drilldown
-    (`30d→4w`, `3m→12w`, `1y→1y`, `all→all`), so a one-year question opens on a
-    year instead of the leaf's remembered 12 weeks. Unknown ids leave the leaf's
-    own choice alone.
-  - Week questions stay on Pulse, the selected-week Strength screen and the
-    Volume Guide; all-time lives in Records and the drilldown's All. Every
-    strength metric detail already spans 4 weeks to All time.
-  - Tests: `tests/exercise_range_handoff.test.js`; `all-lifts-browser-check`
-    proves the inherited range in the real drilldown.
-
-- **2026-11-26 — H4 G4: the always-available year heatmap.**
-  - Review → Stats ends with **Year at a glance**: twelve month grids over the
-    rolling year, shaded by measured training time (strength gym time + run
-    time). A training day with no recorded duration is outlined as “logged,
-    time not recorded”; nothing is estimated. A run-only day counts as one
-    session.
-  - Every past day is a 44px button that opens History filtered to that date;
-    future days are inert. It is independent of the seasonal Year in Review, so
-    the year is available in every month.
-  - Tests: `tests/year_heatmap.test.js` (shade bands, mixed/run-only/unmeasured
-    days, archived weeks, window edges, week start) and
-    `tests/year_heatmap_view.test.js`; the Progress-hub browser check asserts the
-    rendered year, no 320/390/412 overflow and a real day tap into History.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

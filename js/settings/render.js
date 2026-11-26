@@ -377,6 +377,7 @@ function genericGroups(pageId, state, store) {
   } else if (pageId === 'once.look') {
     add('Theme', ['theme', 'palette', 'reducedMotion']);
     groups.push('<p class="s-group__footnote">Palettes shape dark mode; Light keeps its own palette.</p>');
+    add('Text & feedback', ['textSize', 'haptics']);
     groups.push(settingsGroup({
       label: 'Layout',
       rows: [
