@@ -24,7 +24,12 @@ import { analyticsBackDestination } from './analytics/navigation.js';
 import { estimatedE1rmForSet } from './strength/e1rm.js';
 import { resolveExercise } from './exercises/catalog.js';
 import { renderStrengthVolume, setStrengthVolumeTab } from './analytics/views/view-strength-volume.js';
-import { renderExerciseDetail, renderMuscleDetail } from './analytics/views/view-strength-entity.js';
+import {
+  exerciseRangeForProgress,
+  renderExerciseDetail,
+  renderMuscleDetail,
+  setExerciseRange,
+} from './analytics/views/view-strength-entity.js';
 import { renderRunningMetricDetail } from './analytics/views/view-running-metric.js';
 import { renderStrengthMetricDetail } from './analytics/views/view-strength-metric.js';
 import { renderRunPerformance } from './analytics/views/view-run-performance.js';
@@ -1018,10 +1023,17 @@ export function renderAnalytics() {
       document.getElementById('analytics-recovery-performance').classList.add('active');
       renderRecoveryPerformance(_getState());
       break;
-    case 'exercise':
+    case 'exercise': {
+      // A9: the window the athlete chose in Progress carries into the lift, so
+      // a 1-year question is not answered with a 12-week chart.
+      if (_analyticsOrigin === 'insights') {
+        const inherited = exerciseRangeForProgress(_progressRangeId);
+        if (inherited) setExerciseRange(inherited);
+      }
       document.getElementById('analytics-strength-entity').classList.add('active');
       renderExerciseDetail(_getState(), _analyticsEntity || {});
       break;
+    }
     case 'muscle':
       document.getElementById('analytics-strength-entity').classList.add('active');
       renderMuscleDetail(_getState(), _analyticsEntity || {}, getSelectedWeekStart());

@@ -69,6 +69,10 @@ try {
   }));
   check(mix.shown && /Rep range/.test(mix.text), `the band states the rep-range mix (${mix.text.slice(0, 80)})`);
 
+  // A9: the window chosen in Progress carries into the lift drilldown.
+  await page.click('[data-pg-range="1y"]');
+  await page.waitForTimeout(300);
+
   await page.evaluate(() => document.querySelector('[data-action="open-all-lifts"]')?.click());
   await page.waitForTimeout(400);
   const opened = await page.evaluate(() => ({
@@ -99,6 +103,9 @@ try {
   }));
   check(!detail.sheet, 'the sheet closes when a lift opens');
   check(detail.active === 'analytics-strength-entity', `the exercise drilldown opens (${detail.active})`);
+
+  const inherited = await page.evaluate(() => document.querySelector('[data-exercise-range].is-active')?.getAttribute('data-exercise-range') || '');
+  check(inherited === '1y', `the drilldown inherits the Progress 1Y range (got ${inherited || 'nothing'})`);
 
   // A3: the drilldown offers 4 weeks through all time and states a weekly trend.
   const ranges = await page.evaluate(() => [...document.querySelectorAll('[data-exercise-range]')].map((el) => el.getAttribute('data-exercise-range')));

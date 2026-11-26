@@ -13,9 +13,32 @@ import { buildVolumeGuideModel, musclePriorityLabel, muscleVolumeCorridor } from
 import { resolveProgramForState } from '../../state.js';
 import { formatDayMonthShort, formatWeekRange } from '../../dates.js';
 
-/** @type {'12w'|'6m'|'all'} */
 /** @type {'4w'|'12w'|'6m'|'1y'|'all'} */
 let _exerciseRange = '12w';
+export const EXERCISE_RANGES = Object.freeze(['4w', '12w', '6m', '1y', 'all']);
+
+/**
+ * The exercise drilldown's window follows the Progress range the athlete
+ * entered with, so "is this working this year?" opens on a year instead of
+ * silently resetting to 12 weeks. Unknown ids leave the leaf's own choice
+ * alone.
+ * @param {string} rangeId the hub's 30d | 3m | 1y | all
+ * @returns {'4w'|'12w'|'1y'|'all'|null}
+ */
+export function exerciseRangeForProgress(rangeId) {
+  switch (String(rangeId)) {
+    case '30d': return '4w';
+    case '3m': return '12w';
+    case '1y': return '1y';
+    case 'all': return 'all';
+    default: return null;
+  }
+}
+
+/** @param {string} id */
+export function setExerciseRange(id) {
+  if (EXERCISE_RANGES.includes(String(id))) _exerciseRange = /** @type {any} */ (id);
+}
 
 const fmtDate = (iso) => {
   if (!iso) return 'Date unavailable';
@@ -191,7 +214,7 @@ export function renderExerciseDetail(state, entity = {}) {
 
   root.querySelectorAll('[data-exercise-range]').forEach(button => button.addEventListener('click', () => {
     const next = button.getAttribute('data-exercise-range');
-    _exerciseRange = ['4w', '12w', '6m', '1y', 'all'].includes(String(next)) ? /** @type {any} */ (next) : '12w';
+    _exerciseRange = EXERCISE_RANGES.includes(String(next)) ? /** @type {any} */ (next) : '12w';
     renderExerciseDetail(state, entity);
   }));
 }

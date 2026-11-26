@@ -729,6 +729,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   summary from the same band models the screen renders, via the existing
   `shareImageCanvas`; it deliberately does not re-implement each chart for an image.
   The roadmap session log records the whole programme.
+- The hub's range also carries into a Progress-origin exercise drilldown
+  (`30d→4w`, `3m→12w`, `1y→1y`, `all→all`, `exerciseRangeForProgress`), so a
+  one-year question opens on a year; a leaf opened from another screen keeps
+  its own remembered range.
 - Progress has ONE time control (the range bar). `hub` is **not** in
   `WEEK_SCOPED_CONTEXTS`: the shared week navigator is hidden on Progress because
   the surface is range-driven (30D/3M/1Y/All), and showing a week stepper beside it
