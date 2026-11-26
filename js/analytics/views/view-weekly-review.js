@@ -11,27 +11,37 @@ import { showToast, getProgramById } from '../../state.js';
 import { weightUnitOf, formatVolume } from '../utils.js';
 import { reviewToText, buildWeeklyReview } from '../../brain/weekly-review.js';
 import { shareSummaryCard, weeklyReviewShareRows } from '../share-card.js';
-import { statCard } from '../charts/chart-primitives.js';
 import { renderMonthlyReport } from './view-monthly-report.js';
 import { renderYearInReview } from './view-year-review.js';
 import { renderYearHeatmap } from './view-year-heatmap.js';
 import { renderProgressAnalytics, renderStreakDetail, renderGoalProgressDetail } from './view-progress.js';
-import { screenTabBar, mountScreenTabs } from './screen-kit.js';
+import { mountScreenTabs } from './screen-kit.js';
 import { getSelectedWeekStart } from '../week-nav.js';
 
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const KM_TO_MI = 0.621371;
 
-// ---- V2: unified Review screen (Overview | Stats) -----------------------
-// The weekly/monthly story in one place — Overview reports the selected
-// calendar week (totals · adherence · one focus); Stats holds the full Week in
-// Review + the Monthly Report (absorbing the weekly-summary and monthly-report
-// leaves) plus streak, goal progress and the consistency log.
-//
-// Adherence is a claim about the ACTIVE plan and the focus is advice for the
-// week ahead, so both are absent for a historical selection (see the builder).
-let _reviewTab = 'overview';
-export function setReviewTab(tab) { _reviewTab = tab === 'stats' ? 'stats' : 'overview'; }
+// ---- V3: ONE Review surface, Week | Month | Year -------------------------
+// The hub's Reviews row already speaks Week | Month | Year; the screen used to
+// answer Overview | Stats and made the athlete translate. Each tab is also its
+// time scope: Week follows the shared calendar navigator, Month owns the
+// Training Report + consistency log, Year owns the seasonal recap + the year
+// calendar. Adherence is a claim about the ACTIVE plan and the focus is advice
+// for the week ahead, so both are absent for a historical selection (the
+// builder owns that rule).
+const REVIEW_TABS = Object.freeze([['week', 'Week'], ['month', 'Month'], ['year', 'Year']]);
+
+/** The Review period bar. Role=group + aria-pressed, never a fake tablist. */
+export function reviewTabBar(active) {
+  return `<div class="an-tabbar" role="group" aria-label="Review period">${REVIEW_TABS.map(([id, label]) =>
+    `<button class="an-tab ${active === id ? 'an-tab--active' : ''}" data-an-tab="${id}" aria-pressed="${active === id}">${label}</button>`).join('')}</div>`;
+}
+
+let _reviewTab = 'week';
+/** Accepts only the three real periods; legacy callers land on Week. */
+export function setReviewTab(tab) {
+  _reviewTab = tab === 'month' || tab === 'year' ? tab : 'week';
+}
 /** The active Review tab. Read by the router's week-nav gate (never a second copy). */
 export function getReviewTab() { return _reviewTab; }
 
@@ -45,16 +55,60 @@ export function renderReview(data, getState, getDays, onTabChange) {
   // deliberately NOT week-scoped and stay on their own windows.
   const review  = buildWeeklyReview(state, getDays(), program, { weekStart: getSelectedWeekStart() });
 
-  section.innerHTML = screenTabBar(_reviewTab) + `<div id="review-tab-body"></div>`;
+  section.innerHTML = reviewTabBar(_reviewTab) + `<div id="review-tab-body"></div>`;
   const body = document.getElementById('review-tab-body');
 
-  if (_reviewTab === 'stats') {
+  if (_reviewTab === 'year') {
     body.innerHTML = `
       <div id="yearReviewContainer"></div>
+      <div id="yearHeatmapContainer"></div>
+    `;
+    // Seasonal (December/January) and independent of the selected week: the
+    // calendar year, not a program week or the navigator. A failure here must
+    // not blank the year calendar below it.
+    try {
+      renderYearInReview(state, getDays());
+    } catch (error) {
+      console.error('Year in Review failed to render', error);
+      const container = document.getElementById('yearReviewContainer');
+      if (container) {
+        container.hidden = true;
+        container.innerHTML = '';
+      }
+    }
+    // The year calendar is always available — unlike Year in Review it is not
+    // seasonal — so it renders independently.
+    try {
+      renderYearHeatmap(state);
+    } catch (error) {
+      console.error('Year heatmap failed to render', error);
+      const container = document.getElementById('yearHeatmapContainer');
+      if (container) {
+        container.hidden = true;
+        container.innerHTML = '';
+      }
+    }
+  } else if (_reviewTab === 'month') {
+    body.innerHTML = `
+      <h2 class="section-header mt-2">Training Report</h2>
+      <div id="monthlyReportContainer"></div>
+
+      <h2 class="section-header mt-4">Consistency Log</h2>
+      <article class="card-dark p-3 mb-4">
+        <div class="table-wrapper">
+          <table aria-label="Training History">
+            <thead><tr><th scope="col">Week</th><th scope="col">Sessions</th><th scope="col">Volume</th><th scope="col">Distance</th></tr></thead>
+            <tbody id="analyticsTimelineTableBody"></tbody>
+          </table>
+        </div>
+      </article>
+    `;
+    renderMonthlyReport(getState, getDays, () => program);
+    renderProgressAnalytics(data, getState);
+  } else {
+    body.innerHTML = `
       <h2 class="section-header mt-2">Week in Review</h2>
       <div id="weeklyReviewContainer"></div>
-      <h2 class="section-header mt-4">Training Report</h2>
-      <div id="monthlyReportContainer"></div>
 
       <h2 class="section-header mt-4">Streak</h2>
       <div class="grid-2-col gap-2 mb-4">
@@ -73,59 +127,18 @@ export function renderReview(data, getState, getDays, onTabChange) {
 
       <h2 class="section-header mt-4">Goal Progress</h2>
       <div id="analytics-goal-detail"></div>
-
-      <h2 class="section-header mt-4">Consistency Log</h2>
-      <article class="card-dark p-3 mb-4">
-        <div class="table-wrapper">
-          <table aria-label="Training History">
-            <thead><tr><th scope="col">Week</th><th scope="col">Sessions</th><th scope="col">Volume</th><th scope="col">Distance</th></tr></thead>
-            <tbody id="analyticsTimelineTableBody"></tbody>
-          </table>
-        </div>
-      </article>
-
-      <div id="yearHeatmapContainer"></div>
     `;
     renderWeeklyReview(review, state);
-    // Seasonal (December/January) and independent of the selected week: the
-    // calendar year, not a program week or the navigator. A failure here must
-    // not blank Week in Review, the report, streak, goals or the log below.
-    try {
-      renderYearInReview(state, getDays());
-    } catch (error) {
-      console.error('Year in Review failed to render', error);
-      const container = document.getElementById('yearReviewContainer');
-      if (container) {
-        container.hidden = true;
-        container.innerHTML = '';
-      }
-    }
-    // The year calendar is always available — unlike Year in Review it is not
-    // seasonal — so it renders independently and cannot blank the rest of Stats.
-    try {
-      renderYearHeatmap(state);
-    } catch (error) {
-      console.error('Year heatmap failed to render', error);
-      const container = document.getElementById('yearHeatmapContainer');
-      if (container) {
-        container.hidden = true;
-        container.innerHTML = '';
-      }
-    }
-    renderMonthlyReport(getState, getDays, () => program);
     // Folded in from the retired progress / streak / goal-progress leaves.
     renderStreakDetail(data, getState, getDays);
     renderGoalProgressDetail(data, getState);
-    renderProgressAnalytics(data, getState);
-  } else {
-    renderReviewOverview(body, review, state);
   }
 
   mountScreenTabs('analytics-weekly-review', (tab) => {
     _reviewTab = tab;
     renderReview(data, getState, getDays, onTabChange);
-    // Review's Overview is week-scoped and Stats is not, so the shared week
-    // navigator has to be re-resolved on every in-screen switch.
+    // Week is the only Review period that follows the shared week navigator,
+    // so its visibility has to be re-resolved on every in-screen switch.
     if (onTabChange) onTabChange();
   });
 }
@@ -150,55 +163,6 @@ function wireWeekShare(scope, selector, review, state) {
     try { await shareWeekCard(review, state); }
     catch { showToast('Sharing unavailable on this device', true); }
   });
-}
-
-/**
- * Review → Overview. Exported so the render guard can drive both the live and
- * the historical copy without depending on the system clock.
- * @param {HTMLElement} body
- * @param {ReturnType<typeof buildWeeklyReview>} review
- * @param {any} [state] durable state; when present the week can be shared as a card
- */
-export function renderReviewOverview(body, review, state) {
-  const period = review.isCurrentWeek ? 'this week' : 'that week';
-  if (!review.hasData) {
-    body.innerHTML = `<article class="card-dark an-hero">
-      <div class="an-hero__k">${esc(review.label)}</div>
-      <div class="an-hero__val">No sessions</div>
-      <div class="an-hero__empty">${review.isCurrentWeek
-        ? 'Nothing logged yet — your review builds itself as you train.'
-        : 'No training was recorded that week.'}</div>
-    </article>`;
-    return;
-  }
-  const hero = `<article class="card-dark an-hero">
-      <div class="an-hero__k">${esc(review.label)}</div>
-      <div class="an-hero__val">${review.totals.sessions}</div>
-      <div class="an-hero__empty">${review.totals.sessions === 1 ? 'session' : 'sessions'} logged · ${review.totals.prCount} e1RM PR lift${review.totals.prCount === 1 ? '' : 's'}</div>
-    </article>`;
-
-  const cards = [statCard({ label: 'Sessions', value: String(review.totals.sessions), sub: `logged ${period}`, color: '#3b82f6' })];
-  // Adherence scores work against the ACTIVE plan, so it is only a real claim on
-  // the live week — a completed week has no plan to be measured against.
-  if (review.consistency.total != null) {
-    cards.push(statCard({ label: 'Adherence', value: review.consistency.pct + '%', sub: `${review.consistency.done}/${review.consistency.total} planned`, color: '#10b981' }));
-  }
-  // "Next week" advice only ever describes the coming week.
-  const focusHTML = review.focus ? `
-    <article class="card-dark p-3 mb-3" style="border-left:3px solid var(--color-blue);">
-      <div style="font-weight:800;color:var(--color-blue);font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">${esc(review.focus.area)}</div>
-      <p style="color:var(--text-secondary);font-size:0.84rem;line-height:1.5;margin:0;">${esc(review.focus.text)}</p>
-    </article>` : '';
-
-  body.innerHTML = `
-    ${hero}
-    <div class="grid-2-col gap-2 mb-2">
-      ${cards.join('')}
-    </div>
-    ${focusHTML}
-    ${state ? '<button id="wrevOverviewShareBtn" class="btn-action-block btn-ghost" aria-label="Share this week\'s review as a card">📤 Share week</button>' : ''}
-  `;
-  if (state) wireWeekShare(body, '#wrevOverviewShareBtn', review, state);
 }
 
 function deltaChip(pct) {

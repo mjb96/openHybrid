@@ -703,7 +703,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   outside it fails the suite. There is **no “More detail” section and no footer
   list**: History is a header icon, “How this page is calculated” is a header
   info disclosure, and the recaps are ONE Reviews row (Week | Month | Year,
-  legacy ids `weekly-review`/`monthly-report`/`year-review`). A band with a
+  legacy ids `weekly-review`/`monthly-report`/`year-review`). **PG4:** the
+  Review screen itself carries those same three periods (Week = weekly story +
+  streak + goal progress, Month = Training Report + consistency log, Year = Year
+  in Review + the year calendar); the old Overview | Stats tabs are gone and the
+  only Week tab follows the shared week navigator. A band with a
   route renders its whole header as a 44px “Details ›” control; the detail shows
   the inherited `Progress · <range>` chip and Back scrolls to the originating
   band (`data-band-origin`). Default customize order is strength-first: Pulse,
@@ -746,7 +750,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   only ever governed Pulse. Pulse is therefore always the CURRENT calendar week
   (`weekStartISO` is no longer passed from the hub); the week navigator remains on
   the screens that really are one calendar week (Strength/Running/Volume/Review
-  Overview). The hub browser check asserts the navigator is ABSENT there and that
+  Week). The hub browser check asserts the navigator is ABSENT there and that
   switching the range changes what the Endurance band reports.
 - Progress, second-audit facts: the hub's delegated handler dispatches through
   `progressControlTarget(el)` in `js/analytics.js` — **Share, Export photos and
