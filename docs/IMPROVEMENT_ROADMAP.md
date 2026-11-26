@@ -1453,7 +1453,7 @@ families without an action. Verify what already answers each question.
 
 | ID | Item | Owner | Target behaviour | Status | Evidence / gap |
 | --- | --- | --- | --- | --- | --- |
-| A1 | Stall detection | `engine.js`, `templates.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | PARTIAL | The cockpit now renders the evidence/action message under the target, so a PROGRESS CHECK badge explains itself. No analytics surface lists stalls yet. |
+| A1 | Stall detection | `engine.js`, `templates.js`, `analytics/stall-list.js`, `views/view-exercises.js` | Per lift: flag a flat or falling estimated 1RM over N comparable sessions with the evidence and one suggested action | DONE | The cockpit already explains its PROGRESS CHECK; the Main exercises band now lists the same fact for the ACTIVE programme. `buildStallList` asks `computeDiagnosticForLift` per programmed lift (no re-derived rule), so each entry carries the engine’s evidence sentence and target; a row opens the exercise drilldown. The list is empty without a programme and is capped with an honest “+N more”. Tests: `stall_list` + the exercises view; the all-lifts browser check asserts the block. |
 | A2 | Volume vs target per muscle | `analytics/volume-guide.js`, `muscle-load.js`, `analytics/muscles.js` | Weekly sets per muscle against the volume guide with under/over status and one action | DONE | The range view states the focused muscle's **weekly average** against the typical band (`MEV–MAV`), with the shared `classifyVolume` label (detraining/maintenance/growth/optimal/overreaching) and one action: **Review volume guide**. Copy stays factual — population references are never turned into “add N sets”. The current-week Volume Guide and its target band are unchanged. Tests: `muscles_model` average/landmarks and `muscles_view` focused block; the Progress-hub browser check asserts both. |
 | A3 | Strength trend | `analytics/strength-detail.js`, `strength-calcs.js`, `exercise-detail.js`, `views/view-strength-entity.js` | e1RM trend for main lifts over 4 weeks, 12 weeks, 1 year and all-time, with rate of change | DONE | The exercise drilldown offers 4 weeks / 12 weeks / 6 months / 1 year / all time, and states the e1RM **rate of change per week** for the selected span (first→latest, never fabricated from one point or for holds/carries). ROI and block PR stay as they were; the program-week-indexed ROI is a separate metric, not this chart. `exercise-detail` tests pin the boundaries and the rate; the all-lifts browser check drives the range control. |
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
@@ -1629,6 +1629,17 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A1: the Progress checks list.**
+  - Main exercises now lists the engine's PROGRESS CHECKs for the active
+    programme: `buildStallList` calls `computeDiagnosticForLift` for each
+    programmed lift, so the analytics list and the cockpit badge cannot
+    disagree. Each entry names the lift, its target and the engine's evidence
+    sentence; tapping it opens the exercise drilldown.
+  - No programme means no list, and more than four entries show an honest
+    “+N more” rather than an endless band.
+  - Tests: `tests/stall_list.test.js` (flat/improving/no-programme) and the
+    exercises view; the all-lifts browser check asserts the rendered block.
+
 - **2026-11-26 — H4 A2: volume against the typical band in the range view.**
   - The focused muscle states its **weekly average** over the selected range and
     the typical `MEV–MAV` band, classified by the shared `classifyVolume`; the
@@ -1720,16 +1731,6 @@ device timing it did not measure.
   - Tests: `revealDelta` maths and the enterkeyhint hook in
     `visible_viewport.test.js`; `lg2-keyboard-browser-check` shrinks a real
     Chromium viewport and proves the field and sheet stay visible.
-
-- **2026-11-25 — H3 G10: the cockpit explains today's target.**
-  - `js/workout/target-why.js` turns the engine's existing evidence into one
-    line under `Target: …`: the diagnostic message (stall/fatigue), the
-    progression rationale, a baseline line for a first performance, or the
-    program prescription when no progression applies.
-  - The card renders it once and never repeats the diagnostic message; the
-    engine remains the only owner of the reason.
-  - Tests: `tests/target_why.test.js` (message, rationale, baseline, program
-    fallback, render/dedup); verified in the real cockpit.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

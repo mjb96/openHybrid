@@ -24,14 +24,16 @@ const weeks = {};
 dates.forEach((date, idx) => {
   weeks[String(idx + 1)] = {
     activationId: 'act', programId: 'hybrid_engine', dates: { wed: date },
-    lifts: { wed: Object.fromEntries(lifts.map(([name, w, r]) => [name, [{ w: String(w), r: String(r), c: true, tr: r }]])) },
+    lifts: { wed: Object.fromEntries(lifts.map(([name, w, r]) => [name, [{
+      w: String(w), r: String(idx === 2 && name === 'Back Squat' ? 3 : r), c: true, tr: r,
+    }]])) },
     gymStats: {}, runSessions: {},
   };
 });
 const state = {
-  schemaVersion: 17, currentWeek: '4', activeProgramId: 'hybrid_engine', activeActivationId: 'act', weekStartedAt: '2026-11-23',
+  schemaVersion: 17, currentWeek: '5', activeProgramId: 'hybrid_engine', activeActivationId: 'act', weekStartedAt: '2026-11-23',
   settings: { name: 'Alex', theme: 'dark', palette: 'midnight', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon', onboardingComplete: true, fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentProfiles: [], restPeriods: {} },
-  weeks: { ...weeks, '4': { activationId: 'act', programId: 'hybrid_engine', dates: {}, lifts: {}, gymStats: {}, runSessions: {} } },
+  weeks: { ...weeks, '5': { activationId: 'act', programId: 'hybrid_engine', dates: {}, lifts: {}, gymStats: {}, runSessions: {} } },
   bodyWeightLog: [{ date: '2026-11-23', weight: 78 }], bodyMeasurements: [],
   programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
   healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
@@ -56,6 +58,12 @@ try {
   await page.locator('button', { hasText: 'NOT YET' }).click({ timeout: 500 }).catch(() => {});
   await page.evaluate(() => document.querySelector('.bottom-nav [data-target="analytics"]')?.click());
   await page.waitForTimeout(700);
+  const stalls = await page.evaluate(() => ({
+    shown: !!document.querySelector('#band-exercises .pg-stalls'),
+    text: document.querySelector('#band-exercises .pg-stalls')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+  }));
+  check(stalls.shown && /Back Squat/.test(stalls.text), `the band lists the stalled lift (${stalls.text.slice(0, 80)})`);
+
   await page.evaluate(() => document.querySelector('[data-action="open-all-lifts"]')?.click());
   await page.waitForTimeout(400);
   const opened = await page.evaluate(() => ({
