@@ -752,6 +752,16 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   the screens that really are one calendar week (Strength/Running/Volume/Review
   Week). The hub browser check asserts the navigator is ABSENT there and that
   switching the range changes what the Endurance band reports.
+- H6a best efforts: `js/analytics/best-efforts.js` + `views/view-best-efforts.js`
+  read ONLY the splits a run already carries (`collectRunningHistory` records
+  now include them by reference). Runs only — walks never produce an effort.
+  A live GPS split's `dist` is km; a FIT lap's is metres, so the model scales by
+  `run.source` (`fit`/`fit-import` → 1000). Efforts are contiguous and
+  lap-aligned, interpolating the final partial lap; a distance appears only when
+  a run covered it. Race estimates use Riegel from the shortest measured effort
+  of at least 3 km, are ALWAYS labelled `(est.)`, and name their basis; with no
+  such effort the block is hidden. Home is the running Overview; R2/R3/R7/R9
+  remain deferred until running resumes.
 - H5 block review: `js/analytics/block-review.js` + `views/view-block-review.js`
   render **Review → Month → Block Review** over the last four COMPLETED calendar
   weeks (ending the Sunday before the current week), compared with the four

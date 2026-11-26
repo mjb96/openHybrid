@@ -129,10 +129,12 @@ export function formatEffortPace(seconds, km) {
 
 /**
  * @param {any} state
- * @param {{ todayISO?: string }} [options]
+ * @param {{ todayISO?: string, history?: ReturnType<typeof collectRunningHistory> }} [options]
  */
-export function buildBestEfforts(state, { todayISO } = {}) {
-  const history = collectRunningHistory(state, { today: todayISO });
+export function buildBestEfforts(state, { todayISO, history: provided } = {}) {
+  // The running screen already collected this (it owns the selected through
+  // date); reuse it rather than walking every week twice.
+  const history = provided || collectRunningHistory(state, { today: todayISO });
   const runs = history.records.filter((record) => record.type === 'run');
   const withSplits = runs.filter((record) => Array.isArray(record.splits) && record.splits.length > 0);
 

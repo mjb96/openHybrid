@@ -6041,3 +6041,14 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `muscles_model` weekly average/landmarks and `muscles_view` focused
     block; the Progress-hub browser check asserts the reference and action.
 
+- **2026-11-26 — H4 A1: the Progress checks list.**
+  - Main exercises now lists the engine's PROGRESS CHECKs for the active
+    programme: `buildStallList` calls `computeDiagnosticForLift` for each
+    programmed lift, so the analytics list and the cockpit badge cannot
+    disagree. Each entry names the lift, its target and the engine's evidence
+    sentence; tapping it opens the exercise drilldown.
+  - No programme means no list, and more than four entries show an honest
+    “+N more” rather than an endless band.
+  - Tests: `tests/stall_list.test.js` (flat/improving/no-programme) and the
+    exercises view; the all-lifts browser check asserts the rendered block.
+
