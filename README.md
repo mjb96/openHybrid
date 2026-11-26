@@ -45,8 +45,10 @@ the same training picture.
   Training Report and consistency log, and a seasonal Year in Review alongside
   the year calendar.
 - **Running** — manual entries, native GPS tracking with a route map, splits,
-  FIT-file import and run analytics. Runs, walks and strength are counted
-  separately and attributed to the calendar day they happened.
+  FIT-file import and run analytics, plus **best efforts** (fastest 1 km/1 mi/5
+  km/10 km from recorded splits) and labelled race-time estimates. Runs, walks
+  and strength are counted separately and attributed to the calendar day they
+  happened.
 - **Recovery and load** — readiness, training load, ACWR and a weekly review.
   Progress → Muscle Load shows weekly volume, recovery and untrained muscles per
   muscle group.
@@ -97,21 +99,22 @@ the same training picture.
 ## What's next
 
 The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
-Logging → Progress**. The short version:
+Logging → Progress**. H2–H5 and the Progress rebuild are delivered; what remains:
 
-- **H6 — running completeness.** The audit and the read-only features now ship:
-  best efforts (fastest 1 km/1 mi/5 km/10 km from recorded splits) and labelled
-  race-time estimates from the effort you actually ran. Intervals, zones and
-  efficiency follow when running resumes.
-- **Logging.** Per-side rep display, backdated strength sessions with an explicit
-  collision choice, and Home quick actions that match what athletes actually do.
-- **Settings and trust.** Canonical storage with display-only units, week-start
-  consistency, text size and haptics, backup status with stale warnings, and
-  reviewed exercise instructions in small batches.
+- **Logging** — backdated strength sessions: a one-off archived session with the
+  real date and duration, and an explicit **keep both / cancel** when that day
+  already has one. The plan and the active week are never rewritten.
+- **Settings** — canonical kg/km/cm storage with display-only units (a migration
+  with a backup), and week-start consistency across every Progress analytic.
+- **Content** — reviewed exercise instructions, in small human-reviewed batches;
+  quality over catalogue breadth.
+- **Native** — closed-app rest alerts on Android (a foreground service plus
+  per-date reminders). Widgets and live activities stay parked.
+- **Running** — intervals, zones and efficiency when running resumes; the
+  read-only running analytics ship today.
 
-Native widgets and live activities are parked. There is no iOS project and no
-billing or paywall. The full plan, evidence and session log live in
-[`docs/IMPROVEMENT_ROADMAP.md`](docs/IMPROVEMENT_ROADMAP.md).
+There is no iOS project and no billing or paywall. The full plan, evidence and
+session log live in [`docs/IMPROVEMENT_ROADMAP.md`](docs/IMPROVEMENT_ROADMAP.md).
 
 ## Tech stack
 
