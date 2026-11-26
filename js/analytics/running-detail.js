@@ -204,6 +204,9 @@ export function collectRunningHistory(state, options = {}) {
           elevationGain: Math.max(0, parseFloat(run?.elev) || 0),
           calories: Math.max(0, parseFloat(run?.cals) || 0),
           rpe: Math.max(0, parseFloat(run?.rpe) || 0),
+          // Kept by reference for read-only effort analysis (best efforts). No
+          // copy and no new stored field: this is the run's own recorded splits.
+          splits: Array.isArray(run?.splits) ? run.splits : [],
           aerobicTrainingEffect: Math.max(0, parseFloat(run?.trainingEffect) || 0),
           anaerobicTrainingEffect: Math.max(0, parseFloat(run?.anaerobicTE) || 0),
           hrZones: Array.isArray(run?.hrZones)
