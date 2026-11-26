@@ -6063,3 +6063,28 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/intensity_mix.test.js` and the exercises view; the all-lifts
     browser check asserts the rendered block.
 
+- **2026-11-26 — H4 A9: the Progress range carries into the lift.**
+  - The hub's 30D/3M/1Y/All bar now hands its window to the exercise drilldown
+    (`30d→4w`, `3m→12w`, `1y→1y`, `all→all`), so a one-year question opens on a
+    year instead of the leaf's remembered 12 weeks. Unknown ids leave the leaf's
+    own choice alone.
+  - Week questions stay on Pulse, the selected-week Strength screen and the
+    Volume Guide; all-time lives in Records and the drilldown's All. Every
+    strength metric detail already spans 4 weeks to All time.
+  - Tests: `tests/exercise_range_handoff.test.js`; `all-lifts-browser-check`
+    proves the inherited range in the real drilldown.
+
+- **2026-11-26 — H4 G4: the always-available year heatmap.**
+  - Review → Stats ends with **Year at a glance**: twelve month grids over the
+    rolling year, shaded by measured training time (strength gym time + run
+    time). A training day with no recorded duration is outlined as “logged,
+    time not recorded”; nothing is estimated. A run-only day counts as one
+    session.
+  - Every past day is a 44px button that opens History filtered to that date;
+    future days are inert. It is independent of the seasonal Year in Review, so
+    the year is available in every month.
+  - Tests: `tests/year_heatmap.test.js` (shade bands, mixed/run-only/unmeasured
+    days, archived weeks, window edges, week start) and
+    `tests/year_heatmap_view.test.js`; the Progress-hub browser check asserts the
+    rendered year, no 320/390/412 overflow and a real day tap into History.
+

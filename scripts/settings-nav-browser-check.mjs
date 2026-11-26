@@ -75,6 +75,27 @@ try {
   ok(home.tabs === 0, 'no filter tabs remain');
   ok(home.profile && home.search, 'profile card and search are present');
 
+  // Appearance: text size scales the ROOT (one CSS hook), not one component.
+  await page.fill('#settingsSearch', '');
+  await openPage(page, 'once.look');
+  await page.click('[data-setting-segment="textSize"][data-value="xlarge"]');
+  await page.waitForFunction(() => document.documentElement.dataset.textSize === 'xlarge');
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.textSize === 'xlarge', null, { timeout: 3000 }).catch(() => {});
+  const large = await page.evaluate(() => ({
+    attr: document.documentElement.dataset.textSize,
+    font: parseFloat(getComputedStyle(document.documentElement).fontSize),
+    stored: JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}')?.settings?.textSize,
+  }));
+  ok(large.attr === 'xlarge' && large.stored === 'xlarge', 'text size persists');
+  ok(large.font > 18, `Extra large grows the root font (${large.font}px)`);
+  await page.click('[data-setting-segment="textSize"][data-value="default"]');
+  await page.waitForFunction(() => document.documentElement.dataset.textSize === 'default');
+  ok(true, 'text size returns to Default');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForFunction(() => location.hash === '#/settings');
+  await page.waitForSelector('#settingsPageHost [data-action="open-settings-page"][data-context="once.units"]');
+
+
   // Search finds a setting, opens its page and pulses the exact row.
   await page.fill('#settingsSearch', 'theme');
   const results = await page.locator('[data-action="open-settings-result"]').count();
@@ -87,6 +108,7 @@ try {
   ok(await page.locator('#settingsPageHost [data-setting-key="theme"]').count() >= 1, 'search result opens Look & Home on Theme');
   await page.click('#settingsPageHost .s-back');
   await page.waitForFunction(() => location.hash === '#/settings');
+  await page.waitForSelector('#settingsPageHost [data-action="open-settings-page"][data-context="once.units"]');
 
   // Units conversion keeps history in sync.
   await openPage(page, 'once.units');

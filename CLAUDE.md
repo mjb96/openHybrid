@@ -797,6 +797,14 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   charts (104 weeks / 60 months) keep the NEWEST buckets. Balance's "was this
   modality trained?" comes from the slot index, never from the split currency.
   Exercises take their unit from `state.settings.weightUnit` via the composer.
+- Text size and haptics (ST8): `settings.textSize` is `default|large|xlarge`;
+  `js/ui/text-size.js` publishes `html[data-text-size]` and the CSS scales the
+  ROOT font (112.5% / 125%), so rem surfaces grow together. It is applied at
+  boot and through `_applySettingControl`, which ALSO writes through
+  `settingsStore().set` (a display-only case that forgets the store does not
+  persist). `settings.haptics` (default true) gates the four set/PR haptic
+  calls in workout.js with `haptics !== false`; it never touches logging, timers
+  or PR detection. Sounds stay with the rest timers; demo size is not built.
 - Backup trust (ST9): `state.lastBackupAt` is ROOT METADATA (ISO timestamp),
   not a setting and not in `NON_SETTINGS_STATE_KEYS`. `exportData()` writes it
   only after `saveTextExport` reports `saved` or `started` — a cancelled/failed
