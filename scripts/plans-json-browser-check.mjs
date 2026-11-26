@@ -92,24 +92,24 @@ try {
   await page.click('.nav-item[data-target="program"]');
   await page.waitForSelector('#programLibraryScreen');
 
-  const tabs = await page.locator('#progLibraryTabs .lib-tab').allTextContents();
-  ok(tabs.length === 2 && /Discover/.test(tabs[0]) && /My Plans/.test(tabs[1]), 'Plans has only Discover and My Plans tabs');
-  ok(await page.locator('#progFilterChips').isHidden(), 'the category chip wall is gone');
-  ok(/All programs/.test(await page.locator('#progLibraryContent').innerText()), 'Discover leads with one simple all-programs list');
-
-  await page.click('#progLibraryTabs [data-tab="my"]');
-  ok(/Nothing here yet/.test(await page.locator('#progLibraryContent').innerText()), 'My Plans starts with an honest empty state');
+  const tabs = await page.locator('#progLibraryTabs').count();
+  ok(tabs === 0, 'the Discover | My Plans tabs are gone');
+  ok(await page.locator('#plansHome').isVisible(), 'Plans opens on the one home surface');
+  const homeText = await page.locator('#progLibraryContent').innerText();
+  ok(/your plans/i.test(homeText), 'the home names Your plans');
+  ok(/no plans yet/i.test(homeText), 'an empty library says so');
+  ok(await page.locator('#plansHome [data-action="open-browse"]').first().isVisible(), 'Browse is reachable from the home');
 
   await page.setInputFiles('#planImportFile', planPath);
   await page.waitForFunction(() => document.querySelector('#progLibraryContent')?.textContent?.includes('Imported Test Block'));
-  ok(await page.locator('#progLibraryTabs .lib-tab.active').innerText().then((text) => /My Plans/.test(text)), 'import lands on My Plans');
-  ok(/Your plans/.test(await page.locator('#progLibraryContent').innerText()), 'the imported plan appears under Your plans');
+  ok(/your plans/i.test(await page.locator('#progLibraryContent').innerText()), 'import lands in Your plans');
+  ok(await page.locator('#progLibraryContent .plan-row').count() > 0, 'the imported plan is a manageable row');
   const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}'), STORAGE_KEY);
   const imported = saved.customPrograms?.find((program) => program.name === 'Imported Test Block');
   ok(!!imported, 'the imported plan is persisted as a custom program');
   ok(imported?.days?.mon?.lifts?.[0] === 'Bench Press', 'the imported plan kept its training days');
 
-  await page.click('#progLibraryContent .prog-card[data-program-id]');
+  await page.click('#progLibraryContent .plan-row__open[data-program-id]');
   await page.waitForFunction(() => document.getElementById('programDetailScreen')?.style.display !== 'none');
   await page.click('[data-action="open-program-menu"]');
   await page.waitForSelector('.action-menu');

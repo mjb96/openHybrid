@@ -531,8 +531,14 @@ export function liftTarget(desc, liftName, weekModifier = {}, ctx) {
   // changing the bare-string day.lifts contract used across the app.
   const prescribed = program?.prescriptions?.[ctx?.dayKey]?.[liftName];
   if (prescribed && Number(prescribed.sets) > 0) {
+    // A deload is an instruction for the WEEK, so it has to reach a lift that
+    // carries its own target too — otherwise "bench 4×6" would ignore the
+    // deload entirely and the athlete would train through it. Derived, never
+    // stored (roadmap §22.2).
+    const sets = Number(prescribed.sets);
+    const deload = /deload/i.test(weekModifier?.intensityLabel || '');
     return {
-      sets: Number(prescribed.sets),
+      sets: deload ? Math.max(2, Math.round(sets / 2)) : sets,
       reps: prescribed.reps == null ? '' : String(prescribed.reps),
       weight: Number.isFinite(Number(prescribed.weight)) && Number(prescribed.weight) > 0 ? Number(prescribed.weight) : null,
       restSec: Number.isFinite(Number(prescribed.restSec)) && Number(prescribed.restSec) > 0 ? Number(prescribed.restSec) : null,

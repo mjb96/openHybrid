@@ -33,7 +33,7 @@ test('no icon-only button lacks an accessible name', () => {
 
 test('key interactive inputs have an accessible name', () => {
   const mustHaveName = [
-    'runInputDist', 'runInputTime', 'progSearchInput', 'rlDate',
+    'runInputDist', 'runInputTime', 'rlDate',
   ];
   for (const id of mustHaveName) {
     const re = new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`);

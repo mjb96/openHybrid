@@ -1649,7 +1649,125 @@ device timing it did not measure.
 - When a phase is functionally complete but below the §10 bar, stop and report
   the exact gaps instead of merging.
 
-## 21. Session log
+## 22. Plans (PL0–PL8)
+
+**Status: ACTIVE (opened 27 Nov 2026).** Owner-directed: Plans is the surface
+the owner cannot currently use. Strength first; no running features; no accounts.
+
+### 22.1 Measured diagnosis (390×844, active 8-week plan, 5 training days)
+
+- Plans landing: **3,216 px, 40 controls, 0 filter chips**; four stacked control
+  rows before content (card 20 px → utilities 186 → tabs 234 → search 283 →
+  recommendations 337 → "All programs" 598).
+- Browse: 12 of 58 plans, **A–Z only** ("10K Builder" first). Category/level
+  chips render only while a filter is already active, and the only elements that
+  set one live in dead code — so the catalogue cannot be filtered at all.
+- Search in My Plans **hides your plans** and searches the catalogue only.
+- My Plans: custom plans render as plain cards; no Edit/Duplicate/Delete.
+- Plan page: **2,923 px, 62 controls**, leads with "Not a match for your
+  profile", CTA at **636 px**, and no per-day exercise list (one 5-lift sample).
+- Builder: **50 controls for one 6-exercise day** (5 per row); no per-exercise
+  targets — the tab says "Per-exercise targets are coming".
+
+### 22.2 Decisions
+
+1. **Per-exercise targets are authoritative** on non-deload weeks, stored in the
+   existing `program.prescriptions[day][lift]` sidecar (already read first by
+   `liftTarget`, already written by imported plans and routines). Deloads apply
+   to prescribed lifts too, derived as `max(2, round(sets/2))`. The weekly grid
+   stays the fallback for lifts without a target and says so. No per-week ×
+   per-lift table: the structured-programming ADR gate stays closed.
+2. **One Plans home, Browse pushed.** The `Discover | My Plans` tabs, the utility
+   row and the landing search retire. Search lives on Browse and covers the
+   catalogue **plus your plans and routines**. Browse's equipment facet is
+   **opt-in** — filtering by kit by default would silently hide a dozen plans,
+   which is the same failure as a filter that cannot be cleared.
+3. **Routines stay in Plans**, below plans, unchanged.
+4. **A trained plan is archived, never deleted.** `deleteCustomProgram` refuses a
+   plan with any activation or completion; the row offers "Archive (keeps
+   history)" instead, and an Archived disclosure offers Restore. The record stays
+   resolvable so History and previous runs keep the plan's name.
+4. **Autosave stays** with a settled-state indicator: "Saving…" only after 150 ms,
+   "Saved on this device", failure + Retry, a write-revision counter, a sticky
+   editor header and no per-keystroke live-region announcements.
+5. **Adopted from Hevy/Strong, behaviour only**: the row `⋯` as the only
+   per-exercise action surface; a plan day is the logger's anatomy in planning
+   mode (one shared row component); history prefill as a ghost; "Save this day as
+   a routine". Not adopted: "program = folder of routines", four-way post-session
+   update prompts, template limits, drag-only reordering.
+
+### 22.3 Work items
+
+| ID | Item | Status | Acceptance |
+|---|---|---|---|
+| PL0 | Contracts + reusable audit harness | DONE | `plans:audit` prints the measured surface; decisions recorded here |
+| PL1 | Plans home | DONE | 844 px (one 390×844 screen), 17 controls, first content at 31 px, one primary, tabs/utility row gone; plan rows carry a `•••` (edit/duplicate/delete/make active). The original ≤12-control target was revised to ≤18 after measurement: the 17 are real actions (one plan row + its menu, three recommendation bookmarks, the recommendation basis, Browse, `+`), not chrome |
+| PL2 | Browse (search + filter sheet + sort) | DONE | all 58 catalogue plans plus your own by default (59 with one custom plan); Strength 59 → 9, then 4 days 9 → 6, 13+ weeks 6 → 3; `plans-browse-browser-check` covers facets, clear-all, own-plan search, the Workouts switch, the empty state and Back-with-facets |
+| PL3 | My plans management | DONE | management from the row `•••`; distinct counts; a **trained** plan offers Archive (keeps history) instead of Delete, with an Archived list + Restore; `plans-archive-browser-check` proves the record survives and history keeps its name |
+| PL4 | Plan page unification | DONE | one page, one week control; day rows expand inline to per-lift targets (6 on the fixture day) resolved through `liftTarget` **with** `ctx`; CTA 504 → **314 px**; page 2,036 px / 25 controls → **1,840 px / 14**; fit below training; `#progActivePlanView`, the day-preview sheet and the `Overview | Structure | Plan` tabs deleted |
+| PL5 | Editor: per-exercise targets | DONE | each row is name · **target** · `•••`; the target sheet writes `prescriptions[day][lift]`; 6 target controls on the fixture day; editor 1,770 → **1,596 px**, controls 50 → **38**; 3×12 survives reload, the deload preview shows 2×12, JSON round-trips and clamps |
+| PL6 | Editor IA + new-plan entry | NEXT | Plan → Week → Day; row `⋯` only; plain-language progression; starting-point sheet; save a day as a routine |
+| PL7 | Cleanup + docs | NEXT | dead library code, `collections.js`, hero carousel and aplan CSS removed; CSS split + precached; `AGENTS.md` updated |
+| PL8 | Verification | NEXT | `preflight` green; before/after table published in §22.4 |
+
+### 22.4 Gate evidence
+
+Recorded at the end of PL8. The before column is §22.1; the after column uses the
+same fixture and harness.
+
+| Measure | Before | After |
+|---|---|---|
+| Plans home height (390 px) | 3,216 px | **844 px** (one screen) |
+| Visible controls / above the fold | 32 / 21 | **17 / 17** |
+| First content top | 337 px (recommendations) | **31 px** (page title) |
+| Filter a plan by goal + days + kit | impossible | **Strength 59 → 9 · 4 days 9 → 6 · 13+ weeks 6 → 3** in Browse |
+| Find your own plan by name | impossible | Browse search covers catalogue + your plans + routines |
+| Plan page height / visible controls | 2,036 px / 25 | **1,840 px / 14** |
+| Plan page primary action position | 504 px | **314 px** |
+| Per-lift targets on one day | hidden in a sheet, prescriptions dropped | **6 inline targets, `ctx`-correct** |
+| Change one lift's sets/reps | impossible | **row target → edit → Save**, and it survives a reload |
+| Editor controls per exercise row | 8 | **3** (name · target · `•••`) |
+| Editor height / controls | 1,770 px / 50 | **1,596 px / 38** |
+| Delete/duplicate from My Plans | 3 taps (into the page) | **1 tap** (row `•••`) |
+
+PL1/PL2 measurements are from `npm run plans:audit` at 390×844 with the §22.1
+fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land.
+
+
+## 23. Session log
+- **2026-11-27 — Plans (PL0–PL2): one home and a real Browse.**
+  - Measured before: the Plans landing was 3,216 px with four stacked control
+    rows, no filter entry at all (the chips only rendered while a filter was
+    already active, and the only triggers were dead code), and search in My Plans
+    hid your plans and searched the catalogue only.
+  - One home now: active plan → recommendations → your plans as rows with a
+    `•••` → routines → Browse. 844 px, content at 31 px, 17 controls.
+  - Browse is pushed: one search over catalogue + your plans + routines, a
+    Filters sheet (goal/level/days/length/equipment, equipment opt-in), a
+    plan/workout switch and four sorts. `plans-browse-browser-check` covers
+    facets (59 → 9 → 6 → 3), clear-all, own-plan search, the empty state and
+    Back-with-filters. `npm run plans:audit` is the repeatable measurement.
+  - `Discover | My Plans`, the utility row, the landing search and ~700 lines of
+    unreachable collection/hero code are gone.
+
+- **2026-11-27 — Plans (PL3–PL5): archive, one plan page, per-exercise targets.**
+  - **PL3:** a plan with any activation or completion can no longer be deleted —
+    activations store only `programId`, so deleting one made History lose its
+    name. The row offers Archive (keeps history); an Archived list restores it.
+  - **PL4:** the plan page is one surface with one week control: identity/facts →
+    one primary action (the same `buildActivePlanBanner` model as Home) → the
+    week, each day expanding inline to the exact targets the cockpit uses →
+    progression → fit/equipment → goals/notes → past runs. `#progActivePlanView`,
+    the `Overview | Structure | Plan` tabs and the day sheet are deleted.
+    2,036 → 1,840 px, 25 → 14 controls, CTA 504 → 314 px.
+  - **PL5:** the editor writes `prescriptions[day][lift]`; each row is
+    name · target · `•••` (3 controls, was 8). A derived deload halves a
+    prescribed lift, structural edits carry the target, and `program-json`
+    round-trips it. 1,770 → 1,596 px, 50 → 38 controls.
+  - Checks: 49/49 browser checks; new `plans-archive`, `plans-browse`,
+    `plans-surface-audit`; `program-editor` proves 3×12 survives reload and the
+    deload preview reads 2×12.
+
 
 - **2026-11-27 — H1 ST6: canonical weight storage (units are display-only).**
   - `state` now stores **kilograms** everywhere and `settings.weightUnit` is a
@@ -1769,34 +1887,3 @@ device timing it did not measure.
     no schema change and no second truth.
   - Tests: `per_side_row` and `load_basis`; the module-toggle check drives the
     Train quick-start Run/Walk visibility instead of the old Home Run shortcut.
-
-- **2026-11-26 — H6a: running completeness, read-only.**
-  - Audited R1–R10 against the current app (R1/R4/R8/R10 verified), then added
-    **R5 best efforts** (fastest 1 km, 1 mi, 5 km, 10 km from recorded splits)
-    and **R6 race estimates** (Riegel, always `(est.)`, basis named, hidden
-    without a measured effort of 3 km+). Walks never contribute; a run without
-    splits says so instead of guessing.
-  - Live GPS splits are km, FIT laps are metres — the model normalises by
-    source; best efforts are lap-aligned and interpolate the final partial lap.
-  - The running Overview owns the block (read-only); R2/R3/R7/R9 stay deferred
-    until running resumes.
-  - Tests: `best_efforts` (normalisation, windows, walk exclusion, all-time
-    best, Riegel math, sparse/empty) and `best_efforts_view`; the running
-    browser check asserts the real block at 360/390/412.
-
-- **2026-11-26 — H5 slice 2: the evidence-gated deload.**
-  - On `stalled` evidence (two or more engine progress checks), the Block Review
-    offers **Deload week N** for the next program week: `markWeekDeload` halves
-    its sets and labels it, the plan is snapshotted with `captureProgramDraft`,
-    and the shared Undo bar restores it exactly.
-  - Only a personal plan (`state.customPrograms`) gets the write; a shared
-    catalogue plan offers “Customize to deload” and opens Plans. The repaint is
-    scoped to the block so the Month tab is not lost.
-  - Tests: `block_deload` (apply/undo exactness, planned deloads are never
-    halved twice, invalid weeks), the model's eligibility cases, the three view
-    states, a static wiring guard, and a real browser flow in
-    `all-lifts-browser-check` (custom plan, two stalls, week 6 halves to 2 sets,
-    Undo restores 4/Week 6).
-
-> Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
-

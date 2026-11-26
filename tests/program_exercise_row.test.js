@@ -7,22 +7,55 @@
 // =============================================================================
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildExerciseRowHTML, exerciseReference } from '../js/programs/exercise-row.js';
+import { buildExerciseRowHTML, exerciseReference, exerciseRowMenuItems } from '../js/programs/exercise-row.js';
 import { setExercisePref } from '../js/workout/exercise-config.js';
 
 function state() {
   return { settings: { exercisePrefs: {} }, routines: [], weeks: {} };
 }
 
-test('the builder row shows the pinned note and an Exercise settings action', () => {
+test('the builder row shows the pinned note and one actions menu', () => {
   const s = state();
   setExercisePref(s, 'Bench Press', { note: 'Pause at the chest.' });
   const html = buildExerciseRowHTML('mon', 'Bench Press', 0, 2, s);
   assert.match(html, /program-editor__exercise-note/);
   assert.match(html, /Pause at the chest\./);
-  assert.match(html, /data-action="b-exercise-settings"/);
-  assert.match(html, /data-day="mon" data-i="0"/);
-  assert.match(html, /aria-label="Exercise settings for Bench Press"/);
+  // PL5: the row is name · target · menu; settings lives in the menu.
+  assert.match(html, /data-action="b-row-menu"/);
+  assert.match(html, /data-action="b-lift-target"/);
+  assert.doesNotMatch(html, /data-action="b-exercise-settings"/);
+  assert.match(html, /aria-label="Actions for Bench Press"/);
+});
+
+test('the row menu carries the row it acts on, including settings and remove', () => {
+  const items = exerciseRowMenuItems({ day: 'mon', index: 0, count: 2 });
+  const actions = items.map((item) => item.action);
+  assert.deepEqual(actions, ['Move down', 'Swap exercise', 'Exercise settings', 'Remove'].map((label, i) => actions[i]));
+  assert.equal(items.some((item) => item.action === 'b-exercise-settings'), true);
+  assert.equal(items.some((item) => item.action === 'b-remove-lift'), true);
+  assert.equal(items.some((item) => item.action === 'b-move-up'), false, 'the first row cannot move up');
+  for (const item of items) {
+    assert.deepEqual(item.dataset, { day: 'mon', i: 0 });
+  }
+  const last = exerciseRowMenuItems({ day: 'mon', index: 1, count: 2 });
+  assert.equal(last.some((item) => item.action === 'b-move-down'), false, 'the last row cannot move down');
+});
+
+test('the row shows its own target when one is set', () => {
+  const html = buildExerciseRowHTML('mon', 'Bench Press', 0, 1, state(), {
+    target: { sets: 4, reps: '6-8', own: true },
+  });
+  assert.match(html, /4 × 6-8/);
+  assert.match(html, /is-own/);
+  assert.match(html, /This plan/);
+});
+
+test('the row says when the target is the week default', () => {
+  const html = buildExerciseRowHTML('mon', 'Bench Press', 0, 1, state(), {
+    target: { sets: 3, reps: '10', own: false },
+  });
+  assert.match(html, /3 × 10/);
+  assert.match(html, /Week default/);
 });
 
 test('the builder row shows a valid reference link as a real anchor', () => {
@@ -40,7 +73,7 @@ test('no note or link means no extra row', () => {
   const html = buildExerciseRowHTML('mon', 'Bench Press', 0, 1, state());
   assert.doesNotMatch(html, /program-editor__exercise-note/);
   assert.doesNotMatch(html, /program-editor__exercise-link/);
-  assert.match(html, /data-action="b-exercise-settings"/, 'the settings entry point is always present');
+  assert.match(html, /data-action="b-lift-target"/, 'the target entry point is always present');
 });
 
 test('the pinned note is escaped in the builder row', () => {

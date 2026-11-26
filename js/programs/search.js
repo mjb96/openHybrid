@@ -144,13 +144,19 @@ function scoreProgram(program, queryTokens) {
 }
 
 // Main search function
-export function searchPrograms(query) {
+/**
+ * @param {string} query
+ * @param {any[]} [corpus] defaults to the catalogue. Plans → Browse passes the
+ *   catalogue plus the athlete's own plans so one query covers both.
+ */
+export function searchPrograms(query, corpus = PROGRAM_CATALOG) {
   if (!query || query.trim().length < 2) return [];
 
   const expanded = expandQuery(query.trim());
   if (expanded.length === 0) return [];
 
-  const scored = PROGRAM_CATALOG
+  const scored = (Array.isArray(corpus) ? corpus : PROGRAM_CATALOG)
+    .filter(Boolean)
     .map(program => ({ program, score: scoreProgram(program, expanded) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score);

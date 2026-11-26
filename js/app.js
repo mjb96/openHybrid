@@ -3,8 +3,8 @@
 // ==========================================
 import { devWarn } from './debug.js';
 import { openBuilder } from './program_builder.js';
-import { initProgramLibrary, updateLibraryState, renderLibrary, handleLibraryAction, returnToLibrary, showLibraryTab } from './programs/library.js';
-import { handleDetailAction, closeDayPreviewModal } from './programs/detail.js';
+import { initProgramLibrary, updateLibraryState, renderLibrary, handleLibraryAction, returnToLibrary, showLibraryTab, openProgramDetail } from './programs/library.js';
+import { handleDetailAction, renderProgramDetail, currentPlanId } from './programs/detail.js';
 import { copyProgramAsText, handleProgramTextAction } from './programs/copy-program.js';
 import { buildPlanFile, parsePlanFile, createImportedProgram, planFilename } from './programs/program-json.js';
 import { isOpenGymPlan, parseOpenGymPlan, createOpenGymProgram } from './programs/opengym-plan.js';
@@ -22,6 +22,7 @@ import {
   appState, activeTab, selectedDay, DEFAULT_DAYS,
   setActiveTab, setSelectedDay, setAppState,
   getProgramById, getActiveProgramIssue, createCustomProgram, duplicateCustomProgram, deleteCustomProgram,
+  planHasRecordedRuns, archiveCustomProgram,
   isCustomProgram, findPrimaryCustomization, adoptLegacyPrimaryCustomization, ensureActiveProgramEditable,
   determineDefaultCalendarDay,
   verifyWeekStorageSchema,
@@ -36,6 +37,8 @@ import {
   showToast,
   savePersonalRating,
   getPersonalRating,
+  isBookmarked,
+  isProgramCompleted,
   dismissDeloadSuggestion,
   applyDeloadToCurrentWeek,
 } from './state.js';
@@ -205,7 +208,6 @@ document.addEventListener('app:open-metric', (e) => {
   openAnalyticsView('running-metric', null, { entity: metricId });
 });
 
-let _activePlanDisplayWeek = null;
 
 export function openAnalyticsView(context, scrollToId, contextOptions = {}) {
   setAnalyticsContext(context, {
@@ -1012,22 +1014,14 @@ export function cancelQuickActivity() {
 export function switchProgramMode(mode) {
   const libraryScreen  = document.getElementById('programLibraryScreen');
   const detailScreen   = document.getElementById('programDetailScreen');
-  const activePlanView = document.getElementById('progActivePlanView');
   const viewBuilder    = document.getElementById('builderViewContainer');
 
-  if (mode === 'active') {
+  if (mode === 'builder') {
     if (libraryScreen)  libraryScreen.style.display  = 'none';
     if (detailScreen)   detailScreen.style.display   = 'none';
-    if (viewBuilder)    viewBuilder.style.display    = 'none';
-    showActivePlanView(true);
-  } else if (mode === 'builder') {
-    if (libraryScreen)  libraryScreen.style.display  = 'none';
-    if (detailScreen)   detailScreen.style.display   = 'none';
-    if (activePlanView) activePlanView.style.display = 'none';
     if (viewBuilder)    viewBuilder.style.display    = 'block';
   } else {
     if (viewBuilder)    viewBuilder.style.display    = 'none';
-    if (activePlanView) activePlanView.style.display = 'none';
     if (detailScreen)   detailScreen.style.display   = 'none';
     if (libraryScreen)  libraryScreen.style.display  = 'block';
     updateLibraryState(appState);
@@ -1072,7 +1066,8 @@ function applyProgramSwitch(newProgramId, startWeek = 1) {
   saveStateToLocalStorage(true);
   try { updateLibraryState(appState); renderLibrary(); } catch (_) {}
   hydrateCurrentView();
-  showActivePlanView(true);
+  switchGlobalAppTab('program', { skipWorkoutCommit: true });
+  openProgramDetail(newProgramId);
   showToast('Program activated ✓');
 }
 
@@ -1085,7 +1080,8 @@ function applyResumedActivation(activationId) {
   saveStateToLocalStorage(true);
   try { updateLibraryState(appState); renderLibrary(); } catch (_) {}
   hydrateCurrentView();
-  showActivePlanView(true);
+  switchGlobalAppTab('program', { skipWorkoutCommit: true });
+  if (appState.activeProgramId) openProgramDetail(appState.activeProgramId);
   showToast('Previous program resumed ✓');
   return true;
 }
@@ -1102,20 +1098,6 @@ function triggerResumeProgramActivation(activationId) {
   }).catch((error) => console.warn('Resume failed:', error));
 }
 
-export function handleMacroWeekSwitch() {
-  const weekSelectElement = document.getElementById('globalWeekSelect');
-  if (!weekSelectElement) return;
-  
-  appState.currentWeek = weekSelectElement.value;
-  appState.weekStartedAt = startOfProgramWeek();
-  appState.weekAdvanceSnoozedUntil = null; 
-  saveStateToLocalStorage(true);
-  
-  verifyWeekStorageSchema(appState.currentWeek);
-  hydrateCurrentView();
-  showToast('Switched to Week ' + appState.currentWeek);
-}
-
 export function hydrateCurrentView() {
   const programIssue = getActiveProgramIssue(appState);
   if (programIssue) {
@@ -1125,7 +1107,6 @@ export function hydrateCurrentView() {
     setActiveTab('program');
     document.getElementById('view-program')?.classList.add('active');
     syncPrimaryNavigation('program');
-    showActivePlanView(false);
     updateLibraryState(appState);
     renderLibrary();
     return;
@@ -1144,17 +1125,15 @@ export function hydrateCurrentView() {
   else if (activeTab === 'analytics') safeRenderExecution(renderAnalytics, "Performance Matrix Render");
   else if (activeTab === 'profile') safeRenderExecution(renderAthleteProfile, "Athlete Profile Render");
   else if (activeTab === 'program') {
-    const wkSelect = document.getElementById('globalWeekSelect');
-    if (wkSelect) wkSelect.value = appState.currentWeek;
-
-    // If active plan view is visible, refresh it; otherwise render library
-    const activePlanView = document.getElementById('progActivePlanView');
-    if (activePlanView && activePlanView.style.display !== 'none') {
-      switchBrowserSectionTab('overview');
-    } else {
-      updateLibraryState(appState);
-      renderLibrary();
+    // A plan page that is open refreshes against the latest state (an edit must
+    // be visible on return); otherwise the Plans home.
+    const detailScreen = document.getElementById('programDetailScreen');
+    const openId = detailScreen && detailScreen.style.display !== 'none' ? currentPlanId() : null;
+    updateLibraryState(appState);
+    if (openId) {
+      try { renderProgramDetail(openId, appState); return; } catch (_) { /* fall through */ }
     }
+    renderLibrary();
   }
 }
 
@@ -1170,224 +1149,6 @@ function safeRenderExecution(renderFn, viewLabel) {
   }
 }
 
-export function switchBrowserSectionTab(tabName) {
-  const overviewContainer = document.getElementById('programBrowserDetails');
-  const tabOverview = document.getElementById('btnBrowserTabOverview');
-  const tabWeeks = document.getElementById('btnBrowserTabWeeks');
-
-  if (tabOverview) tabOverview.classList.remove('active');
-  if (tabWeeks) tabWeeks.classList.remove('active');
-
-  _renderActivePlanHero();
-  _renderActivePlanWeekNav();
-  _renderPreviousProgramRuns();
-
-  const prog = getProgramById(appState.activeProgramId);
-  const catalog = getCatalogEntry(appState.activeProgramId);
-
-  if (!overviewContainer) return;
-
-  if (tabName === 'weeks') {
-    if (tabWeeks) tabWeeks.classList.add('active');
-    overviewContainer.innerHTML = _renderScheduleTab(catalog, prog);
-  } else {
-    if (tabOverview) tabOverview.classList.add('active');
-    overviewContainer.innerHTML = _renderThisWeekTab(catalog, prog);
-  }
-}
-
-function _renderPreviousProgramRuns() {
-  const container = document.getElementById('previousProgramRuns');
-  if (!container) return;
-  const previous = priorActivationSummaries(appState);
-  if (!previous.length) {
-    container.innerHTML = '';
-    container.style.display = 'none';
-    return;
-  }
-  container.style.display = '';
-  container.innerHTML = `
-    <div class="previous-program-runs__header">
-      <div>
-        <div class="previous-program-runs__eyebrow">PROGRAM HISTORY</div>
-        <h3>Previous program runs</h3>
-      </div>
-      <span>${previous.length}</span>
-    </div>
-    <div class="previous-program-runs__list">
-      ${previous.map((run) => {
-        const program = getProgramById(run.programId);
-        const name = program?.name || getCatalogEntry(run.programId)?.name || 'Previous program';
-        const paused = run.pausedAt ? new Date(run.pausedAt) : null;
-        const pausedLabel = paused && !Number.isNaN(paused.getTime())
-          ? paused.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-          : 'Date unavailable';
-        return `<article class="previous-program-run-card">
-          <div class="previous-program-run-card__copy">
-            <strong>${escapeHtml(name)}</strong>
-            <span>Paused at Week ${run.lastWeek} · ${run.loggedWeeks} logged week${run.loggedWeeks === 1 ? '' : 's'} · ${escapeHtml(pausedLabel)}</span>
-          </div>
-          <div class="previous-program-run-card__actions">
-            <button class="btn-pad" data-action="view-activation-activities" data-activation-id="${escapeHtml(run.id)}">View activities</button>
-            <button class="btn-pad btn-blue" data-action="resume-program-activation" data-activation-id="${escapeHtml(run.id)}"${program ? '' : ' disabled'}>${program ? 'Resume' : 'Unavailable'}</button>
-          </div>
-        </article>`;
-      }).join('')}
-    </div>`;
-}
-
-function _renderActivePlanHero() {
-  const heroEl = document.getElementById('activePlanHero');
-  if (!heroEl) return;
-
-  const catalog = getCatalogEntry(appState.activeProgramId);
-  const prog = getProgramById(appState.activeProgramId);
-  const name = catalog?.name || prog?.name || 'Active Program';
-  const icon = catalog?.icon || '📋';
-  const g = [
-    safeCssColor(catalog?.coverGradient?.[0], '#1a0e2e'),
-    safeCssColor(catalog?.coverGradient?.[1], '#0d1b2a'),
-  ];
-  const accentColor = safeCssColor(catalog?.accentColor, '#8b5cf6');
-  const displayWk = parseInt(_activePlanDisplayWeek || appState.currentWeek || '1', 10);
-  const actualWk  = parseInt(appState.currentWeek || '1', 10);
-  const totalWeeks = catalog?.durationWeeks || prog?.totalWeeks || 12;
-  const progress = programProgressPct(actualWk, totalWeeks);
-  const phaseName = resolveProgramPhase(catalog || prog, displayWk, appState).label;
-
-  heroEl.innerHTML = `
-    <div class="aplan-hero-inner" style="background: linear-gradient(135deg, ${g[0]}, ${g[1]})">
-      <div class="aplan-hero-icon">${escapeHtml(icon)}</div>
-      <div class="aplan-hero-content">
-        <div class="aplan-hero-eyebrow">ACTIVE PROGRAM</div>
-        <div class="aplan-hero-name">${escapeHtml(name)}</div>
-        ${phaseName ? `<div class="aplan-hero-phase">${escapeHtml(phaseName)}</div>` : ''}
-        <div class="aplan-hero-progress-row">
-          <div class="aplan-hero-bar">
-            <div class="aplan-hero-fill" style="width: ${progress}%; background: ${accentColor}"></div>
-          </div>
-          <span class="aplan-hero-pct">${progress}%</span>
-        </div>
-        <div class="aplan-hero-weeks">${actualWk} of ${totalWeeks} weeks</div>
-      </div>
-      <div class="aplan-hero-actions">
-        <button class="aplan-icon-action" data-action="copy-program-text" data-program-id="${escapeHtml(appState.activeProgramId || '')}" aria-label="Copy program" title="Copy program">${svgIcon('clipboard', { size: 20 })}</button>
-        <button class="aplan-rate-btn" data-action="rate-program" data-program-id="${escapeHtml(appState.activeProgramId || '')}" aria-label="Rate this program" title="Rate this program">★</button>
-      </div>
-    </div>
-    <button class="aplan-edit-btn" data-action="edit-active-program">✏️ Edit program</button>
-  `;
-}
-
-function _renderActivePlanWeekNav() {
-  const numEl   = document.getElementById('aplanWeekNum');
-  const phaseEl = document.getElementById('aplanPhaseName');
-  const displayWk = _activePlanDisplayWeek || appState.currentWeek || '1';
-  if (numEl) numEl.textContent = displayWk;
-  const prog = getCatalogEntry(appState.activeProgramId) || getProgramById(appState.activeProgramId);
-  if (phaseEl) phaseEl.textContent = resolveProgramPhase(prog, displayWk, appState).label;
-}
-
-function _renderThisWeekTab(catalog, prog) {
-  const dayOrder = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-  const dayShort = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
-  const jsDayToKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  const todayKey = jsDayToKey[new Date().getDay()];
-  const catalogDays = catalog?.days || {};
-  const legacyDays = prog?.days || {};
-
-  const cards = dayOrder.map(dayKey => {
-    const cd = catalogDays[dayKey];
-    const ld = legacyDays[dayKey];
-    const isToday = dayKey === todayKey;
-    const title = cd?.title || ld?.title || (dayKey === 'sun' ? 'Rest Day' : 'Training');
-    const badge = cd?.badge || ld?.badge || '';
-    const color = safeCssColor(cd?.color || ld?.color, 'var(--accent-blue)');
-    const isRest = !cd?.lifts?.length && (!cd?.runs || cd?.runs === 'Rest')
-                && !ld?.lifts?.length && (!ld?.runs || ld?.runs === 'Rest');
-    const hasPreview = !isRest && !!(
-      cd?.workoutPreview
-      || cd?.lifts?.length || (cd?.runs && cd?.runs !== 'Rest')
-      || ld?.lifts?.length || (ld?.runs && ld?.runs !== 'Rest')
-    );
-    return `
-      <div class="aplan-day-card ${isToday ? 'aplan-day-card--today' : ''} ${isRest ? 'aplan-day-card--rest' : ''}"
-           ${hasPreview ? `data-action="open-day-preview" data-day="${dayKey}" data-program-id="${escapeHtml(appState.activeProgramId || '')}" role="button" tabindex="0"` : ''}>
-        <div class="aplan-day-label">${dayShort[dayKey]}</div>
-        <div class="aplan-day-body">
-          <div class="aplan-day-title">${escapeHtml(title)}</div>
-          ${badge ? `<div class="aplan-day-badge" style="color:${color};border-color:${color}40">${escapeHtml(badge)}</div>` : ''}
-        </div>
-        ${hasPreview ? '<span class="aplan-day-chevron">›</span>' : ''}
-        ${isToday ? '<div class="aplan-today-pip"></div>' : ''}
-      </div>
-    `;
-  }).join('');
-
-  // Week-aware header: the stepper/schedule change the displayed week, so show
-  // that week's phase + prescribed load (sets×reps) here instead of a static
-  // blueprint that ignores the selector.
-  const displayWk = _activePlanDisplayWeek || appState.currentWeek || '1';
-  const mod = getWeekModifier(prog, displayWk);
-  const phase = resolveProgramPhase(catalog || prog, displayWk, appState).label;
-  const setsReps = (mod.sets && mod.reps) ? `${mod.sets}×${mod.reps}` : '';
-  const prescription = `
-    <div class="aplan-week-prescription">
-      <span class="aplan-wp-week">Week ${escapeHtml(String(displayWk))}</span>
-      ${phase ? `<span class="aplan-wp-phase">${escapeHtml(phase)}</span>` : ''}
-      ${setsReps ? `<span class="aplan-wp-load">${setsReps}</span>` : ''}
-    </div>`;
-
-  return `${prescription}<div class="aplan-day-list">${cards}</div>`;
-}
-
-function _renderScheduleTab(catalog, prog) {
-  const totalWeeks = catalog?.durationWeeks || prog?.totalWeeks || 12;
-  const displayWkNum = parseInt(_activePlanDisplayWeek || appState.currentWeek || '1', 10);
-  const actualWkNum  = parseInt(appState.currentWeek || '1', 10);
-
-  const cells = [];
-  for (let w = 1; w <= totalWeeks; w++) {
-    const isCurrent = w === displayWkNum;
-    const isPast = w < displayWkNum;
-    const isActual = w === actualWkNum && displayWkNum !== actualWkNum;
-    const phase = resolveProgramPhase(catalog || prog, w, appState).label;
-    cells.push(`
-      <button class="aplan-sched-cell ${isCurrent ? 'aplan-sched-cell--current' : ''} ${isPast ? 'aplan-sched-cell--past' : ''} ${isActual ? 'aplan-sched-cell--actual' : ''}"
-              data-action="aplan-set-week" data-week="${w}" title="${phase}">
-        ${w}
-      </button>
-    `);
-  }
-
-  const phaseGroups = {};
-  for (let w = 1; w <= totalWeeks; w++) {
-    const p = resolveProgramPhase(catalog || prog, w, appState).label;
-    if (!phaseGroups[p]) phaseGroups[p] = [];
-    phaseGroups[p].push(w);
-  }
-
-  const legendItems = Object.entries(phaseGroups).map(([phase, wks]) => {
-    const isActive = wks.includes(displayWkNum);
-    return `
-      <div class="aplan-phase-item ${isActive ? 'aplan-phase-item--active' : ''}">
-        <span class="aplan-phase-wks">Wk ${wks[0]}${wks.length > 1 ? `–${wks[wks.length - 1]}` : ''}</span>
-        <span class="aplan-phase-label">${phase}</span>
-      </div>
-    `;
-  }).join('');
-
-  return `
-    <div class="aplan-schedule">
-      <div class="aplan-sched-grid">${cells.join('')}</div>
-      <div class="aplan-phase-breakdown">
-        <div class="aplan-phase-breakdown-title">PHASE BREAKDOWN</div>
-        <div class="aplan-phase-list">${legendItems}</div>
-      </div>
-    </div>
-  `;
-}
-
 export function confirmWeekAdvance() {
   const modal = document.getElementById('weekAdvanceModal');
   if (!modal) return;
@@ -1400,8 +1161,6 @@ export function confirmWeekAdvance() {
     verifyWeekStorageSchema(appState.currentWeek);
     saveStateToLocalStorage(true);
     hydrateCurrentView();
-    const weekSelectElement = document.getElementById('globalWeekSelect');
-    if (weekSelectElement) weekSelectElement.value = nextWeekString;
     showToast(`Advanced to Week ${nextWeekString}!`);
   }
 }
@@ -1435,6 +1194,26 @@ export function executeCreateProgram() {
 }
 
 export async function executeDeleteProgram(id) {
+  // A plan that has been trained is archived rather than deleted: its record is
+  // what lets History and "Previous program runs" name the sessions. The row
+  // menu already offers Archive in that case; this guards every other caller.
+  if (planHasRecordedRuns(id)) {
+    const archive = await confirmModal({
+      title: 'Archive this plan?',
+      message: 'It has recorded training, so it will be archived instead of deleted. Your history keeps the plan’s name, and you can restore it from Plans.',
+      confirmLabel: 'Archive',
+    });
+    if (!archive) return;
+    const archived = archiveCustomProgram(id);
+    if (archived.success) {
+      updateLibraryState(appState);
+      renderLibrary();
+      showToast('Plan archived — your history is kept');
+    } else {
+      showToast(archived.message, true);
+    }
+    return;
+  }
   const ok = await confirmModal({
     title: 'Delete this program?',
     message: 'This custom program will be permanently removed. This cannot be undone.',
@@ -1720,7 +1499,6 @@ document.addEventListener('click', (e) => {
     });
   }
   else if (action === 'coach-ask') answerCoachOnHome(target.getAttribute('data-q'));
-  else if (action === 'switch-browser-tab') switchBrowserSectionTab(target.getAttribute('data-tab'));
   
   // Timers
   else if (action === 'start-timer') beginActiveWorkoutSession();
@@ -1854,12 +1632,27 @@ document.addEventListener('click', (e) => {
     });
   }
   else if (action === 'open-program-menu') {
-    // Toggle a compact overflow menu of secondary program actions.
-    if (isActionMenuOpen()) closeActionMenu();
-    else openActionMenu(target, [
+    // Toggle a compact overflow menu of secondary plan actions. The plan page's
+    // primary stays the one training action; save/rate/copy/export/compare and
+    // finishing the block live here instead of competing above the training.
+    if (isActionMenuOpen()) { closeActionMenu(); }
+    else {
+    const isActivePlan = appState.activeProgramId === progId;
+    openActionMenu(target, [
+      {
+        label: isBookmarked(progId) ? 'Remove from saved' : 'Save plan',
+        action: 'toggle-plan-saved', programId: progId,
+        icon: svgIcon('bookmark', { size: 18 }),
+      },
+      { label: 'Rate this plan', action: 'rate-program', programId: progId },
       { label: 'Copy program', action: 'copy-program-text', programId: progId, icon: svgIcon('clipboard', { size: 18 }) },
       { label: 'Export plan (.json)', action: 'export-program-json', programId: progId, icon: svgIcon('download', { size: 18 }) },
-    ], { label: 'Program actions' });
+      { label: 'Compare', action: 'open-compare', programId: progId },
+      ...(isActivePlan && !isProgramCompleted(progId)
+        ? [{ label: 'Finish plan', action: 'mark-program-complete', programId: progId }]
+        : []),
+    ], { label: 'Plan actions' });
+    }
   }
   else if (action === 'close-action-menu') closeActionMenu();
   else if (action === 'copy-program-text') copyProgramAsText(progId);
@@ -1872,40 +1665,11 @@ document.addEventListener('click', (e) => {
   else if (action === 'close-compare') closeCompareModal();
 
   // New Program Library actions
-  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage', 'clear-routine-filter'].includes(action)) {
+  else if (['open-program-detail', 'prog-filter', 'diff-filter', 'prog-quick-search', 'hero-dot', 'lib-tab', 'toggle-bookmark', 'set-profile-answer', 'prog-show-all', 'open-active-plan-manage', 'clear-routine-filter', 'open-browse', 'close-browse', 'open-plan-filters', 'close-plan-filters', 'browse-facet', 'browse-kind', 'clear-browse-filters', 'open-plans-create-menu', 'open-plan-menu', 'archive-program', 'restore-program'].includes(action)) {
     handleLibraryAction(action, target, e);
   }
-  else if (['close-program-detail', 'make-active-from-detail', 'view-active-program', 'open-day-preview', 'preview-week-step', 'close-day-preview', 'detail-toggle-bookmark', 'mark-program-complete', 'detail-week-step', 'detail-week-current'].includes(action)) {
+  else if (['close-program-detail', 'make-active-from-detail', 'mark-program-complete', 'detail-week-step', 'detail-week-current', 'toggle-plan-day', 'toggle-plan-saved'].includes(action)) {
     handleDetailAction(action, target);
-  }
-  else if (action === 'close-active-plan-view') {
-    showActivePlanView(false);
-    returnToLibrary();
-  }
-  else if (action === 'aplan-week-step') {
-    const delta = parseInt(target.getAttribute('data-delta'), 10);
-    const cur = parseInt(_activePlanDisplayWeek || appState.currentWeek || '1', 10);
-    const prog = getProgramById(appState.activeProgramId);
-    const maxWk = prog?.totalWeeks || 12;
-    const next = Math.min(Math.max(1, cur + delta), maxWk);
-    if (next !== cur) {
-      _activePlanDisplayWeek = String(next);
-      appState.currentWeek = String(next);
-      const wkSel = document.getElementById('globalWeekSelect');
-      if (wkSel) wkSel.value = appState.currentWeek;
-      saveStateToLocalStorage(true);
-      verifyWeekStorageSchema(appState.currentWeek);
-      const activeTabEl = document.getElementById('btnBrowserTabWeeks');
-      switchBrowserSectionTab(activeTabEl?.classList.contains('active') ? 'weeks' : 'overview');
-    }
-  }
-  else if (action === 'aplan-set-week') {
-    const wk = target.getAttribute('data-week');
-    if (wk && wk !== _activePlanDisplayWeek) {
-      _activePlanDisplayWeek = wk;
-      const activeTabEl = document.getElementById('btnBrowserTabWeeks');
-      switchBrowserSectionTab(activeTabEl?.classList.contains('active') ? 'weeks' : 'overview');
-    }
   }
   
   // Settings
@@ -2184,7 +1948,6 @@ document.addEventListener('change', (e) => {
   if (!actionTarget) return;
   const action = actionTarget.getAttribute('data-action');
 
-  if (action === 'macro-week-switch') handleMacroWeekSwitch();
 });
 
 document.addEventListener('blur', (e) => {
@@ -2222,25 +1985,6 @@ document.addEventListener('keydown', (e) => {
 // PROGRAM LIBRARY HELPERS
 // ==========================================
 
-export function showActivePlanView(show) {
-  const libraryScreen = document.getElementById('programLibraryScreen');
-  const detailScreen  = document.getElementById('programDetailScreen');
-  const activePlan    = document.getElementById('progActivePlanView');
-  const builder       = document.getElementById('builderViewContainer');
-
-  if (libraryScreen) libraryScreen.style.display = show ? 'none' : 'block';
-  if (detailScreen)  detailScreen.style.display  = 'none';
-  if (activePlan)    activePlan.style.display    = show ? 'block' : 'none';
-  if (builder)       builder.style.display       = 'none';
-
-  if (show) {
-    _activePlanDisplayWeek = appState.currentWeek;
-    const wkSelect = document.getElementById('globalWeekSelect');
-    if (wkSelect) wkSelect.value = appState.currentWeek;
-    switchBrowserSectionTab('overview');
-  }
-}
-
 // Custom event bridge from detail page → app.js
 document.addEventListener('library:make-active', (e) => {
   const id = e.detail?.id;
@@ -2251,7 +1995,8 @@ document.addEventListener('library:make-active', (e) => {
 });
 
 document.addEventListener('library:view-active', () => {
-  showActivePlanView(true);
+  // "Manage plan" / "View active plan" now opens the one plan page.
+  if (appState.activeProgramId) openProgramDetail(appState.activeProgramId);
 });
 
 document.addEventListener('library:return', () => {
@@ -2599,11 +2344,10 @@ if (typeof window !== 'undefined') {
     const settingsOverlay = document.getElementById('settingsOverlay');
     if (settingsOverlay && settingsOverlay.classList.contains('active')) { closeSettings(); return 'handled'; }
 
-    // 4) Program detail / builder / active-plan stack → back to library
+    // 4) Program detail / builder stack → back to library
     const detailScreen = document.getElementById('programDetailScreen');
     const builder      = document.getElementById('builderViewContainer');
-    const activePlan   = document.getElementById('progActivePlanView');
-    if ([detailScreen, builder, activePlan].some(el => el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none')) {
+    if ([detailScreen, builder].some(el => el && el.style.display !== 'none' && getComputedStyle(el).display !== 'none')) {
       try { returnToLibrary(); } catch (_) {}
       switchProgramMode('library');
       return 'handled';

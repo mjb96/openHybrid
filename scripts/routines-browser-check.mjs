@@ -104,8 +104,8 @@ async function capture(page, filename) {
 async function openPlansMyPlans(page) {
   await page.click('.nav-item[data-target="program"]');
   await page.waitForFunction(() => document.getElementById('view-program')?.classList.contains('active'));
-  const myTab = page.locator('#progLibraryTabs [data-action="lib-tab"][data-tab="my"]');
-  if ((await myTab.getAttribute('class') || '').indexOf('active') === -1) await myTab.click();
+  // PL1 removed the Discover | My Plans tabs: Plans opens on one home, and the
+  // routines live in its "Your plans" section.
   await page.waitForSelector('#progLibraryContent .routine-card');
 }
 
@@ -254,13 +254,18 @@ try {
 
   await openPlansMyPlans(page);
   const card = page.locator('#progLibraryContent .routine-card').first();
-  ok(await page.locator('#progLibraryContent .routine-card').count() === 2, 'My Plans lists both routines');
+  ok(await page.locator('#progLibraryContent .routine-card').count() === 2, 'Your plans lists both routines');
   ok(await page.locator('#progLibraryContent .prog-card[data-routine-id]').count() === 0, 'a routine never renders as a program card');
   ok((await card.getAttribute('data-routine-id') || '').startsWith('rtn_'), 'the card carries the routine id');
   ok((await card.locator('.routine-card__name').innerText()) === 'Push day', 'the card shows the routine name');
   const cardSummary = await card.locator('.routine-card__meta').innerText();
   ok(cardSummary === '2 exercises · 4 working sets', `the card summarises the routine (${cardSummary})`);
-  ok((await page.locator('#progLibraryTabs .lib-tab-count').innerText()) === '3', 'the My Plans badge counts both routines beside the plan');
+  // The old tab badge summed plans + routines. The home states each section's
+  // own count: the plan section counts plans, the routines header counts routines.
+  const planCount = await page.locator('#progLibraryContent .plans-section__count').first().innerText();
+  ok(planCount === '1', `the plan section counts plans once (${planCount})`);
+  const routinesCount = await page.locator('#progLibraryContent .filtered-grid-count').first().innerText();
+  ok(routinesCount === '2', `the routines header counts routines (${routinesCount})`);
   const sectionTitle = await page.locator('#progLibraryContent .filtered-grid-title').first().innerText();
   ok(sectionTitle === 'Routines', `the routines section is labelled (${sectionTitle})`);
 
@@ -471,7 +476,9 @@ try {
   ok(await page.locator('#progLibraryContent .routine-card').count() === 1, 'Delete removes the routine card');
   ok((await page.locator('#progLibraryContent .routine-card__name').innerText()) === 'Second routine',
     'the other routine is untouched by the delete');
-  ok((await page.locator('#progLibraryTabs .lib-tab-count').innerText()) === '2', 'the My Plans badge drops the deleted routine');
+  // The routines header counts routines; the plan section counts plans.
+  const routinesAfterDelete = await page.locator('#progLibraryContent .filtered-grid-count').first().innerText();
+  ok(routinesAfterDelete === '1', `the routines count drops the deleted routine (${routinesAfterDelete})`);
   await page.waitForSelector('#activityUndoBar.show');
   ok(/Routine deleted/.test(await page.locator('#activityUndoMessage').innerText()), 'Delete offers Undo');
   await page.click('#activityUndoBar [data-action="undo-activity-delete"]');

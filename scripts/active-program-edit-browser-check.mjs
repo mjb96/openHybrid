@@ -111,7 +111,7 @@ async function newPage(browser, fixture = baseFixture()) {
 }
 
 const cockpitNames = (page) => page.$$eval('#cockpitExercisesContainer .cockpit-ex-name', els => els.map(e => e.textContent.trim()));
-const previewNames = (page) => page.$$eval('#wpmSheet .wpm-exercise-item > span:first-child', els => els.map(e => e.textContent.trim()));
+const previewNames = (page) => page.$$eval('#programDetailContent .plan-day__panel:not([hidden]) .wpm-exercise-item > span:first-child', els => els.map(e => e.textContent.trim()));
 
 async function openCockpitFromHome(page) {
   await page.click('.nav-item[data-target="home"]').catch(() => {});
@@ -144,10 +144,11 @@ async function openDetail(page) {
 }
 
 async function detailDayExercises(page) {
-  await page.click(`#programDetailScreen [data-action="open-day-preview"][data-day="${todayKey}"]`);
-  await page.waitForSelector('#wpmSheet .wpm-exercise-item', { timeout: 6000 });
+  const toggle = `#programDetailScreen [data-action="toggle-plan-day"][data-day="${todayKey}"]`;
+  await page.click(toggle);
+  await page.waitForSelector(`#planDayPanel-${todayKey}:not([hidden]) .wpm-exercise-item`, { timeout: 6000 });
   const names = await previewNames(page);
-  await page.click('#wpmSheet [data-action="close-day-preview"], #wpmBackdrop').catch(() => {});
+  await page.click(toggle).catch(() => {});
   await page.waitForTimeout(150);
   return names;
 }
@@ -324,10 +325,11 @@ try {
     await page.click('#builderViewContainer [data-action="close-builder"]');
     await page.waitForTimeout(300);
     await openDetailById(page, personalId);
-    await page.click(`#programDetailScreen [data-action="open-day-preview"][data-day="${builderDay}"]`);
-    await page.waitForSelector('#wpmSheet .wpm-exercise-item', { timeout: 6000 });
+    const dayToggle = `#programDetailScreen [data-action="toggle-plan-day"][data-day="${builderDay}"]`;
+    await page.click(dayToggle);
+    await page.waitForSelector(`#planDayPanel-${builderDay}:not([hidden]) .wpm-exercise-item`, { timeout: 6000 });
     eq(await previewNames(page), expected, 'C5 active detail shows edits immediately (no reload)');
-    await page.click('#wpmSheet [data-action="close-day-preview"], #wpmBackdrop').catch(() => {});
+    await page.click(dayToggle).catch(() => {});
     await page.waitForTimeout(150);
 
     // Cockpit (next workout) for that day shows the edits — no reload.

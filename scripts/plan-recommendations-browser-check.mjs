@@ -143,13 +143,13 @@ try {
     // A profile with nothing set must not produce a "Based on your…" row.
     const { context, page } = await discover({ fitnessGoal: null, fitnessLevel: null, equipmentTier: null, equipment: {} });
     const state = await page.evaluate(readRow);
-    const allPrograms = await page.evaluate(() =>
-      [...document.querySelectorAll('.filtered-grid-title')].some(t => /All programs/i.test(t.textContent || '')));
-    console.log('blank profile:', JSON.stringify({ row: state.present, allPrograms }));
+    const browseReachable = await page.evaluate(() =>
+      !!document.querySelector('[data-action="open-browse"]'));
+    console.log('blank profile:', JSON.stringify({ row: state.present, browseReachable }));
     if (state.present && state.cards.some(c => !c.reason)) {
       failures.push('a blank profile produced recommendations with no reasons');
     }
-    if (!allPrograms) failures.push('All programs must stay reachable whatever the profile');
+    if (!browseReachable) failures.push('Browse must stay reachable whatever the profile');
     await context.close();
   }
 
@@ -209,6 +209,11 @@ try {
   // controls (16 categories + 5 levels at the top, plus the SAME 15 categories
   // again in the Browse-all grid) and put a 220px editorial `featured` carousel
   // above a personal recommendation row that began 651px down.
+  //
+  // PL1/PL2 replaced the tabbed Discover with one Plans home plus a pushed
+  // Browse. The intent is unchanged — no chip wall, recommendations lead, the
+  // whole catalogue is reachable — so the contract is re-pointed at the new
+  // surface rather than deleted.
   {
     const { context, page, errors } = await discover({
       fitnessGoal: 'hybrid', fitnessLevel: 'intermediate', equipmentTier: 'gym', equipment: FULL_GYM,
@@ -217,17 +222,15 @@ try {
       const top = (el) => (el ? Math.round(el.getBoundingClientRect().top + window.scrollY) : null);
       const rowTop = (re) => top([...document.querySelectorAll('.collection-row')]
         .find((r) => re.test(r.querySelector('.collection-title')?.textContent || '')));
-      const allProgramsTitle = [...document.querySelectorAll('.filtered-grid-title')]
-        .find((el) => /All programs/i.test(el.textContent || ''));
       return {
-        categoryChips: document.querySelectorAll('#progFilterChips .filter-chip').length,
-        difficultyChips: document.querySelectorAll('#progDifficultyChips .filter-chip').length,
+        categoryChips: document.querySelectorAll('#progFilterChips .filter-chip, #progDifficultyChips .filter-chip').length,
         browseGridChips: document.querySelectorAll('.prog-browse-grid .filter-chip').length,
         recommendationsTop: rowTop(/Recommended For You/i),
-        allProgramsTop: top(allProgramsTitle),
-        heroTop: top(document.querySelector('.hero-banner')),
+        browseEntryTop: top(document.querySelector('[data-action="open-browse"]')),
+        browseHref: !!document.querySelector('[data-action="open-browse"]'),
+        mobileTabs: document.querySelectorAll('#progLibraryTabs .lib-tab').length,
+        utilityButtons: document.querySelectorAll('#plansUtilityRow .plans-utility-btn').length,
         viewport: window.innerHeight,
-        grid: document.querySelectorAll('#progLibraryContent .program-grid .prog-card').length,
       };
     };
     // The recommendation row is one three-up grid: all three cards must fit at
@@ -248,17 +251,19 @@ try {
     };
     const before = await page.evaluate(layout);
     const cardReach = await page.evaluate(readCardReach);
-    console.log('default Discover:', JSON.stringify(before));
+    console.log('default Plans home:', JSON.stringify(before));
     console.log('recommended cards in view:', JSON.stringify(cardReach));
-    if (before.categoryChips || before.difficultyChips || before.browseGridChips) {
-      failures.push('the simplified Discover must not render chip walls');
+    if (before.categoryChips || before.browseGridChips) {
+      failures.push('the Plans home must not render chip walls');
     }
-    if (before.allProgramsTop == null) failures.push('All programs must be reachable');
-    else if (before.allProgramsTop > 620) {
-      failures.push(`All programs starts at ${before.allProgramsTop}px, past the 620px target at 390px`);
+    if (!before.browseHref) failures.push('Browse must be reachable from the Plans home');
+    else if (before.browseEntryTop == null || before.browseEntryTop > 900) {
+      failures.push(`Browse entry starts at ${before.browseEntryTop}px, past the 900px target at 390px`);
     }
+    if (before.mobileTabs) failures.push('the Discover | My Plans tabs must be gone');
+    if (before.utilityButtons) failures.push('the utility row must be gone');
     if (cardReach.length !== 3) {
-      failures.push(`the Discover recommendation row must be one three-up grid, got ${cardReach.length} cards`);
+      failures.push(`the Plans recommendation row must be one three-up grid, got ${cardReach.length} cards`);
     }
     for (const card of cardReach) {
       if (card.left < -0.5 || card.right > card.viewport + 0.5) {
@@ -266,20 +271,38 @@ try {
       }
     }
     if (before.recommendationsTop == null) failures.push('no recommendations row on the default surface');
-    else if (before.allProgramsTop != null && before.recommendationsTop > before.allProgramsTop) {
-      failures.push('personal recommendations must lead the All programs list');
-    }
-    if (!before.grid) failures.push('All programs must render programme cards');
-    if (before.heroTop != null && before.recommendationsTop != null && before.heroTop < before.recommendationsTop) {
-      failures.push('the editorial featured carousel is above the personal recommendations');
+
+    // Browse opens as a pushed surface and reveals the whole catalogue in one
+    // place, with a search, a sort and one Filters entry.
+    await page.click('[data-action="open-browse"]');
+    await page.waitForTimeout(400);
+    const browse = await page.evaluate(() => ({
+      visible: document.getElementById('plansBrowseScreen')?.style.display !== 'none',
+      homeHidden: document.getElementById('plansHome')?.style.display === 'none',
+      rows: document.querySelectorAll('#browseResults .browse-row').length,
+      summary: (document.getElementById('browseSummary')?.textContent || '').trim(),
+      hasSearch: !!document.getElementById('plansBrowseSearch'),
+      hasSort: !!document.querySelector('[data-browse-sort]'),
+      hasFilters: !!document.querySelector('[data-action="open-plan-filters"]'),
+    }));
+    console.log('browse:', JSON.stringify(browse));
+    if (!browse.visible || !browse.homeHidden) failures.push('Browse must be a pushed surface, not a second tab');
+    if (!browse.rows || browse.rows <= 12) failures.push(`Browse listed ${browse.rows} plans — the old surface capped at 12`);
+    if (!/plan/.test(browse.summary)) failures.push('Browse must state how many plans it is showing');
+    if (!browse.hasSearch || !browse.hasSort || !browse.hasFilters) {
+      failures.push('Browse must offer search, sort and one Filters entry');
     }
 
-    // Show all expands the one simple grid rather than a second browse surface.
-    await page.click('[data-action="prog-show-all"]');
+    // Back returns to the home with the recommendation row intact.
+    await page.click('[data-action="close-browse"]');
     await page.waitForTimeout(300);
-    const expanded = await page.evaluate(layout);
-    console.log('show all:', JSON.stringify(expanded));
-    if (expanded.grid <= before.grid) failures.push('Show all must reveal more programmes');
+    const returned = await page.evaluate(() => ({
+      home: document.getElementById('plansHome')?.style.display !== 'none',
+      browse: document.getElementById('plansBrowseScreen')?.style.display === 'none',
+      recommendations: [...document.querySelectorAll('.collection-title')].some((el) => /Recommended For You/i.test(el.textContent || '')),
+    }));
+    if (!returned.home || !returned.browse) failures.push('Back from Browse must return to the Plans home');
+    if (!returned.recommendations) failures.push('the home must still show its recommendations after Back');
     if (errors.length) failures.push(`hierarchy: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }
@@ -291,12 +314,18 @@ try {
     const { context, page, errors } = await discover({
       fitnessGoal: 'strength', fitnessLevel: 'intermediate', equipmentTier: 'gym', equipment: FULL_GYM,
     });
+    await page.evaluate(() => /** @type {any} */ (document.querySelector('[data-action="open-browse"]'))?.click());
+    await page.waitForTimeout(400);
     await page.evaluate(() => {
-      const card = document.querySelector('#progLibraryContent .prog-card[data-program-id]');
-      if (card) /** @type {any} */ (card).click();
+      const row = document.querySelector('#browseResults .browse-row[data-program-id]');
+      if (row) /** @type {any} */ (row).click();
     });
     await page.waitForTimeout(700);
-    await page.evaluate(() => /** @type {any} */ (document.querySelector('[data-action="open-compare"]'))?.click());
+    // PL4 moved Compare behind the plan page's overflow menu (it is a browse
+    // tool, not the page's primary). Open the menu and click the real item.
+    await page.evaluate(() => /** @type {any} */ (document.querySelector('[data-action="open-program-menu"]'))?.click());
+    await page.waitForSelector('.action-menu [data-action="open-compare"]', { timeout: 4000 });
+    await page.click('.action-menu [data-action="open-compare"]');
     await page.waitForTimeout(500);
     await page.evaluate(() => {
       const pick = document.querySelector('[data-action="compare-pick"]');

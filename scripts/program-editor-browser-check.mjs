@@ -47,7 +47,9 @@ const browser = await chromium.launch({ executablePath, args: ['--no-sandbox'] }
 
 async function openEditor(width, extraCss = '') {
   const context = await createBrowserContext(browser, { viewport: { width, height: 780 }, deviceScaleFactor: 2 });
-  await context.addInitScript((value) => localStorage.setItem('hybrid_engine_v2_state', JSON.stringify(value)), seed);
+  // Seed only when absent, so a reload in a scenario keeps what the athlete
+  // just saved (a persistence assertion needs that).
+  await context.addInitScript((value) => { if (!localStorage.getItem('hybrid_engine_v2_state')) localStorage.setItem('hybrid_engine_v2_state', JSON.stringify(value)); }, seed);
   const page = await context.newPage();
   await page.goto(BASE, { waitUntil: 'load' });
   await page.addStyleTag({ content: '*,*::before,*::after{transition:none!important;animation:none!important;}' + extraCss });
@@ -120,6 +122,62 @@ for (const width of WIDTHS) {
   await context.close();
 }
 
+// PL5 — per-exercise targets: set one in the row, see it in the preview (with the
+// deload applied), and keep it across a reload.
+{
+  const { context, page } = await openEditor(390);
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+
+  // ST6: weights are stored in kilograms. An lb athlete typing 225 must persist
+  // 102.06 kg and see 225 again when reopening the sheet.
+  await page.evaluate(async () => {
+    const state = await import('./js/state.js');
+    state.appState.settings.weightUnit = 'lbs';
+  });
+  await page.click('#builderViewContainer [data-action="b-lift-target"]');
+  await page.waitForSelector('#builderTargetSheet.active', { timeout: 4000 });
+  const unitLabel = await page.$eval('#bTargetWeightLabel', (el) => el.textContent.trim());
+  check(/lbs/i.test(unitLabel), `the starting-load field names the display unit (${unitLabel})`);
+  await page.fill('#bTargetSets', '3');
+  await page.fill('#bTargetReps', '12');
+  await page.fill('#bTargetWeight', '225');
+  await page.click('[data-action="b-target-save"]');
+  await page.waitForTimeout(300);
+
+  const saved = await page.evaluate(async () => {
+    const state = await import('./js/state.js');
+    return state.getProgramById('prog_browser_editor').prescriptions || null;
+  });
+  const rowText = await page.$eval('#builderViewContainer .program-editor__target', (el) => el.textContent.replace(/\s+/g, ' ').trim());
+  console.log(`  PL5 target ${JSON.stringify(saved?.mon?.['Bench Press'])} row="${rowText}"`);
+  check(saved?.mon?.['Bench Press']?.sets === 3, 'the target was not persisted to prescriptions');
+  check(saved?.mon?.['Bench Press']?.reps === '12', 'the reps target was not persisted');
+  check(saved?.mon?.['Bench Press']?.weight === 102.06, `225 lb must persist as 102.06 kg (got ${saved?.mon?.['Bench Press']?.weight})`);
+  check(/3 . 12/.test(rowText), `the row does not show its own target (${rowText})`);
+
+  await page.click('#builderViewContainer [data-action="b-lift-target"]');
+  await page.waitForSelector('#builderTargetSheet.active', { timeout: 4000 });
+  const shownWeight = await page.$eval('#bTargetWeight', (el) => el.value);
+  check(shownWeight === '225', `the sheet must show the stored kg in lb (got ${shownWeight})`);
+  await page.click('[data-action="b-close-target"]');
+  await page.waitForTimeout(200);
+
+  await page.click('[data-action="b-section"][data-section="preview"]');
+  await page.selectOption('[data-action="b-preview-week"]', '4');
+  await page.waitForTimeout(250);
+  const preview = await page.$eval('.program-editor__preview-list', (el) => el.textContent.replace(/\s+/g, ' '));
+  check(/Bench Press\s*2 × 12/.test(preview), `the deload week does not halve the prescribed sets (${preview.slice(0, 120)})`);
+
+  await page.reload({ waitUntil: 'load' });
+  await page.evaluate(async () => (await import('./js/program_builder.js')).openBuilder('prog_browser_editor'));
+  await page.waitForTimeout(200);
+  const afterReload = await page.$eval('#builderViewContainer .program-editor__target', (el) => el.textContent.replace(/\s+/g, ' ').trim());
+  check(/3 . 12/.test(afterReload), `the target did not survive a reload (${afterReload})`);
+  check(errors.length === 0, `PL5 browser errors: ${errors.join(' | ')}`);
+  await context.close();
+}
+
 // Phase 4C — destructive day edits are reversible, and no longer gated behind a
 // confirmation dialog (interaction principle 5).
 {
@@ -143,7 +201,10 @@ for (const width of WIDTHS) {
   check(start.undoLabel === null, 'nothing has been edited yet, so no undo strip');
 
   // Remove an exercise: no dialog, and the strip names what it will put back.
-  await page.click('[data-action="b-remove-lift"][data-day="mon"][data-i="0"]');
+  // PL5: row actions live in the row's ••• menu.
+  await page.click('#builderViewContainer .program-editor__row-menu[data-day="mon"][data-i="0"]');
+  await page.waitForSelector('.action-menu [data-action="b-remove-lift"]', { timeout: 4000 });
+  await page.click('.action-menu [data-action="b-remove-lift"]');
   await page.waitForTimeout(300);
   const removed = await lifts();
   console.log(`  4C undo    removed=${JSON.stringify(removed.mon)} label="${removed.undoLabel}" btn=${removed.undoHeight}px dialog=${removed.dialogOpen}`);
@@ -285,7 +346,9 @@ for (const width of WIDTHS) {
 {
   const { context, page } = await openEditor(390);
   const row = page.locator('.program-editor__exercise-row').first();
-  await row.locator('[data-action="b-exercise-settings"]').click();
+  await row.locator('[data-action="b-row-menu"]').click();
+  await page.waitForSelector('.action-menu [data-action="b-exercise-settings"]', { timeout: 4000 });
+  await page.click('.action-menu [data-action="b-exercise-settings"]');
   await page.waitForSelector('.exercise-config');
   await page.fill('#exerciseConfigNote', 'Pause at the chest.');
   await page.fill('#exerciseConfigLink', 'https://www.youtube.com/watch?v=abc123');

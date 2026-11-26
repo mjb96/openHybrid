@@ -34,6 +34,38 @@ function normalizeDays(days) {
   return out;
 }
 
+// Per-exercise targets. Additive in v1: an older app ignores the field, a newer
+// app importing an older file simply gets the week modifier. Only lifts the day
+// actually contains survive, and every value is bounded (an imported file must
+// not be able to write 9,999 sets or a 500 kg starting load).
+function normalizePrescriptions(source, days) {
+  const out = {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return out;
+  const int = (value, lo, hi, fallback) => {
+    const n = Math.round(Number(value));
+    return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback;
+  };
+  for (const day of DAY_KEYS) {
+    const byLift = source[day];
+    if (!byLift || typeof byLift !== 'object' || Array.isArray(byLift)) continue;
+    const lifts = new Set(days?.[day]?.lifts || []);
+    const entry = {};
+    for (const [name, target] of Object.entries(byLift)) {
+      if (!lifts.has(name) || !target || typeof target !== 'object') continue;
+      const sets = int(target.sets, 1, 20, 0);
+      if (!sets) continue;
+      const item = { sets, reps: String(target.reps == null ? '8' : target.reps).trim().slice(0, 24) || '8' };
+      const rest = int(target.restSec, 0, 900, 0);
+      if (rest > 0) item.restSec = rest;
+      const weight = Number(target.weight);
+      if (Number.isFinite(weight) && weight > 0) item.weight = Math.min(500, Math.round(weight * 100) / 100);
+      entry[name] = item;
+    }
+    if (Object.keys(entry).length) out[day] = entry;
+  }
+  return out;
+}
+
 function normalizeWeeks(source, totalWeeks) {
   const out = {};
   for (let week = 1; week <= totalWeeks; week++) {
@@ -67,6 +99,9 @@ function planContent(plan) {
     equipment: strings(plan?.equipment),
     goals: strings(plan?.goals),
     days,
+    ...(Object.keys(normalizePrescriptions(plan?.prescriptions, days)).length
+      ? { prescriptions: normalizePrescriptions(plan?.prescriptions, days) }
+      : {}),
     weeklyVolModifiers: normalizeWeeks(plan?.weeklyVolModifiers, totalWeeks),
     progressionStyle: str(plan?.progressionStyle, 'double'),
     progressionModel: str(plan?.progressionModel),

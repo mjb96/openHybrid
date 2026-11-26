@@ -14,7 +14,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 58 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 59 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -223,8 +223,43 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   and the library's 44px filter select are metadata only; an unknown imported
   category is stripped without dropping the routine, and filtering never rewrites
   folders, the program, the week or logged training.
-- Plans library: Discover is one searchable all-programs list (12 initial, Show
-  all expands); saved, completed, custom and imported plans share My Plans.
+- Plans has ONE plan page (`js/programs/detail.js`, roadmap §22/PL4) and ONE
+  week control. It renders identity/facts → one primary action (the same
+  `buildActivePlanBanner` model the home uses) → the week, each day expanding
+  inline via `[data-action="toggle-plan-day"]` to every lift's target →
+  progression → fit/equipment → goals/notes → past runs → similar plans.
+  `renderDayTargets` resolves each lift through `liftTarget` **with**
+  `{ program, week, dayKey }`, so prescriptions/J&T/shed-pplul match the cockpit.
+  The `Overview | Structure | Plan` tabs, `#progActivePlanView`, the
+  `THIS WEEK | SCHEDULE` view and the day-preview bottom sheet are gone; do not
+  reintroduce a second week surface. Plan-page secondary actions live in the
+  `⋯` menu (save/rate/copy/export/compare/finish).
+- Plans home (`#plansHome`, roadmap §22) — active plan card → recommendations
+  → your plans as rows with a `•••` (Edit/Duplicate/Delete/Make active) → routines
+  → "Browse all plans". The old `Discover | My Plans` tabs, utility row and
+  landing search are gone. Browse (`#plansBrowseScreen`) is pushed: one search
+  over catalogue + your plans + routines, a Filters sheet (goal/level/days/length/
+  equipment), a plan/workout switch and four sorts. The equipment facet is
+  opt-in: browse lists everything by default and states the facet when applied.
+  Filters are ephemeral and reset on entry; Back from a plan returns to the
+  Browse the athlete left. A plan with any activation or completion is never
+  deleted: the row offers **Archive (keeps history)**, `deleteCustomProgram`
+  refuses it, and an Archived list restores it — the record must stay resolvable
+  because History and previous runs name sessions by `programId`. Pure models:
+  `js/programs/plans-home-model.js` (distinct counts, one row per plan) and
+  `js/programs/browse-model.js`. The Plans→Equipment settings link (ST4) lives
+  on the home header and in the Browse equipment facet.
+- Plan editor targets: `js/programs/editor/prescriptions.js` owns
+  `program.prescriptions[day][lift]` ({sets, reps, restSec?, weight?}), which
+  `liftTarget` reads FIRST. The editor row is name · target · `•••`
+  (`js/programs/exercise-row.js`); the target sheet writes through
+  `setLiftTarget`, and every structural edit keeps the sidecar in sync
+  (`replaceProgramExercise` renames the key, `removeProgramExercise` deletes it,
+  `makeProgramDayRest` clears the day, `copyProgramDay` copies it,
+  `prunePrescriptions` drops orphans). A deload halves a prescribed lift's sets
+  (`max(2, round(sets/2))`) at read time — never stored. `program-json` carries
+  the sidecar as an optional bounded field. The weekly grid applies only to lifts
+  without their own target, and the tab says so.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported
   plans become fresh custom programs and never overwrite a catalog plan.
   `js/programs/opengym-plan.js` imports openGym plan files: weekdays map to days,
@@ -1195,7 +1230,7 @@ features and do not regress what exists. H5–H8 are queued; Android public-beta
 work and the native H8 surfaces (L14 live activity, S10 widgets) are parked, not
 cancelled. iOS/Capacitor and any billing/paywall remain explicitly deferred.
 
-Product/UX source of truth: `docs/IMPROVEMENT_ROADMAP.md`. §13–§21 are the active
+Product/UX source of truth: `docs/IMPROVEMENT_ROADMAP.md`. §13–§22 are the active
 programme; everything before §13 is the delivered capability/experience
 programme and remains the evidence base. It owns the settled product rules,
 rejected scope, execution status, quality gates, parked work, and session log.

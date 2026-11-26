@@ -6,6 +6,7 @@
 import { canonicalExerciseId, normaliseExerciseName } from '../exercises/catalog.js';
 import { liftTarget } from '../engine.js';
 import { getWeekModifier } from '../schema.js';
+import { clearLiftTarget, renameLiftTarget } from './editor/prescriptions.js';
 
 export const EDITOR_DAYS = Object.freeze(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
 export const EDITOR_DAY_LABELS = Object.freeze({
@@ -137,6 +138,15 @@ export function copyProgramDay(program, sourceKey, targetKey) {
   // A whole-day deep copy carries desc + workoutPreview together with lifts, so
   // the copied day's duplicated representations stay internally consistent.
   program.days[targetKey] = JSON.parse(JSON.stringify(source));
+  // Prescriptions live in a separate sidecar, so copy them explicitly (a day
+  // copied without its targets would silently fall back to the week's numbers).
+  if (program.prescriptions) {
+    if (program.prescriptions[sourceKey]) {
+      program.prescriptions[targetKey] = JSON.parse(JSON.stringify(program.prescriptions[sourceKey]));
+    } else {
+      delete program.prescriptions[targetKey];
+    }
+  }
   return true;
 }
 
@@ -224,7 +234,7 @@ function renameDescLabel(day, oldName, newName) {
  * prescription where the description carried one.
  * @returns {boolean} whether the replacement was applied.
  */
-export function replaceProgramExercise(day, index, replacement) {
+export function replaceProgramExercise(day, index, replacement, opts = {}) {
   if (!day || !Array.isArray(day.lifts)) return false;
   const old = day.lifts[index];
   if (typeof old !== 'string') return false;
@@ -233,6 +243,9 @@ export function replaceProgramExercise(day, index, replacement) {
   day.lifts[index] = next;
   renamePreviewExercise(day, old, next);
   renameDescLabel(day, old, next);
+  // A per-exercise target belongs to the lift; moving the name without moving
+  // the target would silently reset the athlete's 4×6 back to the week's 3×10.
+  if (opts.program && opts.dayKey) renameLiftTarget(opts.program, opts.dayKey, old, next);
   return true;
 }
 
@@ -259,12 +272,13 @@ export function addProgramExercise(day, name) {
  * `day.lifts`), so removing a lift can't corrupt surrounding prose.
  * @returns {boolean} whether an exercise was removed.
  */
-export function removeProgramExercise(day, index) {
+export function removeProgramExercise(day, index, opts = {}) {
   if (!day || !Array.isArray(day.lifts)) return false;
   const removed = day.lifts[index];
   if (typeof removed !== 'string') return false;
   day.lifts.splice(index, 1);
   removePreviewExercise(day, removed);
+  if (opts.program && opts.dayKey) clearLiftTarget(opts.program, opts.dayKey, removed);
   return true;
 }
 
@@ -303,13 +317,18 @@ function reorderPreviewToLifts(day) {
  * exercise representations (desc/workoutPreview) so nothing stale can leak into
  * a later preview if the day is turned back into a training day.
  */
-export function makeProgramDayRest(day) {
+export function makeProgramDayRest(day, opts = {}) {
   if (!day) return;
   day.title = 'Rest';
   day.runs = 'Rest';
   day.lifts = [];
   day.desc = '';
   if (day.workoutPreview) delete day.workoutPreview;
+  // No lifts means no targets; leaving them behind would resurrect on the next
+  // day that happens to have the same exercise names.
+  if (opts.program && opts.dayKey && opts.program.prescriptions) {
+    delete opts.program.prescriptions[opts.dayKey];
+  }
 }
 
 export function previewProgramWeek(program, weekKey = '1') {
@@ -318,7 +337,7 @@ export function previewProgramWeek(program, weekKey = '1') {
     const day = program?.days?.[key] || {};
     const lifts = (Array.isArray(day.lifts) ? day.lifts : [])
       .filter((name) => typeof name === 'string' && name.trim())
-      .map((name) => ({ name, ...liftTarget(day.desc, name, modifier) }));
+      .map((name) => ({ name, ...liftTarget(day.desc, name, modifier, { program, week: weekKey, dayKey: key }) }));
     return {
       key,
       label: EDITOR_DAY_LABELS[key],

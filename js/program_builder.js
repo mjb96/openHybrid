@@ -8,6 +8,7 @@ import {
 } from './state.js';
 import { escapeHtml } from './util.js';
 import { trackVisibleViewport } from './ui/visible-viewport.js';
+import { getWeekModifier } from './schema.js';
 import {
   browseExercises, canonicalExerciseId, EQUIPMENT, EXERCISE_CATEGORIES,
   EXERCISE_CATEGORY_LABELS, MUSCLE_GROUPS, equipmentLabel, normaliseExerciseName,
@@ -27,7 +28,10 @@ import {
   captureProgramDraft, restoreProgramDraft,
 } from './programs/editor-model.js';
 import { closeManagedModal, openManagedModal } from './ui/modal-stack.js';
-import { buildExerciseRowHTML } from './programs/exercise-row.js';
+import { buildExerciseRowHTML, exerciseRowMenuItems } from './programs/exercise-row.js';
+import { clearLiftTarget, setLiftTarget, targetFor } from './programs/editor/prescriptions.js';
+import { openActionMenu } from './ui/action-menu.js';
+import { displayWeightString, toCanonicalWeight } from './metrics/weight-unit.js';
 import { openExerciseOptions } from './workout/exercise-options.js';
 import {
   effectiveMusclePriorities, musclePriorityLabel, projectProgramMuscleCredits,
@@ -258,7 +262,10 @@ function renderSchedule(program) {
 
         <div class="program-editor__list-heading"><div><span>Exercises</span><small>${day.lifts.length} in workout order</small></div><button class="program-editor__add" data-action="b-open-picker" data-day="${selectedDay}">+ Add exercise</button></div>
         <div class="program-editor__exercise-list">
-          ${day.lifts.length ? day.lifts.map((name, index) => buildExerciseRowHTML(selectedDay, name, index, day.lifts.length, appState)).join('') : `
+          ${day.lifts.length ? day.lifts.map((name, index) => buildExerciseRowHTML(
+            selectedDay, name, index, day.lifts.length, appState,
+            { target: rowTarget(program, selectedDay, name) },
+          )).join('') : `
             <button class="program-editor__empty" data-action="b-open-picker" data-day="${selectedDay}"><strong>No exercises yet</strong><span>Add the first exercise to this session</span></button>
           `}
         </div>
@@ -281,7 +288,7 @@ function renderProgression(program) {
         <div>
           <div class="program-editor__eyebrow">WEEK BY WEEK</div>
           <h2 id="builderProgressionTitle">Progression</h2>
-          <p>These targets apply to every lift in that week. Per-exercise targets are coming in the structured-programming upgrade.</p>
+          <p>Weekly targets apply to exercises that do not have their own target. Tap an exercise's target in Schedule to set one. A deload week halves every working set, including per-exercise targets.</p>
         </div>
       </div>
       <div class="program-editor__coach-style">
@@ -431,6 +438,123 @@ function renderProgramVolumeProjection(program) {
   </section>`;
 }
 
+/**
+ * What the Schedule row shows for one lift: the athlete's own target when set,
+ * otherwise the week's default. `own` is what the row labels.
+ */
+function rowTarget(program, day, name) {
+  const own = targetFor(program, day, name);
+  if (own) return { sets: own.sets, reps: own.reps, own: true };
+  const mod = getWeekModifier(program, appState.currentWeek || '1') || {};
+  if (!mod.sets && !mod.reps) return null;
+  return { sets: mod.sets || 3, reps: mod.reps == null ? '8' : mod.reps, own: false };
+}
+
+/** Which row the target sheet is editing. */
+let targetEdit = null;
+
+function ensureTargetSheet() {
+  let root = document.getElementById('builderTargetSheet');
+  if (root) return root;
+  root = document.createElement('div');
+  root.id = 'builderTargetSheet';
+  root.className = 'modal-overlay program-editor__target-overlay';
+  root.setAttribute('role', 'dialog');
+  root.setAttribute('aria-labelledby', 'builderTargetTitle');
+  root.setAttribute('data-modal-root', '');
+  root.setAttribute('data-modal-close-action', 'b-close-target');
+  root.setAttribute('inert', '');
+  root.setAttribute('aria-hidden', 'true');
+  root.innerHTML = `
+    <div class="modal-content program-editor__target-sheet">
+      <div class="program-editor__target-head">
+        <h2 id="builderTargetTitle">Exercise target</h2>
+        <button type="button" data-action="b-close-target" aria-label="Close target">×</button>
+      </div>
+      <p id="builderTargetDefault" class="program-editor__target-default"></p>
+      <div class="program-editor__target-grid">
+        <label><span>Sets</span><input id="bTargetSets" type="number" min="1" max="12" step="1" inputmode="numeric"></label>
+        <label><span>Reps</span><input id="bTargetReps" type="text" maxlength="24" placeholder="6-8" autocomplete="off"></label>
+        <label><span>Rest (sec)</span><input id="bTargetRest" type="number" min="0" max="900" step="5" inputmode="numeric" placeholder="Week default"></label>
+        <label><span id="bTargetWeightLabel">Starting load</span><input id="bTargetWeight" type="number" min="0" max="500" step="0.5" inputmode="decimal" placeholder="None"></label>
+      </div>
+      <p class="program-editor__target-hint">The week's deload still halves these sets. Rest and starting load are suggestions the logger uses.</p>
+      <div class="program-editor__target-actions">
+        <button type="button" class="program-editor__target-clear" data-action="b-target-clear">Use week default</button>
+        <button type="button" class="program-editor__target-save" data-action="b-target-save">Save target</button>
+      </div>
+    </div>`;
+  document.body.appendChild(root);
+  return root;
+}
+
+function openLiftTargetSheet(day, index) {
+  const program = getProgram();
+  const name = program?.days?.[day]?.lifts?.[index];
+  if (!program || !name) return;
+  targetEdit = { day, index, name };
+  const own = targetFor(program, day, name);
+  const mod = getWeekModifier(program, appState.currentWeek || '1') || {};
+  const root = ensureTargetSheet();
+  const title = root.querySelector('#builderTargetTitle');
+  if (title) title.textContent = name;
+  const hint = root.querySelector('#builderTargetDefault');
+  if (hint) {
+    hint.textContent = `Week default: ${mod.sets || 3} × ${mod.reps == null ? '8' : mod.reps}${own ? ' · this exercise has its own target' : ''}`;
+  }
+  // Weight is STORED in kilograms (ST6); the field shows/accepts the athlete's
+  // display unit. A 225 lb starting load must persist as 102.06 kg, not 225.
+  const unit = appState.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg';
+  const set = (id, value) => {
+    const input = /** @type {HTMLInputElement|null} */ (root.querySelector(id));
+    if (input) input.value = value == null ? '' : String(value);
+  };
+  set('#bTargetSets', own?.sets ?? mod.sets ?? 3);
+  set('#bTargetReps', own?.reps ?? mod.reps ?? '8');
+  set('#bTargetRest', own?.restSec ?? '');
+  set('#bTargetWeight', own?.weight != null ? displayWeightString(own.weight, unit) : '');
+  const weightLabel = root.querySelector('#bTargetWeightLabel');
+  if (weightLabel) weightLabel.textContent = `Starting load (${unit})`;
+  root.classList.add('active');
+  openManagedModal(root, { initialFocus: '#bTargetSets' });
+}
+
+function closeLiftTargetSheet() {
+  const root = document.getElementById('builderTargetSheet');
+  if (!root) return;
+  root.classList.remove('active');
+  closeManagedModal(root);
+  targetEdit = null;
+}
+
+function saveLiftTarget() {
+  const program = getProgram();
+  if (!program || !targetEdit) return;
+  const root = document.getElementById('builderTargetSheet');
+  const value = (id) => /** @type {HTMLInputElement|null} */ (root?.querySelector(id))?.value ?? '';
+  const unit = appState.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg';
+  markUndoable(`Target for ${targetEdit.name}`);
+  setLiftTarget(program, targetEdit.day, targetEdit.name, {
+    sets: value('#bTargetSets'),
+    reps: value('#bTargetReps'),
+    restSec: value('#bTargetRest'),
+    weight: toCanonicalWeight(value('#bTargetWeight'), unit),
+  });
+  persistProgram();
+  closeLiftTargetSheet();
+  renderBuilderUI();
+}
+
+function clearLiftTargetFromSheet() {
+  const program = getProgram();
+  if (!program || !targetEdit) return;
+  markUndoable(`Removed ${targetEdit.name}'s target`);
+  clearLiftTarget(program, targetEdit.day, targetEdit.name);
+  persistProgram();
+  closeLiftTargetSheet();
+  renderBuilderUI();
+}
+
 function ensurePicker() {
   let root = document.getElementById('builderExercisePicker');
   if (root) return root;
@@ -549,7 +673,7 @@ function chooseExercise(name) {
     ? `Added ${name}`
     : `Replaced ${day.lifts[pickerTarget.index]} with ${name}`);
   if (pickerTarget.index == null) addProgramExercise(day, name);
-  else replaceProgramExercise(day, pickerTarget.index, name);
+  else replaceProgramExercise(day, pickerTarget.index, name, { program, dayKey: pickerTarget.day });
   persistProgram();
   closeExercisePicker();
   renderBuilderUI();
@@ -584,7 +708,7 @@ function removeLift(day, index) {
   const lifts = program?.days?.[day]?.lifts;
   if (!Array.isArray(lifts) || !lifts[index]) return;
   markUndoable(`Removed ${lifts[index]}`);
-  removeProgramExercise(program.days[day], index);
+  removeProgramExercise(program.days[day], index, { program, dayKey: day });
   persistProgram();
   renderBuilderUI();
 }
@@ -593,7 +717,7 @@ function makeRestDay(day) {
   const program = getProgram();
   if (!program) return;
   markUndoable(`${EDITOR_DAY_LABELS[day]} is now a rest day`);
-  makeProgramDayRest(program.days[day]);
+  makeProgramDayRest(program.days[day], { program, dayKey: day });
   persistProgram();
   renderBuilderUI();
 }
@@ -640,11 +764,29 @@ document.addEventListener('click', async (event) => {
   if (action === 'b-close-picker') closeExercisePicker();
   else if (action === 'b-exercise-info') openExerciseDetail(target.dataset.name || '');
   else if (action === 'b-pick-exercise' || action === 'b-pick-custom') chooseExercise(target.dataset.name || '');
-  else if (!target.closest('#builderViewContainer')) return;
+  // The target sheet lives at body level (managed modal), like the picker, so
+  // its actions must be routed before the builder-container guard.
+  else if (action === 'b-close-target') closeLiftTargetSheet();
+  else if (action === 'b-target-save') saveLiftTarget();
+  else if (action === 'b-target-clear') clearLiftTargetFromSheet();
+  // The row menu is appended to <body>, so it is outside the builder container.
+  // While the editor is open it is the editor's menu and its actions must route.
+  else if (!target.closest('#builderViewContainer')
+    && !(target.closest('.action-menu') && document.getElementById('builderViewContainer')?.style.display !== 'none')) return;
   else if (action === 'close-builder') closeBuilder();
   else if (action === 'b-section') { activeSection = target.dataset.section || 'schedule'; renderBuilderUI(); }
   else if (action === 'b-select-day' && day) { selectedDay = day; renderBuilderUI(); }
   else if (action === 'b-open-picker' && day) openExercisePicker(day, Number.isNaN(index) ? null : index);
+  else if (action === 'b-lift-target' && day && Number.isInteger(index)) openLiftTargetSheet(day, index);
+  else if (action === 'b-row-menu' && day && Number.isInteger(index)) {
+    const program = getProgram();
+    const name = program?.days?.[day]?.lifts?.[index];
+    if (name) {
+      openActionMenu(target, exerciseRowMenuItems({
+        day, index, count: program.days[day].lifts.length, name,
+      }), { label: 'Exercise actions' });
+    }
+  }
   else if (action === 'b-move-up' && day) moveLift(day, index, -1);
   else if (action === 'b-move-down' && day) moveLift(day, index, 1);
   else if (action === 'b-remove-lift' && day) removeLift(day, index);
