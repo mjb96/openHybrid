@@ -1706,7 +1706,7 @@ the owner cannot currently use. Strength first; no running features; no accounts
 | PL3 | My plans management | DONE | management from the row `•••`; distinct counts; a **trained** plan offers Archive (keeps history) instead of Delete, with an Archived list + Restore; `plans-archive-browser-check` proves the record survives and history keeps its name |
 | PL4 | Plan page unification | DONE | one page, one week control; day rows expand inline to per-lift targets (6 on the fixture day) resolved through `liftTarget` **with** `ctx`; CTA 504 → **314 px**; page 2,036 px / 25 controls → **1,840 px / 14**; fit below training; `#progActivePlanView`, the day-preview sheet and the `Overview | Structure | Plan` tabs deleted |
 | PL5 | Editor: per-exercise targets | DONE | each row is name · **target** · `•••`; the target sheet writes `prescriptions[day][lift]`; 6 target controls on the fixture day; editor 1,770 → **1,596 px**, controls 50 → **38**; 3×12 survives reload, the deload preview shows 2×12, JSON round-trips and clamps |
-| PL6 | Editor IA + new-plan entry | NEXT | Plan → Week → Day; row `⋯` only; plain-language progression; starting-point sheet; save a day as a routine |
+| PL6 | Editor IA + new-plan entry | DONE | **Plan → Week → Day**: the editor opens on the plan (1,233 px), seven day rows, progression/checks as disclosures, day editor pushed; "New plan" asks where to start (blank / template / copy / import) instead of a name form; a plan day saves as a routine with its targets |
 | PL7 | Cleanup + docs | NEXT | dead library code, `collections.js`, hero carousel and aplan CSS removed; CSS split + precached; `AGENTS.md` updated |
 | PL8 | Verification | NEXT | `preflight` green; before/after table published in §22.4 |
 
@@ -1727,7 +1727,9 @@ same fixture and harness.
 | Per-lift targets on one day | hidden in a sheet, prescriptions dropped | **6 inline targets, `ctx`-correct** |
 | Change one lift's sets/reps | impossible | **row target → edit → Save**, and it survives a reload |
 | Editor controls per exercise row | 8 | **3** (name · target · `•••`) |
-| Editor height / controls | 1,770 px / 50 | **1,596 px / 38** |
+| Editor navigation | three content tabs | **Plan → Week → Day**, progression/checks fold on the plan |
+| New plan | name/focus/weeks form first | **starting-point sheet**; name inline in the editor |
+| Editor height / controls | 1,770 px / 50 | **1,233 px / 25** (plan screen) |
 | Delete/duplicate from My Plans | 3 taps (into the page) | **1 tap** (row `•••`) |
 
 PL1/PL2 measurements are from `npm run plans:audit` at 390×844 with the §22.1
@@ -1735,6 +1737,23 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Plans (PL6): the editor is Plan → Week → Day, and a plan day is a routine.**
+  - The editor opens on the **plan**: identity, seven day rows with their real
+    exercise/set counts, and Progression/Checks as disclosures (kept open across
+    edits). Tapping a day pushes the day editor; `‹ Week` returns. The three
+    content tabs are gone. Plan screen 1,596 → **1,233 px**, 25 controls.
+  - **New plan** now asks where to start — blank, from a template (forked
+    recommendation), copy one of mine, or import `.json` — instead of a
+    name/focus/weeks form before anything is visible. The old modal is deleted;
+    the name is edited inline.
+  - **Save this day as a routine** on the plan page copies the day, its order and
+    its per-exercise targets into the routine library
+    (`buildRoutineFromPlanDay`), ready to start as a one-off session.
+  - Checks: `program-editor` covers the week list, the pushed day, the target
+    round-trip and the starting sheet; `plans-json` proves a plan day saves as a
+    routine; `active-program-edit`, `copy-program` and
+    `program-preview-consistency` follow the new navigation. New unit tests for
+    the routine-from-plan shape.
 - **2026-11-27 — Plans (PL0–PL2): one home and a real Browse.**
   - Measured before: the Plans landing was 3,216 px with four stacked control
     rows, no filter entry at all (the chips only rendered while a filter was
@@ -1857,16 +1876,6 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
   - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
     static wiring guard, and the History browser check (past session + collision
     Cancel changes nothing).
-
-- **2026-11-26 — ST8: text size + haptics.**
-  - Look & Home gains **Text size** (Default / Large / Extra large) and
-    **Haptics**. Text size is one root CSS hook (`html[data-text-size]` scaling
-    the root font) applied at boot and on change; haptics gates the set/PR
-    feedback without touching logging, timers or PR detection.
-  - Sounds stay with the rest timers they belong to; demo size (G8) is not
-    built, so the row stays PARTIAL rather than claiming otherwise.
-  - Tests: `text_size` + a static wiring guard; the Settings browser check
-    toggles Extra large and asserts the root font grows to 20px.
 
 - **2026-11-26 — ST9: backup trust.**
   - Settings → Data states the **last manual backup** ("Today / Yesterday / N

@@ -249,6 +249,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `js/programs/plans-home-model.js` (distinct counts, one row per plan) and
   `js/programs/browse-model.js`. The Plans→Equipment settings link (ST4) lives
   on the home header and in the Browse equipment facet.
+- Plan editor navigation: the editor is **Plan → Week → Day** (roadmap §22/PL6).
+  It opens on the plan — identity, seven day rows, Progression/Checks as
+  `<details>` disclosures kept open across re-renders (`_openFolds`) — and
+  `[data-action="b-select-day"]` pushes the day editor (`b-close-day` returns).
+  `b-section` is a section ANCHOR, not a tab. "New plan" opens
+  `js/programs/create-sheet.js`: blank / template (forked recommendation) / copy
+  mine / import — never a name form first. The plan page's day panel offers
+  **Save this day as a routine** (`buildRoutineFromPlanDay`), which copies the
+  day, its order and its targets into `state.routines`.
 - Plan editor targets: `js/programs/editor/prescriptions.js` owns
   `program.prescriptions[day][lift]` ({sets, reps, restSec?, weight?}), which
   `liftTarget` reads FIRST. The editor row is name · target · `•••`

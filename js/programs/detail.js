@@ -36,13 +36,14 @@ import {
 } from './jt-shed-model.js';
 import {
   isBookmarked, toggleBookmark, isProgramCompleted, markProgramCompleted,
-  getProgramById, isCustomProgram,
+  getProgramById, isCustomProgram, saveStateToLocalStorage,
 } from '../state.js';
 import { escapeHtml, safeCssColor } from '../util.js';
 import { evaluateSessionCompletion } from '../workout/completion-policy.js';
 import { getExerciseNote } from '../workout/exercise-config.js';
 import { buildActivePlanBanner } from './active-plan-banner.js';
 import { priorActivationSummaries } from '../state/activation-identity.js';
+import { buildRoutineFromPlanDay } from '../routines/model.js';
 import { showToast } from '../toast.js';
 
 // The tier-aware J&T spec label ("4 × 8 · 3 RIR") for one exercise. The generic
@@ -370,6 +371,8 @@ function renderWeek(program, { isActive, week, totalWeeks, appState }) {
       </button>
       <div class="plan-day__panel" id="${panelId}" hidden>
         ${renderDayTargets(resolvedDay(program, key), { program, week, dayKey: key, state: appState })}
+        <button type="button" class="plan-day__save-routine" data-action="save-day-as-routine"
+                data-day="${key}" data-program-id="${escapeHtml(program.id || '')}">Save this day as a routine</button>
       </div>`;
   }).join('');
 
@@ -783,6 +786,20 @@ export function handleDetailAction(action, el) {
     case 'toggle-plan-day':
       togglePlanDay(/** @type {HTMLElement} */ (el));
       break;
+    case 'save-day-as-routine': {
+      // A plan day already owns its intent; copy it into the routine library so
+      // one good session can be kept without adopting the whole block.
+      const id = el.getAttribute('data-program-id') || _currentProgramId;
+      const day = el.getAttribute('data-day');
+      const program = getProgramById(id);
+      const routine = buildRoutineFromPlanDay(program, day);
+      if (!routine) { showToast('This day has no exercises to save', true); break; }
+      if (!Array.isArray(_appState.routines)) _appState.routines = [];
+      _appState.routines.push(routine);
+      saveStateToLocalStorage(true);
+      showToast('Saved to your routines');
+      break;
+    }
     case 'toggle-plan-saved': {
       const id = el.getAttribute('data-program-id');
       if (!id) break;

@@ -83,6 +83,11 @@ async function openDetailById(page, id) {
 }
 
 async function replaceOnDay(page, day, oldName, newName) {
+  // Plan → Week → Day: return to the week list if a day editor is already open.
+  if (await page.$('#builderViewContainer [data-action="b-close-day"]')) {
+    await page.click('#builderViewContainer [data-action="b-close-day"]');
+    await page.waitForSelector('#builderViewContainer .program-editor__day-list', { timeout: 4000 });
+  }
   await page.click(`#builderViewContainer [data-action="b-select-day"][data-day="${day}"]`);
   await page.waitForTimeout(200);
   const rowNames = await page.$$eval('#builderViewContainer .program-editor__exercise-name strong', els => els.map(e => e.textContent.trim()));
@@ -111,7 +116,7 @@ async function copyViaDetailMenu(page, id) {
 async function forkAndEdit(page) {
   await openDetailById(page, PROGRAM_ID);
   await page.click('#programDetailScreen [data-action="edit-active-program"]');
-  await page.waitForSelector('#builderViewContainer .program-editor__exercise-name', { timeout: 8000 });
+  await page.waitForSelector('#builderViewContainer .program-editor__day-list', { timeout: 8000 });
   await replaceOnDay(page, 'tue', 'Weighted Sit-Up', 'Seated Calf Raise');
   await replaceOnDay(page, 'mon', 'Dumbbell Curl', 'EZ-Bar Curl');
   await page.waitForTimeout(300);

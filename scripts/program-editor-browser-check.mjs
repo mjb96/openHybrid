@@ -58,6 +58,11 @@ async function openEditor(width, extraCss = '') {
   return { context, page };
 }
 
+async function openDay(page, day = 'mon') {
+  await page.click(`#builderViewContainer [data-action="b-select-day"][data-day="${day}"]`);
+  await page.waitForSelector('#builderViewContainer .program-editor__day-card', { timeout: 4000 });
+}
+
 async function measure(page) {
   return page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
@@ -86,8 +91,11 @@ for (const width of WIDTHS) {
   const result = await measure(page);
   check(!result.docOverflow, `${width}px: document has horizontal overflow`);
   check(result.clipped === 0, `${width}px: ${result.clipped} editor elements clip past the viewport`);
-  check(result.days === 7, `${width}px: compact seven-day selector is missing`);
-  check(result.cards === 1, `${width}px: editor should render one focused day card, not seven`);
+  check(result.days === 7, `${width}px: the week list is missing`);
+  check(result.cards === 0, `${width}px: the plan screen must list days, not render a day card`);
+  await openDay(page);
+  const openedCards = await page.evaluate(() => document.querySelectorAll('.program-editor__day-card').length);
+  check(openedCards === 1, `${width}px: opening a day must render exactly one day card`);
   check(result.minimumControl >= 43, `${width}px: an editor control is below ~44px (${result.minimumControl}px)`);
   console.log(`  ${width}px overflow=${result.docOverflow} clipped=${result.clipped} days=${result.days} focusedCards=${result.cards} minControl=${result.minimumControl} low=${result.lowControlNames.join(',')} clippedNames=${result.clippedNames.join(',')}`);
   await context.close();
@@ -96,6 +104,7 @@ for (const width of WIDTHS) {
 // Exercise search → add → preview uses the exact logger prescription resolver.
 {
   const { context, page } = await openEditor(390);
+  await openDay(page);
   await page.click('.program-editor__day-card .program-editor__add[data-day="mon"]');
   await page.fill('#builderExerciseSearch', 'Cable Row');
   const picker = await page.evaluate(() => ({
@@ -107,6 +116,9 @@ for (const width of WIDTHS) {
   check(picker.results > 0, 'exercise search returned no catalogue result');
   check(!picker.overflow, 'exercise picker overflows the viewport');
   await page.click('#builderExerciseResults [data-action="b-pick-exercise"][data-name="Cable Row"]');
+  // Back to the week, then the Checks section (the nav belongs to the plan
+  // screen; the day editor is a pushed level).
+  await page.click('#builderViewContainer [data-action="b-close-day"]');
   await page.click('[data-action="b-section"][data-section="preview"]');
   const result = await page.evaluate(async () => {
     const state = await import('./js/state.js');
@@ -135,6 +147,7 @@ for (const width of WIDTHS) {
     const state = await import('./js/state.js');
     state.appState.settings.weightUnit = 'lbs';
   });
+  await openDay(page);
   await page.click('#builderViewContainer [data-action="b-lift-target"]');
   await page.waitForSelector('#builderTargetSheet.active', { timeout: 4000 });
   const unitLabel = await page.$eval('#bTargetWeightLabel', (el) => el.textContent.trim());
@@ -163,6 +176,7 @@ for (const width of WIDTHS) {
   await page.click('[data-action="b-close-target"]');
   await page.waitForTimeout(200);
 
+  await page.click('#builderViewContainer [data-action="b-close-day"]');
   await page.click('[data-action="b-section"][data-section="preview"]');
   await page.selectOption('[data-action="b-preview-week"]', '4');
   await page.waitForTimeout(250);
@@ -170,8 +184,10 @@ for (const width of WIDTHS) {
   check(/Bench Press\s*2 × 12/.test(preview), `the deload week does not halve the prescribed sets (${preview.slice(0, 120)})`);
 
   await page.reload({ waitUntil: 'load' });
+  await page.click('.nav-item[data-target="program"]');
   await page.evaluate(async () => (await import('./js/program_builder.js')).openBuilder('prog_browser_editor'));
   await page.waitForTimeout(200);
+  await openDay(page);
   const afterReload = await page.$eval('#builderViewContainer .program-editor__target', (el) => el.textContent.replace(/\s+/g, ' ').trim());
   check(/3 . 12/.test(afterReload), `the target did not survive a reload (${afterReload})`);
   check(errors.length === 0, `PL5 browser errors: ${errors.join(' | ')}`);
@@ -184,6 +200,7 @@ for (const width of WIDTHS) {
   const { context, page } = await openEditor(390);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
+  await openDay(page);
 
   const lifts = () => page.evaluate(async () => {
     const state = await import('./js/state.js');
@@ -331,6 +348,51 @@ for (const width of WIDTHS) {
   await context.close();
 }
 
+// PL6 — "New plan" asks where to start, not for a name before the editor.
+{
+  const { context, page } = await openEditor(390);
+  await page.click('#builderViewContainer [data-action="close-builder"]');
+  await page.waitForTimeout(250);
+  await page.click('[data-action="open-plans-create-menu"]');
+  await page.waitForSelector('.action-menu [data-action="open-create-program"]', { timeout: 4000 });
+  await page.click('.action-menu [data-action="open-create-program"]');
+  await page.waitForSelector('#plansStartSheet.active', { timeout: 4000 });
+
+  const sheet = await page.evaluate(() => ({
+    options: [...document.querySelectorAll('#plansStartSheet [data-start]')].map((el) => el.getAttribute('data-start')),
+    nameInput: !!document.querySelector('#plansStartSheet input[type="text"]'),
+  }));
+  check(sheet.options.join(',') === 'blank,template,copy,import', `the sheet offers every starting point (${sheet.options.join(',')})`);
+  check(!sheet.nameInput, 'the sheet must not ask for a name before the editor');
+
+  const before = await page.evaluate(async () => (await import('./js/state.js')).appState.customPrograms.length);
+  await page.click('#plansStartSheet [data-start="blank"]');
+  await page.waitForSelector('#builderViewContainer .program-editor', { timeout: 5000 });
+  const blank = await page.evaluate(async () => {
+    const state = await import('./js/state.js');
+    const list = state.appState.customPrograms;
+    return { count: list.length, name: list[list.length - 1]?.name || '' };
+  });
+  check(blank.count === before + 1, 'Start blank creates one custom plan');
+  check(blank.name === 'New plan', `the new plan opens ready to name inline (${blank.name})`);
+
+  // Copy one of mine duplicates an existing personal plan.
+  await page.click('#builderViewContainer [data-action="close-builder"]');
+  await page.waitForTimeout(200);
+  await page.click('[data-action="open-plans-create-menu"]');
+  await page.waitForSelector('.action-menu [data-action="open-create-program"]');
+  await page.click('.action-menu [data-action="open-create-program"]');
+  await page.waitForSelector('#plansStartSheet.active');
+  await page.click('#plansStartSheet [data-start="copy"]');
+  await page.waitForSelector('#plansStartCopies [data-copy]', { timeout: 4000 });
+  const copiesBefore = await page.evaluate(async () => (await import('./js/state.js')).appState.customPrograms.length);
+  await page.click('#plansStartCopies [data-copy]');
+  await page.waitForSelector('#builderViewContainer .program-editor', { timeout: 5000 });
+  const copiesAfter = await page.evaluate(async () => (await import('./js/state.js')).appState.customPrograms.length);
+  check(copiesAfter === copiesBefore + 1, 'Copy one of mine creates one duplicate');
+  await context.close();
+}
+
 // Large text remains usable and does not clip the selected day or preview.
 {
   const { context, page } = await openEditor(360, 'html{font-size:24px!important;}');
@@ -345,6 +407,7 @@ for (const width of WIDTHS) {
 // row, and the sheet is reachable from the builder (not only the cockpit).
 {
   const { context, page } = await openEditor(390);
+  await openDay(page);
   const row = page.locator('.program-editor__exercise-row').first();
   await row.locator('[data-action="b-row-menu"]').click();
   await page.waitForSelector('.action-menu [data-action="b-exercise-settings"]', { timeout: 4000 });

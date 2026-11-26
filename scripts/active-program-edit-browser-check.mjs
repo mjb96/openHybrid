@@ -182,6 +182,8 @@ try {
 
     // Enter the builder (in place) and edit: replace Bench Press, add Face Pull.
     await page.click('#programDetailScreen .detail-cta-secondary [data-action="open-builder"][data-program-id="prog_mine"]');
+    await page.waitForSelector('#builderViewContainer [data-action="b-select-day"]', { timeout: 8000 });
+    await page.click('#builderViewContainer [data-action="b-select-day"][data-day="mon"]');
     await page.waitForSelector('#builderViewContainer .program-editor__exercise-name', { timeout: 8000 });
     await page.click('#builderViewContainer .program-editor__exercise-name[data-i="0"]'); // replace slot 0
     await pickExact(page, 'Dumbbell Bench Press');
@@ -239,6 +241,8 @@ try {
     // Edit the source program (replace Bench, add Face Pull) via detail → builder.
     await openDetail(page);
     await page.click('#programDetailScreen .detail-cta-secondary [data-action="open-builder"][data-program-id="prog_mine"]');
+    await page.waitForSelector('#builderViewContainer [data-action="b-select-day"]', { timeout: 8000 });
+    await page.click('#builderViewContainer [data-action="b-select-day"][data-day="mon"]');
     await page.waitForSelector('#builderViewContainer .program-editor__exercise-name', { timeout: 8000 });
     await page.click('#builderViewContainer .program-editor__exercise-name[data-i="0"]');
     await pickExact(page, 'Dumbbell Bench Press');
@@ -286,7 +290,7 @@ try {
 
     // Press Edit → the active identity transfers to a personal program.
     await page.click('#programDetailScreen [data-action="edit-active-program"]');
-    await page.waitForSelector('#builderViewContainer .program-editor__exercise-name', { timeout: 8000 });
+    await page.waitForSelector('#builderViewContainer .program-editor__day-list', { timeout: 8000 });
     const t = await page.evaluate(() => {
       const s = JSON.parse(localStorage.getItem('hybrid_engine_v2_state'));
       return {

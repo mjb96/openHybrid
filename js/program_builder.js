@@ -40,7 +40,7 @@ import {
 import { MUSCLE_LABELS } from './analytics/calculations/volume-landmarks.js';
 
 let activeBuilderId = null;
-let activeSection = 'schedule';
+let activeSection = 'plan';
 let selectedDay = 'mon';
 let previewWeek = '1';
 let pickerTarget = null;
@@ -59,6 +59,9 @@ let deloadEvery = 0;
 // dialogs without the Undo. Single level, in memory, cleared when a different
 // programme is opened.
 let editorUndo = null;
+// Which plan-screen disclosures are open. Kept across re-renders so an edit
+// inside Progression/Checks does not collapse the section the athlete is in.
+const _openFolds = new Set();
 
 function getProgram() { return getProgramById(activeBuilderId); }
 
@@ -145,7 +148,7 @@ export function openBuilder(programId) {
   ensureDays(program);
   ensureWeeklyMods(program);
   selectedDay = EDITOR_DAYS.find((day) => dayTrainingSummary(program.days[day]).training) || 'mon';
-  activeSection = 'schedule';
+  activeSection = 'plan';
   previewWeek = '1';
   reconciliation = { updatedDays: 0, preservedDays: 0 };
   // Per-programme state: an Undo from the last programme must never be offered
@@ -154,10 +157,11 @@ export function openBuilder(programId) {
   shapeChoice = 'steady';
   deloadEvery = 0;
   editorUndo = null;
+  _openFolds.clear();
 
   const container = document.getElementById('builderViewContainer');
   if (container) container.style.display = 'block';
-  for (const id of ['programLibraryScreen', 'programDetailScreen', 'progActivePlanView']) {
+  for (const id of ['programLibraryScreen', 'programDetailScreen']) {
     const sibling = document.getElementById(id);
     if (sibling) sibling.style.display = 'none';
   }
@@ -170,63 +174,112 @@ function renderBuilderUI() {
   if (!program || !container) return;
   ensureDays(program);
   ensureWeeklyMods(program);
-  const summary = programEditorSummary(program);
-  const active = appState.activeProgramId === program.id;
+  const isDay = activeSection === 'day';
 
   // A render failure for one section must not freeze the whole editor (which is
-  // indistinguishable to the user from "my edit didn't apply"). Build each
-  // section defensively and fall back to an honest, recoverable message.
+  // indistinguishable to the user from "my edit didn't apply").
   let body;
   try {
-    body = activeSection === 'progression' ? renderProgression(program)
-      : activeSection === 'preview' ? renderPreview(program)
-      : renderSchedule(program);
+    body = isDay ? renderSchedule(program) : renderPlanScreen(program);
   } catch (err) {
     console.error('Program editor section render failed:', err);
-    body = `<section class="program-editor__section-error"><p>This section couldn’t be displayed. Your program is safe — switch tabs or reopen it, and let us know if it keeps happening.</p></section>`;
+    body = `<section class="program-editor__section-error"><p>This section couldn’t be displayed. Your program is safe — reopen it, and let us know if it keeps happening.</p></section>`;
   }
 
   container.innerHTML = `
     <div class="program-editor">
       <div class="program-editor__topbar">
-        <button class="subview-back-btn program-editor__back" data-action="close-builder">← Programs</button>
+        <button class="subview-back-btn program-editor__back" data-action="close-builder">← Plans</button>
         <span id="builderSaveStatus" class="program-editor__save" role="status">Saved on this device</span>
       </div>
-
-      <section class="program-editor__hero" aria-labelledby="programEditorTitle">
-        <div class="program-editor__eyebrow">CUSTOM PROGRAM</div>
-        <input id="programEditorTitle" class="program-editor__title-input" type="text" maxlength="70"
-          value="${escapeHtml(program.name || '')}" data-action="b-program-name" aria-label="Program name">
-        <div class="program-editor__details-grid">
-          <label><span>Focus</span><input type="text" maxlength="80" value="${escapeHtml(program.dossier?.focus || '')}" data-action="b-program-focus" placeholder="e.g. Strength + 10K"></label>
-          <label><span>Length</span><div class="program-editor__weeks-input"><input type="number" min="1" max="52" value="${escapeHtml(String(program.totalWeeks || 12))}" data-action="b-program-weeks" aria-label="Program length in weeks"><span>weeks</span></div></label>
-        </div>
-        <div class="program-editor__summary" aria-label="Program summary">
-          <span><strong>${summary.strengthDays}</strong> strength day${summary.strengthDays === 1 ? '' : 's'}</span>
-          <span><strong>${summary.runDays}</strong> run day${summary.runDays === 1 ? '' : 's'}</span>
-          <span><strong>${summary.totalExercises}</strong> exercises</span>
-        </div>
-        ${active ? `<div class="program-editor__active-note"><strong>Active plan</strong><span>Untouched workouts update automatically. Logged or started sessions are preserved.</span></div>` : ''}
-      </section>
-
-      <nav class="program-editor__tabs" aria-label="Program editor sections">
-        ${renderTab('schedule', 'Schedule')}
-        ${renderTab('progression', 'Progression')}
-        ${renderTab('preview', 'Preview')}
-      </nav>
-
+      ${isDay ? '' : renderPlanHero(program)}
+      ${isDay ? '' : renderSectionNav()}
       ${renderUndoBar()}
-
-      <div class="program-editor__body">
-        ${body}
-      </div>
+      <div class="program-editor__body">${body}</div>
     </div>
   `;
+  for (const node of container.querySelectorAll('.program-editor__fold')) {
+    const fold = /** @type {HTMLDetailsElement} */ (node);
+    fold.addEventListener('toggle', () => {
+      const key = String(fold.id || '').replace('builderFold-', '');
+      if (!key) return;
+      if (fold.open) _openFolds.add(key); else _openFolds.delete(key);
+    });
+  }
 }
 
-function renderTab(id, label) {
-  const selected = activeSection === id;
-  return `<button class="program-editor__tab${selected ? ' is-active' : ''}" data-action="b-section" data-section="${id}" role="tab" aria-selected="${selected}">${label}</button>`;
+/** The plan's identity, editable inline. */
+function renderPlanHero(program) {
+  const summary = programEditorSummary(program);
+  const active = appState.activeProgramId === program.id;
+  return `
+    <section class="program-editor__hero" aria-labelledby="programEditorTitle">
+      <div class="program-editor__eyebrow">PLAN</div>
+      <input id="programEditorTitle" class="program-editor__title-input" type="text" maxlength="70"
+        value="${escapeHtml(program.name || '')}" data-action="b-program-name" aria-label="Plan name">
+      <div class="program-editor__details-grid">
+        <label><span>Focus</span><input type="text" maxlength="80" value="${escapeHtml(program.dossier?.focus || '')}" data-action="b-program-focus" placeholder="e.g. Strength + 10K"></label>
+        <label><span>Length</span><div class="program-editor__weeks-input"><input type="number" min="1" max="52" value="${escapeHtml(String(program.totalWeeks || 12))}" data-action="b-program-weeks" aria-label="Plan length in weeks"><span>weeks</span></div></label>
+      </div>
+      <div class="program-editor__summary" aria-label="Plan summary">
+        <span><strong>${summary.strengthDays}</strong> strength day${summary.strengthDays === 1 ? '' : 's'}</span>
+        <span><strong>${summary.runDays}</strong> run day${summary.runDays === 1 ? '' : 's'}</span>
+        <span><strong>${summary.totalExercises}</strong> exercises</span>
+      </div>
+      ${active ? `<div class="program-editor__active-note"><strong>Active plan</strong><span>Untouched workouts update automatically. Logged or started sessions are preserved.</span></div>` : ''}
+    </section>`;
+}
+
+/** Section anchors, not tabs: one scroll, and the day list is the content. */
+function renderSectionNav() {
+  return `
+    <nav class="program-editor__section-nav" aria-label="Plan sections">
+      <button type="button" class="program-editor__section-link is-active" data-action="b-section" data-section="schedule">Week</button>
+      <button type="button" class="program-editor__section-link" data-action="b-section" data-section="progression">Progression</button>
+      <button type="button" class="program-editor__section-link" data-action="b-section" data-section="preview">Checks</button>
+    </nav>`;
+}
+
+/** Plan → Week: seven day rows, each opening the day editor. */
+function renderPlanScreen(program) {
+  const weekKey = appState.currentWeek || '1';
+  const weekPreview = previewProgramWeek(program, weekKey);
+  const rows = EDITOR_DAYS.map((key) => {
+    const day = program.days[key] || {};
+    const item = dayTrainingSummary(day);
+    const preview = weekPreview.find((entry) => entry.key === key);
+    const sets = (preview?.lifts || []).reduce((n, lift) => n + (Number(lift.sets) || 0), 0);
+    const meta = item.training
+      ? [
+        item.lifts ? `${item.lifts} exercise${item.lifts === 1 ? '' : 's'}` : '',
+        sets ? `${sets} sets` : '',
+        item.hasRun ? 'run' : '',
+      ].filter(Boolean).join(' · ')
+      : 'Rest day';
+    return `<button type="button" class="program-editor__day program-editor__day-row${item.training ? ' has-training' : ''}"
+              data-action="b-select-day" data-day="${key}">
+      <span class="program-editor__day-row-day">${EDITOR_DAY_LABELS[key].slice(0, 3)}</span>
+      <span class="program-editor__day-row-body"><strong>${escapeHtml(String(day.title || 'Rest'))}</strong><small>${escapeHtml(meta)}</small></span>
+      <span class="program-editor__day-row-chevron" aria-hidden="true">›</span>
+    </button>`;
+  }).join('');
+
+  return `
+    <section id="builderSection-schedule" aria-labelledby="builderPlanTitle">
+      <div class="program-editor__section-heading">
+        <div><div class="program-editor__eyebrow">WEEK</div><h2 id="builderPlanTitle">Your week</h2><p>Tap a day to edit its session, exercises and targets.</p></div>
+      </div>
+      <div class="program-editor__day-list">${rows}</div>
+    </section>
+    <details class="program-editor__fold" id="builderFold-progression"${_openFolds.has('progression') ? ' open' : ''}>
+      <summary>Progression</summary>
+      ${renderProgression(program)}
+    </details>
+    <details class="program-editor__fold" id="builderFold-preview"${_openFolds.has('preview') ? ' open' : ''}>
+      <summary>Checks &amp; preview</summary>
+      ${renderPreview(program)}
+    </details>
+  `;
 }
 
 // NOTE: the rest/training toggle below MUST carry data-day. Both its handlers
@@ -238,17 +291,9 @@ function renderSchedule(program) {
   const summary = dayTrainingSummary(day);
   return `
     <section aria-labelledby="builderScheduleTitle">
-      <div class="program-editor__section-heading">
-        <div><div class="program-editor__eyebrow">WEEKLY SCHEDULE</div><h2 id="builderScheduleTitle">Choose a day to edit</h2></div>
-      </div>
-      <div class="program-editor__day-strip" role="tablist" aria-label="Training days">
-        ${EDITOR_DAYS.map((key) => {
-          const item = dayTrainingSummary(program.days[key]);
-          const selected = key === selectedDay;
-          return `<button class="program-editor__day${selected ? ' is-active' : ''}${item.training ? ' has-training' : ''}" data-action="b-select-day" data-day="${key}" role="tab" aria-selected="${selected}">
-            <span>${EDITOR_DAY_LABELS[key].slice(0, 3)}</span><small>${item.training ? item.lifts || 'Run' : 'Rest'}</small>
-          </button>`;
-        }).join('')}
+      <div class="program-editor__day-topbar">
+        <button type="button" class="program-editor__back" data-action="b-close-day">‹ Week</button>
+        <h2 id="builderScheduleTitle" class="program-editor__day-topbar-title">${EDITOR_DAY_LABELS[selectedDay]}</h2>
       </div>
 
       <article class="program-editor__day-card">
@@ -283,7 +328,7 @@ function renderProgression(program) {
   const simple = progressionMode === 'simple';
   const progressionStyle = normalizeProgressionStyle(program.progressionStyle);
   return `
-    <section aria-labelledby="builderProgressionTitle">
+    <section id="builderSection-progression" aria-labelledby="builderProgressionTitle">
       <div class="program-editor__section-heading">
         <div>
           <div class="program-editor__eyebrow">WEEK BY WEEK</div>
@@ -387,7 +432,7 @@ function renderPreview(program) {
   const days = previewProgramWeek(program, previewWeek).filter((day) => day.lifts.length || day.run);
   const volumeProjection = renderProgramVolumeProjection(program);
   return `
-    <section aria-labelledby="builderPreviewTitle">
+    <section id="builderSection-preview" aria-labelledby="builderPreviewTitle">
       <div class="program-editor__section-heading program-editor__preview-heading">
         <div><div class="program-editor__eyebrow">LOGGER PREVIEW</div><h2 id="builderPreviewTitle">What you will train</h2><p>Targets below use the same resolver as the workout logger.</p></div>
         <label><span>Week</span><select data-action="b-preview-week">${weekKeys(program).map((week) => `<option value="${week}" ${week === previewWeek ? 'selected' : ''}>${week}</option>`).join('')}</select></label>
@@ -774,8 +819,22 @@ document.addEventListener('click', async (event) => {
   else if (!target.closest('#builderViewContainer')
     && !(target.closest('.action-menu') && document.getElementById('builderViewContainer')?.style.display !== 'none')) return;
   else if (action === 'close-builder') closeBuilder();
-  else if (action === 'b-section') { activeSection = target.dataset.section || 'schedule'; renderBuilderUI(); }
-  else if (action === 'b-select-day' && day) { selectedDay = day; renderBuilderUI(); }
+  else if (action === 'b-section') {
+    const section = target.dataset.section || 'schedule';
+    // One scroll: the chips are anchors, not tabs. Returning from a day first
+    // puts the plan screen back in the DOM, then the anchor scrolls to it.
+    activeSection = 'plan';
+    if (section !== 'schedule') _openFolds.add(section);
+    renderBuilderUI();
+    if (section !== 'schedule') {
+      const anchor = document.getElementById(`builderSection-${section}`);
+      if (anchor) {
+        try { anchor.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* best effort */ }
+      }
+    }
+  }
+  else if (action === 'b-close-day') { activeSection = 'plan'; renderBuilderUI(); }
+  else if (action === 'b-select-day' && day) { selectedDay = day; activeSection = 'day'; renderBuilderUI(); }
   else if (action === 'b-open-picker' && day) openExercisePicker(day, Number.isNaN(index) ? null : index);
   else if (action === 'b-lift-target' && day && Number.isInteger(index)) openLiftTargetSheet(day, index);
   else if (action === 'b-row-menu' && day && Number.isInteger(index)) {

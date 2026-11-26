@@ -114,6 +114,24 @@ try {
   await page.click('[data-action="open-program-menu"]');
   await page.waitForSelector('.action-menu');
   ok(/Export plan \(.json\)/.test(await page.locator('.action-menu').innerText()), 'program detail offers the portable JSON export');
+  await page.keyboard.press('Escape');
+
+  // PL6: a plan day can be saved as a routine without logging it first.
+  const dayKey = await page.evaluate((key) => {
+    const state = JSON.parse(localStorage.getItem(key) || '{}');
+    const program = (state.customPrograms || []).find((p) => p.name === 'Imported Test Block');
+    return Object.keys(program?.days || {}).find((d) => (program.days[d].lifts || []).length) || null;
+  }, STORAGE_KEY);
+  if (dayKey) {
+    await page.click(`#programDetailScreen [data-action="toggle-plan-day"][data-day="${dayKey}"]`);
+    await page.click(`#programDetailContent [data-action="save-day-as-routine"][data-day="${dayKey}"]`);
+    await page.waitForTimeout(300);
+    const routines = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}').routines || [], STORAGE_KEY);
+    ok(routines.length === 1, 'a plan day saves as a routine');
+    ok(!!routines[0]?.prescriptions?.[dayKey], 'the saved routine keeps the day\'s targets');
+  } else {
+    ok(false, 'the imported plan has no training day to save');
+  }
 
   await page.click('#activitiesBack').catch(() => {});
   await page.setInputFiles('#planImportFile', openGymPath);
