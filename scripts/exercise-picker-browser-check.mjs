@@ -274,6 +274,48 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 780 });
 
+  // ── G7: favourite exercises ──────────────────────────────────────────────
+  // Clear the filters, star the first row, and prove the preference persists to
+  // state and leads the library on the next render (not just the star glyph).
+  await page.fill('#elSearchInput', '');
+  await page.selectOption('#elMuscleFilter', '');
+  await page.selectOption('#elEquipmentFilter', '');
+  await page.selectOption('#elCategoryFilter', '');
+  await page.waitForTimeout(200);
+  const starInfo = await page.evaluate(() => {
+    const star = document.querySelector('#elList [data-action="el-favourite"]');
+    const row = star?.closest('.el-exercise-row');
+    const rect = star?.getBoundingClientRect();
+    return {
+      name: star?.getAttribute('data-exname') || '',
+      width: Math.round(rect?.width || 0),
+      height: Math.round(rect?.height || 0),
+      pressed: star?.getAttribute('aria-pressed') || '',
+      label: star?.getAttribute('aria-label') || '',
+      firstPick: row?.querySelector('[data-action="el-pick"]')?.getAttribute('data-exname') || '',
+    };
+  });
+  ok(starInfo.name && starInfo.name === starInfo.firstPick, `the star belongs to its own row (${starInfo.name})`);
+  ok(starInfo.width >= 44 && starInfo.height >= 44, `the star is ${starInfo.width}×${starInfo.height} (min 44px)`);
+  ok(starInfo.pressed === 'false' && /^Add .* to favourites$/.test(starInfo.label), `the star is named before starring (${starInfo.label})`);
+  await page.locator(`#elList [data-action="el-favourite"][data-exname="${starInfo.name.replace(/"/g, '\\"')}"]`).first().click();
+  await page.waitForTimeout(250);
+  const starred = await page.evaluate((name) => {
+    const state = JSON.parse(localStorage.getItem('hybrid_engine_v2_state') || '{}');
+    const map = state.settings?.favouriteExercises || {};
+    const star = document.querySelector(`#elList [data-action="el-favourite"][data-exname="${CSS.escape(name)}"]`);
+    return {
+      pressed: star?.getAttribute('aria-pressed') || '',
+      stored: Object.keys(map).length,
+      label: document.querySelector('#elList .el-cat-label')?.textContent?.trim() || '',
+      firstPick: document.querySelector('#elList [data-action="el-pick"]')?.getAttribute('data-exname') || '',
+    };
+  }, starInfo.name);
+  ok(starred.pressed === 'true', 'the star turns on');
+  ok(starred.stored === 1, `the preference persists to state (${starred.stored} keys)`);
+  ok(starred.label === 'Favourites', `the library leads with a Favourites section (${starred.label})`);
+  ok(starred.firstPick === starInfo.name, `the favourite leads the library (${starred.firstPick})`);
+
   if (errors.length) fail(`browser errors: ${errors.join(' | ')}`);
   await ctx.close();
 } finally {

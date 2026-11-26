@@ -111,6 +111,7 @@ import {
   openAddExerciseModal,
   closeAddExerciseModal,
   confirmAddExercise,
+  toggleExerciseFavourite,
 } from './workout/exercise-picker.js';
 
 // Re-exported so js/app.js (the only importer of this file) keeps its existing
@@ -2524,6 +2525,7 @@ document.addEventListener('click', (e) => {
   else if (action === 'close-add-exercise') closeAddExerciseModal();
   else if (action === 'el-pick') addExerciseToDayFromLibrary(e.target.closest('[data-action="el-pick"]')?.getAttribute('data-exname'));
   else if (action === 'el-info') openExerciseDetail(target.getAttribute('data-exname'));
+  else if (action === 'el-favourite') toggleExerciseFavourite(target.getAttribute('data-exname'));
   else if (action === 'confirm-add-exercise') confirmAddExercise();
   else if (action === 'swap-exercise') openSwapModal(liftName);
   else if (action === 'close-swap-exercise') closeSwapModal();
