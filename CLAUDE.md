@@ -448,6 +448,11 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   adds ~5,555 openGym catalogue **metadata** entries (names/ids/muscles/equipment; no imported instructions, descriptions or media) imported by
   `scripts/import-opengym-catalogue.mjs`. `OPENGYM_ID_NAMES` resolves plan-file ids.
   Never include Gym-visual media; see NOTICE.md and docs/EXERCISE_LIBRARY.md.
+Exercise demos are Free Exercise DB stills (Unlicense) for 142 of the 157 core
+lifts: `assets/exercises/<id>-{0,1}.webp`, mapped in `js/exercises/media.js`,
+precached by discovery, and captioned with the source name when it differs. The
+staging allowlist must include `assets/` or production 404s while a local dev
+server works.
 - Equipment profiles: `js/equipment-profiles.js` owns
   `settings.equipmentProfiles` (array of
   `{ id, name, equipment, bandWeights, plateSetup }`) plus
