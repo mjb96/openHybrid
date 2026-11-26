@@ -532,6 +532,21 @@ try {
       ok(restored, `${width}px: importing the exported archive did not restore the deleted photo`);
     }
 
+    // ST4: the Measures gear opens the SAME measurement-unit owner.
+    const unitsGear = await page.locator('#analytics-measures [data-action="open-settings"][data-page="once.units"]').count();
+    if (!unitsGear) failures.push(`${width}px: Measures has no measurement settings control`);
+    else {
+      await page.click('#analytics-measures [data-action="open-settings"][data-page="once.units"]');
+      await page.waitForSelector('#settingsOverlay.active', { timeout: 4000 }).catch(() => {});
+      const opened = await page.evaluate(() => ({
+        active: document.getElementById('settingsOverlay')?.classList.contains('active') || false,
+        hash: location.hash,
+      }));
+      if (!opened.active || opened.hash !== '#/settings/units') {
+        failures.push(`${width}px: the Measures gear did not open Units (${opened.hash})`);
+      }
+    }
+
     if (errors.length) failures.push(`${width}px: browser errors — ${errors.join(' | ')}`);
     await context.close();
   }

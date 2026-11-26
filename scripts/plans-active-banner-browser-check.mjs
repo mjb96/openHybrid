@@ -230,6 +230,27 @@ try {
     await context.close();
   }
 
+  // ── ST4: the Plans utility row opens the Equipment owner ─────────────────
+  {
+    const { context, page, errors } = await plans({});
+    const gear = await page.$('#plansUtilityRow [data-action="open-settings"][data-page="once.equipment"]');
+    if (!gear) failures.push('Plans has no equipment settings link');
+    else {
+      await gear.click();
+      await page.waitForSelector('#settingsOverlay.active', { timeout: 4000 }).catch(() => {});
+      const opened = await page.evaluate(() => ({
+        active: document.getElementById('settingsOverlay')?.classList.contains('active') || false,
+        hash: location.hash,
+        text: document.getElementById('settingsPanel')?.textContent?.replace(/\s+/g, ' ') || '',
+      }));
+      if (!opened.active) failures.push('the Plans gear did not open Settings');
+      if (opened.hash !== '#/settings/equipment') failures.push(`the Plans gear opened ${opened.hash}, not Equipment`);
+      if (!/Equipment/.test(opened.text)) failures.push('the Equipment page did not render');
+    }
+    if (errors.length) failures.push(`plans gear: browser errors: ${errors.join(' | ')}`);
+    await context.close();
+  }
+
   // ── Holds together at both edges of the viewport range, in both themes ───
   for (const [width, theme] of [[320, 'dark'], [412, 'light']]) {
     const { context, page, errors } = await plans({

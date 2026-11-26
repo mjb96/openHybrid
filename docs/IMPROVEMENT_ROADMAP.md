@@ -994,7 +994,7 @@ or corrects it.
 | ST1 | **Settings inventory** | `state.js`, `index.html`, `settings.js`, `settings/nav.js` | Table of every setting: key, owner module, where shown, default, who reads it. Find duplicates, hidden, dead and misplaced settings; classify keep / merge / move / remove | DONE | Inventory in §14.7: 47 keys + 5 settings-like values; 2 migration-only, 1 write-only, 1 orphan. |
 | ST2 | **Declarative settings registry** | `js/settings/registry.js`, `js/settings/store.js` | One registry (id, label, type, group, footer, search keywords, default, migration). Screens and search render from it; no setting exists outside it. Test: every stored key is in the registry | DONE | 65 descriptors now render the 13 Settings pages and profile editor through `js/settings/render.js` and `js/settings/components.js`; search and summaries read the same registry; `js/settings/store.js` validates writes, batches, resets and syncs. The registry test gates every stored key and default. |
 | ST3 | **Settings search** | `js/settings/render.js`, `js/settings/registry.js` | Matches labels, footers and keywords; result opens the exact row with the group in view | DONE | Search is one field under the profile card. It matches registry labels and keywords, tolerates an in-order subsequence ("thm" → Theme), shows the section › page path, and selecting opens the page and pulses the exact row. Settings is tap 1 from Home. |
-| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | PARTIAL | Phase 1 added the Home gear and the full-screen `#/settings` route; the Home sliders stays Customize Home. The logger/Progress/Plans/Measures gears and the workout settings sheet are still Phase 6. |
+| ST4 | **Contextual shortcuts** | `settings.js` + owning surfaces | Gear or "Settings" links from the logger, Plans and Progress open the relevant detail screen and edit the same value (never a second copy) | DONE | The router forwards `data-page`/`data-anchor` to `openSettings`, and the surfaces link to the page that owns the value: Progress and Measures → **Units & language** (`once.units`, the same measurement/weight unit), Plans → **Equipment** (`once.equipment`, the kit a plan is built around). The logger keeps the registry-driven Workout settings sheet (`open-workout-settings`), so no value has a second writer. Tests: `contextual_settings_links` (router forwarding + each page target + the logger sheet); the Progress-hub, Measures and Plans browser checks open the real pages. |
 | ST5 | **Profile redevelopment** | `settings.js`, `onboarding.js`, `equipment-profiles.js` | Per §14.3; migrates existing profile data losslessly | DONE | Profile now leads with editable Identity, Body metrics (weigh-in, height, DOB, sex, target/rate) and Training goal groups, with links to weight history and Measures. Schema v17 adds the optional fields as null; the weigh-in writes the canonical `bodyWeightLog` and stays in sync with Home. |
 | ST6 | **Units and formats** | `settings.js`, `measurements-sheet.js`, `metrics/weight-unit.js` | One Units screen; every surface follows it (§10 rejects hard-coded units); unit toggles change display only, never stored values | PARTIAL | Weight/distance live in the Training card; measurement unit only in Measures; no time/date format. The kg↔lb switch now converts stored sets/bodyweight/goals/prescriptions with a recovery copy (S-F4); true display-only units still need canonical storage. |
 | ST7 | **Week start (G6)** | `settings.js`, `analytics/weekly-aggregate.js`, `dates.js` | Monday or Sunday; rail, calendar and every "this week" total follow it. Touches the Monday-only data rule: needs a migration note, a backup path and tests across Pulse, Muscles, reports and Year in Review | PARTIAL | Home/History/bodyweight honour it; every Progress analytic and `startOfProgramWeek` hardcodes Monday; no refresh (S-F3). |
@@ -1629,6 +1629,15 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H1 ST4: contextual Settings shortcuts.**
+  - The router now forwards `data-page`/`data-anchor` to `openSettings`, and
+    Progress, Measures and Plans link to the page that owns the value they show:
+    Units (Progress, Measures) and Equipment (Plans). The logger keeps its
+    registry-driven workout settings sheet.
+  - Shortcuts only — every control reads/writes the same registered setting.
+  - Tests: `tests/contextual_settings_links.test.js` plus real clicks in the
+    Progress-hub, Measures and Plans browser checks.
+
 - **2026-11-26 — H3 G7: favourite exercises.**
   - Every picker row has a 44px star with `aria-pressed` and an Add/Remove
     name; the unfiltered library leads with ONE Favourites section (catalogue +
@@ -1731,15 +1740,6 @@ device timing it did not measure.
     the focused table and the all-muscles table carry a Sessions column.
   - Tests: `muscles_model` frequency and previous-window cases; the Progress-hub
     browser check now requires the focused session count.
-
-- **2026-11-26 — H4 A8: relative strength is explicit and recent.**
-  - The big-three exercise drilldown states `X.XX× bodyweight`, marked `est.`
-    and naming the weigh-in date; Profile's ratio tiles carry the same `est.`
-    and a note. Both use `_recentBodyWeight` (latest DATED weigh-in ≤30 days).
-  - Removed `_latestBodyWeight`'s undated per-session fallback: an old session
-    weight is not current bodyweight and made the ratio a false claim.
-  - Tests: `tests/relative_strength.test.js`, exercise-detail cases, and the
-    all-lifts browser check's relative-strength assertion.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

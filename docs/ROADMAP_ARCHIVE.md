@@ -6013,3 +6013,12 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `tests/session_comparison.test.js` and the recap render test; checked
     in the History detail.
 
+- **2026-11-26 — H4 A8: relative strength is explicit and recent.**
+  - The big-three exercise drilldown states `X.XX× bodyweight`, marked `est.`
+    and naming the weigh-in date; Profile's ratio tiles carry the same `est.`
+    and a note. Both use `_recentBodyWeight` (latest DATED weigh-in ≤30 days).
+  - Removed `_latestBodyWeight`'s undated per-session fallback: an old session
+    weight is not current bodyweight and made the ratio a false claim.
+  - Tests: `tests/relative_strength.test.js`, exercise-detail cases, and the
+    all-lifts browser check's relative-strength assertion.
+

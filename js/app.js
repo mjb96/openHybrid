@@ -1873,7 +1873,7 @@ document.addEventListener('click', (e) => {
   }
   
   // Settings
-  else if (action === 'open-settings') openSettings();
+  else if (action === 'open-settings') openSettings(target.getAttribute('data-page') || undefined, target.getAttribute('data-anchor') || '');
   else if (action === 'open-settings-profile') openSettings('profile');
   else if (action === 'back-to-settings') backToSettings();
   else if (action === 'close-settings') closeSettings();

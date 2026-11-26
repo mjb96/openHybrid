@@ -4283,6 +4283,13 @@ html[data-theme="light"] .prog-phase { background: rgba(0,0,0,0.02); }
   white-space: nowrap;
   cursor: pointer;
 }
+.plans-utility-btn--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  padding: 0;
+}
 .plans-utility-btn--accent {
   color: var(--color-cyan);
 }
