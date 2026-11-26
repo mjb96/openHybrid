@@ -98,6 +98,9 @@ test('one muscle can be focused without hiding the rest of the band', () => {
   assert.match(html, /class="pg-muscle-meta">Rank \d+ of \d+ · [\d.]+% of credited sets · \d+ session/);
   assert.match(html, /aria-label="Chest credited sets/);
   assert.match(html, /Chest \(credited sets\)/);
+  assert.match(html, /sets\/week averaged over this range/);
+  assert.match(html, /typical <b>/);
+  assert.match(html, /Review volume guide/);
   // The focused chart is one series, not the six-group stack.
   assert.equal((html.match(/pg-legend__item/g) || []).length, 1);
   assert.match(html, /class="pg-band__value">([\d.]+)<span class="pg-band__unit">credited sets/);
