@@ -6125,3 +6125,12 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Data note: additive settings key with a `{}` default — no schema version
     bump; the JSON import sanitizer bounds it.
 
+- **2026-11-26 — H1 ST4: contextual Settings shortcuts.**
+  - The router now forwards `data-page`/`data-anchor` to `openSettings`, and
+    Progress, Measures and Plans link to the page that owns the value they show:
+    Units (Progress, Measures) and Equipment (Plans). The logger keeps its
+    registry-driven workout settings sheet.
+  - Shortcuts only — every control reads/writes the same registered setting.
+  - Tests: `tests/contextual_settings_links.test.js` plus real clicks in the
+    Progress-hub, Measures and Plans browser checks.
+

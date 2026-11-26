@@ -920,10 +920,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   A mid-run `onPositionError` must never tear down the session.
 - No iOS project exists. iOS is OUT OF SCOPE for the current launch push.
 - Exercise metadata: `instructions`/`difficulty`/`safetyNotes` are AUTHORED per
-  exercise via `REVIEWED()` and land a batch at a time (91/157 core entries done, picked by
+  exercise via `REVIEWED()` and land a batch at a time (157/157 core entries done, picked by
   real programme usage). **The curated core is fixed at 157 entries** — no promotion
-  from the 5,712 catalogue without a new product decision; finish the remaining
-  entries in batches of 25. `tests/exercise_catalog.test.js` guards the shape — an
+  from the 5,712 catalogue without a new product decision; every core entry is
+  reviewed, and any new entry still lands in a reviewed batch. `tests/exercise_catalog.test.js` guards the shape — an
   entry with instructions must have a valid difficulty and a safety note, and
   every line must read as a sentence. Safety notes are a claim shown to someone
   loading a barbell: keep batches small enough to review, never bulk-generate.

@@ -1434,7 +1434,7 @@ Verify first; sources: openGym, Hevy.
 | G3 | Log a past session | `activities.js`, `workout/one-off-session.js`, `ui/confirm-modal.js`, `workout/backdated-session.js` | From History: date, start time, duration, routine or freestyle, then the normal logger; if that day has a session, offer replace, keep both or cancel | DONE | History now offers **Log past**: one date prompt (never a future date), then the normal cockpit as a one-off `session:` week stamped with the chosen date at noon. The active program, current week and activation are never written. If that day already has training, a **Keep both / Cancel** choice names the day; replace is deliberately not offered for programmed or finished history (a photo-style irreversible delete would need its own Undo). Tests: `backdated_session` (validation, occupancy, noon stamp) + a static wiring guard; the History browser check creates a past session and proves the collision Cancel changes nothing. |
 | G5 | Closed-app rest alerts | `notifications.js`, `timers.js`, Android `ReminderScheduler` | Rest-timer alert while backgrounded or closed (Android), plus an optional reminder on planned-but-unlogged days, scheduled per calendar date and cancelled when the day is trained or moved. Native checklist applies; no network surface | PARTIAL | A fixed-time daily OS alarm exists; it is not planned-day, not cancelled by training, and the rest alert cannot fire while WebView timers are paused. |
 | G7 | Favourite exercises | `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | DONE | Every picker row carries a 44px star (`aria-pressed`, Add/Remove <name>), and the unfiltered library leads with ONE **Favourites** section — catalogue and custom together, never duplicated — while a filtered list sorts favourites first. The preference is one id-keyed map (`settings.favouriteExercises`), so a catalogue alias stars the same exercise, toggling is idempotent and the map is bounded at 120; the import sanitizer keeps only `key: true` on a null-prototype object. Tests: `favourites` (alias key, custom key, bound, stable order, star naming, hostile import) and `exercise-picker-browser-check` (star size/state, persisted state, Favourites section, favourite leads). |
-| G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | PARTIAL | **Owner decision (26 Nov 2026): the curated core stays at 157 entries — no promotion from the 5,712 catalogue.** The 300–500 target is superseded, so the remaining work is bounded: finish the **66** unreviewed core entries in human-reviewed batches of 25 (91/157 are complete). Copy stays conservative and specific; the 66 remaining keep the sentence/length/complete-or-not-at-all guards. |
+| G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | DONE | **The curated core is fixed at 157 entries by owner decision; the 300–500 line is superseded.** All **157/157** now carry authored instructions, a declared difficulty and specific safety notes, shipped in human-reviewed batches of 25. Copy names the setup, the execution and what actually goes wrong under load; the sentence/length and complete-or-not-at-all guards hold, and the ratchet is 157. No catalogue expansion. |
 | G10 | Explained targets | `engine.js`, `templates.js`, `workout/target-why.js` | Every progression target states in one line why today's number is today's number | DONE | The cockpit card now shows one why line under the target: the engine's message for a stall/fatigue hold, the progression rationale behind the suggested load, a baseline line for a first performance, or the program prescription when history exists but no progression applies. It never invents a reason and never duplicates the diagnostic message; `tests/target_why.test.js` pins the cases and the render. |
 | LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
 | LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | DONE | 44px, contrast, safe areas and inputmode pass. The visible viewport is tracked app-wide (`--visible-viewport-height`), the per-set sheet is capped by it instead of 88vh, numeric fields get `enterkeyhint="done"` on focus, and a delegated focus handler scrolls a field clear of the on-screen keyboard (nearest scrollable ancestor first). `scripts/lg2-keyboard-browser-check.mjs` drives the real browser at 390 with a shrunken viewport. |
@@ -1648,6 +1648,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — G9 complete: 157/157 core exercises reviewed.**
+  - Finished the remaining 66 in three reviewed batches of 25/25/16:
+    band/bodyweight push work, kettlebell and band rows/curls, the squat and
+    hinge variants (tempo, paused, pin, deficit, rack pull, RDLs, good mornings,
+    hip thrusts, calves), core (planks, dead bug, bird dog, carries, crunches,
+    TGU) and conditioning (swings, clean, snatch, windmill, rowing, sled).
+  - Every core entry now has instructions + difficulty + safety notes; the
+    reviewed ratchet is 157 and the shape guards still pass. The core stays at
+    157 — no catalogue promotion.
+
 - **2026-11-26 — G9 scope decision: the core stays at 157.**
   - The owner chose not to promote catalogue entries into the curated core;
     the 300–500 line is superseded. Work is now bounded to finishing the
@@ -1750,15 +1760,6 @@ device timing it did not measure.
     asserts the Month block.
   - Also in this PR: the README refresh (removed Quick start/renaming, updated
     what it does, added what's next).
-
-- **2026-11-26 — H1 ST4: contextual Settings shortcuts.**
-  - The router now forwards `data-page`/`data-anchor` to `openSettings`, and
-    Progress, Measures and Plans link to the page that owns the value they show:
-    Units (Progress, Measures) and Equipment (Plans). The logger keeps its
-    registry-driven workout settings sheet.
-  - Shortcuts only — every control reads/writes the same registered setting.
-  - Tests: `tests/contextual_settings_links.test.js` plus real clicks in the
-    Progress-hub, Measures and Plans browser checks.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
