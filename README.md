@@ -21,16 +21,29 @@ openHybrid is a training app for people who lift and run. It keeps the fast logg
 workflow of a strength app while treating running, recovery and load as part of
 the same training picture.
 
-- **Decision-first Home** — a seven-day "This week" strip first, then a compact
-  Today card for Start/Resume/Review, a bodyweight card with one-tap logging,
-  one coach insight and quick actions. Deep charts stay in Progress; the old
-  In Focus cards are gone.
-- **Strength logging** — routines, set types, RPE/RIR, rest timers, supersets,
-  exercise swaps, plate math, estimated 1RM and PRs. A 5,700+ exercise catalogue
-  (openGym text, AGPL, no media) backs search and imports. An optional warm-up
-  ramp adds editable 40/60/80% sets once you enter the first working weight.
+- **Decision-first Home** — a seven-day "This week" rail followed by one Today
+  card (Start / Resume / Review), a compact bodyweight card with one-tap
+  logging, a coach insight and quick actions. Training balance, strength and
+  endurance sit below it; deep charts live in Progress.
+- **Strength logging** — routines, set types, RIR/RPE per set, rest timers with
+  group rest for supersets and circuits, exercise swaps, per-side plate math,
+  estimated 1RM and PRs. Every target says *why* (the engine's stall/fatigue
+  evidence, the progression rationale or the program prescription). Favourite
+  lifts lead the picker, and an optional warm-up ramp adds editable 40/60/80%
+  sets once you enter the first working weight.
+- **Progress as one dashboard** — bands answer one question each: **Pulse**
+  (current week, streak and body map), **Main exercises** (ranked lifts, progress
+  checks and rep-range/effort mix), **Muscles** (credited sets against the
+  typical range), **Body** (weight, body fat, measures and photos), **Balance**,
+  **Endurance**, **Fasting** and **Reviews**. One 30D/3M/1Y/All range bar drives
+  them; each band's detail carries the exact rows and tables, and an
+  always-available year heatmap shades every day by measured time.
+- **Reviews** — one Week | Month | Year surface: the weekly story (volume,
+  adherence, PRs, next-week focus), the Training Report and consistency log, and
+  a seasonal Year in Review alongside the year calendar.
 - **Running** — manual entries, native GPS tracking with a route map, splits,
-  FIT-file import and run analytics.
+  FIT-file import and run analytics. Runs, walks and strength are counted
+  separately and attributed to the calendar day they happened.
 - **Recovery and load** — readiness, training load, ACWR and a weekly review.
   Progress → Muscle Load shows weekly volume, recovery and untrained muscles per
   muscle group.
@@ -39,50 +52,66 @@ the same training picture.
 - **Bodyweight and fasting** — a Progress graph with daily weigh-ins, a 7-day
   average, weekly means, an optional goal line and a 21-day weekly-rate corridor.
   Weigh-ins open a prefilled sheet with ±0.1/±0.5/±1 steppers and recent entries,
-  so the usual log is one tap. Plus fasting protocols.
+  so the usual log is one tap. Measures add tape sites (cm/in), entered body fat
+  and progress photos on one dated entry. Fasting protocols complete the picture.
 - **Programs** — a catalogue of strength, hypertrophy, running and hybrid
-  programmes, plus a program builder.
-- **Offline-first** — the PWA precaches its runtime and keeps training data on
-  the device. There is no account, server or cloud sync; JSON/CSV export and
-  Android automatic backups move data deliberately.
-- **Modules** — hide Running & GPS, Fasting, Health Connect or Recovery & Load
-  from Settings → Modules. Hiding a module never deletes its data.
+  programmes, a program builder, and portable plan files. Discover is one
+  searchable list; saved, completed and custom/imported plans share My Plans.
 - **Equipment profiles** — keep separate kits for home and the commercial gym.
   Each profile stores its own bar weight, plate denominations and optional pairs
   owned, dumbbell ladder and machine stacks; the active profile drives program
   fit, exercise swaps and optional per-side plate hints. Hints say when a target
-  cannot be built, and suggested loads snap to the weights you record. Switching
-  takes one tap in Settings.
-- **Themes & layout** — Midnight is the default icons-derived palette (navy,
+  cannot be built, and suggested loads snap to the weights you record.
+- **Settings that hold** — five destinations (Profile, Training, Health,
+  Appearance, Data) over one validated settings registry, with search, per-page
+  reset and Undo. Units, week start, modules, palettes, reminders and every
+  training preference live there; Progress, Plans and Measures link to the page
+  that owns the value they show.
+- **Modules** — hide Running & GPS, Fasting, Health Connect or Recovery & Load
+  from Settings → Modules. Hiding a module never deletes its data.
+- **Themes & layout** — Midnight is the default icon-derived palette (navy,
   steel, cyan, lime); Slate, Forest and Ember are alternatives. Light keeps its
   own colours. Home and Progress let you hide optional cards and reset to the
   default without touching the data.
-- **Bring your history** — import OpenGym, Strong or Hevy CSV files (strength
-  sets, cardio runs and weigh-ins), or drop a batch of Garmin/Wahoo/Coros FIT
-  activities into Settings. FIT runs keep date, distance, pace, HR and GPS;
-  strength FIT files import time/HR only because the format has no exercise names.
-- **Plans that move** — export any plan as a portable `.json` file and import it
-  on another device, or import an openGym plan file. openGym routines map to
-  training days, exercise ids resolve through the full catalogue, and each
-  exercise keeps its original sets, reps, starting load and rest. Discover is
-  now one searchable list, while saved, completed and custom/imported plans live
-  together under My Plans.
+- **Bring and move your data** — import OpenGym, Strong or Hevy CSV files
+  (strength sets, cardio rows as archived runs, weigh-ins), bodyweight and
+  measurement CSVs, or a batch of Garmin/Wahoo/Coros FIT activities. FIT runs
+  keep date, distance, pace, HR and GPS; strength FIT files import time/HR only
+  because the format has no exercise names. Export a full JSON backup, the
+  training log, bodyweight/measurements CSV, or the progress-photo archive.
 - **Correct saved workouts** — History lets you reopen a finished strength
   session or run and fix weights, reps, distance, HR or notes in place without
   changing its date or identity.
 - **Progression styles** — custom programs can choose Double, Linear or Rep-first
   coaching. The suggested next load follows that program's style while keeping
   RPE, fatigue, cutting and stall safeguards.
-- **Import and export your history** — bring workout history and bodyweight from
-  OpenGym, Strong or Hevy CSV exports, or batch-import Garmin/Wahoo FIT files.
-  Strength sets, cardio runs and weigh-ins all import. Export the full training
-  log, a clean bodyweight CSV or a complete JSON backup. No account or server
-  involved.
 - **Durable on Android** — the shell mirrors the same state into app-private
   storage, so WebView eviction or a full localStorage quota does not lose the
   last change; a failed write is reported instead of silently claiming success.
 - **Android shell** — bundled assets in a hardened WebView with native Health
   Connect, GPS and notification bridges.
+
+## What's next
+
+The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
+Logging → Progress**. The short version:
+
+- **H5 — strength coaching.** A periodic block review built from the engine's
+  own stall/fatigue evidence, with an evidence-gated, undoable deload
+  recommendation — never a low-bar nag.
+- **H6 — running completeness.** Verify the existing run surface, then add best
+  efforts (fastest 1 km/1 mi/5 km/10 km) and a labelled race-time estimate from
+  data the app already holds. Intervals, zones and efficiency follow when
+  running resumes.
+- **Logging.** Per-side rep display, backdated strength sessions with an explicit
+  collision choice, and Home quick actions that match what athletes actually do.
+- **Settings and trust.** Canonical storage with display-only units, week-start
+  consistency, text size and haptics, backup status with stale warnings, and
+  reviewed exercise instructions in small batches.
+
+Native widgets and live activities are parked. There is no iOS project and no
+billing or paywall. The full plan, evidence and session log live in
+[`docs/IMPROVEMENT_ROADMAP.md`](docs/IMPROVEMENT_ROADMAP.md).
 
 ## Tech stack
 
@@ -91,9 +120,9 @@ the same training picture.
 | Web app | Vanilla JavaScript ES modules, no framework, no build step |
 | Styling | Plain CSS with a shared visual system |
 | Offline | Service worker + generated precache manifest |
-| Local data | `localStorage` for app state, IndexedDB for GPS routes; Android adds an app-private atomic file mirror |
+| Local data | `localStorage` for app state, IndexedDB for GPS routes and photos; Android adds an app-private atomic file mirror |
 | Native | Kotlin Android WebView shell, `minSdk 26`, `targetSdk 36` |
-| Verification | `node --test`, TypeScript checking of JSDoc-annotated JS, 34 Playwright browser checks |
+| Verification | `node --test`, TypeScript checking of JSDoc-annotated JS, 57 Playwright browser checks |
 | Runtime | Node.js 20+ for tooling |
 
 ## Architecture
@@ -101,7 +130,7 @@ the same training picture.
 ```mermaid
 flowchart LR
   UI["PWA UI<br/>vanilla JS modules"] --> LS[("localStorage<br/>app state")]
-  UI --> IDB[("IndexedDB<br/>GPS routes")]
+  UI --> IDB[("IndexedDB<br/>GPS routes + photos")]
   UI --> SW["Service worker<br/>precache + offline"]
   AND["Android WebView shell"] --> UI
   AND --> HC["Health Connect bridge"]
@@ -115,56 +144,19 @@ loads the bundled web assets from a virtual HTTPS origin and exposes only the
 native capabilities the web layer needs. The PWA and the APK share the same
 allowlisted web root, staged by `scripts/stage-web-root.mjs`.
 
-## Quick start
-
-```bash
-npm ci
-npm run verify
-
-# Real-browser checks need Chromium once:
-npx playwright install chromium
-npm run browser:verify
-
-# Serve over HTTP — the service worker will not run from file://
-python3 -m http.server 8770 --bind 127.0.0.1
-```
-
-Open <http://127.0.0.1:8770/>.
-
-The first launch runs onboarding. No account is required. Use **Restore backup
-file** for a openHybrid JSON export, or **Settings → Data → Import from Another App
-(CSV)** for an OpenGym/Strong/Hevy workout or bodyweight export. All
-logging works offline.
-
-## Renaming from Helyx
-
-The project is now **openHybrid**. This is a new Android application ID
-(`com.mjb96.openhybrid`), so the renamed APK installs alongside Helyx rather
-than upgrading it. The hosted PWA lives at <https://mjb96.github.io/openHybrid/>, and browser
-storage is origin-scoped.
-
-In both cases, move your data deliberately:
-
-1. In Helyx, open **Settings → Data & backups** and export a JSON backup.
-2. Install/open openHybrid (or open the new PWA URL).
-3. Restore the JSON backup.
-
-The internal state key (`hybrid_engine_v2_state`) is unchanged; it is a data
-format, not branding.
-
 ## Verification
 
 | Command | What it covers |
 | --- | --- |
 | `npm test` | Node unit tests |
 | `npm run verify` | Type check, precache check, workflow gates, unit tests, smoke render |
-| `npm run browser:verify` | 42 Playwright product checks (parallel, 180 s per-check kill with one timeout retry; `-- --serial` to debug) |
+| `npm run browser:verify` | 57 Playwright product checks (parallel, 180 s per-check kill with one timeout retry; `-- --serial` to debug) |
 | `npm run perf:baseline` | Boot performance and bounded-DOM baseline |
 | `npm run precache:gen` | Regenerate the service-worker precache manifest |
 
-The browser suite covers navigation, logging, analytics, accessibility, touch
-targets, safe areas, offline starts and performance. It is required in CI for
-every pull request.
+The browser suite covers navigation, logging, analytics, settings, accessibility,
+touch targets, safe areas, offline starts and performance. It is required in CI
+for every pull request.
 
 ## Android build
 
@@ -217,8 +209,8 @@ data.
 - The hosted PWA is a preview; Android is the primary offline target.
 - There is no account system and no cloud sync. Moving data between devices is
   a JSON export/import or the Android automatic-backup folder.
-- Workout CSV import covers strength sets and bodyweight. Cardio rows are
-  skipped; there is no cardio import planned right now.
+- Running analytics are maintained and verified, but new interval, zone and
+  efficiency features are scheduled for when the owner resumes running.
 - There is no iOS project; iOS and billing are out of scope.
 - The legal documents in `docs/legal/` are drafts with placeholders and are not
   legal advice.
@@ -233,8 +225,8 @@ terms of the **GNU Affero General Public License, version 3 only**
 (`AGPL-3.0-only`) as published by the Free Software Foundation.
 
 openHybrid is distributed in the hope that it will be useful, but **WITHOUT ANY
-WARRANTY**; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
-A PARTICULAR PURPOSE. See the [LICENSE](LICENSE) for the full text.
+WARRANTY**; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the [LICENSE](LICENSE) for the full text.
 
 Third-party notices are in [NOTICE.md](NOTICE.md). The corresponding source for
 the hosted PWA and the Android app is this repository:
@@ -243,4 +235,3 @@ the hosted PWA and the Android app is this repository:
 If you run a modified version as a network service, the AGPL requires you to
 offer its users the corresponding source. Contributions are accepted under the
 same licence.
-
