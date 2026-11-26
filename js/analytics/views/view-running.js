@@ -10,6 +10,8 @@ import { weekStartOf } from '../weekly-aggregate.js';
 import { getSelectedWeekStart } from '../week-nav.js';
 import { statCard } from '../charts/chart-primitives.js';
 import { buildRunningMetricDetail, collectRunningHistory } from '../running-detail.js';
+import { buildBestEfforts, buildRaceEstimates } from '../best-efforts.js';
+import { bestEffortsHTML } from './view-best-efforts.js';
 import { mountScreenTabs, screenTabBar, esc } from './screen-kit.js';
 
 let _runningTab = 'overview';
@@ -100,12 +102,17 @@ function renderOverview(body, state, history, through) {
   const primaryInsight = weeklyDistance?.empty
     ? 'Your first dated run will unlock calendar-week distance, comparisons and exact activity evidence.'
     : weeklyDistance?.interpretation;
+  // Read-only, from the split data the runs already carry. Shown only once a run
+  // exists, so a brand-new profile keeps its single empty lead.
+  const efforts = buildBestEfforts(state, { history });
+  const effortBlock = efforts.runs ? bestEffortsHTML(efforts, buildRaceEstimates(efforts)) : '';
   body.innerHTML = `
     ${overviewHero(vdot)}
     <div class="grid-2-col gap-2 mb-3">
       ${metricCard(weeklyDistance)}
       ${metricCard(bestPace)}
     </div>
+    ${effortBlock}
     <article class="an-insight-card">
       <span class="an-insight-card__eyebrow">What this says</span>
       <p>${esc(primaryInsight || 'Open a metric to inspect its history and source activities.')}</p>

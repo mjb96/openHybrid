@@ -510,6 +510,23 @@
 .an-segment--three { grid-template-columns:repeat(3,1fr); }
 .an-segment--five { grid-template-columns:repeat(5,1fr); }
 .an-segment--five .an-segment__button { font-size:.64rem; letter-spacing:-.01em; }
+.run-best { margin: 4px 0 16px; padding: 12px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--surface-2); }
+.run-best__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 8px; }
+.run-best__source { color: var(--text-3); font-size: .64rem; font-weight: 700; }
+.run-best__list { list-style: none; margin: 8px 0 0; padding: 0; }
+.run-best__row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: baseline; gap: 8px; padding: 8px 0; border-top: 1px solid var(--border-default); }
+.run-best__row:first-child { border-top: 0; }
+.run-best__dist { color: var(--text-2); font-size: .72rem; font-weight: 800; }
+.run-best__time { color: var(--text); font-size: .92rem; font-weight: 850; font-variant-numeric: tabular-nums; }
+.run-best__meta { color: var(--text-3); font-size: .68rem; text-align: right; }
+.run-best__races { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-default); }
+.run-best__eyebrow { margin: 0 0 4px; color: var(--text-2); font-size: .64rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.run-best__eyebrow b { color: var(--warning); }
+.run-best__race-list { list-style: none; margin: 0; padding: 0; }
+.run-best__race { display: grid; grid-template-columns: minmax(0, 1fr) auto 56px; align-items: baseline; gap: 8px; padding: 5px 0; color: var(--text-2); font-size: .74rem; }
+.run-best__race strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.run-best__est { color: var(--warning); font-size: .6rem; font-weight: 800; text-align: right; text-transform: uppercase; }
+.run-best__basis, .run-best__note { margin: 8px 0 0; color: var(--text-3); font-size: .66rem; line-height: 1.4; }
 .pg-block { margin: 4px 0 16px; padding: 12px; border: 1px solid var(--border-default); border-radius: 16px; background: var(--surface-2); }
 .pg-block__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .pg-block__eyebrow { margin: 0; color: var(--text-2); font-size: .66rem; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }

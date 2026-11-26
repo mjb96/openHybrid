@@ -77,10 +77,12 @@ function seededState(theme = 'dark', withRuns = true) {
   if (withRuns) {
     base.weeks['1'].runSessions = {
       mon: [
-        { sessionId: 'current-five', localDate: iso(monday), name: 'Lunch 5K', type: 'run', dist: '5', time: '25:00', avgHR: '155', maxHR: '176', avgCadence: '170', rpe: '7', source: 'gps' },
+        { sessionId: 'current-five', localDate: iso(monday), name: 'Lunch 5K', type: 'run', dist: '5', time: '25:00', avgHR: '155', maxHR: '176', avgCadence: '170', rpe: '7', source: 'gps',
+          splits: [300, 300, 300, 300, 300].map((time, index) => ({ lap: index + 1, dist: 1, time })) },
         { sessionId: 'current-easy', localDate: iso(monday), name: 'Easy Run', type: 'run', dist: '3', time: '18:00', avgHR: '142', maxHR: '160', avgCadence: '166', rpe: '4', source: 'manual' },
       ],
-      tue: [{ sessionId: 'current-ten', localDate: iso(addDays(monday, 1)), name: 'Steady 10K', type: 'run', dist: '10', time: '52:00', avgHR: '150', maxHR: '174', avgCadence: '168', rpe: '6', source: 'fit' }],
+      tue: [{ sessionId: 'current-ten', localDate: iso(addDays(monday, 1)), name: 'Steady 10K', type: 'run', dist: '10', time: '52:00', avgHR: '150', maxHR: '174', avgCadence: '168', rpe: '6', source: 'fit',
+        splits: Array.from({ length: 10 }, (_, index) => ({ lap: index + 1, dist: 1000, time: 312 })) }],
     };
     base.weeks['arch:old:4'].runSessions = {
       mon: [{ sessionId: 'prior-five', localDate: iso(priorMonday), name: 'Prior 5K', type: 'run', dist: '5', time: '28:00', avgHR: '158', maxHR: '178', avgCadence: '165', rpe: '7', source: 'fit' }],
@@ -228,6 +230,47 @@ try {
     if (averagePaceDestination?.trim() !== 'Average Pace') failures.push(`${width}px: Average Pace did not open its exact Progress metric`);
     await page.click('#view-analytics .subview-back-btn');
     await page.waitForSelector('#analytics-running.active');
+
+    // H6a: best efforts from the recorded splits, and race estimates marked as
+    // estimates. Walks never contribute; the 10 km comes from its FIT laps.
+    await page.click('#analytics-running [data-an-tab="overview"]');
+    await page.waitForSelector('#analytics-running .run-best', { timeout: 4000 }).catch(() => {});
+    const best = await page.evaluate(() => {
+      const block = document.querySelector('#analytics-running .run-best');
+      const clean = (node) => (node?.textContent || '').replace(/\s+/g, ' ').trim();
+      return {
+        present: !!block,
+        rows: [...(block?.querySelectorAll('.run-best__row') || [])].map(clean),
+        races: [...(block?.querySelectorAll('.run-best__race') || [])].map(clean),
+        basis: clean(block?.querySelector('.run-best__basis')),
+        // The off-canvas Settings panel lives outside this section, so scope
+        // the overflow claim to the running surface itself.
+        overflowers: (() => {
+          const section = document.querySelector('#analytics-running');
+          if (!section) return ['(no section)'];
+          const limit = section.getBoundingClientRect().right + 1;
+          const out = [];
+          for (const el of section.querySelectorAll('*')) {
+            const rect = el.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) continue;
+            if (rect.right <= limit) continue;
+            out.push(`${el.tagName.toLowerCase()}.${String(el.className || '').split(' ').join('.')}|${Math.round(rect.left)}→${Math.round(rect.right)}`);
+            if (out.length >= 5) break;
+          }
+          return out;
+        })(),
+      };
+    });
+    console.log(`Best efforts ${width}px:`, JSON.stringify(best));
+    if (!best.present) failures.push(`${width}px: the running Overview has no best efforts`);
+    if (!best.rows.some((row) => /1 km/.test(row) && /5:00/.test(row))) failures.push(`${width}px: the 1 km best is wrong (${best.rows[0] || ''})`);
+    if (!best.rows.some((row) => /1 mi/.test(row) && /8:03/.test(row))) failures.push(`${width}px: the 1 mi best is wrong`);
+    if (!best.rows.some((row) => /5 km/.test(row) && /25:00/.test(row))) failures.push(`${width}px: the 5 km best is wrong (a walk or a slower run won)`);
+    if (!best.rows.some((row) => /10 km/.test(row) && /52:00/.test(row))) failures.push(`${width}px: the 10 km best is wrong`);
+    if (!best.races.some((row) => /10 km/.test(row) && /52:07/.test(row) && /est\./.test(row))) failures.push(`${width}px: the 10 km race estimate is wrong`);
+    if (!best.races.some((row) => /5 km/.test(row) && /measured/.test(row))) failures.push(`${width}px: the measured 5 km is not marked measured`);
+    if (!/Riegel/.test(best.basis) || !/5 km/.test(best.basis)) failures.push(`${width}px: the estimate does not name its basis (${best.basis})`);
+    if (best.overflowers.length) failures.push(`${width}px: best efforts overflow (${best.overflowers.join(', ')})`);
 
     if (errors.length) failures.push(`${width}px browser errors: ${errors.join(' | ')}`);
     await context.close();

@@ -1520,6 +1520,16 @@ resumed, verify each row first:
 | R9 | Plan integration | Planned vs completed run, adherence |
 | R10 | Run recap and share | Short review and PNG card from the same figures |
 
+**H6a audit (26 Nov 2026).** Verified in the current app: **R1** (live GPS +
+manual + the active-session journal), **R4** (weekly distance, longest run,
+calendar comparison), **R8** (FIT/CSV imports with date identity and re-import
+refusal), **R10** (recap + share from the same figures). Implemented now:
+**R5** best efforts (fastest 1 km / 1 mi / 5 km / 10 km from recorded splits) and
+**R6** Riegel race estimates, always `(est.)`, with the basis named. Still
+deferred until the owner resumes running: **R2** intervals, **R3** zones,
+**R7** efficiency, **R9** planned-vs-completed runs. Best efforts read only the
+splits the runs already carry; no new stored field.
+
 Running data rules: calendar dates only; a 5 km + 10 km day is 15 km; strength
 + run is two sessions; units follow settings; estimates labelled; no GPS routes
 or photos in the training-context export; no new network surface.
@@ -1638,6 +1648,20 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H6a: running completeness, read-only.**
+  - Audited R1–R10 against the current app (R1/R4/R8/R10 verified), then added
+    **R5 best efforts** (fastest 1 km, 1 mi, 5 km, 10 km from recorded splits)
+    and **R6 race estimates** (Riegel, always `(est.)`, basis named, hidden
+    without a measured effort of 3 km+). Walks never contribute; a run without
+    splits says so instead of guessing.
+  - Live GPS splits are km, FIT laps are metres — the model normalises by
+    source; best efforts are lap-aligned and interpolate the final partial lap.
+  - The running Overview owns the block (read-only); R2/R3/R7/R9 stay deferred
+    until running resumes.
+  - Tests: `best_efforts` (normalisation, windows, walk exclusion, all-time
+    best, Riegel math, sparse/empty) and `best_efforts_view`; the running
+    browser check asserts the real block at 360/390/412.
+
 - **2026-11-26 — H5 slice 2: the evidence-gated deload.**
   - On `stalled` evidence (two or more engine progress checks), the Block Review
     offers **Deload week N** for the next program week: `markWeekDeload` halves
@@ -1748,17 +1772,6 @@ device timing it did not measure.
     prescription. Under five rep sets the mix is withheld.
   - Tests: `tests/intensity_mix.test.js` and the exercises view; the all-lifts
     browser check asserts the rendered block.
-
-- **2026-11-26 — H4 A1: the Progress checks list.**
-  - Main exercises now lists the engine's PROGRESS CHECKs for the active
-    programme: `buildStallList` calls `computeDiagnosticForLift` for each
-    programmed lift, so the analytics list and the cockpit badge cannot
-    disagree. Each entry names the lift, its target and the engine's evidence
-    sentence; tapping it opens the exercise drilldown.
-  - No programme means no list, and more than four entries show an honest
-    “+N more” rather than an endless band.
-  - Tests: `tests/stall_list.test.js` (flat/improving/no-programme) and the
-    exercises view; the all-lifts browser check asserts the rendered block.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 

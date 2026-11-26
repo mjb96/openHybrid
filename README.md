@@ -99,10 +99,10 @@ the same training picture.
 The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
 Logging → Progress**. The short version:
 
-- **H6 — running completeness.** Verify the existing run surface, then add best
-  efforts (fastest 1 km/1 mi/5 km/10 km) and a labelled race-time estimate from
-  data the app already holds. Intervals, zones and efficiency follow when
-  running resumes.
+- **H6 — running completeness.** The audit and the read-only features now ship:
+  best efforts (fastest 1 km/1 mi/5 km/10 km from recorded splits) and labelled
+  race-time estimates from the effort you actually ran. Intervals, zones and
+  efficiency follow when running resumes.
 - **Logging.** Per-side rep display, backdated strength sessions with an explicit
   collision choice, and Home quick actions that match what athletes actually do.
 - **Settings and trust.** Canonical storage with display-only units, week-start
