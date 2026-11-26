@@ -6102,3 +6102,14 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     `exercises_view`, `muscles_view`) plus `strength_mix_view`; the photo browser
     check now drives the real photo flow from Measures.
 
+- **2026-11-26 — H4 PG4: one Week | Month | Year Review surface.**
+  - The Review screen stopped speaking Overview | Stats while the hub row speaks
+    Week | Month | Year. Week = weekly story + streak + goal progress; Month =
+    Training Report + consistency log; Year = Year in Review + the year
+    calendar. The duplicated Overview block is gone; the weekly share is the
+    story's own button.
+  - Legacy contexts open the period they name, and only Week follows the shared
+    week navigator. Tests: `tests/review_tabs.test.js` (three periods,
+    aria-pressed, legacy names land on Week) plus the Week render guard; the
+    Progress-hub browser check drives all three tabs.
+

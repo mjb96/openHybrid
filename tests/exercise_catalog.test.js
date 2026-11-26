@@ -387,7 +387,7 @@ test('conditioning movements with no single primary muscle stay reachable', () =
 test('a reviewed exercise is reviewed completely, or not at all', () => {
   const all = CORE_EXERCISES;
   const reviewed = all.filter((e) => e.instructions.length || e.difficulty || e.safetyNotes.length);
-  assert.ok(reviewed.length >= 32, `expected the shipped batches, got ${reviewed.length}`);
+  assert.ok(reviewed.length >= 91, `expected the shipped batches, got ${reviewed.length}`);
   for (const e of reviewed) {
     assert.ok(e.instructions.length >= 2, `${e.id}: needs instructions`);
     assert.ok(e.difficulty, `${e.id}: has instructions but no difficulty`);
