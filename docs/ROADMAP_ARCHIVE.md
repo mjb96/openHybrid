@@ -5918,3 +5918,14 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     undo, attribution), a sanitizer test for imports, and
     `scripts/move-day-browser-check.mjs` (move, rail, Undo, 320px).
 
+- **2026-11-25 — H2 HM7: one owner per Home metric, with a guard.**
+  - Audited Home: the coach line was restating readiness, bodyweight delta,
+    weekly-volume delta, planned-session progress and working sets that other
+    cards already show. It is now advisory only — fasting, load/ACWR and streak
+    — and hides while the overtraining escalation owns the message.
+  - Readiness has one surface (Today guidance); bodyweight owns its delta; the
+    Strength week card owns volume/sessions/sets; the week rail owns plan
+    progress.
+  - `tests/home_metric_ownership.test.js` fails if the coach repeats any of
+    those figures; the Home Today browser check still passes.
+

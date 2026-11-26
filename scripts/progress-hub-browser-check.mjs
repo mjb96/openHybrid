@@ -370,6 +370,7 @@ try {
       });
       if (focused.value !== focusKey) failures.push(`${width}px: muscle focus did not stick (${focused.value} vs ${focusKey})`);
       if (!/Rank \d+ of \d+/.test(focused.meta)) failures.push(`${width}px: focused muscle has no rank context (${focused.meta})`);
+      if (!/\d+ session/.test(focused.meta)) failures.push(`${width}px: focused muscle has no session frequency (${focused.meta})`);
       if (!focused.headline) failures.push(`${width}px: focused muscle has no headline`);
       await page.selectOption('#analytics-hub [data-band="muscles"] [data-pg-muscle]', 'all');
       await page.waitForTimeout(250);

@@ -223,18 +223,20 @@ export function renderMuscles(model, options = {}) {
 
   const table = focused
     ? dataTableDisclosure(
-      ['Period', `${focused.label} (credited sets)`],
+      ['Period', `${focused.label} (credited sets)`, 'Sessions'],
       model.buckets.map((bucket) => [
         bucket.label,
         String(round1(Number(bucket.setsByMuscle?.[focused.key]) || 0)),
+        String(Number(bucket.sessionsByMuscle?.[focused.key]) || 0),
       ]),
       `${focused.label} credited sets in ${model.range?.spanLabel || 'the selected period'}`,
     )
     : dataTableDisclosure(
-      ['Muscle', 'Sets', 'Share', 'vs previous'],
+      ['Muscle', 'Sets', 'Sessions', 'Share', 'vs previous'],
       model.muscles.map((muscle) => [
         muscle.label,
         String(muscle.sets),
+        String(muscle.sessions),
         `${muscle.sharePct}%`,
         muscle.deltaPct == null ? '—' : `${muscle.deltaPct > 0 ? '+' : ''}${muscle.deltaPct}`,
       ]),
@@ -246,7 +248,7 @@ export function renderMuscles(model, options = {}) {
     ${groupingBar(model.grouping)}
     ${stackHTML(model, series)}
     ${legend(series.map((entry) => ({ label: entry.label, color: entry.color, muted: entry.muted })))}
-    ${focused ? `<p class="pg-muscle-meta">Rank ${rank} of ${model.muscles.length} · ${focused.sharePct}% of credited sets</p>` : ''}
+    ${focused ? `<p class="pg-muscle-meta">Rank ${rank} of ${model.muscles.length} · ${focused.sharePct}% of credited sets · ${focused.sessions} session${focused.sessions === 1 ? '' : 's'}${focused.sessionsDelta == null ? '' : ` (${focused.sessionsDelta > 0 ? '+' : ''}${focused.sessionsDelta} vs previous)`}</p>` : ''}
     ${rows}
     ${extra > 0 && !(Array.isArray(options.hidden) && options.hidden.includes('muscleLoadDetail')) ? `<button type="button" class="pg-band__action" data-action="open-analytics" data-context="muscle-load">Show all ${model.muscles.length} muscles →</button>` : ''}
     ${!(Array.isArray(options.hidden) && options.hidden.includes('musclesBody')) && model.bodyMap?.hasData

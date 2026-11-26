@@ -105,6 +105,10 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
   const lastTrained = {};
   /** @type {Record<string, Record<string, number>>} bucket → muscle → sets */
   const bucketsByMuscle = {};
+  /** @type {Record<string, number>} muscle → sessions (training dates) */
+  const sessions = {};
+  /** @type {Record<string, Record<string, number>>} bucket → muscle → sessions */
+  const bucketSessions = {};
   /** @type {Record<string, any[]>} muscle → merged sets, for the body map only */
   const liftsForMap = {};
   let totalSets = 0;
@@ -119,6 +123,8 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
     if (!earliestISO || dateISO < earliestISO) earliestISO = dateISO;
     const key = bucketKeyOf(dateISO, grouping);
     const bucket = bucketsByMuscle[key] || (bucketsByMuscle[key] = {});
+    const bucketSession = bucketSessions[key] || (bucketSessions[key] = {});
+    const musclesToday = new Set();
 
     for (const [liftName, sets] of Object.entries(dayLifts)) {
       if (!Array.isArray(sets)) continue;
@@ -137,6 +143,7 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
           totals[muscle] = (totals[muscle] || 0) + credit;
           volume[muscle] = (volume[muscle] || 0) + tonnage * credit;
           bucket[muscle] = (bucket[muscle] || 0) + credit;
+          musclesToday.add(muscle);
           if (!lastTrained[muscle] || dateISO > lastTrained[muscle]) lastTrained[muscle] = dateISO;
         }
         // The denominator is the sum of ALL credits, so per-muscle shares add
@@ -146,9 +153,16 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
           .reduce((sum, credit) => sum + (Number(credit) > 0 ? Number(credit) : 0), 0);
       }
     }
+    // A session is a training DATE: one compound day trains chest and triceps
+    // once each, not once per lift or per set. Warm-up-only days never get here.
+    for (const muscle of musclesToday) {
+      sessions[muscle] = (sessions[muscle] || 0) + 1;
+      bucketSession[muscle] = (bucketSession[muscle] || 0) + 1;
+    }
   }
 
   const previousShares = options.previous ? sharesFor(state, options.previous) : null;
+  const previousSessions = options.previous ? sessionsFor(state, options.previous) : null;
 
   // Rounding each share independently summed to 99.9 for three equal muscles.
   // Largest-remainder keeps the column honest: the parts add up to the whole.
@@ -174,6 +188,9 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
         deltaPct,
         status: deltaPct == null ? 'none' : deltaPct >= 10 ? 'up' : deltaPct <= -10 ? 'down' : 'steady',
         lastTrainedISO: lastTrained[key] || null,
+        sessions: sessions[key] || 0,
+        previousSessions: previousSessions ? (previousSessions[key] ?? 0) : null,
+        sessionsDelta: previousSessions ? (sessions[key] || 0) - (previousSessions[key] ?? 0) : null,
       };
     })
     .sort((a, b) => b.sets - a.sets || a.label.localeCompare(b.label));
@@ -188,6 +205,7 @@ export function buildMuscleModel(state, options = /** @type {any} */ ({})) {
     key,
     label: bucketLabelOf(key, grouping),
     setsByMuscle: bucketsByMuscle[key] || {},
+    sessionsByMuscle: bucketSessions[key] || {},
   }));
 
   const map = buildSessionMuscles(liftsForMap);
@@ -277,6 +295,30 @@ function sharesFor(state, window) {
     shares[muscle] = round1((value / total) * 100);
   }
   return shares;
+}
+
+/** Muscle → training-date count for a comparison window. */
+function sessionsFor(state, window) {
+  const byDate = collectDatedLifts(state);
+  /** @type {Record<string, number>} */
+  const out = {};
+  let any = false;
+  for (const [dateISO, dayLifts] of byDate) {
+    if (!inRange(dateISO, window)) continue;
+    const muscles = new Set();
+    for (const [liftName, sets] of Object.entries(dayLifts)) {
+      const credits = muscleCreditsForExercise(liftName);
+      if (!credits) continue;
+      if (!sets.some(isValidWorkingSet)) continue;
+      for (const [muscle, rawCredit] of Object.entries(credits)) {
+        if (Number(rawCredit) > 0) muscles.add(muscle);
+      }
+    }
+    if (!muscles.size) continue;
+    any = true;
+    for (const muscle of muscles) out[muscle] = (out[muscle] || 0) + 1;
+  }
+  return any ? out : null;
 }
 
 /**

@@ -95,7 +95,7 @@ test('one muscle can be focused without hiding the rest of the band', () => {
   const html = renderMuscles(fullModel(), { selected: 'chest' });
   assert.match(html, /class="pg-muscle-pick"/);
   assert.match(html, /<option value="chest" selected>Chest<\/option>/);
-  assert.match(html, /class="pg-muscle-meta">Rank \d+ of \d+ · [\d.]+% of credited sets</);
+  assert.match(html, /class="pg-muscle-meta">Rank \d+ of \d+ · [\d.]+% of credited sets · \d+ session/);
   assert.match(html, /aria-label="Chest credited sets/);
   assert.match(html, /Chest \(credited sets\)/);
   // The focused chart is one series, not the six-group stack.

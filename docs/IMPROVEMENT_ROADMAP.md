@@ -1459,7 +1459,7 @@ families without an action. Verify what already answers each question.
 | A4 | Rep-range and intensity mix | new `analytics/intensity-mix.js` | Share of sets by rep range and by RIR/RPE band; shows whether training matches the goal | MISSING | No rep-range or RIR/RPE distribution owner; RIR is used only for sRPE/ATL. |
 | A5 | Session vs last time | `session-recap.js`, `workout/session-comparison.js`, `workout/session-review.js` | After a workout, compare to the last session of the same routine: volume, best sets, PRs | DONE | The recap Summary now carries one “vs last time” block: volume (and %), set delta, best-e1RM delta and the session’s PR count. Identity is the routine when the session came from the library, otherwise the same programmed day; only completed working sets count, a future/empty session is never the baseline, and runs are not compared here. `tests/session_comparison.test.js` + the recap test; verified in the History detail. |
 | A6 | PR timeline | `strength/records.js`, `set-records.js`, `exercise-detail.js`, `year-review.js`, `strength/pr-index.js` | All-time PR table per lift plus a dated feed; baseline uses every earlier session | DONE | One shared date-strict collector (`pr-index.js`) owns e1RM PR events for the Records table/feed and Year in Review: first date is a baseline, a tie is not a record, same-date sessions merge to the best, aliases collapse, and `isE1rmPr` supplies the epsilon. Set records and per-exercise history remain in `set-records.js`. |
-| A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js` | Sessions per muscle per week with the same period comparison as sets | PARTIAL | Credited sets and last-trained exist; no sessions-per-muscle-per-week series. |
+| A7 | Muscle frequency | `analytics/muscles.js`, `muscle-load.js`, `views/view-muscles.js` | Sessions per muscle per week with the same period comparison as sets | DONE | A session is a training DATE: one compound day trains chest and triceps once each, not once per lift or per set. The model exposes `sessions`, `previousSessions` and `sessionsDelta` per muscle and `sessionsByMuscle` per bucket; the focused muscle states `N sessions (+/− vs previous)` and both data tables carry a Sessions column. Tests: `muscles_model` frequency/previous-window cases; the Progress-hub browser check asserts the focused meta. |
 | G4 | Year heatmap | `analytics/training-calendar.js`, `profile-stats.js` | Always-available year view shaded by time trained; tap a day for its recap; does not replace Year in Review | MISSING | Trailing heatmap only (26-week cap, default 12), shaded by volume/distance; no 52-week time view or day recap. |
 | A8 | Relative strength | `profile-stats.js`, `athlete-profile.js`, `exercise-detail.js` | e1RM divided by bodyweight per main lift, labelled as an estimate; hidden without recent weigh-ins | DONE | The exercise drilldown states `X.XX× bodyweight (est. · <weight> on <date>)` for the big three, using the latest DATED weigh-in within 30 days and nothing else. The Profile band is labelled `est.` with the weigh-in note, and the undated per-session bodyweight fallback is gone (`_latestBodyWeight`/`_recentBodyWeight`). Tests: `relative_strength.test.js` + exercise-detail cases + the all-lifts browser check. |
 | A9 | Long-range comparability | `analytics/ranges.js`, `progress-dashboard.js`, `exercise-detail.js` | Every strength domain has week, month, year and all-time views, so "is this working?" is answerable for a year | PARTIAL | Range vocabulary covers bands; strength volume has 4w–all; e1RM stops at 12w/6m/all and the legacy Strength screen is the only 4w–all home. |
@@ -1629,6 +1629,16 @@ device timing it did not measure.
 
 ## 21. Session log
 
+- **2026-11-26 — H4 A7: muscle frequency per bucket.**
+  - `buildMuscleModel` now counts distinct training DATES per muscle (a session),
+    per bucket and for the range, plus the same comparison against the previous
+    window that sets already had. One compound day credits each involved muscle
+    once, never once per lift or set.
+  - The focused muscle headline states `N sessions (+/− vs previous)` and both
+    the focused table and the all-muscles table carry a Sessions column.
+  - Tests: `muscles_model` frequency and previous-window cases; the Progress-hub
+    browser check now requires the focused session count.
+
 - **2026-11-26 — H4 A8: relative strength is explicit and recent.**
   - The big-three exercise drilldown states `X.XX× bodyweight`, marked `est.`
     and naming the weigh-in date; Profile's ratio tiles carry the same `est.`
@@ -1721,17 +1731,6 @@ device timing it did not measure.
     sharper read` rather than a settled number. Rest / no plan / unresolved /
     completed / past-week states were already distinct.
   - Tests: four new `home_today_card` cases; Home Today browser check passes.
-
-- **2026-11-25 — H2 HM7: one owner per Home metric, with a guard.**
-  - Audited Home: the coach line was restating readiness, bodyweight delta,
-    weekly-volume delta, planned-session progress and working sets that other
-    cards already show. It is now advisory only — fasting, load/ACWR and streak
-    — and hides while the overtraining escalation owns the message.
-  - Readiness has one surface (Today guidance); bodyweight owns its delta; the
-    Strength week card owns volume/sessions/sets; the week rail owns plan
-    progress.
-  - `tests/home_metric_ownership.test.js` fails if the coach repeats any of
-    those figures; the Home Today browser check still passes.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
