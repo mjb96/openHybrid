@@ -18,7 +18,8 @@ stageWebRoot(dest);
 after(() => { try { rmSync(dest, { recursive: true, force: true }); } catch { /* ignore */ } });
 
 test('required runtime assets are staged', () => {
-  for (const f of ['index.html', 'manifest.json', 'sw.js', 'css', 'js', 'js/app.js', 'js/vendor/leaflet/leaflet.js']) {
+  for (const f of ['index.html', 'manifest.json', 'sw.js', 'css', 'js', 'js/app.js', 'js/vendor/leaflet/leaflet.js',
+    'assets/exercises/back_squat-0.webp', 'assets/exercises/back_squat-1.webp']) {
     assert.ok(existsSync(join(dest, f)), `missing required asset in web root: ${f}`);
   }
 });
