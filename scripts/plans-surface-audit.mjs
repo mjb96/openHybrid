@@ -157,11 +157,9 @@ try {
     };
     return {
       activeCardTop: top('#activeProgBanner'),
-      utilityRowTop: top('#plansUtilityRow'),
       tabsTop: top('#progLibraryTabs'),
       searchTop: top('.prog-search-bar'),
       recommendationsTop: top('.collection-row--recommended'),
-      legacyAllProgramsTop: top('.filtered-grid-header'),
       libraryCards: document.querySelectorAll('#progLibraryContent .prog-card').length,
       badges: [...document.querySelectorAll('#progLibraryTabs .lib-tab')].map((b) => b.textContent.replace(/\s+/g, ' ').trim()),
     };
@@ -298,7 +296,7 @@ if (asJson) {
   row('Plans home height', `${pad(h.documentHeight)} px`);
   row('Controls on home', `${pad(h.visibleControls)} (${pad(h.controlsAboveFold)} above fold)`);
   row('First content top', `${pad(h.firstContentTop)} px`);
-  row('Active card / utility / tabs', `${pad(h.detail?.activeCardTop)} / ${pad(h.detail?.utilityRowTop)} / ${pad(h.detail?.tabsTop)}`);
+  row('Active card / tabs', `${pad(h.detail?.activeCardTop)} / ${pad(h.detail?.tabsTop)}`);
   row('Search / recommendations', `${pad(h.detail?.searchTop)} / ${pad(h.detail?.recommendationsTop)}`);
   row('Filter entry reachable', pad(report.reachability.filterEntry));
   row('Filter chips on landing', pad(report.reachability.filterChipsOnLanding));

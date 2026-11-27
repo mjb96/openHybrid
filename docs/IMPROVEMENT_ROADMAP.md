@@ -1707,8 +1707,8 @@ the owner cannot currently use. Strength first; no running features; no accounts
 | PL4 | Plan page unification | DONE | one page, one week control; day rows expand inline to per-lift targets (6 on the fixture day) resolved through `liftTarget` **with** `ctx`; CTA 504 → **314 px**; page 2,036 px / 25 controls → **1,840 px / 14**; fit below training; `#progActivePlanView`, the day-preview sheet and the `Overview | Structure | Plan` tabs deleted |
 | PL5 | Editor: per-exercise targets | DONE | each row is name · **target** · `•••`; the target sheet writes `prescriptions[day][lift]`; 6 target controls on the fixture day; editor 1,770 → **1,596 px**, controls 50 → **38**; 3×12 survives reload, the deload preview shows 2×12, JSON round-trips and clamps |
 | PL6 | Editor IA + new-plan entry | DONE | **Plan → Week → Day**: the editor opens on the plan (1,233 px), seven day rows, progression/checks as disclosures, day editor pushed; "New plan" asks where to start (blank / template / copy / import) instead of a name form; a plan day saves as a routine with its targets |
-| PL7 | Cleanup + docs | NEXT | dead library code, `collections.js`, hero carousel and aplan CSS removed; CSS split + precached; `AGENTS.md` updated |
-| PL8 | Verification | NEXT | `preflight` green; before/after table published in §22.4 |
+| PL7 | Cleanup + docs | PARTIAL | `collections.js` (no importers), the hero carousel, aplan view, utility row, editor tabs/day strip, landing search and sheet-grid CSS are deleted — **196 blocks, ~1,300 lines**; the brand test now ratchets `.plan-row`. The `programs.css` split into home/page/editor files is **deferred** (cascade-order risk for no product gain) and recorded as the remaining PL7 item. |
+| PL8 | Verification | DONE | `npm run preflight` green (verify + 59 browser checks); §22.4 filled; the **device pass is `[You]`** (real phone: today's session, a plan edit, Browse at 390 px) |
 
 ### 22.4 Gate evidence
 
@@ -1737,6 +1737,16 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Plans (PL7/PL8): cleanup, and the gate closed.**
+  - PL7 removed `js/programs/collections.js` (no importers) and **196 dead CSS
+    blocks (~1,300 lines)**: the old active-plan view, hero carousel, utility
+    row, editor tabs and day strip, landing search/popular searches, the retired
+    day-sheet grid and the sample/commitment/day-split blocks. The brand test now
+    ratchets `.plan-row` instead of the deleted search bar. The stylesheet SPLIT
+    is deliberately deferred (cascade-order risk, no product gain) and is the one
+    remaining PL7 item.
+  - PL8: `npm run preflight` (verify + all 59 browser checks) green; the §22.4
+    table is filled. The phone pass stays `[You]`.
 - **2026-11-27 — Plans (PL6): the editor is Plan → Week → Day, and a plan day is a routine.**
   - The editor opens on the **plan**: identity, seven day rows with their real
     exercise/set counts, and Progression/Checks as disclosures (kept open across
@@ -1876,15 +1886,6 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
   - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
     static wiring guard, and the History browser check (past session + collision
     Cancel changes nothing).
-
-- **2026-11-26 — ST9: backup trust.**
-  - Settings → Data states the **last manual backup** ("Today / Yesterday / N
-    days ago") with one calm warning at 7+ days or when none exists.
-  - The timestamp is root metadata (`lastBackupAt`), written only when the
-    platform confirms a saved/started export — never a cancel or failure — and
-    it is not a setting (no registry row). Automatic backup keeps its own
-    status; photos remain device-local with the Measures zip.
-  - Tests: `backup_status` plus a static wiring guard. Verify: 2,886 tests.
 
 - **2026-11-26 — H3 HM5 + G2: Home shortcuts and the per-side split.**
   - Home's three shortcuts are **Empty workout · Weight · History**; Run moved

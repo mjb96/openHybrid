@@ -1,31 +1,4 @@
-/* =============================================================================
-   PROGRAM LIBRARY — Netflix/Spotify-inspired discovery experience
-   ============================================================================= */
 
-
-/* ── Search Bar ────────────────────────────────────────────────────────────── */
-
-.prog-search-bar {
-  position: relative;
-  z-index: 2;
-  margin-bottom: 8px;
-}
-
-.prog-search-input-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: var(--surface-2);
-  border: 1.5px solid var(--border-default);
-  border-radius: 14px;
-  padding: 0 14px;
-  transition: border-color 0.2s;
-}
-
-.prog-search-input-wrap:focus-within {
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  background: var(--surface-3);
-}
 
 .search-icon-svg {
   flex-shrink: 0;
@@ -82,14 +55,6 @@
 .filter-chips-row--sm {
   gap: 6px;
 }
-
-/* V2-6 — Browse-all category grid on the lean Discover surface. */
-.prog-browse-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.prog-browse-grid .filter-chip { flex-shrink: 1; }
 
 .filter-chip {
   flex-shrink: 0;
@@ -317,32 +282,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   font-size: 0.65rem;
 }
 
-
-/* ── Hero Banner ───────────────────────────────────────────────────────────── */
-
-.hero-banner {
-  position: relative;
-  border-radius: 18px;
-  overflow: hidden;
-  height: 220px;
-}
-
-.hero-slides { position: relative; height: 100%; }
-
-.hero-slide {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 20px;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.5s ease;
-}
-
-.hero-slide.active { opacity: 1; }
-
 .hero-slide-overlay {
   position: absolute;
   inset: 0;
@@ -361,59 +300,8 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 
 .hero-slide-content { position: relative; z-index: 1; }
 
-.hero-badge {
-  display: inline-block;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--text-strong);
-  background: var(--overlay-xl);
-  border-radius: 4px;
-  padding: 3px 8px;
-  margin-bottom: 6px;
-  text-transform: uppercase;
-}
-
-.hero-title {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  margin-bottom: 4px;
-}
-
-.hero-tagline {
-  font-size: 0.72rem;
-  color: var(--text-strong);
-  font-weight: 500;
-  margin-bottom: 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.hero-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.65rem;
-  color: var(--text-sub);
-  font-weight: 600;
-}
-
 .hero-dot {
   opacity: 0.4;
-}
-
-.hero-dots {
-  position: absolute;
-  bottom: 10px;
-  right: 14px;
-  display: flex;
-  gap: 5px;
-  z-index: 2;
 }
 
 /* A 5×5 dot was a 25px² target — the smallest control in the app by an order of
@@ -433,12 +321,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   cursor: pointer;
   padding: 0;
   transition: all 0.2s;
-}
-
-.hero-dot-btn.active {
-  background: #fff;
-  width: 16px;
-  border-radius: 3px;
 }
 
 
@@ -465,37 +347,11 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   gap: 10px;
 }
 
-.collection-icon {
-  font-size: 1rem;
-  line-height: 1.3;
-}
-
 .collection-title {
   font-size: 0.88rem;
   font-weight: 800;
   color: var(--text);
   letter-spacing: -0.02em;
-}
-
-.collection-subtitle {
-  font-size: 0.65rem;
-  color: var(--text-faint);
-  font-weight: 500;
-  margin-top: 1px;
-}
-
-.collection-see-all {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--accent) 80%, transparent);
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  letter-spacing: 0.01em;
-  flex-shrink: 0;
-  padding: 0;
-  margin-top: 2px;
 }
 
 
@@ -925,137 +781,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 }
 
 
-/* ── Search States ─────────────────────────────────────────────────────────── */
-
-.search-results-count {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.search-results-count strong {
-  color: var(--text-strong);
-}
-
-.search-empty {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.search-empty-icon {
-  font-size: 2.5rem;
-  margin-bottom: 12px;
-  opacity: 0.4;
-}
-
-.search-empty-title {
-  font-size: 0.95rem;
-  font-weight: 800;
-  color: var(--text-sub);
-  margin-bottom: 6px;
-}
-
-.search-empty-sub {
-  font-size: 0.72rem;
-  color: var(--text-faint);
-}
-
-.search-landing {
-  padding: 8px 0;
-}
-
-.popular-searches { }
-
-.popular-searches-title {
-  font-size: 0.68rem;
-  font-weight: 800;
-  color: var(--text-faint);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.popular-searches-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.popular-search-chip {
-  padding: 8px 14px;
-  border-radius: 20px;
-  background: var(--overlay-md);
-  border: 1.5px solid var(--border-default);
-  color: var(--text-strong);
-  font-size: 0.72rem;
-  font-weight: 700;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.popular-search-chip:active {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  color: #bfdbfe;
-  transform: scale(0.97);
-}
-
-
-/* ── Create Program CTA ────────────────────────────────────────────────────── */
-
-.create-program-cta {
-  margin-top: 8px;
-  margin-bottom: 4px;
-}
-
-.create-cta-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  background: var(--overlay-sm);
-  border: 1.5px dashed var(--border-medium);
-  border-radius: 14px;
-  gap: 12px;
-}
-
-.create-cta-text { flex: 1; min-width: 0; }
-
-.create-cta-title {
-  font-size: 0.82rem;
-  font-weight: 800;
-  color: var(--text-strong);
-  margin-bottom: 2px;
-}
-
-.create-cta-subtitle {
-  font-size: 0.65rem;
-  color: var(--text-faint);
-  font-weight: 500;
-}
-
-.create-cta-btn {
-  flex-shrink: 0;
-  padding: 9px 16px;
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 10px;
-  color: #bfdbfe;
-  font-size: 0.72rem;
-  font-weight: 800;
-  font-family: inherit;
-  cursor: pointer;
-  letter-spacing: 0.01em;
-  transition: all 0.15s;
-}
-
-.create-cta-btn:active {
-  background: color-mix(in srgb, var(--accent) 25%, transparent);
-  transform: scale(0.97);
-}
-
-
 /* ── Program Detail Page ───────────────────────────────────────────────────── */
 
 #programDetailScreen {
@@ -1173,53 +898,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   font-weight: 600;
 }
 
-
-/* Stats Row */
-.detail-stats-row {
-  display: flex;
-  align-items: stretch;
-  background: var(--surface-1);
-  border-radius: 14px;
-  border: 1.5px solid var(--border-default);
-  overflow: hidden;
-  margin: 14px 0;
-}
-
-.detail-stat {
-  flex: 1;
-  min-width: 0;   /* let the value/label wrap at large font instead of forcing horizontal overflow */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 8px;
-  text-align: center;
-}
-.detail-stat-value, .detail-stat-label { overflow-wrap: anywhere; max-width: 100%; }
-
-.detail-stat-divider {
-  width: 1px;
-  background: var(--overlay-md);
-  margin: 10px 0;
-}
-
-.detail-stat-value {
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -0.02em;
-  line-height: 1;
-  margin-bottom: 4px;
-}
-
-.detail-stat-label {
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 /* Program tags row (difficulty + equipment + goals) */
 .detail-tags-row {
   display: flex;
@@ -1241,28 +919,10 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   text-transform: capitalize;
 }
 
-.detail-tag--difficulty {
-  border-color: currentColor;
-  background: transparent;
-}
-
-.detail-tag--equipment {
-  color: var(--text-sub);
-  border-color: var(--border-medium);
-  background: var(--overlay-sm);
-}
-
 .detail-tag--goal {
   color: var(--text-muted);
   border-color: var(--border-default);
   background: var(--overlay-sm);
-}
-
-/* Stars */
-.detail-stars {
-  color: var(--color-amber);
-  font-size: 0.85rem;
-  letter-spacing: 1px;
 }
 
 .detail-rating--empty {
@@ -1277,7 +937,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   border-radius: 12px;
   width: 100%;
 }
-.detail-your-rating { min-height: 44px; }
 
 .detail-rating-empty-text {
   font-size: 0.72rem;
@@ -1332,13 +991,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   color: var(--text-strong);
 }
 
-.detail-rating {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  flex-shrink: 0;
-}
-
 .detail-rating-star { color: var(--color-amber); font-size: 1rem; }
 .detail-rating-value { font-size: 0.88rem; font-weight: 800; color: var(--text); }
 .detail-rating-count { font-size: 0.65rem; color: var(--text-faint); font-weight: 600; }
@@ -1363,10 +1015,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   line-height: 1.55;
   font-weight: 500;
 }
-
-/* V2-6 — Overview | Structure tab bar on the program detail (reuses .an-tab). */
-.detail-tabbar { margin: 4px 0 16px; }
-.detail-tabbody { min-height: 40px; }
 
 /* Highlights */
 .detail-highlights {
@@ -1607,247 +1255,12 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 .detail-fit-item--caution .detail-fit-mark { color: var(--warning); }
 .detail-fit-item--caution { color: var(--text-muted); }
 
-/* Day Split */
-.day-split-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.day-split-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  background: var(--overlay-sm);
-  border-radius: 9px;
-  border: 1px solid var(--border-subtle);
-}
-
-.day-split-row--rest {
-  opacity: 0.45;
-}
-
-.day-split-day {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: var(--text-faint);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  width: 30px;
-  flex-shrink: 0;
-}
-
-.day-split-title {
-  flex: 1;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--text-strong);
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.day-split-badge {
-  font-size: 0.58rem;
-  font-weight: 700;
-  border: 1px solid;
-  border-radius: 5px;
-  padding: 2px 7px;
-  flex-shrink: 0;
-  white-space: nowrap;
-  letter-spacing: 0.01em;
-}
-
-/* Interactive day rows */
-.day-split-row--interactive {
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.day-split-row--interactive:active {
-  background: var(--overlay-lg);
-  transform: scale(0.99);
-}
-
-.day-split-chevron {
-  font-size: 1.1rem;
-  color: var(--text-ghost);
-  flex-shrink: 0;
-  line-height: 1;
-  transition: color 0.15s;
-}
-
-.day-split-row--interactive:hover .day-split-chevron,
-.day-split-row--interactive:focus .day-split-chevron {
-  color: var(--text-muted);
-}
-
-.day-split-row--interactive:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  outline-offset: 2px;
-}
-
-.day-split-hint {
-  font-size: 0.62rem;
-  color: var(--text-ghost);
-  text-align: center;
-  margin-top: 8px;
-  margin-bottom: 0;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-/* ── Sample Workout Card ─────────────────────────────────────────────────────── */
-
-.sample-workout-card {
-  background: var(--overlay-sm);
-  border: 1.5px solid var(--border-default);
-  border-radius: 14px;
-  padding: 16px;
-  overflow: hidden;
-}
-
-.sample-workout-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.sample-workout-dayname {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-.sample-workout-badge {
-  font-size: 0.58rem;
-  font-weight: 700;
-  border: 1px solid;
-  border-radius: 5px;
-  padding: 2px 7px;
-  letter-spacing: 0.02em;
-}
-
-.sample-workout-title {
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-  letter-spacing: -0.01em;
-}
-
-/* Strength exercise list */
-.sample-exercise-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.sample-exercise-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.sample-exercise-row:last-of-type { border-bottom: none; }
-
-.sample-ex-note {
-  flex: 1 0 100%;
-  margin-top: 3px;
-  color: var(--text-muted);
-  font-size: 0.66rem;
-  line-height: 1.4;
-  white-space: pre-line;
-  overflow-wrap: anywhere;
-}
-
-.sample-ex-name {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-
-.sample-ex-prescription {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-  margin-left: 12px;
-}
-
-.sample-ex-more {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--text-faint);
-  padding-top: 8px;
-  letter-spacing: 0.01em;
-}
-
-/* Running phase list */
-.sample-run-phases {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.sample-run-phase {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.sample-run-phase:last-child { border-bottom: none; }
-
-.sample-run-phase-name {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-strong);
-}
-
-.sample-run-phase-detail {
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--text-faint);
-  flex-shrink: 0;
-  margin-left: 12px;
-  text-align: right;
-}
-
-/* Fallback plain run description */
-.sample-run-text {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-sub);
-  line-height: 1.5;
-}
-
 /* ── Workout Preview Modal (wpm) ────────────────────────────────────────────── */
 
 .wpm-header-left {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.wpm-badge {
-  display: inline-block;
-  font-size: 0.58rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  border: 1px solid;
-  border-radius: 5px;
-  padding: 2px 8px;
-  width: fit-content;
 }
 
 /* The sheet itself is a flex column with a pinned header/handle; only .wpm-body
@@ -1862,20 +1275,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
 }
 #wpmSheet .bottom-sheet-handle,
 #wpmSheet .bottom-sheet-header { flex: 0 0 auto; }
-
-.wpm-body {
-  padding-bottom: 4px;
-}
-
-#wpmSheet .wpm-body {
-  flex: 1 1 auto;
-  min-height: 0;               /* let the flex child shrink so it can scroll */
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: calc(12px + var(--safe-bottom));
-}
 
 .wpm-type-label {
   font-size: 0.68rem;
@@ -1899,49 +1298,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent);
 }
 
-/* Strength grid */
-.wpm-strength-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid var(--border-default);
-}
-
-/* Responsive prescription columns. Previously the base rule declared 5 desktop
-   columns (`1fr 44px 56px 44px 72px`) while the markup only renders 3 spans, and
-   a `--compact` override patched it back to 3 fixed-px columns — a latent
-   min-width trap on a phone. One source of truth now: a flexible name column
-   that can shrink to zero (min-width:0) and wrap, plus two rem-based numeric
-   columns that scale with the user's font size and grow for long values (ranges
-   like 8–12, "each side") instead of clipping the reps off the right edge. */
-.wpm-grid-header,
-.wpm-grid-row {
-  grid-template-columns: minmax(0, 1fr) minmax(2.75rem, auto) minmax(3.5rem, auto);
-}
-
-.wpm-grid-header {
-  display: grid;
-  gap: 0;
-  padding: 8px 12px;
-  background: var(--overlay-sm);
-  font-size: 0.58rem;
-  font-weight: 800;
-  color: var(--text-faint);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.wpm-grid-row {
-  display: grid;
-  gap: 0;
-  padding: 10px 12px;
-  background: var(--overlay-xs);
-  border-top: 1px solid var(--border-subtle);
-  align-items: center;
-}
-
 /* Very narrow screens / large system fonts: stack each exercise instead of
    forcing three columns. Name on its own line, then labelled sets/reps lines —
    readable and never clipped, which beats shrinking to unreadable numerics. */
@@ -1953,10 +1309,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   }
   .wpm-strength-grid .wpm-grid-row .wpm-ex-val:nth-of-type(2)::before { content: 'Sets '; color: var(--text-faint); }
   .wpm-strength-grid .wpm-grid-row .wpm-ex-val:nth-of-type(3)::before { content: 'Reps '; color: var(--text-faint); }
-}
-
-.wpm-grid-row:last-child {
-  border-bottom: none;
 }
 
 .wpm-ex-name {
@@ -2109,16 +1461,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   padding: 20px 0;
 }
 
-.wpm-fallback-run {
-  font-size: 0.9rem;
-  color: var(--text-strong);
-  padding: 10px 12px;
-  background: var(--overlay-sm);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  line-height: 1.5;
-}
-
 .wpm-exercise-list {
   display: flex;
   flex-direction: column;
@@ -2254,22 +1596,11 @@ html[data-theme="light"] .wpm-hyrox-run-text { color: #dc2626; }
 html[data-theme="light"] .wpm-hyrox-run-leg { background: rgba(220,38,38,0.05); border-color: rgba(220,38,38,0.10); }
 html[data-theme="light"] .wpm-hyrox-station-leg { background: rgba(109,40,217,0.05); border-color: rgba(109,40,217,0.10); }
 html[data-theme="light"] .wpm-hyrox-notes { color: rgba(0,0,0,0.48); background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
-
-/* Light mode fallback */
-html[data-theme="light"] .wpm-fallback-run {
-  color: rgba(0,0,0,0.70);
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.08);
-}
 html[data-theme="light"] .wpm-exercise-item {
   color: rgba(0,0,0,0.75);
   background: rgba(0,0,0,0.01);
   border-bottom-color: rgba(0,0,0,0.05);
 }
-
-/* Light mode */
-html[data-theme="light"] .wpm-grid-header { background: rgba(0,0,0,0.03); color: rgba(0,0,0,0.35); }
-html[data-theme="light"] .wpm-grid-row { background: rgba(0,0,0,0.01); border-color: rgba(0,0,0,0.05); }
 
 /* Author Card */
 .detail-author-card {
@@ -2327,23 +1658,6 @@ html[data-theme="light"] .wpm-grid-row { background: rgba(0,0,0,0.01); border-co
   padding: 32px 20px;
   font-size: 0.78rem;
   font-weight: 600;
-}
-
-/* ==========================================================================
-   PROGRAMS TAB — LIGHT MODE OVERRIDES
-   programs.css had zero light mode rules. This section covers everything.
-   ========================================================================== */
-
-/* Search bar */
-html[data-theme="light"] .prog-search-input-wrap {
-  background: #ffffff !important;
-  border-color: rgba(0,0,0,0.12) !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
-}
-html[data-theme="light"] .prog-search-input-wrap:focus-within {
-  background: #ffffff !important;
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent), 0 2px 8px rgba(0,0,0,0.06) !important;
 }
 html[data-theme="light"] .search-icon-svg {
   color: rgba(0,0,0,0.30) !important;
@@ -2424,31 +1738,10 @@ html[data-theme="light"] .prog-card--active {
 html[data-theme="light"] .collection-title {
   color: #0f172a !important;
 }
-html[data-theme="light"] .collection-see-all {
-  color: color-mix(in srgb, var(--accent) 80%, transparent) !important;
-}
 
 /* Filtered/search results */
 html[data-theme="light"] .filtered-grid-title {
   color: #0f172a !important;
-}
-
-/* Popular search chips (landing) */
-html[data-theme="light"] .popular-search-chip {
-  background: rgba(0,0,0,0.04) !important;
-  border-color: rgba(0,0,0,0.10) !important;
-  color: rgba(0,0,0,0.60) !important;
-}
-html[data-theme="light"] .popular-search-chip:active {
-  background: color-mix(in srgb, var(--accent) 9%, transparent) !important;
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent) !important;
-  color: var(--accent) !important;
-}
-
-/* Create program CTA */
-html[data-theme="light"] .create-cta-inner {
-  background: rgba(0,0,0,0.02) !important;
-  border-color: rgba(0,0,0,0.14) !important;
 }
 
 /* ==========================================================================
@@ -2514,18 +1807,6 @@ html[data-theme="light"] .create-cta-inner {
   border-radius: 0 10px 10px 0; background: color-mix(in srgb, var(--color-amber) 10%, transparent);
 }
 .program-editor__section-error p { color: #b9c4d4; font-size: .8rem; line-height: 1.5; margin: 0; }
-.program-editor__tabs {
-  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
-  position: sticky; top: var(--safe-top); z-index: 5;
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 5px; margin: 14px 0 20px;
-  border: 1px solid var(--border-light); border-radius: 13px; background: color-mix(in srgb, var(--bg-dark) 92%, transparent);
-  backdrop-filter: blur(14px);
-}
-.program-editor__tab {
-  min-height: 44px; border: 0; border-radius: 9px; background: transparent;
-  color: var(--text-secondary); font-size: .78rem; font-weight: 800;
-}
-.program-editor__tab.is-active { background: color-mix(in srgb, var(--accent-blue) 18%, var(--bg-elevated)); color: var(--text-primary); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-blue) 34%, transparent); }
 /* ── Simple | Advanced progression (Phase 4C) ─────────────────────────────── */
 .program-editor__mode {
   display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; padding: 4px; margin: 0 0 14px;
@@ -2603,7 +1884,6 @@ html[data-theme="light"] .create-cta-inner {
 .program-editor__section-heading { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
 .program-editor__section-heading h2 { margin: 4px 0 0; color: var(--text-primary); font-size: 1.25rem; }
 .program-editor__section-heading p { max-width: 520px; margin: 6px 0 0; color: var(--text-secondary); font-size: .78rem; line-height: 1.5; }
-.program-editor__day-strip { display: grid; grid-template-columns: repeat(7, minmax(42px,1fr)); gap: 5px; margin: 0 -2px 14px; overflow-x: auto; }
 .program-editor__day {
   min-width: 42px; min-height: 58px; display: grid; place-items: center; align-content: center; gap: 3px;
   border: 1px solid var(--border-light); border-radius: 11px; background: var(--bg-card); color: var(--text-secondary);
@@ -2796,7 +2076,6 @@ html[data-theme="light"] .program-editor__exercise-link { color: #0e7490; }
 .program-editor__picker-error { margin: 0; padding: 10px; border-radius: 9px; background: color-mix(in srgb, var(--color-red) 10%, transparent); color: var(--color-red); font-size: .72rem; }
 
 html[data-theme="light"] .program-editor__hero { background: linear-gradient(145deg, #242424, #111111); }
-html[data-theme="light"] .program-editor__tabs { background: rgba(244,247,251,.94); }
 
 @media (max-width: 380px) {
   .program-editor__hero, .program-editor__day-card { padding: 14px; }
@@ -2831,12 +2110,6 @@ html[data-theme="light"] .program-editor__tabs { background: rgba(244,247,251,.9
 .program-text-modal__area { flex: 1 1 auto; min-height: 200px; width: 100%; resize: none; padding: 12px; border: 1px solid var(--border-light); border-radius: 12px; background: var(--bg-input); color: var(--text-primary); font-family: ui-monospace, monospace; font-size: .78rem; line-height: 1.45; white-space: pre; overflow: auto; }
 .program-text-modal__actions { display: flex; gap: 8px; margin-top: 12px; }
 .program-text-modal__actions .btn-pad { flex: 1; }
-/* Active-program hero utility controls (copy + rate), top-right, 44px targets */
-.aplan-hero-actions { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: 6px; z-index: 2; }
-.aplan-hero-actions .aplan-rate-btn { position: static; top: auto; right: auto; width: 44px; height: 44px; }
-.aplan-icon-action { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; background: var(--overlay-lg); border: 1px solid var(--border-strong); border-radius: 10px; color: var(--text); cursor: pointer; transition: background 0.15s ease; }
-.aplan-icon-action:active { background: var(--overlay-2xl); }
-.aplan-icon-action svg { width: 20px; height: 20px; }
 .aplan-icon-action:focus-visible,
 .detail-overflow-btn:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; }
 /* Keep the 34px header visual but guarantee a ≥44px touch target. */
@@ -2861,17 +2134,6 @@ html[data-theme="light"] .program-editor__tabs { background: rgba(244,247,251,.9
 .action-menu__item[data-danger="1"] { color: var(--accent-red); }
 .action-menu__icon { display: inline-flex; align-items: center; justify-content: center; width: 20px; color: var(--text-secondary); }
 .action-menu__icon svg { width: 18px; height: 18px; }
-
-/* Program detail back button */
-
-/* Detail stats row */
-html[data-theme="light"] .detail-stats-row {
-  background: var(--surface-1) !important;
-  border-color: rgba(0,0,0,0.07) !important;
-}
-html[data-theme="light"] .detail-stat-value {
-  color: #0f172a !important;
-}
 
 /* Detail "active program" variant CTA button */
 html[data-theme="light"] .detail-cta-btn--active {
@@ -2902,455 +2164,6 @@ html[data-theme="light"] .detail-social-proof {
   background: rgba(0,0,0,0.02) !important;
   border-color: rgba(0,0,0,0.07) !important;
 }
-
-
-/* ==========================================================================
-   ACTIVE PLAN VIEW — Premium overhaul
-   ========================================================================== */
-
-/* Hero card */
-.aplan-hero {
-  border-radius: 18px;
-  overflow: hidden;
-}
-
-.aplan-hero-inner {
-  position: relative;
-  padding: 20px 18px 18px;
-  border-radius: 18px;
-  overflow: hidden;
-  min-height: 120px;
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-}
-
-.aplan-hero-inner::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.45));
-  pointer-events: none;
-}
-
-.aplan-hero-icon {
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  font-size: 3rem;
-  opacity: 0.28;
-  filter: blur(0.5px);
-  pointer-events: none;
-}
-
-.aplan-hero-content {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-width: 0;
-}
-
-.aplan-hero-eyebrow {
-  font-size: 0.55rem;
-  font-weight: 800;
-  letter-spacing: 0.09em;
-  color: var(--text-sub);
-  text-transform: uppercase;
-  margin-bottom: 3px;
-}
-
-.aplan-hero-name {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: #fff;
-  letter-spacing: -0.03em;
-  line-height: 1.2;
-  margin-bottom: 2px;
-}
-
-.aplan-hero-phase {
-  font-size: 0.65rem;
-  font-weight: 600;
-  color: var(--text-sub);
-  margin-bottom: 10px;
-}
-
-.aplan-hero-progress-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 3px;
-}
-
-.aplan-hero-bar {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--overlay-2xl);
-  overflow: hidden;
-}
-
-.aplan-hero-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s ease;
-}
-
-.aplan-hero-pct {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: var(--text-sub);
-  flex-shrink: 0;
-}
-
-.aplan-hero-weeks {
-  font-size: 0.6rem;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.aplan-rate-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: var(--overlay-lg);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  color: rgba(255,215,0,0.75);
-  font-size: 1.1rem;
-  width: 34px;
-  height: 34px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.15s ease;
-  z-index: 2;
-}
-.aplan-rate-btn:active { background: var(--overlay-2xl); }
-.aplan-edit-btn {
-  margin-top: 10px;
-  width: 100%;
-  min-height: 44px;
-  background: var(--overlay-lg);
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  color: var(--text);
-  font-size: .85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.aplan-edit-btn:active { background: var(--overlay-2xl); }
-
-/* Week Navigator */
-.aplan-week-nav {
-  display: flex;
-  align-items: center;
-  background: var(--bg-card);
-  border-radius: 14px;
-  border: 1.5px solid var(--border-default);
-  overflow: hidden;
-}
-
-.aplan-week-btn {
-  flex-shrink: 0;
-  width: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--text-faint);
-  font-size: 1.5rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 14px 0;
-  transition: color 0.15s, background 0.15s;
-  font-family: inherit;
-}
-
-.aplan-week-btn:hover { color: var(--text-strong); background: var(--overlay-sm); }
-.aplan-week-btn:active { background: var(--overlay-lg); }
-
-.aplan-week-center {
-  flex: 1;
-  text-align: center;
-  padding: 12px 8px;
-  border-left: 1px solid var(--border-subtle);
-  border-right: 1px solid var(--border-subtle);
-}
-
-.aplan-week-label {
-  font-size: 0.52rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.aplan-week-num {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--text);
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-
-.aplan-phase-name {
-  font-size: 0.6rem;
-  color: var(--text-faint);
-  font-weight: 600;
-  margin-top: 3px;
-  min-height: 0.9em;
-}
-
-/* Day cards — THIS WEEK tab */
-.aplan-day-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.aplan-day-card {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: var(--overlay-sm);
-  border: 1.5px solid var(--border-subtle);
-  border-radius: 12px;
-  transition: background 0.15s, transform 0.1s;
-}
-
-.aplan-day-card[data-action="open-day-preview"] {
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.aplan-day-card[data-action="open-day-preview"]:active {
-  background: var(--overlay-md);
-  transform: scale(0.99);
-}
-
-.aplan-day-card--today {
-  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-}
-
-.aplan-day-card--rest { opacity: 0.45; }
-
-.aplan-day-label {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  width: 28px;
-  flex-shrink: 0;
-}
-
-.aplan-day-card--today .aplan-day-label {
-  color: var(--info);
-}
-
-.aplan-day-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.aplan-day-title {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-strong);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.aplan-day-card--today .aplan-day-title {
-  color: var(--text);
-}
-
-.aplan-day-badge {
-  font-size: 0.58rem;
-  font-weight: 700;
-  border: 1px solid;
-  border-radius: 4px;
-  padding: 1px 6px;
-  margin-top: 3px;
-  display: inline-block;
-  white-space: nowrap;
-}
-
-.aplan-day-chevron {
-  font-size: 1.1rem;
-  color: var(--text-ghost);
-  flex-shrink: 0;
-  transition: color 0.15s;
-}
-
-.aplan-day-card[data-action="open-day-preview"]:hover .aplan-day-chevron,
-.aplan-day-card[data-action="open-day-preview"]:focus .aplan-day-chevron {
-  color: var(--text-muted);
-}
-
-.aplan-today-pip {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--info);
-}
-
-/* Schedule tab */
-.aplan-schedule { margin-bottom: 16px; }
-
-.aplan-sched-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.aplan-sched-cell {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  border: 1.5px solid var(--border-default);
-  background: var(--overlay-sm);
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.aplan-sched-cell:hover { background: var(--overlay-lg); color: var(--text-strong); }
-.aplan-sched-cell:active { transform: scale(0.95); }
-
-.aplan-sched-cell--past {
-  color: var(--text-ghost);
-  border-color: var(--border-subtle);
-}
-
-.aplan-sched-cell--current {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
-  color: #bfdbfe;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 15%, transparent);
-}
-
-.aplan-sched-cell--actual {
-  border-color: rgba(34,197,94,0.5);
-  box-shadow: 0 0 0 2px rgba(34,197,94,0.12);
-}
-
-.aplan-phase-breakdown {
-  background: var(--overlay-xs);
-  border: 1.5px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 14px;
-}
-
-.aplan-phase-breakdown-title {
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.aplan-phase-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.aplan-phase-item {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-
-.aplan-phase-wks {
-  font-size: 0.6rem;
-  font-weight: 800;
-  color: var(--text-faint);
-  width: 52px;
-  flex-shrink: 0;
-}
-
-.aplan-phase-label {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.aplan-phase-item--active .aplan-phase-wks { color: var(--info); }
-.aplan-phase-item--active .aplan-phase-label { color: var(--text-strong); }
-
-/* Light mode overrides — active plan view */
-html[data-theme="light"] .aplan-week-nav {
-  background: #ffffff;
-  border-color: rgba(0,0,0,0.08);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-html[data-theme="light"] .aplan-week-btn:hover {
-  color: rgba(0,0,0,0.60);
-  background: rgba(0,0,0,0.03);
-}
-html[data-theme="light"] .aplan-week-num {
-  color: #0f172a;
-}
-html[data-theme="light"] .aplan-day-card {
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.07);
-}
-html[data-theme="light"] .aplan-day-card--today {
-  background: color-mix(in srgb, var(--accent) 6%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
-}
-html[data-theme="light"] .aplan-day-card--today .aplan-day-label { color: var(--accent); }
-html[data-theme="light"] .aplan-day-card--today .aplan-day-title { color: #0f172a; }
-html[data-theme="light"] .aplan-today-pip { background: var(--accent); }
-html[data-theme="light"] .aplan-sched-cell {
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.08);
-  color: rgba(0,0,0,0.42);
-}
-html[data-theme="light"] .aplan-sched-cell:hover {
-  background: rgba(0,0,0,0.05);
-  color: rgba(0,0,0,0.70);
-}
-html[data-theme="light"] .aplan-sched-cell--past {
-  color: rgba(0,0,0,0.22);
-  border-color: rgba(0,0,0,0.05);
-}
-html[data-theme="light"] .aplan-sched-cell--current {
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--domain-strength);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-html[data-theme="light"] .aplan-sched-cell--actual {
-  border-color: rgba(22,163,74,0.45);
-  box-shadow: 0 0 0 2px rgba(22,163,74,0.10);
-}
-html[data-theme="light"] .aplan-phase-breakdown {
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.06);
-}
-html[data-theme="light"] .aplan-phase-item--active .aplan-phase-wks { color: var(--accent); }
 
 /* Previous activation continuity — intentionally uses the same technical card
    language as the active plan instead of introducing another visual system. */
@@ -3426,16 +2239,6 @@ html[data-theme="light"] .previous-program-run-card {
   border-color: rgba(15,23,42,.1);
 }
 
-/* ==========================================================================
-   GENERAL LIGHT MODE FIXES — existing components missing light mode rules
-   ========================================================================== */
-
-/* Day split rows (detail page) */
-html[data-theme="light"] .day-split-row {
-  background: rgba(0,0,0,0.02);
-  border-color: rgba(0,0,0,0.06);
-}
-
 /* Author card */
 html[data-theme="light"] .detail-author-card {
   background: rgba(0,0,0,0.02);
@@ -3479,13 +2282,6 @@ html[data-theme="light"] .active-plan-label {
 }
 html[data-theme="light"] .active-plan-label {
   color: rgba(0,0,0,0.30);
-}
-
-/* Hero banner text — stays on a dark overlay image so white is fine in both modes.
-   Only adjust the badge chip background which is rgba white (slightly odd on light). */
-html[data-theme="light"] .hero-badge {
-  background: rgba(0,0,0,0.20) !important;
-  color: color-mix(in srgb, var(--text) 90%, transparent) !important;
 }
 
 /* =============================================================================
@@ -4103,19 +2899,6 @@ html[data-theme="light"] .filter-chip.active {
 
 
 /* --------------------------------------------------------------------------
-   Search bar — consistent focus ring
-   -------------------------------------------------------------------------- */
-
-.prog-search-input-wrap:focus-within {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
-}
-
-html[data-theme="light"] .prog-search-input-wrap:focus-within {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
-}
-
-
-/* --------------------------------------------------------------------------
    Light mode — detail view
    -------------------------------------------------------------------------- */
 
@@ -4138,56 +2921,6 @@ html[data-theme="light"] .detail-complete-btn:active {
     color var(--duration-base, 0.22s) ease,
     border-color var(--duration-base, 0.22s) ease;
 }
-
-
-/* ── Active-plan: week-aware "This Week" prescription strip ──────────────── */
-.aplan-week-prescription {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.aplan-week-prescription .aplan-wp-week {
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-.aplan-week-prescription .aplan-wp-phase {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--accent-blue);
-  padding: 2px 8px;
-  border: 1px solid color-mix(in srgb, var(--accent-blue) 40%, transparent);
-  border-radius: 999px;
-}
-.aplan-week-prescription .aplan-wp-load {
-  font-size: 0.7rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  margin-left: auto;
-}
-
-/* ── Program detail: the user's own saved rating ────────────────────────── */
-.detail-your-rating {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  cursor: pointer;
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-}
-.detail-your-rating .detail-your-rating-label {
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  font-size: 0.65rem;
-  color: var(--text-muted);
-}
-.detail-your-rating .detail-stars { color: var(--warning); }
 
 /* ============================================================================
    WEEK-AT-A-GLANCE SCHEDULE + PROGRESSION OVERVIEW (program detail, main page)
@@ -4274,42 +3007,6 @@ html[data-theme="light"] .prog-phase { background: rgba(0,0,0,0.02); }
 .wag-summary {
   font-size: max(0.8rem, var(--text-base));
   line-height: 1.5;
-}
-
-/* Simplified Plans landing — plan utilities are inline text, not buttons:
-   the active plan's own action is the only primary on this screen. */
-.plans-utility {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 14px;
-  margin: 0 0 4px;
-}
-.plans-utility-btn {
-  flex: 0 0 auto;
-  min-height: var(--touch-target, 44px);
-  padding: 0 2px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: .74rem;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.plans-utility-btn--icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  padding: 0;
-}
-.plans-utility-btn--accent {
-  color: var(--color-cyan);
 }
 .lib-empty-cta + .lib-empty-cta { margin-top: 8px; }
 

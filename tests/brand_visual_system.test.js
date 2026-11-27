@@ -27,7 +27,7 @@ test('core screens consume one shared surface and brand interaction language', (
     '.cockpit-exercise:not(.collapsed)',
     '.an-tab--active',
     '.profile-stat-card',
-    '.prog-search-input-wrap',
+    '.plan-row',
   ]) assert.ok(brand.includes(selector), `missing shared brand selector ${selector}`);
 
   assert.match(brand, /html\[data-theme="light"\]/);

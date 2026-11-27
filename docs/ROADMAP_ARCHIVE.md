@@ -5721,6 +5721,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `text_size` + a static wiring guard; the Settings browser check
     toggles Extra large and asserts the root font grows to 20px.
 
+- **2026-11-26 — ST9: backup trust.**
+  - Settings → Data states the **last manual backup** ("Today / Yesterday / N
+    days ago") with one calm warning at 7+ days or when none exists.
+  - The timestamp is root metadata (`lastBackupAt`), written only when the
+    platform confirms a saved/started export — never a cancel or failure — and
+    it is not a setting (no registry row). Automatic backup keeps its own
+    status; photos remain device-local with the Measures zip.
+  - Tests: `backup_status` plus a static wiring guard. Verify: 2,886 tests.
+
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
 - **2026-11-26 — ST8: text size + haptics.**
@@ -5732,6 +5741,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     built, so the row stays PARTIAL rather than claiming otherwise.
   - Tests: `text_size` + a static wiring guard; the Settings browser check
     toggles Extra large and asserts the root font grows to 20px.
+
+- **2026-11-26 — ST9: backup trust.**
+  - Settings → Data states the **last manual backup** ("Today / Yesterday / N
+    days ago") with one calm warning at 7+ days or when none exists.
+  - The timestamp is root metadata (`lastBackupAt`), written only when the
+    platform confirms a saved/started export — never a cancel or failure — and
+    it is not a setting (no registry row). Automatic backup keeps its own
+    status; photos remain device-local with the Measures zip.
+  - Tests: `backup_status` plus a static wiring guard. Verify: 2,886 tests.
 
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
