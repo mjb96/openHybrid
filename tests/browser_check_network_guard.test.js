@@ -1,7 +1,8 @@
 // Browser product checks exercise local application behaviour. External hosts
 // are neither part of their contract nor stable enough to gate a release: a
-// transient Google Fonts 404 made two identical post-merge workflows fail in
-// different, random subsets while every functional assertion passed.
+// transient third-party 404 (a hosted font at the time) made two identical
+// post-merge workflows fail in different, random subsets while every
+// functional assertion passed.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';

@@ -955,17 +955,17 @@ server works.
   render-blocked (<3s), the active-view DOM stays within 1.35× as history grows
   (measured 1.03×), and the app renders with every external host blocked.
   Wall-clock is REPORTED, never asserted — this container is ~3x slower than CI and
-  neither is a phone. Webfont CSS is loaded NON-BLOCKING (`media="print"` +
-  `js/font-css.js` flipping it to `all`); a plain `<link>` there blocks first paint
-  until it loads OR FAILS, which measured 12.6s on every offline start.
-  `display=swap` does NOT prevent this — it governs the font file, not the
-  stylesheet.
+  neither is a phone. There is no webfont: the UI uses the platform system
+  font, so first paint cannot wait on a font. The historical defect is kept in
+  the harness comment — a hosted font stylesheet blocked first paint for 12.6s
+  on every offline start — and is the reason a hosted font must not come back.
   Every other browser product check creates contexts through
   `createBrowserContext` (`scripts/browser-runtime.mjs`), which permits the
-  local fixture server and blocks external HTTP(S) hosts. A Google Fonts 404
-  otherwise made identical CI runs fail in different random checks while every
-  product assertion passed. Local missing assets still return real 404s and
-  fail. The performance baseline deliberately uses direct contexts because it
+  local fixture server and blocks external HTTP(S) hosts. A third-party 404
+  (a hosted font, a tile host) otherwise made identical CI runs fail in
+  different random checks while every product assertion passed. Local missing
+  assets still return real 404s and fail. The performance baseline deliberately
+  uses direct contexts because it
   owns separate online and externally-blocked scenarios.
 - Service-worker cache: `CACHE_NAME` carries a generated content hash
   (`scripts/gen-precache.mjs`), so editing any precached asset changes `sw.js` and the

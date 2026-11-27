@@ -82,8 +82,8 @@ One service is contacted, and only while you are looking at a map:
 |---|---|---|
 | OpenStreetMap tile service | Run-map tiles | IP address and the map-tile area requested when a map is viewed |
 
-These providers process data on our behalf or as independent controllers for
-the limited purpose above. We do not sell data to anyone.
+This provider processes data as an independent controller for the limited
+purpose above. We do not sell data to anyone.
 
 ## 5. Legal bases (GDPR/UK GDPR)
 - **Consent:** for optional features you switch on — Health Connect access, GPS
