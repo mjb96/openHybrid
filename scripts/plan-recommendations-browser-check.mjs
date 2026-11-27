@@ -83,14 +83,16 @@ const readRow = () => {
   const rows = [...document.querySelectorAll('.collection-row')];
   const row = rows.find(r => /Recommended For You/i.test(r.querySelector('.collection-title')?.textContent || ''));
   if (!row) return { present: false, cards: [], subtitle: '' };
-  const cards = [...row.querySelectorAll('.prog-card')].map(c => ({
+  const cards = [...row.querySelectorAll('.rec-row')].map(c => ({
     id: c.getAttribute('data-program-id'),
-    name: c.querySelector('.prog-card-name')?.textContent?.trim(),
-    reason: c.querySelector('.prog-card-reason')?.textContent?.trim() || '',
+    name: c.querySelector('.rec-row__name')?.textContent?.trim(),
+    reason: c.querySelector('.rec-row__why')?.textContent?.trim() || '',
+    meta: c.querySelector('.rec-row__meta')?.textContent?.trim() || '',
   }));
   return {
     present: true,
     subtitle: row.querySelector('.collection-subtitle')?.textContent?.trim() || '',
+    sharedWhy: row.querySelector('.rec-shared-why')?.textContent?.trim() || '',
     cards,
   };
 };
@@ -110,9 +112,10 @@ try {
       failures.push(`${label}: 4A asks for three to five recommendations, got ${row.cards.length}`);
     }
     for (const card of row.cards) {
-      if (!card.reason) failures.push(`${label}: "${card.name}" is recommended with no stated reason`);
-      if (/staff pick|certified|popular/i.test(card.reason)) {
-        failures.push(`${label}: "${card.reason}" describes the programme, not the fit`);
+      if (!card.reason && !row.sharedWhy) failures.push(`${label}: "${card.name}" is recommended with no stated reason`);
+      const stated = card.reason || row.sharedWhy;
+      if (/staff pick|certified|popular/i.test(stated)) {
+        failures.push(`${label}: "${stated}" describes the programme, not the fit`);
       }
     }
     seen[label] = row.cards.map(c => c.id).join(',');
@@ -129,10 +132,10 @@ try {
       fitnessGoal: 'strength', fitnessLevel: 'beginner', equipmentTier: 'gym', equipment: FULL_GYM,
     });
     const row = await page.evaluate(readRow);
-    console.log('strength/beginner reasons:', JSON.stringify(row.cards.map(c => c.reason)));
+    console.log('strength/beginner reasons:', JSON.stringify({ shared: row.sharedWhy, rows: row.cards.map(c => c.reason) }));
     for (const card of row.cards) {
       // A reason naming a level must name THIS athlete's level, never another.
-      const other = /(intermediate|advanced|elite) athletes/i.exec(card.reason);
+      const other = /(intermediate|advanced|elite) athletes/i.exec(card.reason || '');
       if (other) failures.push(`beginner shown "${card.reason}" as a reason to pick it`);
     }
     await context.close();
@@ -146,7 +149,7 @@ try {
     const browseReachable = await page.evaluate(() =>
       !!document.querySelector('[data-action="open-browse"]'));
     console.log('blank profile:', JSON.stringify({ row: state.present, browseReachable }));
-    if (state.present && state.cards.some(c => !c.reason)) {
+    if (state.present && state.cards.some(c => !c.reason) && !state.sharedWhy) {
       failures.push('a blank profile produced recommendations with no reasons');
     }
     if (!browseReachable) failures.push('Browse must stay reachable whatever the profile');
@@ -172,7 +175,7 @@ try {
         current: [...(details?.querySelectorAll('.prog-basis__btn.is-current') || [])].map(b => b.textContent.trim()),
         smallButtons: [...(details?.querySelectorAll('.prog-basis__btn') || [])]
           .filter(b => b.getBoundingClientRect().height && b.getBoundingClientRect().height < 43).length,
-        top: row ? [...row.querySelectorAll('.prog-card')].map(c => c.getAttribute('data-program-id')) : [],
+        top: row ? [...row.querySelectorAll('.rec-row')].map(c => c.getAttribute('data-program-id')) : [],
       };
     };
     const before = await page.evaluate(readBasis);
@@ -236,11 +239,11 @@ try {
     const readCardReach = () => {
       const row = [...document.querySelectorAll('.collection-row')]
         .find((r) => /Recommended For You/i.test(r.querySelector('.collection-title')?.textContent || ''));
-      const cards = [...(row?.querySelectorAll('.prog-card') || [])];
+      const cards = [...(row?.querySelectorAll('.rec-row') || [])];
       return cards.map((card) => {
         const rect = card.getBoundingClientRect();
         return {
-          name: card.querySelector('.prog-card-name')?.textContent?.trim() || '',
+          name: card.querySelector('.rec-row__name')?.textContent?.trim() || '',
           left: rect.left,
           right: rect.right,
           viewport: window.innerWidth,
@@ -260,7 +263,7 @@ try {
     }
     if (before.mobileTabs) failures.push('the Discover | My Plans tabs must be gone');
     if (cardReach.length !== 3) {
-      failures.push(`the Plans recommendation row must be one three-up grid, got ${cardReach.length} cards`);
+      failures.push(`the Plans recommendations must be three rows, got ${cardReach.length}`);
     }
     for (const card of cardReach) {
       if (card.left < -0.5 || card.right > card.viewport + 0.5) {
@@ -362,7 +365,7 @@ try {
     const seenRow = await page.evaluate(() => {
       const row = [...document.querySelectorAll('.collection-row')]
         .find(r => /Recommended For You/i.test(r.querySelector('.collection-title')?.textContent || ''));
-      const reason = row?.querySelector('.prog-card-reason');
+      const reason = row?.querySelector('.rec-row__why, .rec-shared-why');
       return {
         overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
         reasonVisible: !!reason && !!(/** @type {any} */ (reason).offsetParent),

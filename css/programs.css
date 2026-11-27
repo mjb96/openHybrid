@@ -832,49 +832,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   padding: 3px 8px;
 }
 
-.detail-hero {
-  border-radius: 18px;
-  padding: 24px 20px;
-  position: relative;
-  overflow: hidden;
-  min-height: 200px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  margin-bottom: 0;
-}
-
-.detail-hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.5));
-  pointer-events: none;
-}
-
-.detail-hero-icon {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  color: #fff;
-  opacity: 0.4;
-}
-.detail-hero-icon svg { width: 72px; height: 72px; display: block; }
-
-.detail-hero-content { position: relative; z-index: 1; }
-
-.detail-category-badge {
-  display: inline-block;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  border: 1px solid;
-  border-radius: 6px;
-  padding: 3px 9px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
 .detail-title {
   font-size: 1.35rem;
   font-weight: 800;
@@ -882,20 +839,6 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   letter-spacing: -0.03em;
   line-height: 1.15;
   margin-bottom: 6px;
-}
-
-.detail-tagline {
-  font-size: 0.78rem;
-  color: var(--text-strong);
-  font-weight: 500;
-  line-height: 1.4;
-  margin-bottom: 8px;
-}
-
-.detail-author {
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  font-weight: 600;
 }
 
 /* Program tags row (difficulty + equipment + goals) */
@@ -1600,55 +1543,6 @@ html[data-theme="light"] .wpm-exercise-item {
   color: rgba(0,0,0,0.75);
   background: rgba(0,0,0,0.01);
   border-bottom-color: rgba(0,0,0,0.05);
-}
-
-/* Author Card */
-.detail-author-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  background: var(--overlay-sm);
-  border-radius: 12px;
-  border: 1.5px solid var(--border-default);
-}
-
-.detail-author-icon {
-  font-size: 1.5rem;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: var(--overlay-md);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.detail-author-info { flex: 1; min-width: 0; }
-
-.detail-author-name {
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: var(--text-strong);
-  margin-bottom: 2px;
-}
-
-.detail-author-type {
-  font-size: 0.62rem;
-  color: var(--text-faint);
-  font-weight: 600;
-}
-
-.detail-author-verified {
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: var(--color-green);
-  background: color-mix(in srgb, var(--success) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--success) 20%, transparent);
-  border-radius: 5px;
-  padding: 3px 7px;
-  flex-shrink: 0;
 }
 
 /* ── Empty States ──────────────────────────────────────────────────────────── */
@@ -3468,31 +3362,6 @@ html[data-theme="dark"] .active-prog-continue-btn:not(.active-prog-continue-btn-
   cursor: pointer;
 }
 
-/* ==========================================================================
-   PLAN PAGE (roadmap §22 / PL4)
-   One page, one week control, inline day disclosures. Replaces the
-   Overview | Structure | Plan tabs, the sample-session card, the second
-   "Active Program" view and the day-preview bottom sheet.
-   ========================================================================== */
-
-.plan-facts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 12px 16px 0;
-}
-.plan-facts__item {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--overlay-sm);
-  border: 1px solid var(--border-subtle);
-  border-radius: 99px;
-  padding: 3px 9px;
-}
-.plan-facts .detail-fit-verdict { margin-left: auto; }
-
 /* A day row is a real button now (it opens the inline target list). */
 .plan-day__toggle {
   width: 100%;
@@ -3834,3 +3703,125 @@ html[data-theme="dark"] .active-prog-continue-btn:not(.active-prog-continue-btn-
   color: var(--text-muted);
 }
 .program-editor__fold > summary::-webkit-details-marker { display: none; }
+
+/* ── Plan page header: typographic, no cover art (visual pass) ──────────── */
+.plan-head {
+  margin: 2px 16px 16px;
+  padding: 0 0 2px;
+}
+.plan-head__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.plan-head__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--plan-accent, var(--accent-blue));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--plan-accent, var(--accent-blue)) 18%, transparent);
+}
+.plan-head__title {
+  margin: 9px 0 0;
+  font-size: 1.6rem;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.plan-head__tagline {
+  margin: 7px 0 0;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.plan-head__meta {
+  margin-top: 10px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.plan-head__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+  min-height: 18px;
+}
+.plan-head__author {
+  margin-left: auto;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* The primary and its one secondary share a row; everything else is in ⋯. */
+.plan-cta { display: flex; align-items: stretch; gap: 8px; }
+.plan-cta .detail-cta-btn { flex: 1; min-width: 0; }
+.plan-cta .detail-cta-secondary { flex: 0 0 auto; display: flex; margin: 0; }
+.plan-cta__secondary {
+  min-height: var(--touch-target);
+  padding: 0 16px;
+  margin: 0 !important;
+  white-space: nowrap;
+}
+
+/* ── Plan link rows (recommendations, similar plans) ────────────────────── */
+.rec-list { display: flex; flex-direction: column; gap: 6px; }
+.rec-row {
+  position: relative;
+  width: 100%;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 15px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rec-row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--rec-accent, var(--accent-blue));
+}
+.rec-row:active { background: var(--overlay-sm); }
+.rec-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.rec-row__name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rec-row__why {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rec-row__meta { font-size: 0.7rem; color: var(--text-muted); }
+.rec-row__chevron { flex: 0 0 auto; color: var(--text-muted); font-size: 1.1rem; }
+
+.rec-shared-why {
+  margin: 0 2px 8px;
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+}

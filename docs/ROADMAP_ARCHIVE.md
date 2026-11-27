@@ -5730,6 +5730,16 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     status; photos remain device-local with the Measures zip.
   - Tests: `backup_status` plus a static wiring guard. Verify: 2,886 tests.
 
+- **2026-11-26 — H3 HM5 + G2: Home shortcuts and the per-side split.**
+  - Home's three shortcuts are **Empty workout · Weight · History**; Run moved
+    to Train's Quick start, which is the surface that owns starting an activity.
+    The module switches still hide the Train Run/Walk offers.
+  - Unilateral rows state the per-side split as the total is typed
+    (`8 → 4 per side`; an odd total shows `4.5 per side` rather than being
+    rounded). The stored value, history and 1RM keep the TOTAL — display only,
+    no schema change and no second truth.
+  - Tests: `per_side_row` and `load_basis`; the module-toggle check drives the
+    Train quick-start Run/Walk visibility instead of the old Home Run shortcut.
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
 - **2026-11-26 — ST8: text size + haptics.**
@@ -5751,6 +5761,16 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     status; photos remain device-local with the Measures zip.
   - Tests: `backup_status` plus a static wiring guard. Verify: 2,886 tests.
 
+- **2026-11-26 — H3 HM5 + G2: Home shortcuts and the per-side split.**
+  - Home's three shortcuts are **Empty workout · Weight · History**; Run moved
+    to Train's Quick start, which is the surface that owns starting an activity.
+    The module switches still hide the Train Run/Walk offers.
+  - Unilateral rows state the per-side split as the total is typed
+    (`8 → 4 per side`; an odd total shows `4.5 per side` rather than being
+    rounded). The stored value, history and 1RM keep the TOTAL — display only,
+    no schema change and no second truth.
+  - Tests: `per_side_row` and `load_basis`; the module-toggle check drives the
+    Train quick-start Run/Walk visibility instead of the old Home Run shortcut.
 > Entries before the last ten are kept verbatim in `docs/ROADMAP_ARCHIVE.md`.
 
 - **2026-11-24 — H4 PG4 fix: Year in Review opens the tab that owns it.**

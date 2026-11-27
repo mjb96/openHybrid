@@ -1737,6 +1737,19 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Plans visual pass: no cover art, one reason, one job per row.**
+  - Owner feedback: the plan "thumbnails" were the weak part. Removed the
+    gradient/glyph hero from the plan page and the cover tiles from the
+    recommendations and similar plans.
+  - The plan page opens with a typographic header: category · level eyebrow with
+    a category dot, the title, the focus/tagline, `8 weeks · 2×/week`, then the
+    fit verdict (only when there is one) and real attribution only ("Inspired by
+    You" is suppressed). Primary + Edit share one row; the rest is in `⋯`.
+  - Recommendations and similar plans are `.rec-row` text rows with an accent
+    bar, name, facts, chevron. A why-line appears per row only when the reasons
+    DIFFER; three identical sentences become one shared line.
+  - Dead hero/tile CSS removed (17 blocks). `plan-recommendations` checks the new
+    row language at 320/390/412 and accepts a shared reason as stated evidence.
 - **2026-11-27 — Plans (PL7/PL8): cleanup, and the gate closed.**
   - PL7 removed `js/programs/collections.js` (no importers) and **196 dead CSS
     blocks (~1,300 lines)**: the old active-plan view, hero carousel, utility
@@ -1886,14 +1899,3 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
   - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
     static wiring guard, and the History browser check (past session + collision
     Cancel changes nothing).
-
-- **2026-11-26 — H3 HM5 + G2: Home shortcuts and the per-side split.**
-  - Home's three shortcuts are **Empty workout · Weight · History**; Run moved
-    to Train's Quick start, which is the surface that owns starting an activity.
-    The module switches still hide the Train Run/Walk offers.
-  - Unilateral rows state the per-side split as the total is typed
-    (`8 → 4 per side`; an odd total shows `4.5 per side` rather than being
-    rounded). The stored value, history and 1RM keep the TOTAL — display only,
-    no schema change and no second truth.
-  - Tests: `per_side_row` and `load_basis`; the module-toggle check drives the
-    Train quick-start Run/Walk visibility instead of the old Home Run shortcut.

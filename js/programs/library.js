@@ -20,7 +20,7 @@
 import { PROGRAM_CATALOG, DIFFICULTY_LABELS, getCatalogEntry } from './catalog.js';
 import { getRecommendations } from './recommendations.js';
 import { athleteProfile, recommendationBasis } from './recommendation-fit.js';
-import { renderProgramCard } from './program-card.js';
+import { planLinkRowHTML } from './plan-link-row.js';
 import { renderProgramDetail } from './detail.js';
 import {
   recordRecentlyViewed, getProgramById, getActiveProgramIssue, isCustomProgram,
@@ -208,6 +208,12 @@ function renderRecommendations() {
     container.style.display = 'none';
     return;
   }
+  // A per-row "why" only earns its space when the reasons DIFFER. Three
+  // identical sentences under one heading are noise; state it once instead.
+  const reasons = recommendations.map((item) => String(item.reason || '').trim()).filter(Boolean);
+  const sharedReason = reasons.length === recommendations.length && new Set(reasons).size === 1
+    ? reasons[0]
+    : '';
   container.style.display = 'block';
   container.innerHTML = `
     <div class="collection-row collection-row--recommended">
@@ -217,8 +223,11 @@ function renderRecommendations() {
         </div>
       </div>
       ${renderRecommendationBasis(recommendationBasis(athleteProfile(_appState)))}
-      <div class="prog-tile-grid">
-        ${recommendations.map((item) => renderProgramCard(item.program, 'tile', item.reason)).join('')}
+      ${sharedReason ? `<p class="rec-shared-why">${escapeHtml(sharedReason)}</p>` : ''}
+      <div class="rec-list">
+        ${recommendations.map((item) => planLinkRowHTML(item.program, {
+          reason: sharedReason ? '' : item.reason,
+        })).join('')}
       </div>
     </div>
   `;

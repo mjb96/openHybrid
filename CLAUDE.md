@@ -224,7 +224,12 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   category is stripped without dropping the routine, and filtering never rewrites
   folders, the program, the week or logged training.
 - Plans has ONE plan page (`js/programs/detail.js`, roadmap §22/PL4) and ONE
-  week control. It renders identity/facts → one primary action (the same
+  week control. Its identity is TYPOGRAPHIC (roadmap §22.2 decision 6): a
+  category · level eyebrow, the title, the focus/tagline and a facts line — no
+  gradient/glyph cover art anywhere. Recommendations and similar plans are
+  `.rec-row` text rows (`js/programs/plan-link-row.js`) with weeks · days/week ·
+  level; a per-row why appears only when reasons differ, otherwise one
+  `.rec-shared-why` line. It renders one primary action (the same
   `buildActivePlanBanner` model the home uses) → the week, each day expanding
   inline via `[data-action="toggle-plan-day"]` to every lift's target →
   progression → fit/equipment → goals/notes → past runs → similar plans.

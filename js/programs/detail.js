@@ -23,9 +23,8 @@ import { buildProgramTimeline } from './timeline.js';
 import { programStats, equipmentFit, programHasLifts } from './compare.js';
 import { getSimilarPrograms } from './recommendations.js';
 import { buildWhoItsFor } from './detail-fit.js';
-import { renderProgramCard, coverGlyphFor } from './program-card.js';
+import { planLinkRowHTML } from './plan-link-row.js';
 import { programAttribution } from './attribution.js';
-import { icon as svgIcon } from '../ui/icons.js';
 import { PROGRAMS } from '../constants.js';
 import { getWeekModifier } from '../schema.js';
 import { liftTarget } from '../engine.js';
@@ -78,7 +77,8 @@ function _detailAttribution(program) {
   const attr = programAttribution(program);
   if (attr) return attr.text;
   const creator = program?.dossier?.creator && String(program.dossier.creator).trim();
-  return creator ? `Inspired by ${creator}` : '';
+  if (!creator || /^you$/i.test(creator)) return '';
+  return `Inspired by ${creator}`;
 }
 
 /** Open a plan page. Same name the app already routes to. */
@@ -111,10 +111,6 @@ export function renderProgramDetail(programId, appState) {
   const diff = DIFFICULTY_LABELS[program.difficulty] || DIFFICULTY_LABELS.intermediate;
   const category = CATEGORIES[program.category] || { label: program.category || 'Plan', icon: '📋', color: '#8b5cf6' };
   const accent = safeCssColor(program.accentColor || category.color, '#8b5cf6');
-  const cover = [
-    safeCssColor(program.coverGradient?.[0], '#1a0e2e'),
-    safeCssColor(program.coverGradient?.[1], '#0d1b2a'),
-  ];
 
   const totalWeeks = Number(program.durationWeeks || program.totalWeeks) || 12;
   _scheduleTotalWeeks = totalWeeks;
@@ -131,10 +127,10 @@ export function renderProgramDetail(programId, appState) {
     return lifts.length || (day?.runs && !/^rest$/i.test(day.runs));
   }).length;
 
+  const attribution = _detailAttribution(program);
   const facts = [
     totalWeeks ? `${totalWeeks} week${totalWeeks === 1 ? '' : 's'}` : null,
     daysPerWeek ? `${daysPerWeek}×/week` : null,
-    program.difficulty ? diff.label : null,
     stats.totalHours ? `~${stats.totalHours}h total` : null,
   ].filter(Boolean);
 
@@ -180,27 +176,26 @@ export function renderProgramDetail(programId, appState) {
       </div>
     </div>
 
-    <div class="detail-hero" style="background: linear-gradient(165deg, ${cover[0]}, ${cover[1]})">
-      <div class="detail-hero-icon" aria-hidden="true">${svgIcon(coverGlyphFor(program), { size: 64 })}</div>
-      <div class="detail-hero-content">
-        <span class="detail-category-badge" style="background: ${accent}22; color: ${accent}; border-color: ${accent}40">
-          ${escapeHtml(category.icon)} ${escapeHtml(category.label)}
-        </span>
-        <h1 class="detail-title">${escapeHtml(program.name)}</h1>
-        <p class="detail-tagline">${escapeHtml(program.tagline || '')}</p>
-        <div class="detail-author">${escapeHtml(_detailAttribution(program))}</div>
+    <div class="plan-head" style="--plan-accent: ${accent}">
+      <div class="plan-head__eyebrow">
+        <span class="plan-head__dot" aria-hidden="true"></span>
+        ${escapeHtml(category.label)}${program.difficulty ? ` · ${escapeHtml(diff.label)}` : ''}
+      </div>
+      <h1 class="plan-head__title detail-title">${escapeHtml(program.name)}</h1>
+      ${(program.tagline || program.dossier?.focus) ? `<p class="plan-head__tagline">${escapeHtml(program.tagline || program.dossier.focus)}</p>` : ''}
+      ${facts.length ? `<div class="plan-head__meta">${facts.map((fact) => escapeHtml(fact)).join(' · ')}</div>` : ''}
+      <div class="plan-head__status">
+        ${fit.verdict ? `<span class="detail-fit-verdict detail-fit-verdict--${escapeHtml(fit.verdict.tone)}">${escapeHtml(fit.verdict.label)}</span>` : ''}
+        ${attribution ? `<span class="plan-head__author">${escapeHtml(attribution)}</span>` : ''}
       </div>
     </div>
 
-    <div class="plan-facts">
-      ${facts.map((fact) => `<span class="plan-facts__item">${escapeHtml(fact)}</span>`).join('')}
-      <span class="detail-fit-verdict detail-fit-verdict--${fit.verdict?.tone || 'stretch'}">${escapeHtml(fit.verdict?.label || 'Not assessed')}</span>
-    </div>
-
     <div class="detail-cta-wrap">
-      ${primary}
-      <div class="detail-cta-secondary">
-        <button class="detail-complete-btn" data-action="${editAction}" data-program-id="${safeId}">✏️ ${editLabel}</button>
+      <div class="plan-cta">
+        ${primary}
+        <div class="detail-cta-secondary">
+          <button class="detail-complete-btn plan-cta__secondary" data-action="${editAction}" data-program-id="${safeId}">${editLabel}</button>
+        </div>
       </div>
     </div>
 
@@ -251,9 +246,7 @@ export function renderProgramDetail(programId, appState) {
     ${similar.length ? `
       <div class="detail-section">
         <div class="detail-section-title">Similar plans</div>
-        <div class="card-scroll-row">
-          ${similar.map((p) => renderProgramCard(p, 'small')).join('')}
-        </div>
+        <div class="rec-list">${similar.map((p) => planLinkRowHTML(p)).join('')}</div>
       </div>` : ''}
 
     <div style="height: 48px;"></div>
