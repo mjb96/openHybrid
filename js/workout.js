@@ -5,6 +5,7 @@ import { getProgramById } from './state.js';
 import {
   setWorkoutContext,
   setWorkoutRenderer,
+  setExerciseFocuser,
   workoutContextReady,
   getState as _getState,
   getSelectedDay as _getSelectedDay,
@@ -106,7 +107,9 @@ import {
   renderExerciseLibraryList,
   handleExerciseSearch,
   addExerciseToDayFromLibrary,
+  pickExerciseFromLibrary,
   openSwapModal,
+  openSwapLibrary,
   closeSwapModal,
   executeSwapExercise,
   confirmCustomSwap,
@@ -194,6 +197,10 @@ export function initWorkout(getStateFn, getSelectedDayFn, getDaysFn, saveStateFn
   // Modules split out of this file ask the context for a redraw rather than
   // importing renderWorkout back and recreating the cycle.
   setWorkoutRenderer(renderWorkout);
+  // The library modal has to expand and reveal the lift it just added. That is
+  // the accordion's own single-open rule, so it is registered here instead of
+  // letting the picker add/remove `collapsed` classes itself.
+  setExerciseFocuser(jumpToExercise);
 }
 
 export function activeWorkoutTimerKey() {
@@ -2572,11 +2579,12 @@ document.addEventListener('click', (e) => {
   else if (action === 'rest-adjust') adjustRestDuration(parseInt(target.getAttribute('data-delta'), 10));
   else if (action === 'open-add-exercise') openAddExerciseModal();
   else if (action === 'close-add-exercise') closeAddExerciseModal();
-  else if (action === 'el-pick') addExerciseToDayFromLibrary(e.target.closest('[data-action="el-pick"]')?.getAttribute('data-exname'));
+  else if (action === 'el-pick') pickExerciseFromLibrary(target.getAttribute('data-exname'));
   else if (action === 'el-info') openExerciseDetail(target.getAttribute('data-exname'));
   else if (action === 'el-favourite') toggleExerciseFavourite(target.getAttribute('data-exname'));
   else if (action === 'confirm-add-exercise') confirmAddExercise();
   else if (action === 'swap-exercise') openSwapModal(liftName);
+  else if (action === 'swap-browse-all') openSwapLibrary(target.getAttribute('data-liftname'));
   else if (action === 'close-swap-exercise') closeSwapModal();
   else if (action === 'swap-pick') executeSwapExercise(target.getAttribute('data-exname'));
   else if (action === 'swap-confirm-custom') confirmCustomSwap();
