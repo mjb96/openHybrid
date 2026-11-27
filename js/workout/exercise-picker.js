@@ -37,7 +37,9 @@ import {
   getSelectedDay as _getSelectedDay,
   saveState as _saveState,
   rerenderWorkout,
+  focusExerciseCard,
 } from './context.js';
+import { closeManagedModal, openManagedModal, replaceManagedModal } from '../ui/modal-stack.js';
 import { weightUnitLabel } from './units.js';
 import { favouriteStarHTML, isFavourite, setFavourite, sortFavouritesFirst } from '../exercises/favourites.js';
 
@@ -152,6 +154,15 @@ export function addExerciseToDayFromLibrary(name) {
   const appState = _getState();
   const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
   const wk = activeWorkoutWeekKey(appState);
+  // An exercise already in today's session is not an addition. The old path
+  // re-stamped `origin:'added'` and toasted "Added: X" while changing nothing —
+  // the screen said one thing and state did another.
+  const existing = appState.weeks?.[wk]?.lifts?.[selectedDay]?.[name];
+  if (Array.isArray(existing)) {
+    closeAddExerciseModal();
+    showToast(`${name} is already in today's session`, true);
+    return;
+  }
   if (!appState.weeks[wk].lifts[selectedDay]) appState.weeks[wk].lifts[selectedDay] = {};
   if (!appState.weeks[wk].lifts[selectedDay][name]) {
     appState.weeks[wk].lifts[selectedDay][name] = [{ w: '', r: '10', c: false }];
@@ -171,6 +182,10 @@ export function addExerciseToDayFromLibrary(name) {
   _saveState(true);
   closeAddExerciseModal();
   rerenderWorkout();
+  // The new card is appended at the bottom of the day. Expanding and scrolling
+  // it (the accordion's own rule) shows the lift that was added and puts its
+  // first set in reach without another tap.
+  focusExerciseCard(name);
   showToast(`Added: ${name}`);
 }
 
@@ -179,6 +194,14 @@ export function addExerciseToDayFromLibrary(name) {
 // prescribed target and any sets already logged carry across intact, and keeps
 // the exercise in its original position in the day.
 let _swapSourceLift = null;
+
+// The library modal does double duty: it is the add picker and the swap
+// picker. One list means one owner for search, filters, favourites and the
+// 500-row cap — the alternative was a second, smaller library inside the swap
+// sheet, which is how the old empty state could promise a "full list below"
+// that did not exist (L-F6).
+/** @type {'add'|'swap'} */
+let _libraryMode = 'add';
 
 export function openSwapModal(liftName) {
   if (!liftName) return;
@@ -189,11 +212,15 @@ export function openSwapModal(liftName) {
   if (subtitle) subtitle.textContent = `Swapping "${liftName}" — similar movement pattern, kit you have. Your target and logged sets carry over.`;
   _renderSwapList(liftName);
   modal.classList.add('active');
+  openManagedModal(modal);
 }
 
 export function closeSwapModal() {
   _swapSourceLift = null;
-  document.getElementById('swapExerciseModal')?.classList.remove('active');
+  const modal = document.getElementById('swapExerciseModal');
+  if (!modal) return;
+  modal.classList.remove('active');
+  closeManagedModal(modal);
 }
 
 function _renderSwapList(liftName) {
@@ -203,26 +230,39 @@ function _renderSwapList(liftName) {
   const equipment = appState?.settings?.equipment || {};
   const subs = getSubstitutions(liftName, equipment, 8);
 
+  // The browse control is appended in BOTH branches: a direct match is the
+  // fast path, but the athlete can always search the whole library, including
+  // for a custom exercise (which has no movement pattern and therefore no
+  // direct matches at all).
+  const browse = `
+    <button type="button" class="el-browse-all tactile-scale" data-action="swap-browse-all" data-liftname="${escapeHtml(liftName)}">
+      <span class="el-browse-all__title">Browse all exercises</span>
+      <span class="el-browse-all__sub">Search the full library</span>
+    </button>`;
+
   if (subs.length === 0) {
-    list.innerHTML = `<div class="text-sm text-muted" style="padding:16px;">No direct swaps for this movement with your equipment. Use the full list below to pick any exercise.</div>`;
+    list.innerHTML = `<div class="el-empty">No similar exercise for this movement. Browse the full library, or type a name below.</div>${browse}`;
     return;
   }
   list.innerHTML = subs.map(s => `
     <button class="el-chip tactile-scale" data-action="swap-pick" data-exname="${escapeHtml(s.name)}">
       ${escapeHtml(s.name)}<span class="el-pr">${s.bodyweight ? 'Bodyweight' : escapeHtml(s.equip.map(labelEquip).join(' · '))}</span>
     </button>
-  `).join('');
+  `).join('') + browse;
 }
 
 function labelEquip(k) {
   return ({ barbell: 'Barbell', ezBar: 'EZ bar', rack: 'Rack', dumbbells: 'Dumbbells', cables: 'Cables', pullupBar: 'Pull-up bar', bands: 'Bands', kettlebells: 'Kettlebell' })[k] || k;
 }
 
-// Perform the swap: old → new, preserving the sets array (target + logged data)
-// and the exercise's position in the day. Thin wrapper over the pure
-// applyExerciseSwap so the state logic stays unit-testable.
+/**
+ * Swap the source lift for `newName`. A no-op and a duplicate are refused
+ * OUT LOUD: silently closing the sheet looked like a successful swap that had
+ * simply not happened.
+ */
 export function executeSwapExercise(newName) {
   const oldName = _swapSourceLift;
+  if (!oldName || !newName) { closeSwapModal(); return; }
   const appState = _getState();
   const selectedDay = activeWorkoutDay(appState, _getSelectedDay());
   const wk = activeWorkoutWeekKey(appState);
@@ -231,24 +271,35 @@ export function executeSwapExercise(newName) {
 
   const res = applyExerciseSwap(appState.weeks?.[wk], selectedDay, oldName, newName, blueprint);
   if (!res.ok) {
-    if (res.reason === 'duplicate') showToast(`${newName} is already in today's session`, true);
-    else closeSwapModal();
+    if (res.reason === 'duplicate') {
+      showToast(`${newName} is already in today's session`, true);
+    } else if (res.reason === 'noop') {
+      showToast('That is already this exercise', true);
+    } else {
+      closeSwapModal();
+    }
     return;
   }
+  _swapSourceLift = null;
   _saveState(true);
   closeSwapModal();
+  closeAddExerciseModal();
   rerenderWorkout();
+  // The card keeps its position, but the render rebuilt it: reveal the lift the
+  // athlete just swapped so the target and sets they carried over are on screen.
+  focusExerciseCard(newName);
   showToast(`Swapped to ${newName}`);
 }
 
+/** Resolve a typed name to the catalogue's own spelling when it is known. */
 /**
  * A typed name becomes the catalogue's own spelling when it is known. An
  * unknown name is a CUSTOM exercise, so it is sanitised before it can enter
  * state — the name is display text, and removing HTML metacharacters here means
  * no later renderer can turn it into markup (see `sanitizeExerciseName`).
  */
-function acceptedTypedExerciseName(raw) {
-  const typed = String(raw ?? '').trim();
+function typedExerciseName(raw) {
+  const typed = String(raw || '').trim();
   if (!typed) return null;
   const known = resolveExercise(typed);
   if (known) return known.name;
@@ -257,17 +308,26 @@ function acceptedTypedExerciseName(raw) {
 
 export function confirmCustomSwap() {
   const input = /** @type {HTMLInputElement|null} */ (document.getElementById('swapCustomInput'));
-  const name = acceptedTypedExerciseName(input?.value);
+  const name = typedExerciseName(input?.value);
   if (!name) { showToast('Type an exercise name to swap in'); return; }
-  // Only a name the catalogue does not know is stored as a custom exercise.
+  if (name === _swapSourceLift) { showToast('That is already this exercise', true); return; }
+  // Only an exercise the catalogue does not know is a custom exercise. Saving
+  // "squat" here used to add a duplicate custom entry beside "Back Squat".
   if (!resolveExercise(name)) saveNewCustomExerciseToLibrary(name);
   if (input) input.value = '';
   executeSwapExercise(name);
 }
 
-export function openAddExerciseModal() {
+/**
+ * Reset the shared library modal for a mode without opening it, so a hand-off
+ * from another dialog can open it with a single history marker.
+ * @param {'add'|'swap'} mode
+ * @param {string} [liftName]
+ */
+function prepareLibraryModal(mode, liftName) {
   const modal = document.getElementById('addExerciseModal');
-  if (!modal) return;
+  if (!modal) return null;
+  _libraryMode = mode;
   const searchInput = /** @type {HTMLInputElement|null} */ (document.getElementById('elSearchInput'));
   const customInput = /** @type {HTMLInputElement|null} */ (document.getElementById('customExerciseTextInput'));
   const categoryFilter = /** @type {HTMLSelectElement|null} */ (document.getElementById('elCategoryFilter'));
@@ -279,20 +339,105 @@ export function openAddExerciseModal() {
   if (equipmentFilter) equipmentFilter.value = '';
   if (muscleFilter) muscleFilter.value = '';
   renderExerciseLibraryList('');
+
+  // The same five groups, relabelled for what the pick will do. Search results
+  // overwrite the result summary, so the intent is carried on the title (which
+  // results never touch) and in the accessible name.
+  const title = modal.querySelector('.el-title');
+  if (title) title.textContent = mode === 'swap' ? 'Swap Exercise' : 'Add Exercise';
+  modal.setAttribute('aria-label', mode === 'swap' ? `Swap ${liftName || ''}`.trim() : 'Add Exercise');
+  // The typed-name row means the same thing in both modes; only the nouns
+  // change, so the control never promises to ADD while the pick would swap.
+  if (customInput) {
+    customInput.placeholder = mode === 'swap' ? 'Or type any exercise to swap in…' : 'Or type a custom exercise name…';
+    customInput.setAttribute('aria-label', mode === 'swap' ? 'Exercise to swap in' : 'Custom exercise name');
+  }
+  const customBtn = document.getElementById('elCustomAddBtn');
+  if (customBtn) customBtn.textContent = mode === 'swap' ? 'Swap' : 'Add';
+  return modal;
+}
+
+/** Open the shared exercise library in one mode. */
+function openLibraryModal(mode) {
+  const modal = prepareLibraryModal(mode);
+  if (!modal) return;
   modal.classList.add('active');
-  setTimeout(() => searchInput?.focus(), 80);
+  openManagedModal(modal);
+  setTimeout(() => /** @type {HTMLInputElement|null} */ (document.getElementById('elSearchInput'))?.focus(), 80);
+}
+
+/** From the swap sheet: browse the same library the add flow uses. */
+export function openSwapLibrary(liftName) {
+  const name = liftName || _swapSourceLift;
+  if (!name) return;
+  _swapSourceLift = name;
+  const swapRoot = document.getElementById('swapExerciseModal');
+  const modal = prepareLibraryModal('swap', name);
+  if (!modal) return;
+  // ONE history marker for the pair. Closing the swap sheet and immediately
+  // opening the library as two separate managed modals raced history.back()
+  // against pushState() and popped past the app entry (about:blank) — the same
+  // defect the photo viewer fixed with this helper.
+  swapRoot?.classList.remove('active');
+  replaceManagedModal(swapRoot, modal);
+  setTimeout(() => /** @type {HTMLInputElement|null} */ (document.getElementById('elSearchInput'))?.focus(), 80);
+}
+
+export function openAddExerciseModal() {
+  openLibraryModal('add');
 }
 
 export function closeAddExerciseModal() {
+  _libraryMode = 'add';
   const modal = document.getElementById('addExerciseModal');
-  if (modal) modal.classList.remove('active');
+  if (!modal) return;
+  modal.classList.remove('active');
+  closeManagedModal(modal);
+  const title = modal.querySelector('.el-title');
+  if (title) title.textContent = 'Add Exercise';
+  modal.setAttribute('aria-label', 'Add Exercise');
+  const customInput = /** @type {HTMLInputElement|null} */ (document.getElementById('customExerciseTextInput'));
+  if (customInput) {
+    customInput.placeholder = 'Or type a custom exercise name…';
+    customInput.setAttribute('aria-label', 'Custom exercise name');
+  }
+  const customBtn = document.getElementById('elCustomAddBtn');
+  if (customBtn) customBtn.textContent = 'Add';
+}
+
+/**
+ * One pick handler for both modes: the library row only knows the name it
+ * carries, and this is the only place that decides what picking it means.
+ */
+export function pickExerciseFromLibrary(name) {
+  if (!name) return;
+  if (_libraryMode === 'swap') {
+    // Read the mode before closing: closing resets it.
+    closeAddExerciseModal();
+    executeSwapExercise(name);
+    return;
+  }
+  addExerciseToDayFromLibrary(name);
 }
 
 export function confirmAddExercise() {
   const customInput = /** @type {HTMLInputElement|null} */ (document.getElementById('customExerciseTextInput'));
-  const name = acceptedTypedExerciseName(customInput?.value);
-  if (!name) { showToast('Type a custom exercise name first'); return; }
+  const typed = customInput?.value;
+  if (!typed || !String(typed).trim()) {
+    showToast(_libraryMode === 'swap' ? 'Type an exercise name to swap in' : 'Type a custom exercise name first');
+    return;
+  }
+  const name = typedExerciseName(typed);
+  if (_libraryMode === 'swap') {
+    if (name === _swapSourceLift) { showToast('That is already this exercise', true); return; }
+    if (!resolveExercise(name)) saveNewCustomExerciseToLibrary(name);
+    if (customInput) customInput.value = '';
+    closeAddExerciseModal();
+    executeSwapExercise(name);
+    return;
+  }
   // A typed catalogue name must not become a duplicate custom exercise.
   if (!resolveExercise(name)) saveNewCustomExerciseToLibrary(name);
   addExerciseToDayFromLibrary(name);
+  if (customInput) customInput.value = '';
 }

@@ -6493,3 +6493,23 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Gates: `npm run verify` green (2,975 tests), browser audit 0 findings on
     1,080 text runs across all five modes at 390, clean at 320 (1,075) and with
     `--full` (1,090), and all 60 browser checks pass.
+
+- **2026-11-27 — Audit slice 2: one number, one owner.**
+  - e1RM/PR analytics now read EVERY deduplicated session on a date
+    (`allByDate`), so a second same-date strength session is no longer invisible
+    to the week's best e1RM, PR detection or the review.
+  - Runs and walks never merge: `splitEnduranceSessions` feeds Home's endurance
+    card, the day recap, the week rail and Year in Review; a walk-only day says
+    Walk and a walk's pace is never a running pace.
+  - Week in Review adherence compares completed planned DAYS with planned days
+    elapsed (Pulse's rule). A run on a weekday the plan does not train no longer
+    satisfies a planned day, and "8 of 4" cannot recur.
+  - Canonical kilograms are converted at the display boundary in Weekly Volume,
+    the Strength metric detail/evidence and the Progress share card, which had
+    printed kilograms beside an `lb` label.
+  - A duration-only FIT gym import counts as a session in `forEachLoggedDay`, so
+    the Training Report no longer reports a month of imported gym work as zero.
+  - The annual consecutive-day figure is labelled a training streak, not a run.
+  - Tests: same-date e1RM (two days counted, a copied day deduped), walk/run
+    splits on Home and Year in Review, planned-day adherence, FIT gym sessions,
+    walk-only recap. `npm run verify` green (3,011 tests).
