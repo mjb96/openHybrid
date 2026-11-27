@@ -15,6 +15,7 @@ import { dayVolume, isValidWorkingSet } from '../set-utils.js';
 import { buildSessionMuscles } from './session-muscles.js';
 import { muscleHeatmapHTML } from './body-heatmap.js';
 import { sessionSummaryHTML, countPrLifts } from './session-summary.js';
+import { splitEnduranceSessions } from '../state/run-sessions.js';
 import { escapeHtml } from '../util.js';
 import { parseStrengthDurationSeconds } from '../strength/duration.js';
 import { fromCanonicalWeight } from '../metrics/weight-unit.js';
@@ -130,36 +131,39 @@ function summariseSlots(state, date, slots, programLookup = null) {
   // sets, so an imported run (or a tracked run with no lifts) painted its rail
   // cell as done but refused to open a recap. Distance is summed across every
   // session on the date, not taken from the last slot.
+  // Runs and walks never merge: the recap's Distance is run-only, and a
+  // walk-only day gets its own Walk figure and title.
   let distanceKm = 0;
   let runCount = 0;
+  let walkKm = 0;
+  let walkCount = 0;
   for (const slot of slots) {
-    const sessions = Array.isArray(slot.runSessions) ? slot.runSessions : [];
-    if (sessions.length) {
-      for (const run of sessions) {
-        const dist = parseFloat(run?.dist) || 0;
-        if (dist > 0) distanceKm += dist;
-        if (dist > 0 || String(run?.time || '').trim()) runCount++;
-      }
-    } else if (slot.run) {
-      const dist = parseFloat(slot.run.dist) || 0;
-      if (dist > 0) distanceKm += dist;
-      if (dist > 0 || String(slot.run.time || '').trim()) runCount++;
-    }
+    const sessions = Array.isArray(slot.runSessions) && slot.runSessions.length
+      ? slot.runSessions
+      : (slot.run ? [slot.run] : []);
+    const split = splitEnduranceSessions(sessions);
+    distanceKm += split.runKm;
+    runCount += split.runCount;
+    walkKm += split.walkKm;
+    walkCount += split.walkCount;
   }
   distanceKm = Math.round(distanceKm * 100) / 100;
+  walkKm = Math.round(walkKm * 100) / 100;
   const duration = durationFromSlots(slots);
   return {
     date,
-    title: explicitTitle || programTitle || (runCount > 0 ? 'Run' : 'Completed workout'),
+    title: explicitTitle || programTitle || (runCount > 0 ? 'Run' : walkCount > 0 ? 'Walk' : 'Completed workout'),
     duration,
     volume,
     sets,
     prs,
     distanceKm,
     runCount,
+    walkKm,
+    walkCount,
     muscles,
     bodyWeight: bodyWeight && Number(bodyWeight) > 0 ? Number(bodyWeight) : null,
-    hasData: sets > 0 || volume > 0 || distanceKm > 0 || runCount > 0 || !!duration,
+    hasData: sets > 0 || volume > 0 || distanceKm > 0 || runCount > 0 || walkKm > 0 || walkCount > 0 || !!duration,
   };
 }
 
@@ -278,6 +282,7 @@ export function dayRecapHTML(cell, options = {}) {
     shortDate(cell.date),
     summary.sets > 0 ? `${summary.sets} working set${summary.sets === 1 ? '' : 's'}` : '',
     summary.distanceKm > 0 ? distanceText(summary.distanceKm, distanceUnit) : '',
+    summary.walkKm > 0 ? `${distanceText(summary.walkKm, distanceUnit)} walk` : '',
     summary.duration,
   ].filter(Boolean).join(' · ');
   return `<article class="today-card today-card--complete week-recap day-recap" data-today-state="day" data-home-date="${escapeHtml(cell.date || '')}" aria-labelledby="homeDayRecapTitle">

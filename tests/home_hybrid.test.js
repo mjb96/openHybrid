@@ -126,6 +126,40 @@ test('same-day runs merge instead of overwriting each other', () => {
   assert.match(enduranceCardHTML(model), /15\.00 km/);
 });
 
+test('a walk is endurance work but never run distance or run count', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      'session:run_1': runSlot(TUESDAY, [
+        { sessionId: 'run', dist: 10, time: '50:00', rpe: '6', type: 'run' },
+        { sessionId: 'walk', dist: 5, time: '60:00', rpe: '3', type: 'walk' },
+      ]),
+    },
+  };
+  const model = buildHomeHybrid(state, { today: TUESDAY });
+  assert.equal(Math.round(model.endurance.km * 100) / 100, 10, 'run km excludes the walk');
+  assert.equal(model.endurance.sessions, 1, 'one run, not two');
+  const html = enduranceCardHTML(model);
+  assert.match(html, /10\.00 km/);
+  assert.match(html, /1 run/);
+  assert.doesNotMatch(html, /15\.00 km/);
+});
+
+test('a walk-only week does not claim a run', () => {
+  const state = {
+    settings: { distanceUnit: 'km' },
+    weeks: {
+      'session:run_1': runSlot(TUESDAY, [
+        { sessionId: 'walk', dist: 5, time: '60:00', rpe: '3', type: 'walk' },
+      ]),
+    },
+  };
+  const model = buildHomeHybrid(state, { today: TUESDAY });
+  assert.equal(model.endurance.km, 0);
+  assert.equal(model.endurance.sessions, 0);
+  assert.match(enduranceCardHTML(model), /No runs logged this week/);
+});
+
 test('an empty week is an honest empty state, not a zero-filled ratio', () => {
   const model = buildHomeHybrid({ settings: {} }, { today: TUESDAY });
   assert.equal(model.balance.status, 'no-data');

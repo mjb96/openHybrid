@@ -8,6 +8,7 @@ import { muscleCreditsForExercise } from '../exercises/catalog.js';
 import { indexSlotsByDate, weekStartOf } from './weekly-aggregate.js';
 import { comparePeriodValues } from './period-comparison.js';
 import { parseStrengthDurationSeconds } from '../strength/duration.js';
+import { formatVolume } from './utils.js';
 
 const RANGE_WEEKS = Object.freeze({ '4w': 4, '12w': 12, '6m': 26, '1y': 52 });
 export const STRENGTH_RANGE_OPTIONS = Object.freeze([
@@ -144,7 +145,7 @@ export function formatStrengthMetricValue(definition, value, state) {
   if (value == null || !Number.isFinite(Number(value))) return '—';
   const number = Number(value);
   const unit = state?.settings?.weightUnit || 'kg';
-  if (definition.unit === 'weight-volume') return `${Math.round(number).toLocaleString()} ${unit}`;
+  if (definition.unit === 'weight-volume') return formatVolume(number, unit);
   if (definition.unit === 'percent') return `${number > 0 ? '+' : ''}${Math.round(number)}%`;
   if (definition.unit === 'set-credits') return `${number.toFixed(number % 1 ? 1 : 0)} credits`;
   return String(Math.round(number));

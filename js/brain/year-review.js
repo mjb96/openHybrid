@@ -72,9 +72,12 @@ function slotSessionCount(slot) {
 /** Run distance for one slot in km, without double-counting its day summary. */
 function slotDistanceKm(slot) {
   if (Array.isArray(slot?.runSessions) && slot.runSessions.length) {
-    return slot.runSessions.reduce((total, session) => total + (parseFloat(session?.dist) || 0), 0);
+    // Runs only. A walk is endurance work, not a run, and the annual card labels
+    // this line "Run".
+    return slot.runSessions.reduce((total, session) => total
+      + (session?.type === 'walk' ? 0 : (parseFloat(session?.dist) || 0)), 0);
   }
-  return parseFloat(slot?.run?.dist) || 0;
+  return slot?.run?.type === 'walk' ? 0 : (parseFloat(slot?.run?.dist) || 0);
 }
 
 /**

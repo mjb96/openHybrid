@@ -143,7 +143,7 @@ export function yearReviewShareRows(review, state) {
   return [
     { label: 'Sessions', value: String(review.totals.sessions), note: review.rangeLabel },
     { label: 'Lifted', value: formatVolume(review.totals.volumeKg, unit), note: `${review.totals.activeDays} active day${review.totals.activeDays === 1 ? '' : 's'}` },
-    { label: 'Run', value: shareDistance(review.totals.distanceKm, distUnit), note: `longest run ${review.totals.longestStreak} day${review.totals.longestStreak === 1 ? '' : 's'}` },
+    { label: 'Run', value: shareDistance(review.totals.distanceKm, distUnit), note: `longest training streak ${review.totals.longestStreak} day${review.totals.longestStreak === 1 ? '' : 's'}` },
     { label: 'Working sets', value: String(review.totals.workingSets), note: `${review.totals.activeMonths} active month${review.totals.activeMonths === 1 ? '' : 's'}` },
     { label: 'e1RM PRs', value: String(review.totals.prCount), note: 'est. 1RM records' },
     { label: 'Most trained', value: best ? best.label : '—', note: best ? `${best.sessions} session${best.sessions === 1 ? '' : 's'} · ${formatVolume(best.volumeKg, unit)}` : '' },

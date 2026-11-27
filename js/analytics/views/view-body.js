@@ -121,7 +121,7 @@ export function renderBody(model, options = {}) {
     sub: latestOutOfRange && model.weight.date
       ? `Latest · ${formatDayMonthShort(model.weight.date)}`
       : model.range?.spanLabel,
-    ariaLabel: `${model.range?.spanLabel || 'Selected period'} body: ${weightText}${model.weight.change == null ? '' : `, ${model.weight.change > 0 ? 'up' : 'down'} ${Math.abs(model.weight.change)} ${model.unit}`}`,
+    ariaLabel: `${model.range?.spanLabel || 'Selected period'} body: ${weightText}${model.weight.change == null ? '' : `, ${model.weight.change > 0 ? 'up' : 'down'} ${Math.abs((showWeight(model.weight.change) ?? 0)).toFixed(1)} ${model.unit}`}`,
     body,
   });
 }

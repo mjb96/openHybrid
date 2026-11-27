@@ -5,7 +5,7 @@ import { buildWeeklyStrengthVolumeDetail } from '../strength-volume-detail.js';
 import { getSelectedWeekStart } from '../week-nav.js';
 import { MUSCLE_LABELS } from '../calculations/volume-landmarks.js';
 import { esc } from './screen-kit.js';
-import { weightUnitOf } from '../utils.js';
+import { formatVolume, weightUnitOf } from '../utils.js';
 import { formatWeekRange } from '../../dates.js';
 
 let _activeBreakdown = 'days';
@@ -19,7 +19,9 @@ const fmtDate = (iso, year = false) => {
     day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}),
   });
 };
-const fmtVolume = (value, unit) => `${Math.round(value).toLocaleString()} ${unit}`;
+// Stored tonnage is canonical kilograms; `formatVolume` converts once for the
+// athlete's display unit (the old local formatter labelled kg as lb).
+const fmtVolume = (value, unit) => formatVolume(value, unit);
 const fmtDuration = (seconds) => {
   if (!seconds) return '—';
   const hours = Math.floor(seconds / 3600);

@@ -8,7 +8,7 @@
 // =============================================================================
 import { dayVolume, isValidWorkingSet } from '../set-utils.js';
 import { canonicalExerciseId } from '../exercises/catalog.js';
-import { runDaySummary, runSessionsForDay } from '../state/run-sessions.js';
+import { runSessionsForDay, splitEnduranceSessions } from '../state/run-sessions.js';
 import { buildSessionMuscles } from './session-muscles.js';
 import { muscleHeatmapHTML } from './body-heatmap.js';
 import { escapeHtml } from '../util.js';
@@ -92,8 +92,12 @@ export function buildSessionSummary(state, weekKey, day) {
     : null;
   const bodyWeight = weighIn && Number(weighIn.weight) > 0 ? Number(weighIn.weight) : null;
   const muscles = buildSessionMuscles(lifts);
-  const distanceKm = parseFloat(runDaySummary(week, day).dist) || 0;
-  const runCount = runSessionsForDay(week, day).length;
+  // Runs and walks never merge: `distanceKm` is run-only, `walkKm` is separate.
+  const endurance = splitEnduranceSessions(runSessionsForDay(week, day));
+  const distanceKm = endurance.runKm;
+  const runCount = endurance.runCount;
+  const walkKm = endurance.walkKm;
+  const walkCount = endurance.walkCount;
 
   return {
     day,
@@ -103,10 +107,12 @@ export function buildSessionSummary(state, weekKey, day) {
     duration,
     distanceKm: Math.round(distanceKm * 100) / 100,
     runCount,
+    walkKm,
+    walkCount,
     finishedAt,
     bodyWeight,
     muscles,
-    hasData: sets.length > 0 || volume > 0 || distanceKm > 0,
+    hasData: sets.length > 0 || volume > 0 || distanceKm > 0 || walkKm > 0,
   };
 }
 
@@ -129,6 +135,7 @@ export function sessionSummaryHTML(summary, options = {}) {
   }
   if (summary.sets > 0) stats.push({ value: String(summary.sets), label: 'Sets' });
   if (summary.distanceKm > 0) stats.push({ value: distanceText(summary.distanceKm, distanceUnit), label: 'Distance' });
+  if (summary.walkKm > 0) stats.push({ value: distanceText(summary.walkKm, distanceUnit), label: 'Walk' });
 
   const prs = summary.prs > 0
     ? `<span class="session-summary__pr">🏆 ${summary.prs} e1RM PR lift${summary.prs === 1 ? '' : 's'}</span>`

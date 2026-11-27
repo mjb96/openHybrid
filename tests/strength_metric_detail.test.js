@@ -65,7 +65,7 @@ test('4-Week Volume and progression share the same trailing calendar evidence', 
   const progression = buildStrengthMetricDetail(state, 'strength.volume-progression', { today: '2026-07-22', range: '4w' });
 
   assert.equal(fourWeek.value, 1500);
-  assert.equal(fourWeek.formattedValue, '1,500 kg');
+  assert.equal(fourWeek.formattedValue, '1.5t');
   assert.equal(fourWeek.period.label, 'Trailing 28 days · through 22 Jul');
   assert.equal(fourWeek.comparison.previousTotal, 1000);
   assert.equal(fourWeek.comparison.percentageChange, 50);

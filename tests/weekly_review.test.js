@@ -130,10 +130,10 @@ test('buildWeeklyReview: the live week keeps the literal "This week" label', () 
   assert.match(reviewToText(r), /^This week on openHybrid:/);
 });
 
-test('buildWeeklyReview: adherence counts sessions, not sets', () => {
-  // The audit's "6% · 5/81" contradiction: five completed sets in a part-finished
-  // session must read as sessions against the plan, the same unit the Progress
-  // hub uses, and imported archives must count by their real date.
+test('buildWeeklyReview: adherence counts planned DAYS, not total sessions', () => {
+  // The audit's "8 of 4" contradiction: sessions (strength + every run) divided
+  // by planned days. A run on a day the plan does not train does not complete a
+  // planned day, and imported archives count by their real date.
   const state = makeState();
   const importedDay = (day, date) => ({
     lifts: { [day]: { 'Back Squat': [{ w: '100', r: 5, c: true }, { w: '100', r: 5, c: true }] } },
@@ -155,10 +155,12 @@ test('buildWeeklyReview: adherence counts sessions, not sets', () => {
     },
   };
   const r = buildWeeklyReview(state, DAYS, program, { today: TODAY });
-  assert.equal(r.consistency.total, 4);
-  assert.equal(r.consistency.done, 4); // Mon lift, Wed run, Thu + Fri imports
-  assert.equal(r.consistency.pct, 100);
-  assert.equal(r.consistency.unit, 'sessions');
+  assert.equal(r.consistency.total, 4, 'four planned days');
+  // Mon lift, Thu + Fri imports complete those planned days. The Wednesday run
+  // is real training but it is not Tuesday's planned session.
+  assert.equal(r.consistency.done, 3);
+  assert.equal(r.consistency.pct, 75);
+  assert.equal(r.consistency.unit, 'days');
 });
 
 test('buildWeeklyReview: imported archived weeks are this week when their DATE says so', () => {

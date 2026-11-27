@@ -9,6 +9,7 @@
 import { dayVolume, isValidWorkingSet } from '../set-utils.js';
 import { runDaySummary } from '../state/run-sessions.js';
 import { addDaysISO, localDayKey, startOfProgramWeek } from '../dates.js';
+import { gymTimeIsSession } from './weekly-aggregate.js';
 
 const num = (v) => parseFloat(v) || 0;
 const DAY_ORDER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
@@ -84,8 +85,15 @@ export function forEachLoggedDay(state, days, cb) {
       const lifts = wd.lifts?.[day];
       const run = runDaySummary(wd, day);
       const distance = num(run?.dist);
-      const hasStrength = completedSetCount(lifts) > 0;
-      if (!hasStrength && distance <= 0) return;
+      const workingSets = completedSetCount(lifts);
+      const hasStrength = workingSets > 0;
+      // A FIT/imported gym session can be duration-only (no named exercises).
+      // The calendar index counts it; this iterator must too, or the Training
+      // Report reports a month of imported gym work as "0 sessions".
+      const gymOnly = !hasStrength && gymTimeIsSession({
+        gymStats: wd.gymStats?.[day], lifts, stats: { workingSets },
+      });
+      if (!hasStrength && distance <= 0 && !gymOnly) return;
       const dateISO = localDayKey(stored[day]);
       if (!dateISO) return;
       const volume = dayVolume(lifts);
@@ -94,7 +102,7 @@ export function forEachLoggedDay(state, days, cb) {
         weekNum, day, dayIdx,
         dateISO,
         volume, distance, lifts, run,
-        sessionCount: (hasStrength ? 1 : 0) + runSessions,
+        sessionCount: (hasStrength ? 1 : 0) + runSessions + (gymOnly ? 1 : 0),
       });
     });
   }
