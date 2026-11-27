@@ -37,9 +37,15 @@ function weekEntries(state) {
 // re-import into an app set to the other unit cannot be silently rescaled.
 const HEADER = [
   'WeekKey', 'ActivationId', 'ProgramId', 'Day', 'Date', 'Exercise', 'Set',
-  'WeightKg', 'Reps', 'Completed', 'RunSessionId', 'RunDist', 'RunTime', 'RunRPE',
+  'WeightKg', 'Reps', 'Completed', 'SetMode', 'HoldSec', 'CarryDist', 'SetType',
+  'RIR', 'SetNote', 'SetBasis', 'Failed',
+  'RunSessionId', 'RunDist', 'RunTime', 'RunRPE',
   'AvgHR', 'MaxHR', 'ElevGain', 'Calories', 'BodyWeightKg', 'GymRPE', 'Notes',
 ];
+// A set has a shape (reps / time / distance), an optional type (warm-up, drop,
+// failure), per-set effort and a note. Exporting only weight x reps silently
+// dropped every hold, carry, set type and RIR — the exact data a strength
+// athlete cannot reconstruct. The file is still not a backup (JSON is).
 // The `Notes` column is the WORKOUT note (`week.notes[day]`) — part of the
 // session record and deliberately exported with it. Private scopes are not
 // training history and never reach this file: routine notes, exercise-pinned
@@ -95,14 +101,20 @@ export function buildTrainingCsv(state, days) {
       for (const [lift, sets] of Object.entries(lifts)) {
         if (!Array.isArray(sets)) continue;
         sets.forEach((set, index) => {
-          liftRows.push([lift, index + 1, set?.w, set?.r, set?.c]);
+          const mode = set?.mode === 'time' || set?.mode === 'distance' ? set.mode : '';
+          liftRows.push([
+            lift, index + 1, set?.w, set?.r, set?.c,
+            mode, set?.sec ?? '', set?.dist ?? '',
+            set?.type || '', set?.rir ?? '', set?.note || '', set?.basis || '',
+            set?.failure === true ? 'true' : '',
+          ]);
         });
       }
 
       const rowCount = Math.max(liftRows.length, runs.length,
         suffix.some((value) => value !== '' && value != null) ? 1 : 0);
       for (let index = 0; index < rowCount; index++) {
-        const lift = liftRows[index] || ['', '', '', '', ''];
+        const lift = liftRows[index] || Array(13).fill('');
         const run = runs[index] ? runValues(runs[index]) : Array(8).fill('');
         csv += row([...prefix, ...lift, ...run, ...(index === 0 ? suffix : ['', '', ''])]);
       }

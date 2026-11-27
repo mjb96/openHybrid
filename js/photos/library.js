@@ -159,7 +159,7 @@ export async function exportPhotosZip(state, options = {}) {
  *
  * @param {any} state
  * @param {Uint8Array} bytes
- * @param {{ save?: () => void, now?: number }} [options]
+ * @param {{ save?: () => void|boolean, now?: number }} [options]
  */
 export async function importPhotosZip(state, bytes, options = {}) {
   if (!state) throw new Error('importPhotosZip: state is required');
@@ -214,7 +214,14 @@ export async function importPhotosZip(state, bytes, options = {}) {
     state.progressPhotos = state.progressPhotos.filter((existing) => existing?.id !== id).concat(record);
     imported++;
   }
-  if (imported) options.save?.();
+  if (imported) {
+    const saved = options.save?.();
+    // The bytes and records are in memory; if the device refused the state
+    // write, say so rather than report a restore that a reload will lose.
+    if (saved === false) {
+      throw new Error('The restored photos could not be recorded on this device. Free some space and try again.');
+    }
+  }
   return imported;
 }
 

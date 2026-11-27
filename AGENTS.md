@@ -674,9 +674,11 @@ server works.
   cannot rewrite 100 kg as 100.02 kg.
   Escapes the rule on purpose: plate setups, dumbbell ladders, machine stacks
   and band weights are per-unit UI data; distance stays km and tape stays cm.
-  Exports are unambiguous: the training CSV writes `WeightKg`/`BodyWeightKg`,
-  the bodyweight CSV writes `Date,WeightKg`, and the importers accept both
-  spellings and convert into kilograms. `scripts/weight-unit-browser-check.mjs`
+  Exports are unambiguous: the training CSV writes `WeightKg`/`BodyWeightKg`
+  plus `SetMode`/`HoldSec`/`CarryDist`/`SetType`/`RIR`/`SetNote`/`SetBasis`/`Failed`
+  (a hold or carry is exported as itself, never as invented reps), the bodyweight
+  CSV writes `Date,WeightKg`, and the importers accept both spellings and convert
+  into kilograms. `scripts/weight-unit-browser-check.mjs`
   proves a typed 225 lb persists as 102.06 kg while a stored 90.72 kg reads as
   200 lb.
 - Weekly analytics attribution: `state.currentWeek` is a PROGRAM-week counter that only
