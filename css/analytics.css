@@ -257,51 +257,6 @@
   line-height: 1.35;
 }
 
-.an-chart__legend {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 9px;
-  flex-wrap: wrap;
-}
-
-.an-chart__legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.67rem;
-  color: var(--text-muted);
-}
-
-.an-chart__legend-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.an-chart__legend-line {
-  width: 16px;
-  height: 2px;
-  border-radius: 1px;
-  flex-shrink: 0;
-}
-
-.an-chart__legend-dash {
-  width: 14px;
-  border-top: 1.5px dashed;
-  flex-shrink: 0;
-  opacity: 0.55;
-}
-
-/* --------------------------------------------------------------------------
-   7. ACWR ZONE INDICATOR BAR
-   -------------------------------------------------------------------------- */
-
-.an-zone-bar-wrap {
-  margin: 10px 0 4px;
-}
-
 .an-zone-bar {
   height: 5px;
   border-radius: 3px;
@@ -358,15 +313,6 @@
   text-transform: uppercase;
   color: var(--text-faint);
   margin-bottom: 8px;
-}
-
-.an-kpi__value {
-  font-size: 3rem;
-  font-weight: 900;
-  letter-spacing: -0.045em;
-  line-height: 1;
-  color: var(--text-primary);
-  font-variant-numeric: tabular-nums;
 }
 
 .an-kpi__unit {
@@ -904,7 +850,6 @@
 
 @media (max-width: 360px) {
   .an-stat__value { font-size: 1.18rem; }
-  .an-kpi__value  { font-size: 2.5rem; }
 }
 
 /* --------------------------------------------------------------------------

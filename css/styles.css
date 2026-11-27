@@ -330,11 +330,6 @@ body {
 .leading-snug   { line-height: 1.4; }
 .tracking-tight { letter-spacing: -0.025em; }
 .tracking-wide  { letter-spacing: 0.08em; }
-.text-truncate  {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* Labels & badges */
 .text-sm-label {
@@ -399,14 +394,6 @@ h2.section-header::after {
   margin-left: var(--space-2);
   font-weight: 800;
   letter-spacing: 0.04em;
-}
-
-.badge-count-pill {
-  background: var(--bg-input);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xxs);
-  border: 1px solid var(--glass-border);
 }
 
 
@@ -783,11 +770,6 @@ select.native-select {
 .bg-accent-pink  { background-color: var(--color-cyan); }
 
 .alert-card { padding: 18px var(--space-4); border-radius: var(--radius-xl); }
-.alert-red  {
-  background: #200b0b;
-  border: 1px solid color-mix(in srgb, var(--danger) 22%, transparent);
-  border-left: 4px solid var(--color-red);
-}
 
 
 /* ==========================================================================
@@ -1530,17 +1512,6 @@ input[type="checkbox"].gym-check:checked ~ .gym-check-icon { opacity: 1; }
   color: var(--text-secondary);
   background: transparent;
   box-shadow: none;
-}
-
-.rest-decompression-banner {
-  font-size: var(--text-sm);
-  color: var(--text-secondary);
-  text-align: center;
-  font-weight: 700;
-  padding: var(--space-3) var(--space-2);
-  border-radius: var(--radius-md);
-  background: var(--overlay-sm);
-  border: 1px dashed var(--glass-border);
 }
 
 
@@ -6011,15 +5982,6 @@ html[data-theme="light"] .cockpit-set-row.is-complete {
   background: linear-gradient(90deg, color-mix(in srgb, var(--success) 7%, transparent), transparent);
 }
 
-/* Empty state card */
-
-/* Rest decompression banner */
-html[data-theme="light"] .rest-decompression-banner {
-  background: rgba(0, 0, 0, 0.03);
-  border-color: rgba(0, 0, 0, 0.10);
-  color: rgba(0, 0, 0, 0.55);
-}
-
 /* Rest timer — adj/skip buttons */
 html[data-theme="light"] .rest-adj-btn {
   background: rgba(0, 0, 0, 0.05);
@@ -8942,11 +8904,6 @@ html[data-theme="light"] .rest-progress-fill  { background: var(--color-blue) !i
    -------------------------------------------------------------------------- */
 
 html[data-theme="light"] .alert-card { color: #0f172a; }
-html[data-theme="light"] .alert-red {
-  background: #fef2f2 !important;
-  border-color: color-mix(in srgb, var(--danger) 20%, transparent) !important;
-  border-left-color: var(--color-red) !important;
-}
 
 
 /* --------------------------------------------------------------------------

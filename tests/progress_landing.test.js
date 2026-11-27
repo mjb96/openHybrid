@@ -1,41 +1,30 @@
 // =============================================================================
-// PROGRESS LANDING MODEL — roadmap Phase 3A.
+// PROGRESS LANDING — the retained contract
 //
-// The Progress hub is now a decision surface rather than a static index, so it
-// carries the same obligations as every other analytics surface: calendar-week
-// attribution (never the program-week counter), like-for-like partial-week
-// comparisons, same-exercise strength only, honest empty states, and no
-// fabricated precision when there is nothing to compare against.
+// The four domain cards were retired in P8a. What the app still reads from this
+// module is: the canonical planned-day count (Week in Review), the dated weekly
+// series (training-context export) and the hub's single `allEmpty` flag.
 // =============================================================================
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildProgressLanding, plannedTrainingDays, fastingIsEnabled, secondaryDestinations, formatWeekRange,
+  buildProgressLanding, buildRecentWeekSeries, plannedTrainingDays,
 } from '../js/analytics/progress-landing.js';
-import { renderProgressHub } from '../js/analytics/views/view-progress-hub.js';
-import { buildRunningMetricDetail, collectRunningHistory } from '../js/analytics/running-detail.js';
-import { PROGRESS_SUB_CARDS } from '../js/ui/customize.js';
 
-const work = (w, r) => ({ c: true, w: String(w), r: String(r) });
-const run = (sessionId, dist, time) => ({ sessionId, dist: String(dist), time, type: 'run', source: 'gps' });
-const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const TODAY = '2026-07-16';   // Thursday
+const WK = '2026-07-13';      // its Monday
+const work = (w = 100, r = 5) => ({ c: true, w: String(w), r: String(r) });
+const REST = { title: 'Rest', runs: 'Rest', lifts: [] };
+const program = (days) => ({ totalWeeks: 8, days });
 
-// Monday 13 Jul 2026; previous calendar week starts Monday 6 Jul.
-const WK = '2026-07-13';
-const PREV = '2026-07-06';
-
-const domainOf = (model, id) => model.domains.find((d) => d.id === id);
-
-const program = (days) => ({ days });
-const TRAIN = { lifts: ['Bench Press'], runs: 'Rest' };
-const REST = { lifts: [], runs: 'Rest' };
-
-// ---- planned training days --------------------------------------------------
-
+// ---- planned days -----------------------------------------------------------
 test('plannedTrainingDays counts lifting and running days but not rest days', () => {
   assert.equal(plannedTrainingDays(program({
-    mon: TRAIN, tue: REST, wed: TRAIN, thu: REST,
-    fri: TRAIN, sat: { lifts: [], runs: '🏃 40min Zone 2' }, sun: REST,
+    mon: { title: 'Push', runs: 'Rest', lifts: ['Bench Press'] },
+    tue: { title: 'Run', runs: '5 km easy', lifts: [] },
+    wed: { title: 'Pull', runs: 'Rest', lifts: ['Barbell Row'] },
+    thu: { title: 'Lower', runs: 'Rest', lifts: ['Deadlift'] },
+    fri: REST, sat: REST, sun: REST,
   })), 4);
 });
 
@@ -46,721 +35,67 @@ test('plannedTrainingDays returns null rather than 0 when there is no usable pro
 });
 
 test('plannedTrainingDays uses the canonical rest-day classifier, not its own rule', () => {
-  // "No running" phrasings are rest days everywhere else in the app, so a
-  // lift-free day carrying one must not be counted as a planned session here.
+  // A day with lifts and a "Rest" run is training; a bare Rest day is not. This
+  // is the classifier Home and the coach use, not a second reading of the text.
   assert.equal(plannedTrainingDays(program({
-    mon: TRAIN,
-    tue: { lifts: [], runs: '💤 No running. Full recovery.' },
-    wed: { lifts: [], runs: 'no structured running' },
+    mon: { title: 'Rest', runs: 'Rest', lifts: [] },
+    tue: { title: 'Push', runs: 'Rest', lifts: ['Bench Press'] },
   })), 1);
+  assert.equal(plannedTrainingDays(program({
+    mon: { title: 'Run', runs: '5 km easy', lifts: [] },
+    tue: { title: 'Push', runs: 'Rest', lifts: ['Bench Press'] },
+  })), 2);
 });
 
-test('the default programme plans six sessions, not seven', async () => {
-  // Regression: the default programme's Sunday is titled "Full Rest" but its
-  // `runs` string once matched no rest pattern, so the canonical classifier
-  // called it a Run Day — inflating planned sessions and misleading the Today
-  // card and coach on every new profile.
-  const { PROGRAMS } = await import('../js/constants.js');
-  const def = PROGRAMS.hybrid_engine;
-  assert.equal(plannedTrainingDays(def), 6);
-  const { classifyPlannedSession } = await import('../js/workout/completion-policy.js');
-  assert.equal(classifyPlannedSession(def.days.sun).isRest, true);
-  assert.equal(classifyPlannedSession(def.days.sun).label, 'Rest Day');
-});
-
-// ---- consistency ------------------------------------------------------------
-
-test('consistency counts logged days by real stamped date, not the program week', () => {
-  // currentWeek says 9, but the dates put this work in the current calendar week.
-  const state = {
-    currentWeek: '9',
-    weeks: {
-      '4': { dates: { mon: '2026-07-13', wed: '2026-07-15' }, lifts: {
-        mon: { Bench: [work(100, 5)] }, wed: { Bench: [work(100, 5)] },
-      } },
-    },
-  };
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-16' });
-  assert.equal(model.weekStart, WK);
-  assert.equal(domainOf(model, 'consistency').headline.value, '2');
-  // The program-week counter must not have been read or mutated.
-  assert.equal(state.currentWeek, '9');
-});
-
-test('consistency attributes an archived activation\'s sessions to their real dates', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      'arch:old-run:6': { dates: { tue: '2026-07-14' }, lifts: { tue: { Bench: [work(100, 5)] } } },
-      '1': { dates: { thu: '2026-07-16' }, lifts: { thu: { Bench: [work(100, 5)] } } },
-    },
-  };
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-17' });
-  assert.equal(domainOf(model, 'consistency').headline.value, '2');
-});
-
-test('weekSummary and recentWeeks are calendar-date aggregates, including archives', () => {
-  const state = {
-    currentWeek: '9',
-    settings: { weightUnit: 'kg', distanceUnit: 'km' },
-    weeks: {
-      '1': {
-        dates: { mon: '2026-07-13', tue: '2026-07-14' },
-        lifts: { mon: { Bench: [work(100, 5)] } },
-        runs: { tue: { dist: '5', time: '25:00' } },
-      },
-      'arch:old:6': {
-        dates: { wed: '2026-07-15' },
-        lifts: { wed: { Squat: [work(100, 5)] } },
-      },
-    },
-  };
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-17' });
-  assert.equal(model.weekSummary.sessions, 3);
-  assert.equal(model.weekSummary.volumeKg, 1000);
-  assert.equal(model.weekSummary.distanceKm, 5);
-  assert.equal(model.weekSummary.hasData, true);
-  assert.equal(model.units.weight, 'kg');
-  assert.equal(model.units.distance, 'km');
-  const current = model.recentWeeks[model.recentWeeks.length - 1];
-  assert.equal(current.weekStart, WK);
-  assert.equal(current.sessions, 3);
-  assert.equal(current.volumeKg, 1000);
-  assert.equal(current.distanceKm, 5);
-});
-
-test('a live week compares only its elapsed portion against the same days last week', () => {
-  // Last week: 4 sessions (Mon–Thu). This week: 2 by Tuesday.
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      '1': {
-        dates: { mon: PREV, tue: '2026-07-07', wed: '2026-07-08', thu: '2026-07-09' },
-        lifts: {
-          mon: { Bench: [work(100, 5)] }, tue: { Bench: [work(100, 5)] },
-          wed: { Bench: [work(100, 5)] }, thu: { Bench: [work(100, 5)] },
-        },
-      },
-      '2': {
-        dates: { mon: WK, tue: '2026-07-14' },
-        lifts: { mon: { Bench: [work(100, 5)] }, tue: { Bench: [work(100, 5)] } },
-      },
-    },
-  };
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-14' });
-  const consistency = domainOf(model, 'consistency');
-  // Two elapsed days both weeks → 2 vs 2 = flat, NOT 2 vs 4.
-  assert.equal(consistency.headline.value, '2');
-  assert.equal(consistency.delta.tone, 'flat');
-  assert.match(consistency.delta.text, /same point last week/);
-  // A level week is stated in words, never as a bare "0".
-  assert.equal(consistency.delta.text, 'Level with same point last week');
-});
-
-test('a session gained or lost is counted in sessions, with correct pluralisation', () => {
-  const base = (dates, lifts) => ({ currentWeek: '1', weeks: { '1': { dates, lifts } } });
-  const one = base(
-    { mon: PREV, tue: WK, wed: '2026-07-15' },
-    { mon: { Bench: [work(100, 5)] }, tue: { Bench: [work(100, 5)] }, wed: { Bench: [work(100, 5)] } },
-  );
-  // Week of 13 Jul has 2 sessions, week of 6 Jul has 1 → +1 session.
-  const model = buildProgressLanding(one, { days: DAYS, today: '2026-07-27', weekStart: WK });
-  assert.equal(domainOf(model, 'consistency').delta.text, '+1 session vs previous week');
-});
-
-test('a completed past week compares full week against full week', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      '1': { dates: { mon: PREV }, lifts: { mon: { Bench: [work(100, 5)] } } },
-      '2': {
-        dates: { mon: WK, tue: '2026-07-14', wed: '2026-07-15' },
-        lifts: {
-          mon: { Bench: [work(100, 5)] }, tue: { Bench: [work(100, 5)] }, wed: { Bench: [work(100, 5)] },
-        },
-      },
-    },
-  };
-  // Viewing the 13 Jul week from a later week → completed framing.
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-27', weekStart: WK });
-  const consistency = domainOf(model, 'consistency');
-  assert.equal(consistency.headline.value, '3');
-  assert.match(consistency.delta.text, /vs previous week/);
-  assert.equal(consistency.delta.tone, 'up');
-});
-
-test('consistency states remaining planned sessions and never a negative remainder', () => {
-  const plan = program({ mon: TRAIN, tue: REST, wed: TRAIN, thu: REST, fri: TRAIN, sat: REST, sun: REST });
-  const state = {
-    currentWeek: '1',
-    weeks: { '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } } },
-  };
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-14', program: plan });
-  const consistency = domainOf(model, 'consistency');
-  assert.equal(consistency.headline.unit, 'of 3 planned');
-  assert.match(consistency.interpretation, /2 of 3 planned sessions still to go/);
-
-  // Training MORE than planned must read as hitting the plan, never "-1 to go".
-  const over = {
-    currentWeek: '1',
-    weeks: { '1': {
-      dates: { mon: WK, tue: '2026-07-14', wed: '2026-07-15', thu: '2026-07-16' },
-      lifts: {
-        mon: { Bench: [work(100, 5)] }, tue: { Bench: [work(100, 5)] },
-        wed: { Bench: [work(100, 5)] }, thu: { Bench: [work(100, 5)] },
-      },
-    } },
-  };
-  const overModel = buildProgressLanding(over, { days: DAYS, today: '2026-07-17', program: plan });
-  assert.match(domainOf(overModel, 'consistency').interpretation, /hit all 3 planned/);
-});
-
-test('an empty consistency week is an honest zero with no fabricated delta', () => {
-  const model = buildProgressLanding({ currentWeek: '1', weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  const consistency = domainOf(model, 'consistency');
-  assert.equal(consistency.empty, true);
-  assert.equal(consistency.headline.value, '0');
-  assert.equal(consistency.delta, null);
-  assert.match(consistency.interpretation, /No training logged/);
-});
-
-test('undated legacy activity is excluded rather than guessed onto a calendar day', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: { '1': { lifts: { mon: { Bench: [work(100, 5)] } } } }, // no dates map
-  };
-  const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-16' });
-  assert.equal(domainOf(model, 'consistency').headline.value, '0');
-});
-
-// ---- strength ---------------------------------------------------------------
-
-test('strength reports the biggest same-exercise change and names the lift', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      '1': { dates: { mon: PREV }, lifts: { mon: { Bench: [work(100, 5)], Squat: [work(140, 5)] } } },
-      '2': { dates: { mon: WK }, lifts: { mon: { Bench: [work(110, 5)], Squat: [work(142.5, 5)] } } },
-    },
-  };
-  const strength = domainOf(buildProgressLanding(state, { days: DAYS, today: '2026-07-16' }), 'strength');
-  assert.equal(strength.headline.unit, 'kg est. 1RM');
-  assert.match(strength.delta.text, /^Bench vs last week$/);  // Bench gained most
-  assert.equal(strength.delta.tone, 'up');
-  assert.match(strength.interpretation, /Bench/);
-});
-
-test('strength never compares two different exercises when there is no prior week', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      '1': { dates: { mon: PREV }, lifts: { mon: { Squat: [work(200, 5)] } } },
-      '2': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } },
-    },
-  };
-  const strength = domainOf(buildProgressLanding(state, { days: DAYS, today: '2026-07-16' }), 'strength');
-  // Bench has no previous Bench, and must NOT be compared with last week's Squat.
-  assert.equal(strength.delta.tone, 'none');
-  assert.match(strength.delta.text, /No prior week for the same lift/);
-  assert.match(strength.interpretation, /like-for-like/);
-});
-
-test('a strength week with no logged work is empty, not zero', () => {
-  const strength = domainOf(
-    buildProgressLanding({ currentWeek: '1', weeks: {} }, { days: DAYS, today: '2026-07-16' }),
-    'strength',
-  );
-  assert.equal(strength.empty, true);
-  assert.equal(strength.headline.value, 'No sets');
-  assert.equal(strength.delta, null);
-});
-
-test('a strength decline is reported plainly without alarm or a change instruction', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      '1': { dates: { mon: PREV }, lifts: { mon: { Bench: [work(110, 5)] } } },
-      '2': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } },
-    },
-  };
-  const strength = domainOf(buildProgressLanding(state, { days: DAYS, today: '2026-07-16' }), 'strength');
-  assert.equal(strength.delta.tone, 'down');
-  assert.match(strength.interpretation, /check the trend before changing the plan/);
-});
-
-// ---- running ----------------------------------------------------------------
-
-test('running is empty and self-explaining when no metric model is supplied', () => {
-  const running = domainOf(buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }), 'running');
-  assert.equal(running.empty, true);
-  assert.equal(running.headline.value, 'No runs');
-  assert.match(running.interpretation, /No runs logged/);
-});
-
-test('an empty running week speaks training language, not metric-engine jargon', () => {
-  const running = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    // The engine can hand back internal phrasing for an empty-but-not-blank
-    // scope; the hub must not repeat it verbatim.
-    runningMetric: () => ({ empty: true, formattedValue: '—', interpretation: '0 contributing activities in the current scope.' }),
-  }), 'running');
-  assert.doesNotMatch(running.interpretation, /contributing activities|current scope/);
-  assert.match(running.interpretation, /No runs logged/);
-});
-
-test('running reuses the injected metric model rather than recomputing distance', () => {
-  const running = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    runningMetric: (id) => {
-      assert.equal(id, 'running.weekly-distance');
-      return {
-        empty: false, formattedValue: '18.4 km', interpretation: 'Steady week.',
-        comparison: { isComparable: true, percentageChange: 12, direction: 'up', comparisonLabel: 'vs same point last week' },
-      };
-    },
-  }), 'running');
-  assert.equal(running.headline.value, '18.4 km');
-  assert.equal(running.delta.text, '+12% vs same point last week');
-  assert.equal(running.delta.tone, 'up');
-  assert.equal(running.interpretation, 'Steady week.');
-});
-
-test('running shows the honest message instead of a percentage when nothing to compare', () => {
-  const running = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    runningMetric: () => ({
-      empty: false, formattedValue: '5.0 km', interpretation: 'First week.',
-      comparison: { isComparable: false, percentageChange: null, direction: 'up', message: 'None at this point last week', comparisonLabel: 'vs same point last week' },
-    }),
-  }), 'running');
-  assert.equal(running.delta.text, 'None at this point last week');
-  assert.equal(running.delta.tone, 'none');
-});
-
-// ---- recovery ---------------------------------------------------------------
-
-test('recovery states readiness confidence and signal count', () => {
-  const recovery = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    readiness: { score: 72, status: 'Ready', confidence: 'medium', inputCount: 3, recommendation: 'Train as planned.' },
-  }), 'recovery');
-  assert.equal(recovery.headline.value, '72');
-  assert.equal(recovery.headline.unit, 'Ready');
-  assert.equal(recovery.support, 'medium confidence · 3 signals');
-  assert.equal(recovery.interpretation, 'Train as planned.');
-});
-
-test('recovery is empty rather than a confident zero when readiness has no score', () => {
-  const recovery = domainOf(
-    buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16', readiness: { score: 0, inputCount: 0 } }),
-    'recovery',
-  );
-  assert.equal(recovery.empty, true);
-  assert.equal(recovery.headline.value, 'No signal');
-});
-
-test('one signal is described in the singular', () => {
-  const recovery = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    readiness: { score: 60, status: 'Steady', confidence: 'low', inputCount: 1 },
-  }), 'recovery');
-  assert.equal(recovery.support, 'low confidence · 1 signal');
-});
-
-// ---- trend series -----------------------------------------------------------
-
-test('the consistency trend is drawn from the same dates as its headline', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: { '1': {
-      // Week of 6 Jul: 2 days. Week of 13 Jul: 1 day.
-      dates: { mon: PREV, tue: '2026-07-07', thu: WK },
-      lifts: {
-        mon: { Bench: [work(100, 5)] }, tue: { Bench: [work(100, 5)] }, thu: { Bench: [work(100, 5)] },
-      },
-    } },
-  };
-  const consistency = domainOf(
-    buildProgressLanding(state, { days: DAYS, today: '2026-07-19', weekStart: WK }),
-    'consistency',
-  );
-  const values = consistency.trend.values;
-  assert.equal(values.length, 8, 'eight trailing weeks');
-  assert.equal(values[values.length - 1], 1, 'the selected week is last');
-  assert.equal(values[values.length - 2], 2, 'the previous week precedes it');
-  assert.match(consistency.trend.label, /8 weeks/);
-});
-
-test('the strength trend follows the exact lift the headline names', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: {
-      '1': { dates: { mon: PREV }, lifts: { mon: { Bench: [work(100, 5)], Squat: [work(200, 5)] } } },
-      '2': { dates: { mon: WK }, lifts: { mon: { Bench: [work(120, 5)], Squat: [work(202, 5)] } } },
-    },
-  };
-  const strength = domainOf(buildProgressLanding(state, { days: DAYS, today: '2026-07-16' }), 'strength');
-  // Bench gained most, so both the headline and the spark must be Bench.
-  assert.match(strength.delta.text, /^Bench/);
-  assert.match(strength.trend.label, /^Bench/);
-  assert.ok(strength.trend.values.length > 1);
-  // Last point is this week's Bench e1RM, not Squat's.
-  const last = strength.trend.values[strength.trend.values.length - 1];
-  assert.equal(Math.round(last), Math.round(120 * (1 + 5 / 30)));
-});
-
-test('domains with no honest series carry no trend rather than a flat line', () => {
-  // Readiness keeps no history, so Recovery must never fabricate one.
-  const recovery = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    readiness: { score: 70, status: 'Ready', confidence: 'high', inputCount: 4 },
-  }), 'recovery');
-  assert.equal(recovery.trend, null);
-
-  // An empty strength week has no lift to follow.
-  const strength = domainOf(
-    buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }),
-    'strength',
-  );
-  assert.equal(strength.trend, null);
-});
-
-test('running reuses the metric engine series and ignores a single-point one', () => {
-  const many = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    runningMetric: () => ({
-      empty: false, formattedValue: '18.4 km', interpretation: 'x', comparison: null,
-      series: [{ value: 10 }, { value: 14 }, { value: 18.4 }],
-    }),
-  }), 'running');
-  assert.deepEqual(many.trend.values, [10, 14, 18.4]);
-
-  const one = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-16',
-    runningMetric: () => ({
-      empty: false, formattedValue: '5 km', interpretation: 'x', comparison: null,
-      series: [{ value: 5 }],
-    }),
-  }), 'running');
-  assert.equal(one.trend, null, 'one point is not a trend');
-});
-
-// ---- structure and secondary destinations -----------------------------------
-
-test('the landing exposes the four roadmap domains in priority order', () => {
-  const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  assert.deepEqual(model.domains.map((d) => d.id), ['consistency', 'strength', 'running', 'recovery']);
-  // Each domain carries what the detail-screen contract needs to render.
-  model.domains.forEach((d) => {
-    assert.ok(d.title, `${d.id} has a title`);
-    assert.ok(d.context, `${d.id} routes somewhere`);
-    assert.ok(d.headline && typeof d.headline.value === 'string', `${d.id} has a headline`);
-    assert.ok(d.interpretation, `${d.id} explains itself`);
-  });
-});
-
-test('a brand-new profile reports allEmpty so the hub can lead with one empty state', () => {
-  const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  assert.equal(model.allEmpty, true);
-});
-
-test('Hybrid Score is not a Progress destination', () => {
-  const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  assert.ok(!model.domains.some((d) => d.id === 'hybrid-score'));
-  assert.ok(!model.secondary.some((entry) => entry.id === 'hybrid-score'));
-});
-
-test('no destination is reachable from two entries on the same screen', () => {
-  const model = buildProgressLanding({ fastingSession: { active: true }, weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  const targets = [...model.domains.map((d) => d.context), ...model.secondary.map((entry) => entry.id)];
-  assert.equal(new Set(targets).size, targets.length, `duplicate destinations: ${targets.join(',')}`);
-  // Consistency owns Review; it must not also be listed as a secondary link.
-  assert.ok(!model.secondary.some((entry) => entry.id === 'weekly-review'));
-});
-
-test('fasting appears only for people who actually fast', () => {
-  assert.equal(fastingIsEnabled({}), false);
-  assert.equal(fastingIsEnabled({ fastingSession: { active: false, history: [] } }), false);
-  assert.equal(fastingIsEnabled({ fastingSession: { active: true, history: [] } }), true);
-  assert.equal(fastingIsEnabled({ fastingSession: { active: false, history: [{ hours: 16 }] } }), true);
-  // A write-less legacy flag is not a signal; real usage is.
-  assert.equal(fastingIsEnabled({ settings: { fastingEnabled: true } }), false);
-
-  assert.ok(!secondaryDestinations({}).some((entry) => entry.id === 'fasting'));
-  assert.ok(secondaryDestinations({ fastingSession: { active: true } }).some((entry) => entry.id === 'fasting'));
-  assert.ok(!secondaryDestinations({ fastingSession: { active: true }, settings: { modules: { fasting: false } } })
-    .some((entry) => entry.id === 'fasting'), 'a hidden Fasting module removes the destination');
-});
-
-test('the period label describes the real calendar week being viewed', () => {
-  const live = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  assert.equal(live.isCurrentWeek, true);
-  assert.equal(live.periodLabel, 'This week');
-  assert.equal(live.weekRangeLabel, '13–19 Jul');
-  assert.equal(live.weekStart, WK);
-  assert.equal(live.weekEnd, '2026-07-19');
-
-  const past = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-27', weekStart: WK });
-  assert.equal(past.isCurrentWeek, false);
-  assert.equal(past.periodLabel, '2 weeks ago');
-  assert.equal(past.weekRangeLabel, '13–19 Jul');
-  assert.equal(formatWeekRange('2026-11-30', '2026-12-06'), '30 Nov – 6 Dec');
-  assert.equal(formatWeekRange('2026-12-28', '2027-01-03'), '28 Dec 2026 – 3 Jan 2027');
-});
-
-// =============================================================================
-// CONSISTENCY COUNTS SESSIONS, NOT DATES
-//
-// Reported from real use: "the app is saying I've only completed 4 of 5 workouts
-// this week when in fact I've done 5". The headline compared against the
-// program's planned SESSIONS but counted distinct DATES, so two workouts
-// completed on one day were one. The numbers were days wearing the label of
-// sessions — the trend beside them still counts days, and says so.
-// =============================================================================
-const fiveDayProgram = program({
-  mon: { title: 'Push', lifts: ['Bench Press'], runs: 'Rest' },
-  tue: { title: 'Pull', lifts: ['Barbell Row'], runs: 'Rest' },
-  wed: { title: 'Legs', lifts: ['Back Squat'], runs: 'Rest' },
-  thu: { title: 'Upper', lifts: ['Incline Press'], runs: 'Rest' },
-  fri: { title: 'Lower', lifts: ['Deadlift'], runs: 'Rest' },
-});
-
-// Five sessions, but Monday and Tuesday's were both performed on Monday — so
-// only FOUR calendar dates carry training.
-const fiveSessionsFourDays = {
-  currentWeek: '1',
-  activeProgramId: 'p',
-  weeks: {
+// ---- dated weekly series ----------------------------------------------------
+test('buildRecentWeekSeries is oldest-to-newest, date-strict and includes archives', () => {
+  const state = { weeks: {
     '1': {
-      dates: { mon: WK, tue: WK, wed: '2026-07-15', thu: '2026-07-16', fri: '2026-07-17' },
-      lifts: {
-        mon: { 'Bench Press': [work(80, 5)] },
-        tue: { 'Barbell Row': [work(70, 8)] },
-        wed: { 'Back Squat': [work(100, 5)] },
-        thu: { 'Incline Press': [work(60, 8)] },
-        fri: { 'Deadlift': [work(140, 5)] },
-      },
+      activationId: 'a1',
+      dates: { mon: '2026-07-13' },
+      lifts: { mon: { Squat: [work()] } },
+      gymStats: { mon: { time: '45:00' } },
     },
-  },
-};
-
-test('five sessions across four days read as five of five planned', () => {
-  const model = buildProgressLanding(fiveSessionsFourDays, {
-    days: DAYS, program: fiveDayProgram, today: '2026-07-19', tz: 'UTC',
-  });
-  const consistency = domainOf(model, 'consistency');
-  // Was "4 of 5 planned" — the second Monday session was invisible here.
-  assert.equal(consistency.headline.value, '5');
-  assert.equal(consistency.headline.unit, 'of 5 planned');
-  assert.match(consistency.interpretation, /hit all 5 planned sessions/);
-});
-
-test('the consistency trend still counts training days, and says so', () => {
-  const model = buildProgressLanding(fiveSessionsFourDays, {
-    days: DAYS, program: fiveDayProgram, today: '2026-07-19', tz: 'UTC',
-  });
-  const consistency = domainOf(model, 'consistency');
-  assert.match(consistency.trend.label, /Training days/);
-  // Four dates carried training that week, which is what the day series reports.
-  assert.equal(consistency.trend.values[consistency.trend.values.length - 1], 4);
-});
-
-test('one logical session stored twice is not counted twice', () => {
-  const duplicated = {
-    currentWeek: '1',
-    activeProgramId: 'p',
-    weeks: {
-      '1': { dates: { mon: WK }, lifts: { mon: { 'Bench Press': [work(80, 5)] } } },
-      'arch:old:1': { dates: { mon: WK }, lifts: { mon: { 'Bench Press': [work(80, 5)] } } },
+    'arch:old:1': {
+      activationId: 'old',
+      dates: { tue: '2026-07-14' },
+      runSessions: { tue: [{ sessionId: 'r1', dist: '5', time: '25:00' }] },
     },
-  };
-  const consistency = domainOf(buildProgressLanding(duplicated, {
-    days: DAYS, program: fiveDayProgram, today: '2026-07-19', tz: 'UTC',
-  }), 'consistency');
-  assert.equal(consistency.headline.value, '1', 'a duplicate must not read as two sessions');
+  } };
+  const series = buildRecentWeekSeries(state, WK, 4);
+  assert.equal(series.length, 4);
+  assert.deepEqual(series.map((entry) => entry.weekStart), [
+    '2026-06-22', '2026-06-29', '2026-07-06', '2026-07-13',
+  ]);
+  const current = series.at(-1);
+  assert.equal(current.sessions, 2, 'a strength day + a run are two sessions');
+  assert.equal(current.distanceKm, 5);
+  assert.ok(current.volumeKg > 0, 'the archived and live weeks both contribute');
 });
 
-// =============================================================================
-// A HISTORICAL WEEK IS NOT TODAY
-//
-// The hub is week-steppable, but a plan and a sentence both belong to the run
-// that produced them. Scoring July's three sessions against today's five-day
-// program invented "3 of 5 planned" and a 0% adherence bar for a week that was
-// never trained under that plan; it also kept calling the selection "this week".
-// =============================================================================
-
-test('a past week is never scored against the active program plan', () => {
-  // The 13 Jul week has three sessions, trained before the current five-day plan.
-  const state = {
-    currentWeek: '4',
-    weeks: {
-      '1': {
-        dates: { mon: WK, wed: '2026-07-15', fri: '2026-07-17' },
-        lifts: {
-          mon: { 'Bench Press': [work(80, 5)] },
-          wed: { 'Back Squat': [work(100, 5)] },
-          fri: { 'Deadlift': [work(140, 5)] },
-        },
-      },
-    },
-  };
-  const past = buildProgressLanding(state, {
-    days: DAYS, program: fiveDayProgram, today: '2026-07-27', weekStart: WK,
-  });
-  const consistency = domainOf(past, 'consistency');
-  assert.equal(consistency.headline.value, '3');
-  assert.equal(consistency.headline.unit, 'sessions', 'no plan belongs to a past calendar week');
-  assert.equal(past.weekSummary.planned, null);
-  assert.equal(past.weekSummary.adherencePct, null);
-  assert.equal(past.weekSummary.sessions, 3);
+test('buildRecentWeekSeries counts a duration-only imported gym day', () => {
+  const state = { weeks: { '1': {
+    dates: { wed: '2026-07-15' },
+    lifts: {},
+    gymStats: { wed: { time: '50:00' } },
+  } } };
+  const current = buildRecentWeekSeries(state, WK, 1)[0];
+  assert.equal(current.sessions, 1);
+  assert.equal(current.volumeKg, 0);
 });
 
-test('a past week describes itself in the past, not as "this week"', () => {
-  const state = {
-    currentWeek: '4',
-    weeks: {
-      '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } },
-    },
-  };
-  const model = buildProgressLanding(state, {
-    days: DAYS, program: fiveDayProgram, today: '2026-07-27', weekStart: WK,
-    runningMetric: () => ({ empty: true }),
-  });
-
-  const consistency = domainOf(model, 'consistency');
-  assert.match(consistency.interpretation, /that week/);
-  assert.doesNotMatch(consistency.interpretation, /this week/);
-
-  const strength = domainOf(model, 'strength');
-  assert.match(strength.interpretation, /that week/);
-  assert.doesNotMatch(strength.interpretation, /this week/);
-
-  const running = domainOf(model, 'running');
-  assert.match(running.interpretation, /that week/);
-  assert.doesNotMatch(running.interpretation, /this week/);
+// ---- the hub's one flag -----------------------------------------------------
+test('allEmpty is true only when nothing at all has been logged', () => {
+  assert.equal(buildProgressLanding({ weeks: {} }).allEmpty, true);
+  assert.equal(buildProgressLanding({ settings: {}, bodyWeightLog: [{ date: TODAY, weight: 80 }] }).allEmpty, true,
+    'a weigh-in is not training');
 });
 
-test('an empty past running week says nothing about "this week"', () => {
-  const running = domainOf(buildProgressLanding({ weeks: {} }, {
-    days: DAYS, today: '2026-07-27', weekStart: WK,
-  }), 'running');
-  assert.match(running.interpretation, /No runs logged that week/);
-  assert.doesNotMatch(running.interpretation, /this week/);
-});
-
-test('a completed running week compares full week against the one before', () => {
-  // Real metric engine, not an injected sentence: the hub shows the model's own
-  // completed-week framing instead of translating live-week wording.
-  const state = {
-    settings: { distanceUnit: 'km' },
-    weeks: {
-      '1': { dates: { mon: '2026-07-06' }, runSessions: { mon: [run('week_before', 8, '40:00')] } },
-      '2': {
-        dates: { mon: WK, wed: '2026-07-15', fri: '2026-07-17' },
-        runSessions: {
-          mon: [run('selected_a', 4, '20:00')],
-          wed: [run('selected_b', 4, '20:00')],
-          fri: [run('selected_c', 4, '20:00')],
-        },
-      },
-    },
-  };
-  const through = '2026-07-19'; // the selected week's Sunday
-  const history = collectRunningHistory(state, { today: through });
-  const runningMetric = (id) => buildRunningMetricDetail(state, id, { history, today: through, range: '12w' });
-  const running = domainOf(buildProgressLanding(state, {
-    days: DAYS, today: '2026-07-27', weekStart: WK, runningMetric,
-  }), 'running');
-  assert.equal(running.headline.value, '12.0 km');
-  assert.equal(running.delta.text, '+50% vs previous week');
-  assert.equal(running.delta.tone, 'up');
-  assert.doesNotMatch(running.interpretation, /current scope|this week/);
-  assert.match(running.interpretation, /3 contributing activities that week/);
-});
-
-test('a completed running week with nothing the week before says so in week terms', () => {
-  const state = {
-    settings: { distanceUnit: 'km' },
-    weeks: {
-      '2': { dates: { mon: WK }, runSessions: { mon: [run('only_run', 6, '30:00')] } },
-    },
-  };
-  const through = '2026-07-19';
-  const history = collectRunningHistory(state, { today: through });
-  const runningMetric = (id) => buildRunningMetricDetail(state, id, { history, today: through, range: '12w' });
-  const running = domainOf(buildProgressLanding(state, {
-    days: DAYS, today: '2026-07-27', weekStart: WK, runningMetric,
-  }), 'running');
-  assert.equal(running.headline.value, '6.0 km');
-  assert.equal(running.delta.text, 'None the week before');
-  assert.equal(running.delta.tone, 'none');
-  assert.doesNotMatch(running.delta.text, /same point last week/);
-});
-
-test('the live week still applies the plan and speaks in the present', () => {
-  const state = {
-    currentWeek: '1',
-    weeks: { '1': { dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5)] } } } },
-  };
-  const live = buildProgressLanding(state, {
-    days: DAYS, program: fiveDayProgram, today: '2026-07-14',
-  });
-  const consistency = domainOf(live, 'consistency');
-  assert.equal(consistency.headline.unit, 'of 5 planned');
-  assert.match(consistency.interpretation, /still to go this week/);
-  assert.equal(live.weekSummary.planned, 5);
-  assert.equal(live.weekSummary.adherencePct, 20);
-});
-
-test('the week range label degrades to empty rather than leaking a null into a template', () => {
-  assert.equal(formatWeekRange('', '2026-07-19'), '');
-  assert.equal(formatWeekRange('not-a-date', '2026-07-19'), '');
-  const model = buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' });
-  assert.equal(model.weekRangeLabel, '13–19 Jul');
-});
-
-test('a non-calendar weekStart falls back to the live week instead of "NaN weeks ago"', () => {
-  const state = { weeks: {} };
-  for (const weekStart of ['not-a-date', '2026-02-31', '', null]) {
-    const model = buildProgressLanding(state, { days: DAYS, today: '2026-07-16', weekStart });
-    assert.equal(model.weekStart, WK, `weekStart ${String(weekStart)} resolves to the live week`);
-    assert.equal(model.weeksAgo, 0);
-    assert.equal(model.periodLabel, 'This week');
-    assert.equal(model.weekRangeLabel, '13–19 Jul');
+test('allEmpty is false for a logged set, a run or an imported gym day', () => {
+  const strength = { weeks: { '1': { dates: { mon: TODAY }, lifts: { mon: { Squat: [work()] } } } } };
+  const run = { weeks: { '1': { dates: { tue: TODAY }, runSessions: { tue: [{ dist: '5', time: '25:00' }] } } } };
+  const gym = { weeks: { '1': { dates: { wed: TODAY }, lifts: {}, gymStats: { wed: { time: '45:00' } } } } };
+  for (const state of [strength, run, gym]) {
+    assert.equal(buildProgressLanding(state).allEmpty, false);
   }
-  // The reachable past offsets keep their real wording.
-  const past = buildProgressLanding(state, { days: DAYS, today: '2026-07-30', weekStart: WK });
-  assert.equal(past.weeksAgo, -2);
-  assert.equal(past.periodLabel, '2 weeks ago');
-
-  // A future key is unreachable from the navigator (it never steps forward past
-  // the live week), so it clamps to the live week instead of inventing an
-  // "Upcoming week" surface nothing can navigate to.
-  const future = buildProgressLanding(state, { days: DAYS, today: '2026-07-16', weekStart: '2026-07-20' });
-  assert.equal(future.weekStart, WK);
-  assert.equal(future.isCurrentWeek, true);
-  assert.equal(future.periodLabel, 'This week');
-});
-
-test('the hub renders the empty lead instead of a fabricated week hero', () => {
-  // The legacy week hero was retired with the domain cards: Pulse owns the
-  // week now, and a hub with no bands must say so rather than draw an empty
-  // week. Pulse's own empty state is covered in tests/pulse_view.test.js.
-  const emptyState = { weeks: {} };
-  const container = { innerHTML: '' };
-  renderProgressHub(container, buildProgressLanding(emptyState, { days: DAYS, today: '2026-07-16' }));
-  assert.doesNotMatch(container.innerHTML, /ph-week/);
-  assert.match(container.innerHTML, /All Progress cards are hidden|Nothing is logged yet/);
-  assert.match(container.innerHTML, /open-customize/);
-});
-
-test('Measures has a route that does not depend on body data', () => {
-  // The Body band is range-scoped and only renders when it has something true
-  // to say. The Body detail switch in Customize Progress is therefore the
-  // route that does not depend on data: hiding a section leaves it openable
-  // from its row, and a fresh athlete can log a first entry from there.
-  const container = { innerHTML: '' };
-  renderProgressHub(container, buildProgressLanding({ weeks: {} }, { days: DAYS, today: '2026-07-16' }));
-  assert.match(container.innerHTML, /data-action="open-customize" data-surface="progress"/);
-  assert.ok(PROGRESS_SUB_CARDS.some((card) => card.parent === 'body' && card.routeId === 'measures'));
 });

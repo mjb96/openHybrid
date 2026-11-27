@@ -38,7 +38,7 @@ import { renderRecoveryPerformance } from './analytics/views/view-recovery-perfo
 import { renderRecoveryMetricDetail } from './analytics/views/view-recovery-metric.js';
 import { buildProgressLanding, buildRecentWeekSeries } from './analytics/progress-landing.js';
 import { buildCalendarTrainingWeeks } from './analytics/training-calendar.js';
-import { weekStartOf, localDayKey, addDaysISO } from './analytics/weekly-aggregate.js';
+import { weekStartOf, localDayKey } from './analytics/weekly-aggregate.js';
 import { renderProgressHub } from './analytics/views/view-progress-hub.js';
 import { buildProgressDashboard } from './analytics/progress-dashboard.js';
 import { renderMeasures } from './analytics/views/view-measures.js';
@@ -47,7 +47,6 @@ import { buildMeasurementExplorer, DEFAULT_EXPLORER_RANGE_ID } from './analytics
 import { isRangeId, resolveRange } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatRunDistance } from './workout/run-units.js';
-import { buildRunningMetricDetail } from './analytics/running-detail.js';
 import { displayWeightString, fromCanonicalWeight, toCanonicalWeight } from './metrics/weight-unit.js';
 
 let _getState;
@@ -914,10 +913,6 @@ export function renderAnalytics() {
       const days = _getDays();
       const program = getProgramById(st.activeProgramId);
       const today = localDayKey(new Date());
-      const weekStart = getSelectedWeekStart(today);
-      const isCurrentWeek = weekStart === weekStartOf(today);
-      const weekEnd = /** @type {string} */ (addDaysISO(weekStart, 6));
-      const dashboard = computeDashboardModel(st, days, program, days[0] || 'mon');
       // The composer keeps hidden / module-off / no-data distinct and turns a
       // throwing band into an error band instead of blanking the tab.
       const progressDashboard = buildProgressDashboard(st, {
@@ -928,23 +923,7 @@ export function renderAnalytics() {
         program,
         days,
       });
-      renderProgressHub(hubEl, buildProgressLanding(st, {
-        days,
-        program,
-        readiness: dashboard.ready,
-        // One calendar week, selected by the shared navigator. Never
-        // state.currentWeek.
-        today,
-        weekStart,
-        // Series included: the hub's Running card draws a trend spark from the
-        // metric engine's own weekly points rather than computing a second one.
-        // The engine reads `today` as its through-date, so a completed week ends
-        // on its Sunday; the live week keeps today and stays elapsed-matched.
-        runningMetric: (id) => buildRunningMetricDetail(st, id, {
-          range: '12w',
-          today: isCurrentWeek ? today : weekEnd,
-        }),
-      }), st.settings?.ui?.progress?.hidden || [], {
+      renderProgressHub(hubEl, buildProgressLanding(st), st.settings?.ui?.progress?.hidden || [], {
         bands: progressDashboard.bands,
         rangeId: progressDashboard.range?.id || _progressRangeId,
         focus: progressDashboard.focus,
