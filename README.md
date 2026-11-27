@@ -60,8 +60,9 @@ the same training picture.
   so the usual log is one tap. Measures add tape sites (cm/in), entered body fat
   and progress photos on one dated entry. Fasting protocols complete the picture.
 - **Programs** — a catalogue of strength, hypertrophy, running and hybrid
-  programmes, a program builder, and portable plan files. Discover is one
-  searchable list; saved, completed and custom/imported plans share My Plans.
+  programmes, a plan editor and portable plan files. Plans home leads with your
+  active plan, recommendations and your plans; Browse is one searchable list
+  over the catalogue, your plans and routines.
 - **Equipment profiles** — keep separate kits for home and the commercial gym.
   Each profile stores its own bar weight, plate denominations and optional pairs
   owned, dumbbell ladder and machine stacks; the active profile drives program
@@ -102,8 +103,6 @@ the same training picture.
 The active programme is Roadmap v2, sequenced **Settings/Profile → Home →
 Logging → Progress**. H2–H5 and the Progress rebuild are delivered; what remains:
 
-- **Settings** — canonical kg/km/cm storage with display-only units (a migration
-  with a backup), and week-start consistency across every Progress analytic.
 - **Content** — reviewed exercise instructions, in small human-reviewed batches;
   quality over catalogue breadth.
 - **Native** — closed-app rest alerts on Android (a foreground service plus
@@ -197,8 +196,9 @@ gradle testDebugUnitTest lintDebug assembleDebug
 
 openHybrid handles health and location data. The app is local-first: training data
 stays on the device, and exports/backups are the deliberate way to move it.
-Crash reporting is error-only and scrubbed. The Android shell disables platform
-backups and keeps the privileged WebView on a single bundled origin.
+There is no crash reporter and no analytics SDK: errors stay on the device. The
+Android shell disables platform backups and keeps the privileged WebView on a
+single bundled origin.
 
 If you find a security issue, please follow [SECURITY.md](SECURITY.md). Do not
 open a public issue containing exploit details, credentials or personal health

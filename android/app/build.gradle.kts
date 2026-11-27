@@ -69,9 +69,13 @@ android {
 // Copy the web app into the bundled assets folder before each build.
 tasks.register<Copy>("copyWebAssets") {
     from(rootProject.projectDir.parentFile) {
-        include("index.html", "sw.js", "manifest.json", "icon-512.png")
+        include("index.html", "sw.js", "manifest.json", "icon-192.png", "icon-512.png", "icon-maskable-512.png")
         include("css/**")
         include("js/**")
+        // The exercise stills and brand assets are precached REQUIRED_ASSETS; a
+        // local assembleDebug without them rejects the whole service-worker
+        // install (cache.addAll) and ships 404 demos.
+        include("assets/**")
         // Settings → About → Licences reads these from the bundled assets.
         include("NOTICE.md")
         include("LICENSES/**")

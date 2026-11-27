@@ -22,8 +22,11 @@ In scope:
 - the web app (`js/`), service worker and precache behaviour
 - `localStorage` / IndexedDB data handling
 - the Android WebView shell and its JavaScript bridges (`android/`)
-- the Supabase schema, RLS policies and edge functions (`supabase/`)
-- authentication, sync, import/export and account deletion
+- the app-private state mirror and Android automatic backup
+- import/export, including JSON/CSV/FIT and photo archives
+
+openHybrid is local-first: there is no account system, backend or cloud sync, so
+there is no authentication, RLS, edge-function or account-deletion surface.
 
 Out of scope:
 

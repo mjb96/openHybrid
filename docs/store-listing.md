@@ -36,8 +36,8 @@ SEE THE FULL PICTURE
 
 YOURS, AND PRIVATE
 • Works offline — your data lives on your device first.
-• No ads, advertising IDs, or behavioural analytics. Limited scrubbed crash
-  reporting helps us fix beta issues. We do not sell your data.
+• No ads, advertising IDs, behavioural analytics, or crash reporter. Nothing
+  about your training leaves the device. We do not sell your data.
 
 openHybrid gives general fitness information, not medical advice. Talk to a qualified
 professional before starting a new program.
