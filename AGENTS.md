@@ -1203,7 +1203,22 @@ server works.
   inventing a reason or repeating the diagnostic twice. In-session **exercise swap** (`js/workout/substitutions.js` +
   pure `applyExerciseSwap` in `workout-order.js`; re-keys the sets array to preserve
   target+logged data), per-side **plate math** (`js/workout/plates.js`), swipe
-  between days (`neighborDay`). `+ Drop` (`appendDropSetRow`) appends a separate
+  between days (`neighborDay`). The swap sheet lists direct substitutes and one
+  **Browse all exercises** control that opens the SAME library modal the add flow
+  uses, in `swap` mode (`pickExerciseFromLibrary` decides what a pick means), so
+  search/filters/favourites have one owner and a custom lift (no movement
+  pattern, therefore no substitutes) is never a dead end. A no-op/duplicate swap
+  is refused with a message instead of a silent close, and the close→open
+  hand-off uses `replaceManagedModal` — two separate managed modals raced
+  `history.back()` against `pushState()` and popped the app to `about:blank`.
+  The Exercises heading carries a 44px `+ Add` beside the dashed button under
+  the list (both fire `open-add-exercise`); adding a lift expands and scrolls it
+  through `focusExerciseCard`, and adding a lift already in the day says so
+  instead of toasting "Added". Typed names are canonicalised (never a custom
+  duplicate) and sanitised before storage. Tap budgets for
+  log/add/swap/delete/undo are pinned in `scripts/tap-audit-browser-check.mjs`
+  (LG1) — raising one is a deliberate edit.
+  `+ Drop` (`appendDropSetRow`) appends a separate
   `type:'D'` row seeded from the last FILLED non-warm-up set at 80% load rounded
   to 2.5 kg / 5 lb, copying its shape/reps; it is hidden until a working set is
   logged and never discounts a bodyweight/band load. Coach: deterministic

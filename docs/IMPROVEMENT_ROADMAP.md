@@ -1457,7 +1457,7 @@ Verify first; sources: openGym, Hevy.
 | G7 | Favourite exercises | `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | DONE | Every picker row carries a 44px star (`aria-pressed`, Add/Remove <name>), and the unfiltered library leads with ONE **Favourites** section — catalogue and custom together, never duplicated — while a filtered list sorts favourites first. The preference is one id-keyed map (`settings.favouriteExercises`), so a catalogue alias stars the same exercise, toggling is idempotent and the map is bounded at 120; the import sanitizer keeps only `key: true` on a null-prototype object. Tests: `favourites` (alias key, custom key, bound, stable order, star naming, hostile import) and `exercise-picker-browser-check` (star size/state, persisted state, Favourites section, favourite leads). |
 | G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | DONE | **The curated core is fixed at 157 entries by owner decision; the 300–500 line is superseded.** All **157/157** now carry authored instructions, a declared difficulty and specific safety notes, shipped in human-reviewed batches of 25. Copy names the setup, the execution and what actually goes wrong under load; the sentence/length and complete-or-not-at-all guards hold, and the ratchet is 157. No catalogue expansion. |
 | G10 | Explained targets | `engine.js`, `templates.js`, `workout/target-why.js` | Every progression target states in one line why today's number is today's number | DONE | The cockpit card now shows one why line under the target: the engine's message for a stall/fatigue hold, the progression rationale behind the suggested load, a baseline line for a first performance, or the program prescription when history exists but no progression applies. It never invents a reason and never duplicates the diagnostic message; `tests/target_why.test.js` pins the cases and the render. |
-| LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
+| LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js`, `scripts/tap-audit-browser-check.mjs` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | DONE | `scripts/tap-audit-browser-check.mjs` counts trusted `pointerdown` taps, asserts a budget per flow and reports reach + ms. Measured at 390×844 (agent-traced): **log 1 · add 2 · duplicate add 2 · swap 2 · swap via the library 3 · delete 2 · undo 1** — every flow at its floor, so no common path got slower and none needed a tap removed. The audit's findings were reach and dead ends: the swap sheet promised a "full list below" that did not exist (L-F6 — the library now opens in **swap mode**, so a custom lift with no substitutes went impossible → 3 taps), a duplicate add toasted "Added" without changing state, a no-op swap closed silently, a typed catalogue name became a custom duplicate, and **Add Unplanned Exercise** sat 3.67 screens down (a 44px `+ Add` with the Exercises heading puts it at **0.5 screens**, on screen). Taps are asserted; ms is reported, never asserted (device timings stay `[You]`). |
 | LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | DONE | 44px, contrast, safe areas and inputmode pass. The visible viewport is tracked app-wide (`--visible-viewport-height`), the per-set sheet is capped by it instead of 88vh, numeric fields get `enterkeyhint="done"` on focus, and a delegated focus handler scrolls a field clear of the on-screen keyboard (nearest scrollable ancestor first). `scripts/lg2-keyboard-browser-check.mjs` drives the real browser at 390 with a shrunken viewport. |
 
 G8 (demo size) and G6 (week start) live in H1; G4 (year heatmap) is in §17.2.
@@ -1631,8 +1631,8 @@ never assumed.
 | 1 | Change the weight unit | pending | — | pending | pending | — |
 | 2 | Find a setting by name | pending | — | pending | pending | — |
 | 3 | Start today's planned workout from cold open | pending | — | pending | pending | — |
-| 4 | Log a working set with previous values shown | pending | — | pending | pending | — |
-| 5 | Add an exercise mid-session | pending | — | pending | pending | — |
+| 4 | Log a working set with previous values shown | pending | 1 tap (agent-traced, 390 px) | pending | pending | 2026-11-28 |
+| 5 | Add an exercise mid-session | pending | 2 taps (agent-traced, 390 px) | pending | pending | 2026-11-28 |
 | 6 | Review one lift's progress | 3 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
 | 7 | Review last week | 2 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
 | 8 | Open the month recap | 1 tap | 1 tap | pending | pending | 2026-11-25 (agent-traced) |
@@ -1758,6 +1758,36 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — H3 LG1: the logging flows are measured, and the dead ends closed.**
+  - `scripts/tap-audit-browser-check.mjs` counts trusted `pointerdown` taps,
+    asserts a budget per flow and reports reach + ms: **log 1 · add 2 ·
+    duplicate add 2 · swap 2 · swap via the library 3 · delete 2 · undo 1**.
+    Every flow is at its floor, so nothing got slower; ms is reported, never
+    asserted, and the device timings stay `[You]`.
+  - **L-F6:** the swap sheet promised a "full list below" it did not have.
+    **Browse all exercises** opens the SAME library modal in `swap` mode
+    (search, filters, favourites — one owner), so a custom lift has a real
+    replacement path. The close→open hand-off uses `replaceManagedModal`: two
+    separate managed modals raced `history.back()` against `pushState()` and
+    popped the app to `about:blank`.
+  - **Honesty:** adding a lift already in the day says so instead of toasting
+    "Added"; a no-op/duplicate swap names the problem instead of closing
+    silently; a typed catalogue name is canonicalised instead of saved as a
+    custom duplicate. A second toast now cancels the previous timer — the old
+    one hid the new message early.
+  - **Reach:** `+ Add Unplanned Exercise` sat **3.67 screens** down; a 44px
+    `+ Add` with the Exercises heading puts it at **0.50 screens** and on screen.
+    An added or swapped lift is expanded and scrolled into view through
+    `focusExerciseCard` (the accordion keeps one owner).
+  - A borderline light-mode AA row found by the CI contrast audit
+    (`#band-muscles .pg-segment__chip.is-selected`, 4.42:1 on its gradient) now
+    uses the project's `#155e75` light accent (~6:1).
+  - Two timing-sensitive checks were hardened for loaded runners: the rest
+    check measures the reload instead of assuming 6 s, and the gym check waits
+    60 s for the one Progress navigation that timed out.
+  - `npm run verify` green; the tap audit, set-row, picker, modal, outline and
+    ergonomics browser checks pass.
+
 - **2026-11-28 — Security: a typed exercise name cannot become markup.**
   - CodeQL's `js/xss-through-dom` followed a custom-exercise name from the
     picker input into `state.customExercises` and then into twelve `innerHTML`
@@ -1890,24 +1920,4 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     schedule cases; program-editor browser check asserts the restored target.
     `npm run verify` green (3,018 tests); set-row, rest-timer, weight-unit,
     move-day, edit-saved and program-editor checks pass.
-
-- **2026-11-27 — Audit slice 2: one number, one owner.**
-  - e1RM/PR analytics now read EVERY deduplicated session on a date
-    (`allByDate`), so a second same-date strength session is no longer invisible
-    to the week's best e1RM, PR detection or the review.
-  - Runs and walks never merge: `splitEnduranceSessions` feeds Home's endurance
-    card, the day recap, the week rail and Year in Review; a walk-only day says
-    Walk and a walk's pace is never a running pace.
-  - Week in Review adherence compares completed planned DAYS with planned days
-    elapsed (Pulse's rule). A run on a weekday the plan does not train no longer
-    satisfies a planned day, and "8 of 4" cannot recur.
-  - Canonical kilograms are converted at the display boundary in Weekly Volume,
-    the Strength metric detail/evidence and the Progress share card, which had
-    printed kilograms beside an `lb` label.
-  - A duration-only FIT gym import counts as a session in `forEachLoggedDay`, so
-    the Training Report no longer reports a month of imported gym work as zero.
-  - The annual consecutive-day figure is labelled a training streak, not a run.
-  - Tests: same-date e1RM (two days counted, a copied day deduped), walk/run
-    splits on Home and Year in Review, planned-day adherence, FIT gym sessions,
-    walk-only recap. `npm run verify` green (3,011 tests).
 

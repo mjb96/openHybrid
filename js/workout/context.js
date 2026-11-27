@@ -84,3 +84,23 @@ export function setWorkoutRenderer(renderFn) {
 export function rerenderWorkout() {
   _rerender?.();
 }
+
+// ── Exercise focus hook ──────────────────────────────────────────────────────
+//
+// The library modal appends a lift at the bottom of the day and then has to
+// show it to the athlete. Expanding and scrolling is `jumpToExercise`, which
+// owns the accordion's single-open invariant — so the picker asks for the
+// focus instead of manipulating card classes itself (two owners of "which card
+// is expanded" is how the outline and the header taps drift apart).
+
+/** @type {undefined | ((name: string) => void)} */ let _focusExercise;
+
+/** Called once by workout.js with its own jumpToExercise. */
+export function setExerciseFocuser(focusFn) {
+  _focusExercise = focusFn;
+}
+
+/** Expand and scroll one exercise card. A no-op before registration. */
+export function focusExerciseCard(name) {
+  _focusExercise?.(name);
+}
