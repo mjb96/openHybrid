@@ -26,6 +26,7 @@ import { applyPalette, normalizePalette } from './theme.js';
 import { applyThemeTokens } from './theme/tokens.js';
 import { applyMotionPreference, normalizeMotionPreference } from './ui/motion.js';
 import { applyTextSize } from './ui/text-size.js';
+import { openLicensesSheet, closeLicensesSheet } from './settings/licenses-sheet.js';
 import { looksLikeBodyCsv, parseBodyCsv, applyBodyweightCsvImport } from './portability/import-body-csv.js';
 import {
   looksLikeMeasurementsCsv, parseMeasurementsCsv, applyMeasurementsCsvImport, hasBodyFatColumn,
@@ -258,8 +259,11 @@ export function initSettings(getStateFn) {
     }
     window.addEventListener('hashchange', applySettingsRouteFromHash);
     document.addEventListener('click', (event) => {
-      const target = event.target instanceof Element ? event.target.closest('[data-setting-segment], [data-setting-step], [data-action="open-settings-page"], [data-action="open-settings-result"], [data-action="open-workout-settings"], [data-action="close-workout-settings"], [data-action="reset-rest-override"], [data-action="reset-settings-page"], [data-action="open-customize"]') : null;
+      const target = event.target instanceof Element ? event.target.closest('[data-setting-segment], [data-setting-step], [data-action="open-settings-page"], [data-action="open-settings-result"], [data-action="open-workout-settings"], [data-action="close-workout-settings"], [data-action="reset-rest-override"], [data-action="reset-settings-page"], [data-action="open-customize"], [data-action="open-licenses"], [data-action="close-licenses"]') : null;
       if (!target) return;
+      const action = target.getAttribute('data-action');
+      if (action === 'open-licenses') { openLicensesSheet(); return; }
+      if (action === 'close-licenses') { closeLicensesSheet(); return; }
       if (target.hasAttribute('data-setting-segment')) {
         const key = target.getAttribute('data-setting-segment') || '';
         const entry = settingsEntry(key);

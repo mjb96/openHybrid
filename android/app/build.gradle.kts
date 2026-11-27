@@ -72,6 +72,9 @@ tasks.register<Copy>("copyWebAssets") {
         include("index.html", "sw.js", "manifest.json", "icon-512.png")
         include("css/**")
         include("js/**")
+        // Settings → About → Licences reads these from the bundled assets.
+        include("NOTICE.md")
+        include("LICENSES/**")
     }
     into(layout.projectDirectory.dir("src/main/assets/www"))
 }

@@ -46,6 +46,10 @@ const CORE = [
   './css/styles.css',
   './js/vendor/leaflet/leaflet.js',
   './js/vendor/leaflet/leaflet.css',
+  // The notices ship with the app so they are readable offline (and from the
+  // APK): Settings → About → Licences renders these two files.
+  './NOTICE.md',
+  './LICENSES/Apache-2.0.txt',
 ];
 
 export function computeRequiredAssets() {

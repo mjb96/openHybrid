@@ -212,6 +212,32 @@ try {
   await page.waitForSelector('#settingsOverlay.active');
   ok((await page.inputValue('#settingsSearch')) === '', 'reopening Settings clears search');
 
+  // Licences: the shipped notices render in-app, not behind a GitHub link.
+  await page.click('[data-action="open-settings-page"][data-context="about"]');
+  await page.waitForSelector('#settingsPageHost .s-page');
+  await page.click('[data-action="open-licenses"]');
+  await page.waitForSelector('#licensesSheet.active');
+  await page.waitForSelector('#licensesBody pre', { timeout: 4000 });
+  const licences = await page.evaluate(() => ({
+    text: document.getElementById('licensesBody')?.textContent || '',
+    focused: document.activeElement?.className || '',
+    dialogs: document.querySelectorAll('[role="dialog"][aria-modal="true"]').length,
+    overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  }));
+  ok(/Body Muscles/.test(licences.text), 'Licences shows the Body Muscles notice');
+  ok(/This product includes software developed by Ivan Vulović/.test(licences.text), 'the upstream NOTICE is reproduced');
+  ok(/Apache License/.test(licences.text), 'the Apache licence text is present');
+  ok(licences.focused.includes('sheet-close-btn'), 'focus lands on the Licences close button');
+  ok(licences.dialogs === 1, 'exactly one modal dialog is exposed');
+  ok(!licences.overflow, 'the Licences sheet does not overflow');
+  await page.click('#licensesSheet [data-action="close-licenses"]');
+  await page.waitForTimeout(150);
+  ok(await page.evaluate(() => !document.querySelector('#licensesSheet.active')), 'Licences closes');
+  ok(await page.evaluate(() => document.activeElement?.getAttribute('data-action')) === 'open-licenses',
+    'focus returns to the Licences row');
+  await page.click('#settingsPageHost .s-back');
+  await page.waitForSelector('#settingsPageHost .s-home');
+
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 
