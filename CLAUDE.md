@@ -273,8 +273,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `setLiftTarget`, and every structural edit keeps the sidecar in sync
   (`replaceProgramExercise` renames the key, `removeProgramExercise` deletes it,
   `makeProgramDayRest` clears the day, `copyProgramDay` copies it,
-  `prunePrescriptions` drops orphans). A deload halves a prescribed lift's sets
-  (`max(2, round(sets/2))`) at read time — never stored. `program-json` carries
+  `prunePrescriptions` drops orphans). A deload halves the sets of BOTH a
+  prescribed lift and an inline `5×5` string (`max(2, round(sets/2))`) at read
+  time — never stored. J&T/Shed models own their periodisation and are not
+  re-halved. `program-json` carries
   the sidecar as an optional bounded field. The weekly grid applies only to lifts
   without their own target, and the tab says so.
   `js/programs/program-json.js` exports/imports `openhybrid-plan` JSON; imported
@@ -583,7 +585,10 @@ server works.
   **moved** to a free date in the same calendar week (`js/schedule/week.js`
   with `state.weekSchedule`): the rail, Today card, Train landing and cockpit
   resolve which program day owns a date, the old weekday reads rest, logged
-  dates are never rewritten, and the shared undo bar restores the override. `buildDayRecap`/`summariseSlots` resolve the stored
+  dates are never rewritten, and the shared undo bar restores the override.
+  A move is a CURRENT-week action only (a past selection is rejected), and
+  `movableDay` reads the week that owns the planned date, not
+  `state.currentWeek`. `buildDayRecap`/`summariseSlots` resolve the stored
   program-day title. The card deliberately omits the state pill, score row and
   evidence drawer. Directly below the week surface sits the optional hybrid
   section (`#homeHybridSection`, `js/home/hybrid-dashboard.js`): a Training
@@ -660,6 +665,9 @@ server works.
   The engine's `progression.weight`/`suggestedWeight` are the exception: they
   leave as DISPLAY values because the cockpit puts them straight in the weight
   field. `progressionIncrement` and a weight-based `rateGoal` are canonical too.
+  A weight input still showing the value it was rendered from is never re-parsed
+  (`shouldCommitEnteredWeight`), so an untouched tick or a notes-only edit
+  cannot rewrite 100 kg as 100.02 kg.
   Escapes the rule on purpose: plate setups, dumbbell ladders, machine stacks
   and band weights are per-unit UI data; distance stays km and tape stays cm.
   Exports are unambiguous: the training CSV writes `WeightKg`/`BodyWeightKg`,
@@ -1104,8 +1112,8 @@ server works.
   explicit.
   Every plan-changing builder edit snapshots via `captureProgramDraft` and is
   undoable from one strip (`markUndoable` → `b-undo`); the snapshot is the PLAN
-  only (`days` + `weeklyVolModifiers`), never `state.weeks`, so an undo can never
-  rewrite logged training. Prefer that over adding confirmation dialogs.
+  only (`days` + `weeklyVolModifiers` + the per-lift `prescriptions` sidecar),
+  never `state.weeks`, so an undo can never rewrite logged training. Prefer that over adding confirmation dialogs.
   "Customize" forks ANY program via `duplicateCustomProgram` (a copy — never edits
   shared catalog data). `day.lifts` are bare strings across 150+ sites — do NOT
   migrate to objects casually.

@@ -137,6 +137,15 @@ test('a captured draft restores the plan exactly', () => {
   assert.equal(program.weeklyVolModifiers['1'].sets, 3);
 });
 
+test('undo restores the per-exercise target sidecar', () => {
+  const program = draftProgram();
+  program.prescriptions = { mon: { 'Bench Press': { sets: 4, reps: '6', restSec: 150 } } };
+  const snapshot = captureProgramDraft(program, 'Removed Bench Press');
+  delete program.prescriptions.mon['Bench Press'];
+  assert.equal(restoreProgramDraft(program, snapshot), true);
+  assert.deepEqual(program.prescriptions.mon['Bench Press'], { sets: 4, reps: '6', restSec: 150 });
+});
+
 test('the snapshot is a deep clone in BOTH directions', () => {
   const program = draftProgram();
   const snapshot = captureProgramDraft(program, 'x');
@@ -158,7 +167,8 @@ test('the label is carried so the strip can name what it will undo', () => {
 
 test('a snapshot captures the plan only — never logged training', () => {
   const snapshot = captureProgramDraft(draftProgram(), 'x');
-  assert.deepEqual(Object.keys(snapshot).sort(), ['days', 'label', 'weeklyVolModifiers']);
+  assert.deepEqual(Object.keys(snapshot).sort(), ['days', 'label', 'prescriptions', 'weeklyVolModifiers']);
+  assert.deepEqual(snapshot.prescriptions, {}, 'targets are plan data, not training history');
 });
 
 test('restoring refuses malformed input rather than wiping the plan', () => {

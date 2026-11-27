@@ -18,6 +18,7 @@
 // =============================================================================
 import { getProgramById, showToast } from '../state.js';
 import { prescribeSetsForLift } from '../engine.js';
+import { getWeekModifier } from '../schema.js';
 import { dismissRestTimer, stopAndResetWorkoutTimer } from '../timers.js';
 import { deleteMapFromDB } from '../db.js';
 import { replaceManagedModal } from '../ui/modal-stack.js';
@@ -121,7 +122,7 @@ export function executeResetActiveDayMetrics() {
   if (blueprint && blueprint.lifts) {
     blueprint.lifts.forEach(liftName => {
       try {
-        const weekModifier = activeProgram.weeklyVolModifiers?.[wk] || { sets: 4, reps: 5, intensityLabel: "Working Sets" };
+        const weekModifier = getWeekModifier(activeProgram, wk);
         lifts[liftName] = prescribeSetsForLift(wk, selectedDay, liftName, blueprint.desc, weekModifier, { program: activeProgram, week: wk, dayKey: selectedDay });
         liftOrder.push(liftName);
       } catch(e) { console.warn(e); }

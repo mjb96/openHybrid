@@ -141,7 +141,7 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
          title="Set type, load, rest, note">${setRowNumberLabel(type, sIdx)}</button>
     ${prevCol}
     <div class="set-entry">
-      <input type="number" inputmode="decimal" class="input-weight-node" aria-label="Effective load for set ${sIdx + 1}" placeholder="${escapeHtml(weightPlaceholder)}" data-ghost-default="${escapeHtml(ghostDefault)}" data-prescribed="${escapeHtml(prescribedPlaceholder)}" value="${escapeHtml(effectiveValue)}">
+      <input type="number" inputmode="decimal" class="input-weight-node" aria-label="Effective load for set ${sIdx + 1}" placeholder="${escapeHtml(weightPlaceholder)}" data-ghost-default="${escapeHtml(ghostDefault)}" data-prescribed="${escapeHtml(prescribedPlaceholder)}" data-display-value="${escapeHtml(effectiveValue)}" value="${escapeHtml(effectiveValue)}">
       ${boSrc ? `<small class="set-backoff-hint">${escapeHtml(backoffHint)}</small>` : ''}
     </div>
     <div class="set-entry">

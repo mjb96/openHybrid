@@ -293,6 +293,12 @@ export function setSetType(liftName, setIndex, type) {
   if (!sets || setIndex >= sets.length) return;
   if ((sets[setIndex].type || '') === next) return;
   sets[setIndex].type = next;
+  // A PR badge belongs to the working set that earned it. Retyping the row as a
+  // warm-up/drop/failure row must not leave a trophy on work no reader counts.
+  if (next) {
+    delete sets[setIndex].isPR;
+    delete sets[setIndex].prKind;
+  }
 
   const exerciseCard = document.querySelector(`.cockpit-exercise[data-liftname="${CSS.escape(liftName)}"]`);
   const row = exerciseCard?.querySelectorAll('.cockpit-set-row')?.[setIndex];
@@ -303,6 +309,7 @@ export function setSetType(liftName, setIndex, type) {
     else if (next === 'F') row.classList.add('type-amrap');
     const label = row.querySelector('.set-num-lbl');
     if (label) label.textContent = setRowNumberLabel(next, setIndex);
+    if (next) row.querySelector('.pr-badge')?.remove();
   }
   _saveState(true);
 }

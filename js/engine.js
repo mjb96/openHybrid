@@ -527,18 +527,20 @@ function withInheritedProgressionModel(program) {
  */
 export function liftTarget(desc, liftName, weekModifier = {}, ctx) {
   const program = withInheritedProgressionModel(ctx?.program);
+  // A deload is an instruction for the WEEK. It is applied once, at read time,
+  // to every branch that resolves from the week's own text — a per-exercise
+  // sidecar AND an inline "Back Squat 5×5" string. J&T/Shed models own their
+  // periodisation and return their own sets.
+  const deload = /deload/i.test(weekModifier?.intensityLabel || '');
+  const halveForDeload = (sets) => (deload ? Math.max(2, Math.round(Number(sets) / 2)) : Number(sets));
   // Imported plans (e.g. openGym) preserve per-exercise prescriptions without
   // changing the bare-string day.lifts contract used across the app.
   const prescribed = program?.prescriptions?.[ctx?.dayKey]?.[liftName];
   if (prescribed && Number(prescribed.sets) > 0) {
-    // A deload is an instruction for the WEEK, so it has to reach a lift that
-    // carries its own target too — otherwise "bench 4×6" would ignore the
-    // deload entirely and the athlete would train through it. Derived, never
-    // stored (roadmap §22.2).
+    // Derived, never stored (roadmap §22.2).
     const sets = Number(prescribed.sets);
-    const deload = /deload/i.test(weekModifier?.intensityLabel || '');
     return {
-      sets: deload ? Math.max(2, Math.round(sets / 2)) : sets,
+      sets: halveForDeload(sets),
       reps: prescribed.reps == null ? '' : String(prescribed.reps),
       weight: Number.isFinite(Number(prescribed.weight)) && Number(prescribed.weight) > 0 ? Number(prescribed.weight) : null,
       restSec: Number.isFinite(Number(prescribed.restSec)) && Number(prescribed.restSec) > 0 ? Number(prescribed.restSec) : null,
@@ -557,8 +559,8 @@ export function liftTarget(desc, liftName, weekModifier = {}, ctx) {
     if (pp) return { sets: pp.sets, reps: pp.reps };
   }
   const parsed = parseTargetFromDescription(desc, liftName);
-  if (parsed.matched) return { sets: parsed.sets, reps: parsed.reps };
-  return { sets: weekModifier.sets || 4, reps: weekModifier.reps || 5 };
+  if (parsed.matched) return { sets: halveForDeload(parsed.sets), reps: parsed.reps };
+  return { sets: halveForDeload(weekModifier.sets || 4), reps: weekModifier.reps || 5 };
 }
 
 export function prescribeSetsForLift(wk, dayKey, liftName, desc, weekModifier, ctx) {

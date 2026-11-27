@@ -99,14 +99,14 @@ export function resolveRestDuration(context = {}) {
   if (setType === 'F') return 120;
 
   // 3. An imported/shared plan's own rest is a prescription, not a guess.
-  if (Number(planRestSec) > 0) return Math.round(Number(planRestSec));
+  if (Number(planRestSec) > 0) return Math.min(600, Math.round(Number(planRestSec)));
 
   // 4. A remembered per-exercise adjustment is an explicit choice — use it as-is
   // (no RPE bonus on top, since the user already dialled in this value).
   // 0 is the explicit "no timer for this exercise" sentinel.
   if (liftName && restOverrides[liftName] != null) {
     const remembered = Number(restOverrides[liftName]);
-    return remembered <= 0 ? 0 : remembered;
+    return remembered <= 0 ? 0 : Math.min(600, remembered);
   }
 
   // 5. Working sets: prescribe rest by exercise type (heavy compound →

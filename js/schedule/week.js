@@ -129,7 +129,12 @@ export function scheduledDayForDate(state, program, dateISO) {
  */
 export function movableDay(state, program, day, weekStartISO) {
   if (!hasPlan(program, day)) return { ok: false, reason: 'No workout planned' };
-  const week = state?.weeks?.[String(state?.currentWeek)];
+  const date = scheduledDateFor(state, weekStartISO, day);
+  // The week that OWNS this planned date, not `state.currentWeek`: a pending
+  // auto-advance or a past selection can point the counter at another week, and
+  // the old lookup then inspected the wrong day's logged status. An unstamped
+  // slot (nothing logged yet) still belongs to the current program week.
+  const week = weekOwningDate(state, date) || state?.weeks?.[String(state?.currentWeek)];
   const status = week?.sessionStatus?.[day];
   if (status === 'in_progress' || status === 'finished') return { ok: false, reason: 'This workout has already started' };
   const sets = week?.lifts?.[day];
@@ -137,8 +142,25 @@ export function movableDay(state, program, day, weekStartISO) {
     const logged = Object.values(sets).some((arr) => Array.isArray(arr) && arr.some((set) => set?.c));
     if (logged) return { ok: false, reason: 'This workout has already been logged' };
   }
-  const date = scheduledDateFor(state, weekStartISO, day);
   return { ok: true, date };
+}
+
+/**
+ * The stored week whose stamped `dates` own one calendar date, if any.
+ * @param {any} state
+ * @param {string|null} dateISO
+ */
+function weekOwningDate(state, dateISO) {
+  if (!dateISO) return null;
+  for (const key of Object.keys(state?.weeks || {})) {
+    const week = state.weeks[key];
+    const dates = week?.dates;
+    if (!dates || typeof dates !== 'object') continue;
+    for (const day of SCHEDULE_DAYS) {
+      if (localDayKey(dates[day]) === dateISO) return week;
+    }
+  }
+  return null;
 }
 
 /**
@@ -148,12 +170,17 @@ export function movableDay(state, program, day, weekStartISO) {
  * @param {any} state
  * @param {any} program
  * @param {string} day
- * @param {{ today?: string, isDateLogged?: (date: string) => boolean }} [options]
+ * @param {{ today?: string, isDateLogged?: (date: string) => boolean, weekStart?: string|null }} [options]
  */
-export function moveOptions(state, program, day, { today = localDayKey(new Date()), isDateLogged = () => false } = {}) {
+export function moveOptions(state, program, day, {
+  today = localDayKey(new Date()), isDateLogged = () => false, weekStart: requestedWeekStart = null,
+} = {}) {
   const todayKey = localDayKey(today);
-  const weekStart = todayKey ? startOfProgramWeek(todayKey) : null;
-  if (!weekStart) return [];
+  const currentWeekStart = todayKey ? startOfProgramWeek(todayKey) : null;
+  const weekStart = requestedWeekStart ? startOfProgramWeek(localDayKey(requestedWeekStart)) : currentWeekStart;
+  // A move is a CURRENT-week action. Offering this week's free dates for a past
+  // selection left the old cell planned and wrote a duplicate into this week.
+  if (!weekStart || !currentWeekStart || weekStart !== currentWeekStart) return [];
   const current = scheduledDateFor(state, weekStart, day);
   return SCHEDULE_DAYS.map((slot) => {
     const date = defaultDateFor(weekStart, slot);
@@ -180,12 +207,16 @@ export function moveOptions(state, program, day, { today = localDayKey(new Date(
  * @param {any} program
  * @param {string} day
  * @param {string} targetDate
- * @param {{ today?: string, isDateLogged?: (date: string) => boolean }} [options]
+ * @param {{ today?: string, isDateLogged?: (date: string) => boolean, weekStart?: string|null }} [options]
  */
 export function applyMove(state, program, day, targetDate, options = {}) {
   const target = localDayKey(targetDate);
   const today = localDayKey(options.today || new Date());
   const weekStart = today ? startOfProgramWeek(today) : null;
+  const requestedWeekStart = options.weekStart ? startOfProgramWeek(localDayKey(options.weekStart)) : null;
+  if (requestedWeekStart && requestedWeekStart !== weekStart) {
+    return { ok: false, reason: 'Only this week can be moved' };
+  }
   if (!target || !weekStart || !SCHEDULE_DAYS.includes(day)) return { ok: false, reason: 'Invalid move' };
   const targetWeek = startOfProgramWeek(target);
   if (targetWeek !== weekStart) return { ok: false, reason: 'Choose a date this week' };

@@ -47,6 +47,22 @@ export function storedWeightFromInput(appState, value) {
   return canonicalWeightString(value, weightUnitLabel(appState));
 }
 
+/**
+ * Should a weight input's text be written back into storage?
+ *
+ * A persisted kilogram value is rendered in the display unit with ONE decimal,
+ * so re-parsing that same text is lossy (100 kg → "220.5" → 100.02 kg). When the
+ * field still shows the value it was rendered from, the stored number is already
+ * correct and must be left alone — even on a tick, and even on a notes-only save.
+ *
+ * @param {{ entered: unknown, displayed: unknown, hasStoredWeight: boolean }} input
+ */
+export function shouldCommitEnteredWeight({ entered, displayed, hasStoredWeight }) {
+  if (!hasStoredWeight) return true;
+  if (displayed == null) return true;
+  return String(entered ?? '').trim() !== String(displayed).trim();
+}
+
 /** The athlete's unit, normalised for maths helpers. */
 export function weightUnitOf(appState) {
   return normalizeWeightUnit(weightUnitLabel(appState));
