@@ -82,10 +82,7 @@ try {
     await page.click('[data-action="open-customize"][data-surface="progress"]');
     await page.waitForSelector('#customizeSheet.active');
     await page.click('#customizeList [data-customize-open][data-context="strength"]');
-    // 60 s rather than the 30 s default: this check runs beside two others and
-    // the sheet's open animation plus the section render has exceeded 30 s on a
-    // loaded runner while every assertion still passed.
-    await page.waitForSelector('#analytics-strength.active', { timeout: 60000 });
+    await page.waitForSelector('#analytics-strength.active');
     await page.click('#analytics-strength [data-action="open-analytics"][data-context="strength-volume"]');
     await page.waitForSelector('#analytics-strength-volume.active');
     await page.click('#analytics-strength-volume [data-strength-volume-tab="trends"]');

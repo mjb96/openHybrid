@@ -628,7 +628,7 @@ html[data-theme="light"] .pg-focus__chip.is-selected { color: #0f172a; border-bo
 }
 
 html[data-theme="light"] .pg-segment__chip { color: #475569; border-color: rgba(15, 23, 42, 0.12); }
-html[data-theme="light"] .pg-segment__chip.is-selected { color: #155e75; }
+html[data-theme="light"] .pg-segment__chip.is-selected { color: #0e7490; }
 
 /* ---------------------------------------------------- 13. MAIN EXERCISE ROWS */
 .pg-ex-list { list-style: none; margin: 12px 0 0; padding: 0; }

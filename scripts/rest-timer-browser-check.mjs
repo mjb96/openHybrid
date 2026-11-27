@@ -179,16 +179,11 @@ try {
     // Spend real time resting before the reload, so the assertion can tell
     // "resumed from an absolute end time" apart from "restarted the clock".
     await page.waitForTimeout(1500);
-    // Measure the reload, don't guess it. A fixed 6 s allowance failed on a
-    // loaded CI runner where reload + cockpit entry took just over that; the
-    // honest bound is "the clock lost about as long as the reload really took".
-    const reloadStartedAt = Date.now();
     await page.reload({ waitUntil: 'load' });
     await enterCockpit(page);
     await page.waitForSelector('#cockpitTimerBar.active');
-    const reloadSeconds = Math.round((Date.now() - reloadStartedAt) / 1000);
     const restored = await readTimer(page);
-    console.log(`${tag} reload:`, JSON.stringify({ beforeReload, after: restored.clock, paused: restored.paused, reloadSeconds }));
+    console.log(`${tag} reload:`, JSON.stringify({ beforeReload, after: restored.clock, paused: restored.paused }));
     if (!restored.active) fail(`${tag}: reloading lost the running rest timer`);
     if (restored.paused) fail(`${tag}: the restored rest came back paused`);
     const clockSeconds = (clock) => {
@@ -198,9 +193,8 @@ try {
     if (clockSeconds(restored.clock) >= clockSeconds(beforeReload)) {
       fail(`${tag}: the restored rest ignored time spent reloading (${beforeReload} -> ${restored.clock})`);
     }
-    // +2 s covers the one-second display granularity either side of the reload.
-    if (clockSeconds(restored.clock) < clockSeconds(beforeReload) - (reloadSeconds + 2)) {
-      fail(`${tag}: the restored rest lost more time than the reload took (${beforeReload} -> ${restored.clock} over ${reloadSeconds}s)`);
+    if (clockSeconds(restored.clock) < clockSeconds(beforeReload) - 6) {
+      fail(`${tag}: the restored rest lost more time than the reload took (${beforeReload} -> ${restored.clock})`);
     }
     await page.waitForTimeout(1500);
     if ((await readTimer(page)).clock === restored.clock) {

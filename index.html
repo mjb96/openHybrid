@@ -733,10 +733,6 @@
       <div class="app-section-heading">
         <div class="app-section-heading__title">Exercises</div>
         <div class="app-section-heading__sub">Type weight &amp; reps, then tick ✓ to log a set</div>
-        <!-- The same action as the dashed button under the list, placed where a
-             mid-session addition is decided. On a five-lift day that button sat
-             3.7 screens down (LG1 tap audit); this one stays with the heading. -->
-        <button type="button" class="app-section-heading__action" data-action="open-add-exercise" aria-label="Add an exercise">+ Add</button>
       </div>
 
       <!-- Phase 2A: a glanceable index of the session, so "how much is left?"
@@ -1671,7 +1667,7 @@
       <div class="el-list" id="elList"></div>
       <div class="el-custom-row">
         <input type="text" id="customExerciseTextInput" class="el-custom-input" aria-label="Custom exercise name" placeholder="Or type a custom exercise name&#x2026;" autocomplete="off">
-        <button id="elCustomAddBtn" class="el-custom-add-btn" data-action="confirm-add-exercise">Add</button>
+        <button class="el-custom-add-btn" data-action="confirm-add-exercise">Add</button>
       </div>
     </div>
   </div>
