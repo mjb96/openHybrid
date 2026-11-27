@@ -911,8 +911,10 @@ server works.
   stale warning at `BACKUP_STALE_DAYS` (7), and "Never" when absent. Settings →
   Data shows it under Export. Automatic backup keeps its own status/time and
   photos remain device-local.
-- Crash reporting: Sentry in `js/monitoring/`, DSN-gated (off until `sentry-config.js`
-  has a DSN), PII-scrubbed for health/location data.
+- Crash reporting: none. There is no third-party crash reporter or analytics
+  SDK. `js/monitoring/report-error.js` logs handled errors to the console and
+  exposes a test hook; nothing about training, health or location leaves the
+  device, and the only third-party request is for map tiles.
 - Mobile safe areas: `--safe-top` / `--safe-bottom` (`css/styles.css`, beside
   `--touch-target`) are the ONLY correct way to clear the system bars. They consult
   BOTH `env(safe-area-inset-*)` AND `var(--app-safe-*)`, because the Android WebView is

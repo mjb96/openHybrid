@@ -46,9 +46,6 @@ const CORE = [
   './css/styles.css',
   './js/vendor/leaflet/leaflet.js',
   './js/vendor/leaflet/leaflet.css',
-  // Vendored runtime libraries loaded via <script src> in index.html (not part of
-  // the ES-module graph). Precached so an offline launch has them locally.
-  './js/vendor/sentry-browser-8.55.2.min.js',
 ];
 
 export function computeRequiredAssets() {

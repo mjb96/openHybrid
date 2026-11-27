@@ -60,15 +60,7 @@ with the rest of your training data.
 openHybrid has no account system. It does not ask for your name, email address or a
 password, and it operates without a backend.
 
-### 2.5 Diagnostics (crash reports)
-We use **Sentry** to receive error and crash reports so we can fix bugs. This
-reporting runs automatically in the distributed build; there is currently no
-in-app opt-out. Reports are **scrubbed** before sending: openHybrid disables default
-PII, removes request/user/device contexts, removes request bodies, redacts
-network URLs, and does not enable performance tracing. openHybrid is designed not to
-send your training, health, route, or profile data in crash reports.
-
-### 2.6 Data we do **not** collect
+### 2.5 Data we do **not** collect
 No advertising identifiers, no advertising or behavioural analytics, no
 contacts, and no microphone access. openHybrid only uses a photo you explicitly
 choose as an avatar.
@@ -80,16 +72,15 @@ choose as an avatar.
 - **No cloud copy:** openHybrid does not send your training, health or route data to
   a server. Moving devices is a deliberate JSON export/import or Android
   automatic backup.
-- Diagnostics sent to Sentry use HTTPS/TLS.
+- **No diagnostics egress:** openHybrid does not run a crash reporter or any
+  analytics SDK. Errors stay on the device.
 
 ## 4. Third parties that may process data
-We use a small number of service providers strictly to run the app:
+One service is contacted, and only while you are looking at a map:
 
 | Provider | Purpose | Data they may see |
 |---|---|---|
-| Sentry | Error/crash reporting | Scrubbed crash diagnostics; network metadata such as IP may be processed by the service |
 | OpenStreetMap tile service | Run-map tiles | IP address and the map-tile area requested when a map is viewed |
-| Google Fonts | App font files | IP address and basic request metadata |
 
 These providers process data on our behalf or as independent controllers for
 the limited purpose above. We do not sell data to anyone.

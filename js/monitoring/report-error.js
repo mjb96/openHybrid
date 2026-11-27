@@ -6,8 +6,9 @@
 // out-of-scope ReferenceError was swallowed, so the card never rendered and no
 // one knew). This module is the deliberate alternative: when we CHOOSE to catch
 // an error so the UI degrades instead of white-screening, the failure must still
-// be OBSERVABLE — logged with context in dev/CI, reported to Sentry in
-// production. Never silent.
+// be OBSERVABLE — logged with context, and visible to the test hook. Never
+// silent. There is deliberately no third-party crash reporter: the app sends
+// nothing off the device.
 //
 // Leaf module: no imports, safe to use anywhere.
 // =============================================================================
@@ -26,14 +27,7 @@ export function reportHandledError(context, err) {
   // 1) Always visible in dev + CI (the smoke test fails on unexpected
   //    console.error, so a swallowed throw can no longer pass unnoticed).
   try { console.error(`[openHybrid] handled error in ${context}:`, err && err.stack ? err.stack : err); } catch (_) { /* no console */ }
-  // 2) Production telemetry (DSN-gated; scrubbed by the Sentry config).
-  try {
-    const S = (typeof window !== 'undefined') ? /** @type {any} */ (window).Sentry : null;
-    if (S && typeof S.captureException === 'function') {
-      S.captureException(err, { tags: { handled: 'true', context } });
-    }
-  } catch (_) { /* Sentry not ready */ }
-  // 3) Test observability hook.
+  // 2) Test observability hook.
   if (_testHook) { try { _testHook(context, err); } catch (_) { /* hook must not break flow */ } }
 }
 

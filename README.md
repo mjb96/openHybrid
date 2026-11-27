@@ -137,7 +137,6 @@ flowchart LR
   AND --> HC["Health Connect bridge"]
   AND --> GPS["Foreground GPS service"]
   AND --> NOTIF["Notifications + reminders"]
-  UI --> SENTRY["Sentry<br/>scrubbed crash reports"]
 ```
 
 The web app is the product. The Android project is a thin, hardened host that

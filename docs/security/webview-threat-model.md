@@ -31,13 +31,14 @@ Third-party code does not execute from a CDN:
    inline scripts, and plugins **cannot execute**.
    `frame-ancestors 'none'` blocks clickjacking; `base-uri 'self'` blocks base
    tag injection. Network destinations are separated by type: `connect-src` is
-   limited to Sentry, `img-src` allows the approved map tiles, and font/style
-   origins allow the configured Google font.
-2. **Leaflet and Sentry are vendored** under `js/vendor/`, pinned to exact
-   package versions, and included in the service-worker precache.
+   limited to `'self'`, `img-src` allows the approved map tiles, and there are
+   no third-party script, style or font origins.
+2. **Leaflet is vendored** under `js/vendor/`, pinned to an exact version, and
+   included in the service-worker precache.
 3. The service worker has a regression guard that rejects remote-JavaScript
-   cache entries, and tests pin the vendored Sentry build.
-4. **Sentry remains DSN-gated** and inert without an explicit configuration.
+   cache entries.
+4. There is no crash reporter or analytics SDK; handled errors stay in the
+   console, and the only third-party request is for map tiles.
 
 ## Bridges (`addJavascriptInterface`)
 
