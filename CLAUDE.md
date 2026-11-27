@@ -441,14 +441,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - Muscle load: `js/analytics/muscle-load.js` reuses the Volume Guide's per-muscle
   weekly credits and adds last-trained recovery labels; the view is
   `js/analytics/views/view-muscle-load.js`, reached from Progress.
-- Progress overview: `buildProgressLanding` returns `weekSummary`, `units` and
-  `recentWeeks`; `buildRecentWeekSeries` and `buildCalendarTrainingWeeks`
-  (`js/analytics/training-calendar.js`) are date-strict, so imported/archived
-  sessions appear in the real week. The hub leads with a hero for the SELECTED
-  calendar week (eyebrow and aria-label are the Mon–Sun range, never a relative
-  "N weeks ago") and a 12-week strip before the domain cards. An untrained
-  selected week renders an honest `0 sessions · <range>` hero rather than
-  vanishing, and a historical week is never scored against the active plan —
+- Progress overview: `js/analytics/progress-landing.js` keeps only the pieces
+  still used — `plannedTrainingDays` (Week in Review), `buildRecentWeekSeries`
+  (training-context export) and `buildProgressLanding` → `{ allEmpty }` for the
+  hub's single empty lead. The retired four-domain model (and its duplicate
+  sessions-vs-planned-days adherence) is deleted. `buildRecentWeekSeries` and
+  `buildCalendarTrainingWeeks` (`js/analytics/training-calendar.js`) are
+  date-strict, so imported/archived sessions appear in the real week. An
+  untrained selected week renders an honest `0 sessions · <range>` hero rather
+  than vanishing, and a historical week is never scored against the active plan —
   "of N planned" and the adherence bar appear only for the live week. Review
   Stats leads with the seasonal **Year in Review** (`js/brain/year-review.js` +
   `views/view-year-review.js`): December recaps the current partial year, January

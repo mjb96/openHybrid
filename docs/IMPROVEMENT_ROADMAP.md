@@ -1758,6 +1758,21 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — Audit slice 10: the retired landing model and verified dead CSS.**
+  - `js/analytics/progress-landing.js` is down to its live contract:
+    `plannedTrainingDays`, `buildRecentWeekSeries` and `buildProgressLanding` →
+    `{ allEmpty }`. The four domain cards' duplicate models (including the old
+    sessions-vs-planned-days adherence) and the secondary-link list are deleted;
+    the hub already renders bands, and the hub no longer computes a running
+    metric for a card that does not exist.
+  - Removed 11 verified-dead CSS rules/features (`text-truncate`,
+    `badge-count-pill`, `alert-red`, `rest-decompression-banner`, the
+    `an-chart__legend` family and `an-kpi__value`), which also lowered the theme
+    literal count.
+  - Tests were reduced to the retained contract (`progress_landing`, module gate
+    now asserts the dashboard composer) rather than deleted silently.
+  - `npm run verify` green (2,990 tests); full browser suite re-run for the CSS.
+
 - **2026-11-28 — Audit slice 9: mobile time entry, corrected sets, cross-tab.
   - Every MM:SS field (cockpit hold, saved-session time, run duration, gym
     session, summary duration, rest tiers) uses a keyboard that can type a colon

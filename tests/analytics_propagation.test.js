@@ -16,7 +16,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildProgressLanding } from '../js/analytics/progress-landing.js';
+import { buildPulseModel } from '../js/analytics/pulse.js';
 import { buildWeeklyStrengthVolumeDetail } from '../js/analytics/strength-volume-detail.js';
 import { buildStrengthMetricDetail } from '../js/analytics/strength-detail.js';
 import { buildRunningMetricDetail } from '../js/analytics/running-detail.js';
@@ -57,16 +57,16 @@ function baseState() {
 
 test('deleting a workout immediately changes every strength surface', () => {
   const state = baseState();
-  const opts = { days: DAYS, today: TODAY };
+  const pulse = (st) => buildPulseModel(st, { todayISO: TODAY, weekStartISO: WK });
 
   const before = {
-    landing: buildProgressLanding(state, opts).domains.find((d) => d.id === 'consistency').headline.value,
+    landing: pulse(state).sessions,
     volume: buildWeeklyStrengthVolumeDetail(state, { weekStart: WK, today: TODAY }).totals.volumeKg,
     guide: buildVolumeGuideModel(state, { weekStart: WK, today: TODAY }).summary.loggedCredits,
     streak: computeStreak(state.weeks, DAYS, state, TODAY).total,
     summary: calendarStrengthSummary(state, { weekStart: WK }).hasCurrentWork,
   };
-  assert.equal(before.landing, '3');
+  assert.equal(before.landing, 3);
   assert.ok(before.volume > 0);
   assert.ok(before.guide > 0);
 
@@ -76,13 +76,13 @@ test('deleting a workout immediately changes every strength surface', () => {
   delete state.weeks['1'].dates.mon;
 
   const after = {
-    landing: buildProgressLanding(state, opts).domains.find((d) => d.id === 'consistency').headline.value,
+    landing: pulse(state).sessions,
     volume: buildWeeklyStrengthVolumeDetail(state, { weekStart: WK, today: TODAY }).totals.volumeKg,
     guide: buildVolumeGuideModel(state, { weekStart: WK, today: TODAY }).summary.loggedCredits,
     streak: computeStreak(state.weeks, DAYS, state, TODAY).total,
   };
 
-  assert.equal(after.landing, '2', 'the landing must drop the deleted day');
+  assert.equal(after.landing, 2, 'the week must drop the deleted day');
   assert.ok(after.volume < before.volume, 'weekly volume must fall');
   assert.ok(after.guide < before.guide, 'muscle credits must fall');
   assert.equal(after.streak, before.streak - 1, 'the streak must lose the day');
@@ -92,11 +92,9 @@ test('deleting a workout immediately changes every strength surface', () => {
 test('deleting the last workout empties rather than freezing the old value', () => {
   const state = baseState();
   state.weeks = {};
-  const landing = buildProgressLanding(state, { days: DAYS, today: TODAY });
-  const consistency = landing.domains.find((d) => d.id === 'consistency');
-  assert.equal(consistency.headline.value, '0');
-  assert.equal(consistency.empty, true);
-  assert.equal(landing.domains.find((d) => d.id === 'strength').empty, true);
+  const landing = buildPulseModel(state, { todayISO: TODAY, weekStartISO: WK });
+  assert.equal(landing.sessions, 0);
+  assert.equal(landing.hasData, false);
   assert.equal(buildWeeklyStrengthVolumeDetail(state, { weekStart: WK, today: TODAY }).totals.volumeKg, 0);
   assert.equal(calendarStrengthSummary(state, { weekStart: WK }).hasCurrentWork, false);
 });
@@ -140,8 +138,7 @@ test('correcting a DATE moves the work to its real week everywhere', () => {
 test('importing new activity appears without any cache reset', () => {
   const state = baseState();
   const runBefore = buildRunningMetricDetail(state, 'running.weekly-distance', { today: TODAY })?.value || 0;
-  const landingBefore = buildProgressLanding(state, { days: DAYS, today: TODAY })
-    .domains.find((d) => d.id === 'consistency').headline.value;
+  const landingBefore = buildPulseModel(state, { todayISO: TODAY, weekStartISO: WK }).sessions;
 
   // A .FIT import lands a new dated run on a previously untrained day.
   state.weeks['1'].runs.thu = { dist: '12.0', time: '55:00' };
@@ -149,9 +146,8 @@ test('importing new activity appears without any cache reset', () => {
 
   const runAfter = buildRunningMetricDetail(state, 'running.weekly-distance', { today: TODAY })?.value || 0;
   assert.ok(runAfter > runBefore, `weekly distance ${runBefore} → ${runAfter}`);
-  const landingAfter = buildProgressLanding(state, { days: DAYS, today: TODAY })
-    .domains.find((d) => d.id === 'consistency').headline.value;
-  assert.equal(Number(landingAfter), Number(landingBefore) + 1, 'consistency must count the imported day');
+  const landingAfter = buildPulseModel(state, { todayISO: TODAY, weekStartISO: WK }).sessions;
+  assert.equal(landingAfter, landingBefore + 1, 'the week must count the imported day');
 });
 
 test('importing wellness readings reaches the recovery details', () => {
@@ -203,9 +199,9 @@ test('no model memoises across mutations of the same state object', () => {
   const second = buildWeeklyStrengthVolumeDetail(state, { weekStart: WK, today: TODAY }).totals.volumeKg;
   assert.ok(second > first, `same object mutated in place: ${first} → ${second}`);
 
-  const landingA = buildProgressLanding(state, { days: DAYS, today: TODAY });
+  const pulseA = buildPulseModel(state, { todayISO: TODAY, weekStartISO: WK }).sessions;
   state.weeks['1'].dates.fri = '2026-07-17';
   state.weeks['1'].lifts.fri = { 'Barbell Bench Press': [work(100, 5)] };
-  const landingB = buildProgressLanding(state, { days: DAYS, today: '2026-07-17' });
-  assert.notEqual(landingB.domains[0].headline.value, landingA.domains[0].headline.value);
+  const pulseB = buildPulseModel(state, { todayISO: '2026-07-17', weekStartISO: WK }).sessions;
+  assert.equal(pulseB, pulseA + 1, 'the added day must count immediately');
 });
