@@ -130,6 +130,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `tests/settings_registry.test.js` fails when a stored key is outside the
   registry or a default fails its validator; `tests/settings_store.test.js`
   pins validation-before-mutation, atomic batches and cross-tab isolation.
+  A partial cross-tab payload never resets an absent key (absence means
+  unchanged), and `applySyncedSettings` repaints theme/palette/text-size/motion
+  when another tab changed them.
 - Settings components (§14.12, Phase 3): `js/settings/components.js` is the ONE
   builder set for pages/groups/rows and every control (toggle, segmented,
   stepper, slider, time, text, select list, picker, danger). Rows are 64px with
@@ -1255,8 +1258,11 @@ server works.
   of that lift — and the next session — resolves the same rest. A `restSec` that
   was already stored on another set still outranks it (legacy/explicit rows are
   never rewritten); the set sheet shows the resolved value, not "default".
-  Per-set `note` (140 chars) is shown in the logger and recap. Both are additive
-  and recognised by the draft predicates. A blank row's GHOST follows the
+  Correcting a COMPLETED set re-runs the same verdict on change/blur: zero reps,
+  a blank hold/carry or a negative weight unticks it and explains the row inline,
+  so the screen never shows a tick analytics would discard. Per-set `note`
+  (140 chars) is shown in the logger and recap. Both are additive and recognised
+  by the draft predicates. A blank row's GHOST follows the
   athlete: `ghostForRow` (set-entry) copies the nearest earlier non-warm-up
   set's entered weight/reps, and a live input sync updates the next row. The
   coach's target stays on the row as `data-prescribed` and is what `_numericPlaceholder`

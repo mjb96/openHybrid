@@ -1,3 +1,14 @@
+test('a partial cross-tab payload never resets a setting it does not carry', () => {
+  const { state, store } = setup();
+  assert.equal(state.settings.name, 'Alex');
+  assert.equal(state.settings.theme, 'dark');
+
+  store.syncFromRaw(JSON.stringify({ settings: { theme: 'light' } }), 'storage');
+  assert.equal(state.settings.theme, 'light', 'the carried key is applied');
+  assert.equal(state.settings.name, 'Alex', 'an absent key is unchanged, never defaulted');
+  assert.equal(state.settings.weightUnit, 'kg');
+});
+
 // =============================================================================
 // SETTINGS STORE
 //

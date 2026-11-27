@@ -224,7 +224,7 @@ function strengthBody(draft, unit) {
         return `<div class="edit-saved-set" data-edit-set>
           <span class="edit-saved-set__n">${index + 1}${set.type ? ` · ${esc(set.type)}` : ''}</span>
           <label><span>Weight (${esc(unit)})</span><input type="number" inputmode="decimal" step="0.5" min="0" data-edit-lift="${esc(lift)}" data-edit-index="${index}" data-edit-field="w" data-display-value="${esc(shownWeight)}" value="${esc(shownWeight)}"></label>
-          <label><span>${valueLabel}</span><input type="${mode === SET_MODE.TIME ? 'text' : 'number'}" ${mode === SET_MODE.TIME ? 'inputmode="numeric"' : 'inputmode="decimal" step="0.01" min="0"'} data-edit-lift="${esc(lift)}" data-edit-index="${index}" data-edit-field="${valueField}" value="${esc(value)}"></label>
+          <label><span>${valueLabel}</span><input type="${mode === SET_MODE.TIME ? 'text' : 'number'}" ${mode === SET_MODE.TIME ? 'inputmode="text" autocapitalize="off" spellcheck="false"' : 'inputmode="decimal" step="0.01" min="0"'} data-edit-lift="${esc(lift)}" data-edit-index="${index}" data-edit-field="${valueField}" value="${esc(value)}"></label>
           <button type="button" class="edit-saved-remove-set" data-edit-remove-set data-edit-lift="${esc(lift)}" data-edit-index="${index}" aria-label="Remove set ${index + 1} of ${esc(lift)}">✕</button>
         </div>`;
       }).join('')}
@@ -335,7 +335,7 @@ function runBody(week, day, sessionId) {
   const run = list.find((entry) => entry.sessionId === sessionId) || list[0] || week?.runs?.[day] || {};
   return `<div class="edit-saved-run">
     <label><span>Distance (km)</span><input type="number" inputmode="decimal" step="0.01" min="0" id="editRunDist" value="${esc(run.dist ?? '')}"></label>
-    <label><span>Duration (M:SS)</span><input type="text" inputmode="numeric" id="editRunTime" maxlength="6" value="${esc(run.time ?? '')}"></label>
+    <label><span>Duration (M:SS)</span><input type="text" inputmode="text" autocapitalize="off" spellcheck="false" id="editRunTime" maxlength="6" value="${esc(run.time ?? '')}"></label>
     <label><span>Avg HR</span><input type="number" inputmode="numeric" min="0" max="260" id="editRunAvgHR" value="${esc(run.avgHR ?? '')}"></label>
     <label><span>Max HR</span><input type="number" inputmode="numeric" min="0" max="260" id="editRunMaxHR" value="${esc(run.maxHR ?? '')}"></label>
     <label class="edit-saved-notes"><span>Notes</span><textarea id="editRunNotes" rows="3">${esc(run.notes ?? '')}</textarea></label>

@@ -116,6 +116,21 @@ function _applyResetEffects(page) {
   }
 }
 
+/** Re-apply display-only settings after ANOTHER tab changed them. */
+export function applySyncedSettings(keys = []) {
+  const state = _getState?.();
+  if (!state || typeof document === 'undefined') return;
+  const changed = new Set(Array.isArray(keys) ? keys : []);
+  if (!changed.size || changed.has('theme') || changed.has('palette')) {
+    _applyTheme(state.settings?.theme || 'dark');
+    applyPalette(document.documentElement, normalizePalette(state.settings?.palette));
+  }
+  if (changed.has('textSize')) applyTextSize(state.settings?.textSize || 'default');
+  if (changed.has('reducedMotion')) {
+    applyMotionPreference(normalizeMotionPreference(state.settings?.reducedMotion));
+  }
+}
+
 function _showUndoToast(message, onUndo) {
   document.getElementById('settingsUndoToast')?.remove();
   const toast = document.createElement('div');

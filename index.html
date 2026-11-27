@@ -754,7 +754,7 @@
 
         <div id="gymStatsRow" style="display: none; padding-bottom: 12px; margin-bottom: 8px;">
           <div class="run-grid-inputs mb-2" style="grid-template-columns: repeat(4, 1fr);">
-            <label><span class="set-num-lbl block mb-1 text-main">Time</span><input type="text" id="gymInputTime" aria-label="Gym session time" placeholder="e.g. 45 or 45:00" inputmode="numeric" style="text-align: center;"></label>
+            <label><span class="set-num-lbl block mb-1 text-main">Time</span><input type="text" id="gymInputTime" aria-label="Gym session time" placeholder="e.g. 45 or 45:00" inputmode="text" autocapitalize="off" spellcheck="false" style="text-align: center;"></label>
             <label><span class="set-num-lbl block mb-1 text-accent-pink">Avg HR</span><input type="text" id="gymInputAvgHR" placeholder="--" readonly style="text-align: center; color:var(--accent);"></label>
             <label><span class="set-num-lbl block mb-1 text-accent-pink">Max HR</span><input type="text" id="gymInputMaxHR" placeholder="--" readonly style="text-align: center; color:var(--accent);"></label>
             <label><span class="set-num-lbl block mb-1 text-accent-green">Cals</span><input type="text" id="gymInputCals" placeholder="--" readonly style="text-align: center; color:var(--success);"></label>
@@ -1179,7 +1179,7 @@
         </div>
         <div class="rl-field-row">
           <label class="rl-label">Duration</label>
-          <input type="text" id="rlTime" class="rl-input" placeholder="mm:ss" inputmode="numeric">
+          <input type="text" id="rlTime" class="rl-input" placeholder="mm:ss" inputmode="text" autocapitalize="off" spellcheck="false">
         </div>
         <div class="rl-field-row">
           <label class="rl-label" for="rlRpe">RPE</label>
@@ -1584,7 +1584,7 @@
       <div id="summaryHighlights" class="summary-highlights" hidden></div>
       <div class="mt-5">
         <label for="summaryDuration" class="text-xs-bold block mb-1 text-muted">Session duration</label>
-        <input type="text" id="summaryDuration" inputmode="numeric" placeholder="e.g. 45 or 45:00" class="mb-2">
+        <input type="text" id="summaryDuration" inputmode="text" autocapitalize="off" spellcheck="false" placeholder="e.g. 45 or 45:00" class="mb-2">
         <!-- Effort and notes are OPTIONAL, so they are disclosed on request
              rather than presented as fields to fill in. Auto-opens when the
              session already has any of them, so an athlete who logged effort in
