@@ -1262,6 +1262,11 @@ architecture, never Apple assets, icons or wording.
 - END: update implementation status and add a Session Log entry in
   `docs/IMPROVEMENT_ROADMAP.md` (date · what
   changed · what's next), commit. Never end on a broken tree or with unrecorded work.
+  When the PR merges, **delete its head branch** — GitHub auto-delete is on for
+  `mjb96/openHybrid`, and `git fetch --prune` plus `git branch -d` keeps the local
+  copy in step. Squash merges never make a branch an ancestor of `main`, so
+  `git branch --merged` cannot find these; use the merged PR, not ancestry, and
+  delete any stale `git worktree` that still holds the branch.
 
 ### Operating rules
 - Security and data-safety first. Never ship a change that could leak or lose user
