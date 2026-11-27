@@ -104,9 +104,18 @@ extended catalogue in `js/exercises/opengym-catalogue.js` is **metadata only**
   through [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset),
   under the MIT licence reproduced below.
 
-No imported instructional text, descriptions or exercise media — stills, GIFs or
-animations — are shipped. Form guidance comes only from the reviewed core
-catalogue. openGym's media is separately licensed to Gym visual and is not AGPL.
+No imported instructional text, descriptions or openGym exercise media (GIFs,
+animations or Gym-visual stills) are shipped. Form guidance comes only from the
+reviewed core catalogue. openGym's media is separately licensed to Gym visual
+and is not AGPL.
+
+### Free Exercise DB — Unlicense (public domain)
+
+`assets/exercises/*.webp` contains two demonstration stills for 142 of the 157
+core lifts, from [Free Exercise DB](https://github.com/yuhonas/free-exercise-db)
+by yuhonas, released under the Unlicense (public domain dedication). The mapping
+is `js/exercises/media.js`; the source exercise's name is captioned where it
+differs from ours. These are stills, not animations.
 
 ```
 MIT License

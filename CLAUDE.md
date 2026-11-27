@@ -525,8 +525,9 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   `tests/light_override_guard.test.js` ratchets raw colours inside
   `html[data-theme="light"]` rules — that shape caused every light-mode defect.
 - Exercise catalogue: the original 157 are `CORE_EXERCISES`; `js/exercises/opengym-catalogue.js`
-  adds ~5,555 openGym catalogue **metadata** entries (names/ids/muscles/equipment; no imported instructions, descriptions or media) imported by
-  `scripts/import-opengym-catalogue.mjs`. `OPENGYM_ID_NAMES` resolves plan-file ids.
+  adds 5,555 openGym catalogue **metadata** entries (157 core + 5,555 = 5,712 in
+  total; names/ids/muscles/equipment, with no imported instructions,
+  descriptions or media) imported by `scripts/import-opengym-catalogue.mjs`. `OPENGYM_ID_NAMES` resolves plan-file ids.
   Never include Gym-visual media; see NOTICE.md and docs/EXERCISE_LIBRARY.md.
 Exercise demos are Free Exercise DB stills (Unlicense) for 142 of the 157 core
 lifts: `assets/exercises/<id>-{0,1}.webp`, mapped in `js/exercises/media.js`,
@@ -617,8 +618,8 @@ server works.
   `js/ui/customize.js` owns the card catalogue and `settings.ui`, and
   `js/ui/customize-sheet.js` persists/applies it. Today, safety flags, quick
   actions and navigation stay pinned. Keep `#homePrimaryCta`,
-  `.btn-history-link` and the Run quick action in the Home DOM — browser checks
-  measure them.
+  `.btn-history-link` in the Home DOM — browser checks measure them. Run lives in
+  Train's Quick start (its Run/Walk offers carry the module hooks).
 - Train landing: `js/train/train-landing.js` + `view-train-landing.js` render a
   SESSION PREVIEW, not a second Home: week rail, today's card with the day's
   `liftTarget` prescriptions, one Start/Resume, Quick start limited to
@@ -1096,8 +1097,8 @@ server works.
   (`detail-fit.js` → the SAME `programFit` the recommendations use, so the two
   surfaces cannot disagree; it additionally shows the CAUTIONS, which the
   recommendations row must never show), then commitment, then equipment FIT, then
-  the week-stepped preview, progression and the Overview | Structure | **Plan**
-  tabs (week-by-week timeline, `timeline.js`). Level and equipment tier are stated
+  the week-stepped preview, progression and the week-by-week timeline
+  (`timeline.js`). Level and equipment tier are stated
   ONCE each — re-adding a decorative difficulty/tier tag row is the duplication 4B
   removed. The Structure sample + day-preview modal resolve each lift's sets×reps
   via `liftTarget` (the SAME call the cockpit uses), NOT the catalog's decorative
@@ -1137,8 +1138,8 @@ server works.
   it). `liftTarget` therefore inherits the model from `sourceProgramId` at READ time
   (`withInheritedProgressionModel`, `js/engine.js`) — nothing stored is rewritten, and
   an unauthored swapped-in lift still falls through.
-- Workout modules: `js/workout.js` (1,837 lines) is imported ONLY by `js/app.js`,
-  which uses 21 of its 44 exports. Exercise selection lives in
+- Workout modules: `js/workout.js` (~2,660 lines) is imported ONLY by `js/app.js`,
+  which wires 22 of its exports. Exercise selection lives in
   `js/workout/exercise-picker.js`, the confirm-reset flow in
   `js/workout/clear-log.js`, and cockpit run rendering/manual persistence in
   `js/workout/run-logging.js`; row addition/removal, removal Undo, set type/RIR,

@@ -1,3 +1,8 @@
+> **Historical record.** This audit describes the tree at the commit named below.
+> Some findings have since been fixed; the current architecture rules live in
+> `AGENTS.md` and the session log in `docs/IMPROVEMENT_ROADMAP.md`. Do not treat
+> a finding here as current without checking the code.
+
 # 00 — Executive summary
 
 **Audit:** openHybrid, formerly Helyx (`mjb96/hybrid-app` @ `abbeb97`) vs openGym (`DuarteSantos8/openGym` @ `e4a68a9`), 2026-11-19.

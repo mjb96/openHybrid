@@ -89,9 +89,9 @@ purpose above. We do not sell data to anyone.
 - **Consent:** for optional features you switch on — Health Connect access, GPS
   tracking and notifications. You can withdraw permission or stop using the
   feature; local data deletion is described below.
-- **Legitimate interests:** keeping the app secure and fixing crashes through
-  the limited, scrubbed diagnostics described above. {{LEGAL REVIEW: confirm
-  the appropriate basis in every launch region.}}
+- **Legitimate interests:** keeping the app secure and reliable. No diagnostics
+  leave the device. {{LEGAL REVIEW: confirm the appropriate basis in every
+  launch region.}}
 
 Health and location data are **special-category / sensitive** data and are
 processed only with your explicit consent (by enabling the relevant feature).
@@ -99,7 +99,6 @@ processed only with your explicit consent (by enabling the relevant feature).
 ## 6. Data retention
 - Local data stays until you delete it or uninstall the app.
 - openHybrid holds no cloud copy of your training data.
-- Crash reports are retained for {{SENTRY_RETENTION_PERIOD}} and then deleted.
 
 ## 7. Your rights
 Depending on where you live (e.g. EEA/UK), you have the right to access,
@@ -115,16 +114,15 @@ complain to your local data-protection authority.
 ## 8. Deleting your data
 openHybrid has no account to delete. Local data is removed by Settings → Reset All
 Data, by clearing the app's storage, or by uninstalling. Android automatic
-backup files remain in the folder you chose until you delete them. If you have a
-privacy question about a crash report, contact **{{CONTACT_EMAIL}}**.
+backup files remain in the folder you chose until you delete them.
 
 ## 9. Children
 openHybrid is not directed to children under {{MIN_AGE, e.g. 16}} and we do not
 knowingly collect their data.
 
 ## 10. International transfers
-Crash diagnostics and map/font requests may be processed on servers outside your
-country by the limited providers above. Your training data is not transferred.
+Map tile requests may be processed on servers outside your country by the
+provider above. Your training data is not transferred.
 
 ## 11. Changes to this policy
 We will update this policy as the app evolves and revise the "Last updated"

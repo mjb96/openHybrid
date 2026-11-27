@@ -76,3 +76,33 @@ test('Settings exposes the AGPL source link for network users', () => {
 });
 
 
+
+test('exercise stills are attributed to Free Exercise DB in NOTICE', () => {
+  const notice = read('NOTICE.md');
+  assert.match(notice, /Free Exercise DB/);
+  assert.match(notice, /Unlicense/);
+  assert.match(notice, /assets\/exercises/);
+  // The old sentence claimed no exercise media shipped at all, contradicting
+  // the 284 files the precache delivers.
+  assert.doesNotMatch(notice, /No imported instructional text, descriptions or exercise media/);
+});
+
+test('outward-facing docs do not describe a crash reporter, backend or account system', () => {
+  for (const name of ['README.md', 'SECURITY.md', 'docs/store-listing.md', 'docs/legal/terms-of-service.md', 'docs/legal/privacy-policy.md']) {
+    const text = read(name);
+    assert.doesNotMatch(text, /scrubbed crash report/i, `${name} must not claim crash reporting`);
+    assert.doesNotMatch(text, /Sentry|SENTRY_/i, `${name} must not mention Sentry`);
+  }
+  assert.doesNotMatch(read('SECURITY.md'), /Supabase|supabase\//, 'SECURITY.md must not scope a backend that does not exist');
+  const terms = read('docs/legal/terms-of-service.md');
+  assert.doesNotMatch(terms, /You must provide a valid email to create an account|optionally sync across devices/i);
+});
+
+test('a local Android build stages every precached asset and keeps the boot receiver internal', () => {
+  const gradle = read('android/app/build.gradle.kts');
+  for (const item of ['assets/**', 'icon-192.png', 'icon-maskable-512.png', 'NOTICE.md', 'LICENSES/**']) {
+    assert.ok(gradle.includes(item), `copyWebAssets must include ${item}`);
+  }
+  const manifest = read('android/app/src/main/AndroidManifest.xml');
+  assert.match(manifest, /<receiver android:name="\.BootReceiver" android:exported="false">/);
+});

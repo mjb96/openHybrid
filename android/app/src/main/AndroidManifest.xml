@@ -64,7 +64,7 @@
         <!-- Daily reminder alarm target (triggered by our own PendingIntent). -->
         <receiver android:name=".ReminderReceiver" android:exported="false" />
         <!-- Re-arms the reminder alarm on boot. -->
-        <receiver android:name=".BootReceiver" android:exported="true">
+        <receiver android:name=".BootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>

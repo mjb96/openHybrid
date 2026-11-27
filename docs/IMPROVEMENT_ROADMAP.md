@@ -1123,7 +1123,8 @@ P0 and must be closed before H1's acceptance is claimed.
 
 ### 14.9 Settings & Profile rebuild — Phase 0 audit (25 Nov 2026)
 
-**Status: AWAITING APPROVAL — no UI has been written.** The full setting-by-setting
+**Status: SUPERSEDED — delivered in §14.10–§14.13.** This section is the Phase 0
+audit record, not a pending decision. The full setting-by-setting
 matrix, entry-point audit, proposed 13-row IA, profile-field map and
 dead/duplicate/conflicting list live in
 `docs/audit/settings-profile-rebuild-audit.md`.
@@ -1757,6 +1758,21 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Audit slice 5: the docs match the product.**
+  - `NOTICE.md` now attributes the 284 Free Exercise DB stills (Unlicense) and
+    no longer claims no exercise media ships; `license.test.js` asserts both.
+  - README, SECURITY, the store listing and the legal drafts stop describing a
+    crash reporter, a Supabase backend, accounts or cross-device sync. Placeholder
+    legal review remains `[You]`.
+  - AGENTS stale lines corrected: the removed plan tabs, the Home Run action, the
+    workout.js size and the catalogue arithmetic. Historical audits carry a
+    "superseded" banner so a fixed finding is not read as current.
+  - Android local builds stage `assets/**` and both launcher icons — the prebuild
+    `copyWebAssets` omitted them, so `assembleDebug` shipped a service worker
+    whose `cache.addAll` rejects. `BootReceiver` is no longer exported.
+  - Tests: Free Exercise DB attribution, outward-facing no-crash/no-backend copy,
+    Android staging and receiver export (3,023 total). `npm run verify` green.
+
 - **2026-11-27 — Audit slice 4: Settings stays put, and untrusted text is text.**
   - Changing a control no longer re-renders the page at the top: scroll position
     and focus return to the same row (`_showSettings` preservePosition).

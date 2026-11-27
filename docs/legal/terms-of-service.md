@@ -17,14 +17,15 @@ openHybrid is provided by {{YOUR NAME OR COMPANY}} ("we", "us"). Contact:
 {{CONTACT_EMAIL}}.
 
 ## 2. The service
-openHybrid helps you plan and log strength and running training, view analytics, and
-optionally sync across devices with an account. Features that depend on device
-capabilities or permissions (Health Connect, GPS, notifications) require your
-consent and a compatible device.
+openHybrid helps you plan and log strength and running training and view
+analytics. It is a local-first app: there is no account system and no cloud
+sync. Features that depend on device capabilities or permissions (Health
+Connect, GPS, notifications) require your consent and a compatible device.
 
-## 3. Your account
-- You are responsible for keeping your login credentials secure.
-- You must provide a valid email to create an account.
+## 3. No account; your device
+- openHybrid does not create an account, ask for an email address or store a
+  password.
+- You are responsible for keeping your own backups (Settings → Data → Export).
 - You must be at least {{MIN_AGE, e.g. 16}} years old to use openHybrid.
 
 ## 4. Health & safety disclaimer (important)
@@ -36,13 +37,12 @@ injury. You train at your own risk. We are not responsible for injury, illness,
 or loss resulting from use of the app.
 
 ## 5. Acceptable use
-Don't misuse the app: no attempting to break security or access other users'
-data, no reverse-engineering except as permitted by law, no unlawful use.
+Don't misuse the app: no attempting to break its security, no reverse-engineering
+except as permitted by law, no unlawful use.
 
 ## 6. Your content
-You keep ownership of the training data you create. You grant us only the
-limited permission needed to store and sync it to provide the service, as
-described in the Privacy Policy.
+You keep ownership of the training data you create. openHybrid processes it on
+your device to provide the app; it is not uploaded to us.
 
 ## 7. Availability & changes
 openHybrid is provided "as is" and "as available". We may update, change, or
@@ -56,8 +56,8 @@ Terms limits liability that cannot be limited by law (e.g. for death or personal
 injury caused by negligence).
 
 ## 9. Termination
-You may stop using openHybrid at any time and delete your account. We may suspend
-access for breach of these Terms.
+You may stop using openHybrid at any time and delete your local data in
+Settings. We may discontinue the app.
 
 ## 10. Governing law
 These Terms are governed by the laws of {{JURISDICTION, e.g. England & Wales}},

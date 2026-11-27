@@ -1,5 +1,10 @@
 # openHybrid — Deep Audit
 
+> **Historical record.** This audit describes the tree at the commit named below.
+> Some findings have since been fixed; the current architecture rules live in
+> `AGENTS.md` and the session log in `docs/IMPROVEMENT_ROADMAP.md`. Do not treat
+> a finding here as current without checking the code.
+
 **Commit:** `34514dd0642d079d39d003b04d86208adb0fee8b` (detached HEAD, clean tree)
 **Date:** 2026-11-23
 **Auditor:** Deep-Audit Orchestrator (single accountable owner; seven read-only specialist streams supplied evidence, all verdicts re-checked here)

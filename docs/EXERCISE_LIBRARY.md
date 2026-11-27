@@ -76,7 +76,7 @@ Media is deliberately out of scope until there is a licence-compatible source. T
 **Rollout (142 of 157 core lifts).** `assets/exercises/*.webp` holds two
 public-domain stills per lift from Free Exercise DB (Unlicense), crossfaded into a slow loop in
 the exercise detail. The mapping is `js/exercises/media.js`; the files are
-precached by discovery (~3.6 MB for 142 lifts, 480 px WebP). Where the source
+precached by discovery (~4.1 MB for 142 lifts, 480 px WebP). Where the source
 exercise has a different name the block says “Demo: <source>”, so a paused or
 EZ-bar variant never pretends to be a different movement. Fifteen lifts have no
 defensible match and show no demo. Attributed in `NOTICE.md`.
