@@ -1457,7 +1457,7 @@ Verify first; sources: openGym, Hevy.
 | G7 | Favourite exercises | `exercises/favourites.js`; picker/library read it | Star an exercise; favourites sort first in the picker and library | DONE | Every picker row carries a 44px star (`aria-pressed`, Add/Remove <name>), and the unfiltered library leads with ONE **Favourites** section — catalogue and custom together, never duplicated — while a filtered list sorts favourites first. The preference is one id-keyed map (`settings.favouriteExercises`), so a catalogue alias stars the same exercise, toggling is idempotent and the map is bounded at 120; the import sanitizer keeps only `key: true` on a null-prototype object. Tests: `favourites` (alias key, custom key, bound, stable order, star naming, hostile import) and `exercise-picker-browser-check` (star size/state, persisted state, Favourites section, favourite leads). |
 | G9 | Curated exercise core | `exercises/catalog.js` | Choose about 300–500 core exercises and give each reviewed instructions (66 reviewed today against ~5,700 entries). Ship in batches of 25. Do not expand the catalogue | DONE | **The curated core is fixed at 157 entries by owner decision; the 300–500 line is superseded.** All **157/157** now carry authored instructions, a declared difficulty and specific safety notes, shipped in human-reviewed batches of 25. Copy names the setup, the execution and what actually goes wrong under load; the sentence/length and complete-or-not-at-all guards hold, and the ratchet is 157. No catalogue expansion. |
 | G10 | Explained targets | `engine.js`, `templates.js`, `workout/target-why.js` | Every progression target states in one line why today's number is today's number | DONE | The cockpit card now shows one why line under the target: the engine's message for a stall/fatigue hold, the progression rationale behind the suggested load, a baseline line for a first performance, or the program prescription when history exists but no progression applies. It never invents a reason and never duplicates the diagnostic message; `tests/target_why.test.js` pins the cases and the render. |
-| LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | MISSING | No tap/second audit or harness exists. Static trace: ghost values allow a one-tap tick; add/replace/delete each have avoidable steps. |
+| LG1 | Set-entry tap audit | `templates.js`, `workout.js`, `set-sheet.js`, `exercise-picker.js`, `scripts/tap-audit-browser-check.mjs` | Count taps and seconds to log a set, add an exercise mid-session, replace an exercise, delete and undo a set. Remove avoidable taps. Never make the common path slower | DONE | `scripts/tap-audit-browser-check.mjs` counts trusted `pointerdown` taps, asserts a budget per flow and reports reach + ms. Measured at 390×844 (agent-traced): **log 1 · add 2 · duplicate add 2 · swap 2 · swap via the library 3 · delete 2 · undo 1** — every flow at its floor, so no common path got slower and none needed a tap removed. The audit's findings were reach and dead ends: the swap sheet promised a "full list below" that did not exist (L-F6 — the library now opens in **swap mode**, so a custom lift with no substitutes went impossible → 3 taps), a duplicate add toasted "Added" without changing state, a no-op swap closed silently, a typed catalogue name became a custom duplicate, and **Add Unplanned Exercise** sat 3.67 screens down (a 44px `+ Add` with the Exercises heading puts it at **0.5 screens**, on screen). Taps are asserted; ms is reported, never asserted (device timings stay `[You]`). |
 | LG2 | Ergonomics | `css/styles.css`, `ui/visible-viewport.js` | One-handed reach, keyboard and numpad behaviour, safe areas, large targets, no control hidden behind the keyboard | DONE | 44px, contrast, safe areas and inputmode pass. The visible viewport is tracked app-wide (`--visible-viewport-height`), the per-set sheet is capped by it instead of 88vh, numeric fields get `enterkeyhint="done"` on focus, and a delegated focus handler scrolls a field clear of the on-screen keyboard (nearest scrollable ancestor first). `scripts/lg2-keyboard-browser-check.mjs` drives the real browser at 390 with a shrunken viewport. |
 
 G8 (demo size) and G6 (week start) live in H1; G4 (year heatmap) is in §17.2.
@@ -1631,8 +1631,8 @@ never assumed.
 | 1 | Change the weight unit | pending | — | pending | pending | — |
 | 2 | Find a setting by name | pending | — | pending | pending | — |
 | 3 | Start today's planned workout from cold open | pending | — | pending | pending | — |
-| 4 | Log a working set with previous values shown | pending | — | pending | pending | — |
-| 5 | Add an exercise mid-session | pending | — | pending | pending | — |
+| 4 | Log a working set with previous values shown | pending | 1 tap (agent-traced, 390 px) | pending | pending | 2026-11-28 |
+| 5 | Add an exercise mid-session | pending | 2 taps (agent-traced, 390 px) | pending | pending | 2026-11-28 |
 | 6 | Review one lift's progress | 3 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
 | 7 | Review last week | 2 taps | 2 taps | pending | pending | 2026-11-25 (agent-traced) |
 | 8 | Open the month recap | 1 tap | 1 tap | pending | pending | 2026-11-25 (agent-traced) |
@@ -1758,6 +1758,34 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — H3 LG1: the logging flows are measured, and the dead ends closed.**
+  - `scripts/tap-audit-browser-check.mjs` counts trusted `pointerdown` taps,
+    asserts a budget per flow and reports reach + ms: **log 1 · add 2 ·
+    duplicate add 2 · swap 2 · swap via the library 3 · delete 2 · undo 1**.
+    Every flow is at its floor, so nothing got slower; ms is reported, never
+    asserted, and the device timings stay `[You]`.
+  - **L-F6:** the swap sheet promised a "full list below" it did not have.
+    **Browse all exercises** opens the SAME library modal in `swap` mode
+    (search, filters, favourites — one owner), so a custom lift has a real
+    replacement path. The close→open hand-off uses `replaceManagedModal`: two
+    separate managed modals raced `history.back()` against `pushState()` and
+    popped the app to `about:blank`.
+  - **Honesty:** adding a lift already in the day says so instead of toasting
+    "Added"; a no-op/duplicate swap names the problem instead of closing
+    silently; a typed catalogue name is canonicalised instead of saved as a
+    custom duplicate. A second toast now cancels the previous timer — the old
+    one hid the new message early, which is exactly how the duplicate warning
+    could vanish before it was read.
+  - A borderline light-mode AA row found by the CI contrast audit
+    (`#band-muscles .pg-segment__chip.is-selected`, 4.42:1 on its gradient)
+    uses the project's `#155e75` light accent (~6:1) instead of `#0e7490`.
+  - **Reach:** `+ Add Unplanned Exercise` sat **3.67 screens** down; a 44px
+    `+ Add` with the Exercises heading puts it at **0.50 screens** and on screen.
+    An added or swapped lift is expanded and scrolled into view through
+    `focusExerciseCard` (the accordion keeps one owner).
+  - `npm run verify` green (2,990 tests); tap audit, set-row, picker, modal,
+    outline and ergonomics browser checks pass.
+
 - **2026-11-28 — Audit slice 10: the retired landing model and verified dead CSS.**
   - `js/analytics/progress-landing.js` is down to its live contract:
     `plannedTrainingDays`, `buildRecentWeekSeries` and `buildProgressLanding` →
@@ -1893,202 +1921,3 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     splits on Home and Year in Review, planned-day adherence, FIT gym sessions,
     walk-only recap. `npm run verify` green (3,011 tests).
 
-- **2026-11-27 — Audit slice 1: imports, archives and backups fail safe.**
-  - Import now writes storage BEFORE adopting memory (`commitImportedState`), so a
-    quota failure leaves the live state and the saved copy untouched. The same path
-    rejects `__proto__`/`constructor`/`prototype` keys, and migration steps write
-    own properties, so a hostile backup cannot pollute a prototype.
-  - Program switching no longer deletes a week whose only content is a workout
-    note, session RPE, day bodyweight, session status or gym HR/calories.
-  - GPS-route reads for backup reject on error/abort instead of producing a
-    partial archive; `buildCompleteBackup` refuses a non-array read.
-  - A weigh-in edit rewrites every duplicate row for that date (`upsertWeighIn`),
-    matching the reader's last-row-wins rule.
-  - Photo archives are validated before anything is written (entry count,
-    per-entry/total size, safe relative names, duplicate names, CRC, JPEG magic),
-    and `addPhoto` removes the blob when its state write fails. Oversized
-    JSON/FIT/photo files are refused before they are read into memory.
-  - CSV/FIT imports report an honest failure when the device refuses the save.
-  - Tests: import atomicity/prototype cases, note/RPE archive cases, duplicate
-    weigh-in, and zip truncation/CRC/traversal/duplicate cases (3,004 total).
-    `npm run verify` green; import, photo and measures browser checks pass.
-
-- **2026-11-27 — The notices ship in the app; the map loses its credit line.**
-  - `NOTICE.md` reproduces the upstream Body Muscles NOTICE verbatim
-    (Apache-2.0 §4(d)), and both `NOTICE.md` and `LICENSES/Apache-2.0.txt` now
-    ship in the PWA precache and the Android www assets.
-  - Settings → About → Licences opens an in-app sheet (fetch + escaped `<pre>`,
-    repository fallback) instead of sending the reader to GitHub.
-  - The per-card credit is gone from the heat map and the Pulse band;
-    attribution lives in the sheet, so the map no longer opens an external tab.
-  - Guards: `licenses_sheet.test.js` (escaping, fallback), the licence test
-    checks the upstream NOTICE text and both shipped files, and the settings
-    browser check opens the sheet, verifies one dialog and returns focus.
-
-- **2026-11-27 — Plans visual pass: no cover art, one reason, one job per row.**
-  - Owner feedback: the plan "thumbnails" were the weak part. Removed the
-    gradient/glyph hero from the plan page and the cover tiles from the
-    recommendations and similar plans.
-  - The plan page opens with a typographic header: category · level eyebrow with
-    a category dot, the title, the focus/tagline, `8 weeks · 2×/week`, then the
-    fit verdict (only when there is one) and real attribution only ("Inspired by
-    You" is suppressed). Primary + Edit share one row; the rest is in `⋯`.
-  - Recommendations and similar plans are `.rec-row` text rows with an accent
-    bar, name, facts, chevron. A why-line appears per row only when the reasons
-    DIFFER; three identical sentences become one shared line.
-  - Dead hero/tile CSS removed (17 blocks). `plan-recommendations` checks the new
-    row language at 320/390/412 and accepts a shared reason as stated evidence.
-- **2026-11-27 — Plans (PL7/PL8): cleanup, and the gate closed.**
-  - PL7 removed `js/programs/collections.js` (no importers) and **196 dead CSS
-    blocks (~1,300 lines)**: the old active-plan view, hero carousel, utility
-    row, editor tabs and day strip, landing search/popular searches, the retired
-    day-sheet grid and the sample/commitment/day-split blocks. The brand test now
-    ratchets `.plan-row` instead of the deleted search bar. The stylesheet SPLIT
-    is deliberately deferred (cascade-order risk, no product gain) and is the one
-    remaining PL7 item.
-  - PL8: `npm run preflight` (verify + all 59 browser checks) green; the §22.4
-    table is filled. The phone pass stays `[You]`.
-- **2026-11-27 — Plans (PL6): the editor is Plan → Week → Day, and a plan day is a routine.**
-  - The editor opens on the **plan**: identity, seven day rows with their real
-    exercise/set counts, and Progression/Checks as disclosures (kept open across
-    edits). Tapping a day pushes the day editor; `‹ Week` returns. The three
-    content tabs are gone. Plan screen 1,596 → **1,233 px**, 25 controls.
-  - **New plan** now asks where to start — blank, from a template (forked
-    recommendation), copy one of mine, or import `.json` — instead of a
-    name/focus/weeks form before anything is visible. The old modal is deleted;
-    the name is edited inline.
-  - **Save this day as a routine** on the plan page copies the day, its order and
-    its per-exercise targets into the routine library
-    (`buildRoutineFromPlanDay`), ready to start as a one-off session.
-  - Checks: `program-editor` covers the week list, the pushed day, the target
-    round-trip and the starting sheet; `plans-json` proves a plan day saves as a
-    routine; `active-program-edit`, `copy-program` and
-    `program-preview-consistency` follow the new navigation. New unit tests for
-    the routine-from-plan shape.
-- **2026-11-27 — Plans (PL0–PL2): one home and a real Browse.**
-  - Measured before: the Plans landing was 3,216 px with four stacked control
-    rows, no filter entry at all (the chips only rendered while a filter was
-    already active, and the only triggers were dead code), and search in My Plans
-    hid your plans and searched the catalogue only.
-  - One home now: active plan → recommendations → your plans as rows with a
-    `•••` → routines → Browse. 844 px, content at 31 px, 17 controls.
-  - Browse is pushed: one search over catalogue + your plans + routines, a
-    Filters sheet (goal/level/days/length/equipment, equipment opt-in), a
-    plan/workout switch and four sorts. `plans-browse-browser-check` covers
-    facets (59 → 9 → 6 → 3), clear-all, own-plan search, the empty state and
-    Back-with-filters. `npm run plans:audit` is the repeatable measurement.
-  - `Discover | My Plans`, the utility row, the landing search and ~700 lines of
-    unreachable collection/hero code are gone.
-
-- **2026-11-27 — Plans (PL3–PL5): archive, one plan page, per-exercise targets.**
-  - **PL3:** a plan with any activation or completion can no longer be deleted —
-    activations store only `programId`, so deleting one made History lose its
-    name. The row offers Archive (keeps history); an Archived list restores it.
-  - **PL4:** the plan page is one surface with one week control: identity/facts →
-    one primary action (the same `buildActivePlanBanner` model as Home) → the
-    week, each day expanding inline to the exact targets the cockpit uses →
-    progression → fit/equipment → goals/notes → past runs. `#progActivePlanView`,
-    the `Overview | Structure | Plan` tabs and the day sheet are deleted.
-    2,036 → 1,840 px, 25 → 14 controls, CTA 504 → 314 px.
-  - **PL5:** the editor writes `prescriptions[day][lift]`; each row is
-    name · target · `•••` (3 controls, was 8). A derived deload halves a
-    prescribed lift, structural edits carry the target, and `program-json`
-    round-trips it. 1,770 → 1,596 px, 50 → 38 controls.
-  - Checks: 49/49 browser checks; new `plans-archive`, `plans-browse`,
-    `plans-surface-audit`; `program-editor` proves 3×12 survives reload and the
-    deload preview reads 2×12.
-
-
-- **2026-11-27 — H1 ST6: canonical weight storage (units are display-only).**
-  - `state` now stores **kilograms** everywhere and `settings.weightUnit` is a
-    display preference. The v17→v18 migration converts an existing lbs state
-    once, exactly (no rounding), and stamps `state.unitBasis='kg'`, so a
-    restored older backup upgrades safely and the step is idempotent.
-  - `setWeightUnit` is display-only: no confirmation, no rewrite, no recovery
-    copy. Every boundary goes through one module
-    (`js/metrics/weight-unit.js` for data, `js/workout/units.js` for the
-    logger); `progressionIncrement` and a weight-based `rateGoal` are canonical
-    too, and the engine returns display suggestions because the cockpit puts
-    them straight in the weight field.
-  - Fixed the read/write surfaces that assumed stored == displayed: the set row
-    (value, ghost, prescription, PREVIOUS column), the stored `tw` adherence
-    target, bodyweight and Measures sheets, Settings profile steppers, warm-up
-    ramp, drop sets, engine suggestions, recap/History/share, Profile stats,
-    Year/Week/Month reviews, Progress body/exercise/block views, session
-    previews, and the training-context/CSV exports.
-  - **Export fix (part of this):** the training CSV writes `WeightKg` /
-    `BodyWeightKg` and the bodyweight CSV `Date,WeightKg`; the importers accept
-    both spellings and convert everything into kilograms. Before this, a lb
-    export re-imported into a kg app was silently read as kg.
-  - Tests: `canonical_weight` (helpers, migration incl. archived weeks and
-    routines, idempotence, render/write boundaries, engine copy, CSV round trip)
-    plus updates to the volume/recap/activity/bodyweight expectations.
-    `scripts/weight-unit-browser-check.mjs` drives the real cockpit: 225 lb
-    typed stores 102.06 kg, and 90.72 kg reads as 200 lb on Home and in the
-    weigh-in sheet. A static guard fails the suite if a module uses a
-    weight-unit boundary helper without importing it — the failure mode that a
-    `checkJs:false` typecheck cannot see.
-
-- **2026-11-27 — H1 ST7: week start (G6) now governs every calendar surface.**
-  - One calendar-week rule: `calendarWeekStart(date, weekStartDay)` in
-    `js/dates.js`; `weekStartOf`/`weekKeyOf` in `weekly-aggregate.js` resolve
-    it through ONE projection that the app applies from
-    `settings.weekStartDay` on every `app:storage-loaded` (boot, import/restore
-    and the Settings change itself). The setting stays the owner; no analytics
-    module keeps its own Monday assumption.
-  - **Program weeks deliberately do NOT move.** `startOfProgramWeek` stays
-    Monday because a program week is a plan index over Monday-indexed slots
-    (and `weekSchedule` moves are keyed by that Monday). "Week 2 of 8" cannot
-    depend on a display preference.
-  - Fixed the surfaces that were only half-right: Home's rail now anchors its
-    seven dates on the real week start (it used to reorder labels over a Monday
-    week, so a Sunday-start rail began on the *next* Sunday); Pulse, the week
-    chart, strength-volume detail, the past-week recap and Strength's session
-    chips derive weekday NAMES from the date, since calendar-week records are
-    keyed by POSITION in the athlete's week.
-  - S-F3 closed: choosing Sunday now repaints the visible surface immediately
-    instead of at the next navigation, and the weekly-summary notification fires
-    at 18:00 on the LAST day of the athlete's week (Sunday, or Saturday for a
-    Sunday-start athlete).
-  - No data migration: dates are already stamped real calendar days, so the
-    setting only changes bucketing; switching back restores the Monday view
-    exactly. No stored field is rewritten.
-  - Tests: `week_start` (both starts, Sunday/Monday attribution, program anchor,
-    labels, wiring), `notifications` (next week-end instant), and the Progress
-    hub browser check now drives the REAL Settings control and asserts the Home
-    rail and Pulse range change without a reload.
-
-- **2026-11-27 — UI contrast audit: measured AA, and the dark surface ladder.**
-  - Built `scripts/contrast-audit.mjs` (+ `scripts/lib/contrast.mjs`): real
-    Chromium, text-node walk, alpha compositing, gradient worst-stop, optional
-    pixel confirmation that can only clear an over-estimate, real font-size
-    thresholds, JSON ratchet and `--md`. Phase 0 proves it against nine known-bad
-    shipped rows before its silence is believed.
-  - Found 63 failing runs (P0 13 · P1 48 · P2 2). Root causes, not screens:
-    invalid `color-mix(… 6200%)` fills (SVG text fell back to black, 1.11:1),
-    `--text-white` as filled-button ink (1.81:1 Midnight, 2.73:1 light), status
-    hues as text on their own tint (1.65:1), alpha text in light overrides
-    (1.96:1), UA placeholder grey, `opacity` dimming whole day cells and badges,
-    and a blanket analytics SVG `fill` override.
-  - Fixed all of them colour-only: four status **text** tokens (light values are
-    genuinely darker), `--on-accent` on filled buttons, one placeholder rule,
-    dimming moved to the dot/icon/swatch, day cells and locked badges keep their
-    labels at full contrast.
-  - B2 for all four dark palettes: surfaces `#1b1b1b/#252525/#2d2d2d` (Midnight),
-    `#162033/#1c2941/#21314d` (Slate), `#0f2319/#132d20/#173626` (Forest),
-    `#291b15/#34231b/#3e2a20` (Ember) — a 1.17–1.18:1 card/page step, borderless
-    cards, `--divider` for inner rows only, `--text-3` lifted with the surfaces.
-  - Guards: `theme_contrast.test.js` 13 → 45 pairs across `bg`/`surface-1..3` and
-    five palettes; `light_override_guard.test.js` ratchets raw colours inside
-    light rules; the audit runs in `browser:verify` behind an empty baseline and
-    was verified to exit 1 on an injected regression.
-  - First CI run failed on the audit itself: the pinned clock is an instant and
-    the app derives the day in LOCAL time, so a UTC runner rendered the previous,
-    finished day and measured 45 more text runs. That unrendered state held four
-    real defects (heat-map credit at 3.06:1 light / 3.12-3.19 dark, PR pill
-    4.10:1, primary-muscle chip 3.72:1, cockpit "Today" badge 3.25:1) — all
-    fixed. The audit now pins `timezoneId` and the fixture marks the audited day
-    finished, so the summary is always covered.
-  - Gates: `npm run verify` green (2,975 tests), browser audit 0 findings on
-    1,080 text runs across all five modes at 390, clean at 320 (1,075) and with
-    `--full` (1,090), and all 60 browser checks pass.
