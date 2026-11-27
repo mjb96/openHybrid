@@ -144,10 +144,27 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.s-row__control { display: flex; align-items: center; justify-content: flex-end; }
+.s-row__control { display: flex; align-items: center; justify-content: flex-end; min-width: 0; max-width: 100%; }
+.s-row__control > * { max-width: 100%; }
 .s-row__chevron { color: var(--text-muted); font-size: 1.25rem; line-height: 1; }
 .s-row--danger .s-row__label { color: var(--color-red); }
 .s-row--danger .s-row__copy { grid-column: 1 / span 2; }
+
+/* 320px: a 190px input plus a 48px stepper does not fit beside the label in the
+   4-column row. Give the control its own line instead of painting it over the
+   label (the clipped-right-edge defect the 390px checks could not see). */
+@media (max-width: 380px) {
+  .s-row:has(.s-row__control) {
+    grid-template-columns: 36px minmax(0, 1fr);
+    row-gap: 6px;
+  }
+  .s-row:has(.s-row__control) .s-row__control {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    padding-left: 48px;
+    flex-wrap: wrap;
+  }
+}
 
 .s-icon {
   display: grid;
@@ -370,7 +387,7 @@
   text-align: center;
 }
 .s-input--select { width: auto; min-width: 120px; max-width: 190px; }
-.s-input--wide { width: 190px; }
+.s-input--wide { width: min(190px, 100%); }
 .s-input--time { width: 82px; }
 .s-inline-actions { display: inline-flex; gap: 6px; }
 .s-action {

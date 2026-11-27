@@ -15,7 +15,7 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 60 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 61 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -94,7 +94,10 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   A matching search also marks the exact row (`.settings-search-hit`) and
   scrolls the panel to it, so the athlete lands on the control, not a card top.
   `settings.reducedMotion` is system|reduce|full; `ui/motion.js` publishes
-  `data-reduced-motion` on `<html>` for the CSS hook.
+  `data-reduced-motion` on `<html>` for the CSS hook. A control change keeps the
+  panel's scroll position and returns focus to the row it was pressed in, and a
+  deep-link anchor is resolved through `settingsEntryByAnchor` to the registry
+  key before the row is found. The closed route is `inert` as well as hidden.
   Training order is Training (units) → Logging (rest tiers/presets/sound,
   progression, previous values, warm-up, plate hints, keep-awake, live-PR
   banners) → Program Week → Equipment

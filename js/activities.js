@@ -45,6 +45,18 @@ function esc(value) {
   }[c]));
 }
 
+/**
+ * The Delete menu item's visible label. Exported because a session title can
+ * come from an imported CSV, and this string is interpolated into `innerHTML`:
+ * the escape has to be testable without a browser.
+ * @param {{ kind?: string, title?: string }|null} activity
+ */
+export function deleteActivityButtonLabel(activity) {
+  return activity?.kind === 'run'
+    ? `Delete ${esc(String(activity.title || '').toLowerCase())}`
+    : 'Delete strength workout';
+}
+
 function activityIcon(kind) {
   return kind === 'run' ? '🏃' : '🏋️';
 }
@@ -401,7 +413,7 @@ function paintDetail() {
       ${_selected.kind === 'strength' ? `<button data-action="save-as-routine" data-activity-id="${esc(_selected.id)}">Save as routine</button>` : ''}
       <button data-action="share-activity">Share workout</button>
       <button data-action="edit-activity">Edit ${_selected.kind === 'run' ? 'run' : 'strength workout'}</button>
-      <button data-action="delete-activity" class="activity-action-delete">Delete ${_selected.kind === 'run' ? _selected.title.toLowerCase() : 'strength workout'}</button>
+      <button data-action="delete-activity" class="activity-action-delete">${deleteActivityButtonLabel(_selected)}</button>
     </div>
     ${_selected.kind === 'strength' ? `<button type="button" class="btn-action-block activity-repeat" data-action="copy-past-workout" data-activity-id="${esc(_selected.id)}">🔁 Repeat this workout</button>` : ''}
     <div class="activity-detail-shell">${provenance}${renderSessionRecapHTML(recap, [], state.thresholdPaceSeconds || null, _detailTab, { share: false })}</div>`;

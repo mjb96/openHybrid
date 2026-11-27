@@ -72,7 +72,14 @@ export const SETTINGS_REGISTRY = freeze([
   { key: 'weightGoal', label: 'Body goal', type: 'select', group: 'profile', section: 'profile', page: 'profile.training-goal', default: 'maintain', choices: ['cut', 'maintain', 'bulk'], keywords: ['cut', 'bulk', 'lose', 'gain'], summary: (s) => titleCase(s?.settings?.weightGoal || 'maintain') },
   { key: 'defaultBodyWeight', label: 'Body weight', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, canonicalWeight: true, keywords: ['bodyweight', 'mass', 'weight'], summary: (s) => weightUnitText(s?.settings?.defaultBodyWeight, s?.settings?.weightUnit || 'kg') },
   { key: 'targetWeight', label: 'Target weight', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: 20, max: 500, step: 0.1, canonicalWeight: true, keywords: ['goal', 'bodyweight', 'target'], summary: (s) => weightUnitText(s?.settings?.targetWeight, s?.settings?.weightUnit || 'kg') },
-  { key: 'rateGoal', label: 'Weight rate goal', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: -2, max: 2, step: 0.05, keywords: ['goal', 'rate', 'bodyweight'], summary: (s) => s?.settings?.rateGoal == null ? '' : `${s.settings.rateGoal} ${s?.settings?.weightUnit || 'kg'}/wk` },
+  { key: 'rateGoal', label: 'Weight rate goal', type: 'number', group: 'health', section: 'profile', page: 'profile.body', default: null, min: -2, max: 2, step: 0.05, canonicalWeight: true, keywords: ['goal', 'rate', 'bodyweight'], summary: (s) => {
+    const stored = Number(s?.settings?.rateGoal);
+    if (s?.settings?.rateGoal == null || !Number.isFinite(stored)) return '';
+    const display = fromCanonicalWeight(stored, s?.settings?.weightUnit || 'kg');
+    if (display == null) return '';
+    const rounded = Math.round(display * 10) / 10;
+    return `${rounded > 0 ? '+' : ''}${rounded} ${normalizeWeightUnit(s?.settings?.weightUnit || 'kg') === 'lbs' ? 'lb' : 'kg'}/wk`;
+  } },
   { key: 'heightCm', label: 'Height', type: 'number', group: 'profile', section: 'profile', page: 'profile.body', default: null, min: 50, max: 300, step: 0.1, keywords: ['height', 'body'], summary: (s) => s?.settings?.heightCm ? `${s.settings.heightCm} cm` : '' },
   { key: 'birthDate', label: 'Date of birth', type: 'text', group: 'profile', section: 'profile', page: 'profile.body', default: null, keywords: ['birth', 'dob', 'age'], footer: 'Optional. Stored only for future calculations; nothing currently derives from it.', summary: (s) => s?.settings?.birthDate || '' },
   { key: 'sex', label: 'Sex', type: 'select', group: 'profile', section: 'profile', page: 'profile.body', default: null, choices: ['female', 'male', 'other', 'prefer_not_to_say'], keywords: ['sex', 'gender'], footer: 'Optional. Used for calculations only, never displayed publicly.', summary: (s) => s?.settings?.sex ? titleCase(String(s.settings.sex).replace(/_/g, ' ')) : '' },

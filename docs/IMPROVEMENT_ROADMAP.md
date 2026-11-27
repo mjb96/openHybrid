@@ -1757,6 +1757,25 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Audit slice 4: Settings stays put, and untrusted text is text.**
+  - Changing a control no longer re-renders the page at the top: scroll position
+    and focus return to the same row (`_showSettings` preservePosition).
+  - A deep link or search result resolves its anchor slug through
+    `settingsEntryByAnchor` to the registry key, so it scrolls to and pulses the
+    exact row instead of opening the page only.
+  - Enter now submits a prompt only from its field or the OK button; on Cancel it
+    cancels. The reset flow is covered end to end (typed DELETE + Enter on Cancel
+    leaves storage untouched).
+  - Imported session titles are escaped in the History action menu, and the
+    profile avatar renders only a safe raster data URL.
+  - The closed Settings route is `inert`; Volume Guide chips are a `role="group"`
+    of pressed buttons rather than a fake tablist; the Customize sheet focuses its
+    close button and its switches show a focus ring.
+  - `rateGoal` is canonical kilograms like the other weight settings.
+  - New `settings-interaction-browser-check` (61st check) covers scroll/focus,
+    deep links, Enter-on-Cancel, inert and 320px control overlap.
+  - `npm run verify` green (3,020 tests); full browser suite 61/61.
+
 - **2026-11-27 — Audit slice 3: the plan and the log agree with the screen.**
   - A deload now halves an inline `5×5` lift as well as a per-exercise sidecar
     target, so the catalogue's deload week is a lighter week for every lift.

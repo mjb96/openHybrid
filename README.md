@@ -123,7 +123,7 @@ session log live in [`docs/IMPROVEMENT_ROADMAP.md`](docs/IMPROVEMENT_ROADMAP.md)
 | Offline | Service worker + generated precache manifest |
 | Local data | `localStorage` for app state, IndexedDB for GPS routes and photos; Android adds an app-private atomic file mirror |
 | Native | Kotlin Android WebView shell, `minSdk 26`, `targetSdk 36` |
-| Verification | `node --test`, TypeScript checking of JSDoc-annotated JS, 57 Playwright browser checks |
+| Verification | `node --test`, TypeScript checking of JSDoc-annotated JS, 61 Playwright browser checks |
 | Runtime | Node.js 20+ for tooling |
 
 ## Architecture
@@ -150,7 +150,7 @@ allowlisted web root, staged by `scripts/stage-web-root.mjs`.
 | --- | --- |
 | `npm test` | Node unit tests |
 | `npm run verify` | Type check, precache check, workflow gates, unit tests, smoke render |
-| `npm run browser:verify` | 57 Playwright product checks (parallel, 180 s per-check kill with one timeout retry; `-- --serial` to debug) |
+| `npm run browser:verify` | 61 Playwright product checks (parallel, 180 s per-check kill with one timeout retry; `-- --serial` to debug) |
 | `npm run perf:baseline` | Boot performance and bounded-DOM baseline |
 | `npm run precache:gen` | Regenerate the service-worker precache manifest |
 
