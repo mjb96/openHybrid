@@ -5,7 +5,6 @@
 It flows to:
 - **Settings → App → Version** (populated at runtime, no hardcoded string).
 - **Data export envelope** (`appVersion`).
-- **Sentry release** (`openhybrid@${APP_VERSION}` in `sentry-config.js`).
 
 Keep these aligned when bumping:
 | Where | Value | How |
@@ -41,13 +40,11 @@ is no longer load-bearing.
 
 ## Dependencies
 - Production JS libraries are pinned to **exact** versions in `package.json`
-  (`@sentry/browser`, `leaflet`) and `package-lock.json` is committed, so
-  `npm ci` is reproducible.
-- Leaflet and Sentry are vendored under `js/vendor/`; production runtime
-  JavaScript never loads from a CDN and the app has no backend client.
+  (`leaflet`) and `package-lock.json` is committed, so `npm ci` is reproducible.
+- Leaflet is vendored under `js/vendor/`; production runtime JavaScript never
+  loads from a CDN and the app has no backend client.
 - **Dependency updates:** bump the exact version in `package.json`, run
-  `npm install` to refresh the lockfile, regenerate Sentry with
-  `node scripts/vendor-runtime.mjs`, copy the reviewed Leaflet files into
+  `npm install` to refresh the lockfile, copy the reviewed Leaflet files into
   `js/vendor/`, regenerate the precache, and run `npm run verify`. Do not enable
   automatic major upgrades.
 

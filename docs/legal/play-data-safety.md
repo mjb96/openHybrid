@@ -6,9 +6,8 @@ reflect the app as built; re-check if data practices change.
 
 > Play's definition of **"collected"** = data transmitted off the device. openHybrid
 > stores training, health, location, photos and profile data **on-device only**;
-> none of it is transmitted. The only automatic egress is the configured Sentry
-> crash reporter. Crash/diagnostic collection is therefore **Required** unless
-> an opt-out is added or the DSN is removed before release.
+> none of it is transmitted. There is no crash reporter and no analytics SDK.
+> The only third-party request is for map tiles while a map is being viewed.
 
 Official references (re-check at submission time):
 - [Google Play Data Safety form](https://support.google.com/googleplay/android-developer/answer/10787469)
@@ -16,10 +15,10 @@ Official references (re-check at submission time):
 - [Health Connect / sensitive-permission policy](https://support.google.com/googleplay/android-developer/answer/16558241)
 
 ## Global answers
-- **Is all data encrypted in transit?** → **Yes** (HTTPS/TLS to Sentry, Google Fonts, and the tile server).
+- **Is all data encrypted in transit?** → **Yes** (HTTPS/TLS to the tile server).
 - **Do you provide a way to request data deletion?** → **Not applicable to an account** (openHybrid has no accounts). Local data is deleted in-app via Settings → Reset All Data, or by clearing app storage/uninstalling.
-- **Data collected is required or optional?** → Only crash/diagnostic reporting leaves the device, and it is **Required** because the distributed build has no user opt-out.
-- **Do you share data with third parties?** → **Legal review required.** Sentry may qualify for Play's service-provider exception. The public OpenStreetMap tile service and Google Fonts must be classified before selecting **No sharing**.
+- **Data collected is required or optional?** → **Not applicable** — no user data is collected.
+- **Do you share data with third parties?** → **No.** The map-tile request carries an IP address and the requested tile; classify it per Play's guidance for service providers before submission.
 
 ## Data types to declare
 
@@ -30,15 +29,14 @@ Official references (re-check at submission time):
 | **Health & fitness → Fitness info** | **No** | — | — | Workouts, runs, body weight, streaks and goals stay on the device. |
 | **Photos and videos → Photos** | **No** | — | — | An avatar or exercise media is stored on-device only. |
 | **App activity → Other user-generated content** | **No** | — | — | Notes, wellness and fasting entries stay on the device. |
-| **App info & performance → Crash logs** | Yes | **Required*** | Analytics (app health/crash fixing) | Automatic Sentry error reporting; PII-scrubbed; no performance tracing. *Required unless release configuration changes. |
-| **App info & performance → Diagnostics** | Yes | **Required*** | Analytics (app health/crash fixing) | As above. |
+| **App info & performance → Crash logs** | **No** | — | — | No crash reporter or analytics SDK is bundled. |
+| **App info & performance → Diagnostics** | **No** | — | — | As above. |
 | **Device or other IDs** | **No** | — | — | No advertising ID, no analytics IDs. |
 
 For each declared type, the Play form asks: *collected*, *shared*, *processed
-ephemerally*, *required/optional*, and *purpose*. Use the table above:
-purpose = **App functionality** for on-device data (not collected) and
-**Analytics** for crash/diagnostic data. None is used
-for **Advertising or marketing** or sold.
+ephemerally*, *required/optional*, and *purpose*. Use the table above: every
+type is on-device only, so none is collected, shared or sold, and none has a
+Play purpose. No advertising or analytics SDK is bundled.
 
 ## Health Connect specifics
 Play + Health Connect have an **additional** policy: apps reading Health Connect

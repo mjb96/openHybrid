@@ -28,7 +28,7 @@ In scope:
 Out of scope:
 
 - a compromised device or browser profile
-- third-party services (Supabase, Sentry, map tiles, Google Fonts)
+- third-party services (map tiles)
 - denial-of-service against your own deployment
 - issues that require physical access to an unlocked device
 

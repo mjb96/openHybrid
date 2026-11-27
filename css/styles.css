@@ -14,9 +14,9 @@
    1. DESIGN TOKENS
    ========================================================================== */
 
-/* Web font is loaded non-render-blocking from index.html (<link media=print
-   onload swap>). 'Plus Jakarta Sans' falls back to sans-serif until it arrives,
-   so first paint never waits on the Google Fonts CDN. */
+/* The UI uses the platform's system font (SF Pro on Apple, Roboto on Android,
+   Segoe UI on Windows). No webfont is downloaded, so first paint never waits on
+   a font and the offline app keeps native typography. */
 
 html[data-text-size="large"] { font-size: 112.5%; }
 html[data-text-size="xlarge"] { font-size: 125%; }
@@ -187,7 +187,7 @@ html {
 html[data-theme="light"] { color-scheme: light; }
 
 html, body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: var(--font-body);
   letter-spacing: -0.015em;
   background-color: var(--bg-app);
   color: var(--text-primary);
@@ -10030,6 +10030,7 @@ input[type="checkbox"].gym-check {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   margin: 0 0 8px;
   padding: 9px 12px;
   border: 1px solid var(--border-default);
@@ -10071,6 +10072,15 @@ input[type="checkbox"].gym-check {
   cursor: pointer;
 }
 .cockpit-active-head__finish:active { transform: scale(.98); }
+/* At 320px the back button, three stats and Finish no longer fit if they keep
+   their roomy gaps. The system font is a little wider than the old webfont, so
+   the band now shrinks its spacing instead of pushing the page 2px sideways.
+   Do not drop the labels: the numbers alone lose their meaning. */
+@media (max-width: 360px) {
+  .cockpit-active-head { padding: 9px 10px; gap: 6px; }
+  .cockpit-active-head__stats { gap: 8px; }
+  .cockpit-active-head__finish { padding: 0 11px; }
+}
 
 .cockpit-exercise-rail {
   display: flex;

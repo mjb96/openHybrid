@@ -39,7 +39,7 @@ test('README carries the AGPL grant and the corresponding-source link', () => {
 
 test('third-party notices cover every vendored runtime component', () => {
   const notice = read('NOTICE.md');
-  for (const item of ['Leaflet', 'Sentry Browser SDK', 'fit-file-parser', 'buffer', 'Plus Jakarta Sans']) {
+  for (const item of ['Leaflet', 'fit-file-parser', 'buffer']) {
     assert.ok(notice.includes(item), `NOTICE.md must mention ${item}`);
   }
 });

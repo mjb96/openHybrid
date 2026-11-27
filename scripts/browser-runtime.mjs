@@ -48,8 +48,8 @@ export function pinClock(epochMs) {
 
 /**
  * Create a browser-check context that can only load from its local fixture
- * server. Product checks must not turn red because Google Fonts, Sentry, map
- * tiles, or another third-party host is unavailable; equally, a missing local
+ * server. Product checks must not turn red because map tiles or another
+ * third-party host is unavailable; equally, a missing local
  * asset must still reach the page as a real 404 and fail the check.
  *
  * The performance baseline deliberately creates its own contexts because it

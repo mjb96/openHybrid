@@ -46,20 +46,15 @@ const CORE = [
   './css/styles.css',
   './js/vendor/leaflet/leaflet.js',
   './js/vendor/leaflet/leaflet.css',
-  // Vendored runtime libraries loaded via <script src> in index.html (not part of
-  // the ES-module graph). Precached so an offline launch has them locally.
-  './js/vendor/sentry-browser-8.55.2.min.js',
 ];
 
 export function computeRequiredAssets() {
-  // Every ROOT of the script graph, not just the module app. The classic
-  // <script> tags in index.html are entry points too and nothing imports them,
-  // so a graph walk from js/app.js alone cannot see them. Missing one is silent
-  // and only shows up offline: js/font-css.js flips the webfont stylesheet from
-  // its non-blocking media="print" to "all", so a 404 here would leave the
-  // brand font permanently unapplied on exactly the offline start the precache
-  // exists to serve.
-  const js = reachableModules(['js/app.js', 'js/sw-reload.js', 'js/font-css.js']).map((m) => './' + m);
+  // Every ROOT of the script graph, not just the module app. Classic <script>
+  // tags in index.html are entry points too and nothing imports them, so a
+  // graph walk from js/app.js alone cannot see them. js/sw-reload.js is the
+  // only one left; missing it would 404 on exactly the offline start the
+  // precache exists to serve.
+  const js = reachableModules(['js/app.js', 'js/sw-reload.js']).map((m) => './' + m);
   // Exercise demonstration stills (Free Exercise DB, public domain). Discovered
   // rather than hand-listed so a new lift's frames cannot ship uncached.
   let exerciseMedia = [];

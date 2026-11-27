@@ -24,7 +24,6 @@
     "theme:guard": "node scripts/theme-literal-check.mjs"
   },
   "devDependencies": {
-    "@sentry/browser": "8.55.2",
     "buffer": "^6.0.3",
     "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.8",

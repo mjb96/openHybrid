@@ -6247,3 +6247,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Every core entry now has instructions + difficulty + safety notes; the
     reviewed ratchet is 157 and the shape guards still pass. The core stays at
     157 — no catalogue promotion.
+
+- **2026-11-26 — G3: log a past strength session.**
+  - History gains **Log past**: a date prompt (never a future date), then the
+    normal cockpit as a one-off `session:` week stamped with the chosen date at
+    noon. The plan, current week and activation are untouched, and History
+    closes when the session opens.
+  - An occupied day offers **Keep both / Cancel** and names the day. Replace is
+    deliberately not offered for programmed or finished history; it needs its
+    own Undo before it can exist.
+  - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
+    static wiring guard, and the History browser check (past session + collision
+    Cancel changes nothing).

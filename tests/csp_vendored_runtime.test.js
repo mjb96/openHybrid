@@ -41,21 +41,18 @@ test('the service worker does not fetch or cache remote JavaScript', () => {
   assert.ok(!/CDN_ASSETS/.test(serviceWorker), 'obsolete CDN cache list must stay removed');
 });
 
-test('vendored runtime libraries are referenced and present on disk', () => {
-  for (const rel of ['js/vendor/sentry-browser-8.55.2.min.js']) {
-    assert.ok(html.includes('./' + rel), `index.html references ${rel}`);
+test('vendored Leaflet is present on disk', () => {
+  for (const rel of ['js/vendor/leaflet/leaflet.js', 'js/vendor/leaflet/leaflet.css']) {
     const p = join(ROOT, rel);
     assert.ok(existsSync(p), `${rel} exists`);
     assert.ok(statSync(p).size > 1000, `${rel} is non-trivial`);
   }
 });
 
-test('vendored Sentry exposes Sentry.init and captureException', () => {
-  const code = readFileSync(join(ROOT, 'js/vendor/sentry-browser-8.55.2.min.js'), 'utf8');
-  const g = {};
-  // The IIFE bundle declares a top-level `var Sentry`; return it explicitly.
-  // eslint-disable-next-line no-new-func
-  const Sentry = new Function('window', 'self', 'globalThis', code + '\nreturn Sentry;')(g, g, g);
-  assert.equal(typeof Sentry.init, 'function');
-  assert.equal(typeof Sentry.captureException, 'function');
+test('no third-party crash reporter remains', () => {
+  // Removing Sentry is a product decision, not a dormant feature: the SDK, its
+  // config and its CSP hosts must all be gone so nothing can quietly revive.
+  assert.ok(!/sentry/i.test(html), 'index.html must not mention Sentry');
+  assert.ok(!existsSync(join(ROOT, 'js/vendor/sentry-browser-8.55.2.min.js')));
+  assert.ok(!existsSync(join(ROOT, 'js/monitoring/sentry.js')));
 });

@@ -29,7 +29,8 @@
 //   fonts.googleapis.com is unreachable, which is EVERY offline start of this
 //   PWA, first contentful paint measured 12,656ms, of which that one request
 //   was 12,530ms. Fully cached, and the app painted nothing for twelve seconds
-//   waiting on a font it did not need. Now 280ms.
+//   waiting on a font it did not need. Now 280ms — and the webfont has since
+//   been removed altogether, so the request can no longer exist.
 //
 //   That is the whole argument for measuring: the assumption was written down,
 //   it was plausible, and it was wrong.

@@ -1737,6 +1737,21 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — No third-party crash reporting and no webfont.**
+  - Removed Sentry entirely: the vendored SDK, its config, the init call, the
+    `@sentry/browser` devDependency, `scripts/vendor-runtime.mjs`, the CSP hosts
+    and the licence notice. `reportHandledError` keeps its console output and
+    test hook; there is no analytics SDK.
+  - Typography now uses the platform system stack (`system-ui`; SF Pro / Roboto
+    / Segoe UI). The Google Fonts request, both preconnects, the non-blocking
+    `js/font-css.js` loader and the OFL notice are gone; canvas share cards name
+    the same stack explicitly.
+  - `connect-src` is now `'self'`; the only third-party request left is the
+    map-tile `<img>`. The privacy policy and Play Data Safety report no
+    crash/diagnostic collection.
+  - Ratchets: `typography.test.js` (no font host, system stack, CSP) and
+    `csp_vendored_runtime.test.js` (no crash reporter, Leaflet vendored).
+
 - **2026-11-27 — Plans visual pass: no cover art, one reason, one job per row.**
   - Owner feedback: the plan "thumbnails" were the weak part. Removed the
     gradient/glyph hero from the plan page and the cover tiles from the
@@ -1888,14 +1903,3 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     a CORE-SELECTION decision (which catalogue entries are promoted), so the
     remaining work stays in human-reviewed batches of 25.
 
-- **2026-11-26 — G3: log a past strength session.**
-  - History gains **Log past**: a date prompt (never a future date), then the
-    normal cockpit as a one-off `session:` week stamped with the chosen date at
-    noon. The plan, current week and activation are untouched, and History
-    closes when the session opens.
-  - An occupied day offers **Keep both / Cancel** and names the day. Replace is
-    deliberately not offered for programmed or finished history; it needs its
-    own Undo before it can exist.
-  - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
-    static wiring guard, and the History browser check (past session + collision
-    Cancel changes nothing).

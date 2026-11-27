@@ -3751,12 +3751,15 @@ html[data-theme="dark"] .active-prog-continue-btn:not(.active-prog-continue-btn-
 .plan-head__status {
   display: flex;
   align-items: center;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   margin-top: 9px;
   min-height: 18px;
 }
 .plan-head__author {
   margin-left: auto;
+  min-width: 0;
+  max-width: 100%;
   font-size: 0.72rem;
   color: var(--text-muted);
   text-align: right;

@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-h0bf9d7fd9252';
+const CACHE_NAME = 'openhybrid-v122-h475974adffe0';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -466,7 +466,6 @@ const REQUIRED_ASSETS = [
   "./js/fasting/fasting-insights.js",
   "./js/fasting/fasting-nudge.js",
   "./js/fasting/fasting-ring.js",
-  "./js/font-css.js",
   "./js/garmin.js",
   "./js/gps-tracker.js",
   "./js/gps/active-run-display.js",
@@ -501,8 +500,6 @@ const REQUIRED_ASSETS = [
   "./js/metrics/weight-unit.js",
   "./js/modules.js",
   "./js/monitoring/report-error.js",
-  "./js/monitoring/sentry-config.js",
-  "./js/monitoring/sentry.js",
   "./js/notifications.js",
   "./js/onboarding.js",
   "./js/onboarding/preferences.js",
@@ -625,7 +622,6 @@ const REQUIRED_ASSETS = [
   "./js/vendor/fit-parser.js",
   "./js/vendor/leaflet/leaflet.css",
   "./js/vendor/leaflet/leaflet.js",
-  "./js/vendor/sentry-browser-8.55.2.min.js",
   "./js/workout-map.js",
   "./js/workout-order.js",
   "./js/workout.js",

@@ -13,11 +13,10 @@
   <meta name="theme-color" content="#060606">
 
   <!-- Content-Security-Policy — hardens the privileged Android WebView (and the
-       PWA) against arbitrary remote code. script-src is 'self' ONLY: the
-       runtime library (Sentry) is vendored into the signed bundle under
-       js/vendor/, so no remote executable code can reach this privileged
-       origin and an offline launch makes zero remote-JS requests. Regenerate the
-       vendored files with `node scripts/vendor-runtime.mjs`. object/base/frame
+       PWA) against arbitrary remote code. script-src is 'self' ONLY: every
+       runtime library is vendored into the signed bundle under js/vendor/, so
+       no remote executable code can reach this privileged origin and an
+       offline launch makes zero remote-JS requests. object/base/frame
        directives shut down injection and clickjacking. Inline styles are
        permitted (pervasive + low-risk); inline SCRIPT is NOT — the only former
        inline script now lives in ./js/sw-reload.js. See
@@ -25,10 +24,10 @@
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self';
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    font-src 'self' https://fonts.gstatic.com;
+    style-src 'self' 'unsafe-inline';
+    font-src 'self';
     img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.basemaps.cartocdn.com;
-    connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io;
+    connect-src 'self';
     worker-src 'self' blob:;
     manifest-src 'self';
     object-src 'none';
@@ -45,34 +44,9 @@
   <!-- Leaflet is loaded on demand (js/ui/leaflet-loader.js) only on map screens,
        so a slow/unreachable CDN can never block app boot. -->
 
-  <!-- Web font, loaded non-render-blocking (print media → swapped to all on load)
-       so a slow Google Fonts CDN never delays first paint. sans-serif renders
-       immediately as the fallback. -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- NON-BLOCKING. This was a plain <link rel="stylesheet"> and the comment
-       above it claimed display=swap kept first paint fast. It does not:
-       display=swap governs how the font FILE swaps in, while the CSS link
-       itself is render-blocking until it loads OR fails. Measured on a network
-       that cannot reach fonts.googleapis.com — which is every offline start of
-       this PWA — first contentful paint was 12,656ms, of which this one request
-       was 12,530ms. The app was fully cached and still showed nothing.
-       media="print" makes it non-render-blocking; js/font-css.js flips it to
-       "all" once loaded. The flip lives in a classic external script because
-       the CSP above forbids inline script, including onload attributes. -->
-  <link rel="stylesheet" media="print" data-async-font
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  <noscript>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  </noscript>
-  <script src="./js/font-css.js"></script>
-
-  <!-- Crash reporting — VENDORED (js/vendor/sentry-browser-8.55.2.min.js), built
-       from the pinned @sentry/browser via scripts/vendor-runtime.mjs. Exposes
-       window.Sentry (init + captureException); stays inert until a DSN is
-       configured in js/monitoring/sentry-config.js (see initSentry). -->
-  <script src="./js/vendor/sentry-browser-8.55.2.min.js" defer></script>
+  <!-- No webfont: the UI uses the platform system font (SF Pro / Roboto /
+       Segoe UI). Nothing is downloaded, so first paint cannot wait on a font
+       and offline starts keep native typography. -->
 
   <link rel="stylesheet" href="./css/styles.css">
   <link rel="stylesheet" href="./css/programs.css">
