@@ -373,6 +373,12 @@ async function importProgressPhotos(file) {
   const state = _getState?.();
   if (!state) return;
   try {
+    // Refuse an oversized archive before materialising it in memory. The zip
+    // reader enforces its own per-entry/total bounds as a second line.
+    if (Number(file.size) > 256 * 1024 * 1024) {
+      showToast('That photo archive is too large to import.', true);
+      return;
+    }
     const bytes = new Uint8Array(await file.arrayBuffer());
     const { importPhotosZip } = await import('./photos/library.js');
     const imported = await importPhotosZip(state, bytes, { save: () => saveStateToLocalStorage(true) });

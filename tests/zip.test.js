@@ -43,3 +43,29 @@ test('an empty file is an entry, not a gap', () => {
   assert.equal(entry.name, 'empty.txt');
   assert.equal(entry.bytes.length, 0);
 });
+
+test('a truncated archive is refused instead of yielding a short entry', () => {
+  const zip = createZip([{ name: 'a', bytes: enc('0123456789') }]);
+  // 30-byte header + 1-byte name + 5 of the 10 declared bytes.
+  assert.throws(() => readZip(zip.subarray(0, 36)), /truncated/i);
+});
+
+test('a corrupted entry is refused by its checksum', () => {
+  const zip = createZip([{ name: 'a', bytes: enc('jpeg-bytes') }]);
+  const corrupted = zip.slice();
+  corrupted[31] ^= 0xff; // first data byte, after the 30-byte header + 1-byte name
+  assert.throws(() => readZip(corrupted), /checksum|damaged/i);
+});
+
+test('an archive cannot address a path outside its root', () => {
+  assert.throws(() => readZip(createZip([{ name: '../escape.jpg', bytes: enc('x') }])), /unsafe file name/i);
+  assert.throws(() => readZip(createZip([{ name: '/abs.jpg', bytes: enc('x') }])), /unsafe file name/i);
+});
+
+test('two entries with the same name are refused', () => {
+  const zip = createZip([
+    { name: 'photos/2026-01-01.jpg', bytes: enc('one') },
+    { name: 'photos/2026-01-01.jpg', bytes: enc('two') },
+  ]);
+  assert.throws(() => readZip(zip), /same name/i);
+});

@@ -2,7 +2,7 @@
 // SETTINGS
 // ==========================================
 import {
-  saveStateToLocalStorage, setAppState, cancelPendingLocalSave,
+  saveStateToLocalStorage, commitImportedState, cancelPendingLocalSave,
   setPersistenceSuspended, STORAGE_KEY, SAVED_AT_KEY, getProgramById,
 } from './state.js';
 import { writeMirror, clearMirror } from './state/mirror.js';
@@ -77,6 +77,7 @@ import {
   isSafeImageDataUrl,
   validateImport,
   importReasonMessage,
+  MAX_IMPORT_BYTES,
 } from './state/import-validate.js';
 import { SETTINGS_TABS, settingsGroupForLabel, sectionMatchesQuery, firstMatchingRow } from './settings/nav.js';
 import { SETTINGS_HASH, settingsHashForPage, settingsRouteFromHash } from './settings/route.js';
@@ -1765,13 +1766,19 @@ export async function handleFitFiles(fileList) {
     }
   }
 
-  await saveStateToLocalStorage(false);
   const importedRuns = result.added.filter((item) => item.kind === 'run').length;
   const importedGym = result.added.length - importedRuns;
-  showToast(`Imported ${[
+  const fitSummary = [
     importedRuns ? `${importedRuns} run${importedRuns === 1 ? '' : 's'}` : '',
     importedGym ? `${importedGym} strength activit${importedGym === 1 ? 'y' : 'ies'}` : '',
-  ].filter(Boolean).join(' · ')}`);
+  ].filter(Boolean).join(' · ');
+  const fitSaved = await saveStateToLocalStorage(false);
+  showToast(
+    fitSaved
+      ? `Imported ${fitSummary}`
+      : `Imported ${fitSummary}, but this device could not save it. Free some space before closing the app.`,
+    !fitSaved,
+  );
   _finishImport({ history: true });
 }
 
@@ -1824,8 +1831,13 @@ export async function handleExternalCsvFile(file) {
       showToast('Those weigh-ins are already in your log.');
       return;
     }
-    await saveStateToLocalStorage(false);
-    showToast(`Imported ${result.added} weigh-in${result.added === 1 ? '' : 's'}${result.skipped ? ` · ${result.skipped} existing skipped` : ''}`);
+    const weighSaved = await saveStateToLocalStorage(false);
+    showToast(
+      weighSaved
+        ? `Imported ${result.added} weigh-in${result.added === 1 ? '' : 's'}${result.skipped ? ` · ${result.skipped} existing skipped` : ''}`
+        : `Imported ${result.added} weigh-in${result.added === 1 ? '' : 's'}, but this device could not save them. Free some space before closing the app.`,
+      !weighSaved,
+    );
     _finishImport();
     return;
   }
@@ -1856,8 +1868,13 @@ export async function handleExternalCsvFile(file) {
       showToast('Those dates already have measurements — existing entries are never overwritten.');
       return;
     }
-    await saveStateToLocalStorage(false);
-    showToast(`Imported ${result.added} measurement date${result.added === 1 ? '' : 's'}${result.skipped ? ` · ${result.skipped} existing skipped` : ''}`);
+    const measureSaved = await saveStateToLocalStorage(false);
+    showToast(
+      measureSaved
+        ? `Imported ${result.added} measurement date${result.added === 1 ? '' : 's'}${result.skipped ? ` · ${result.skipped} existing skipped` : ''}`
+        : `Imported ${result.added} measurement date${result.added === 1 ? '' : 's'}, but this device could not save them. Free some space before closing the app.`,
+      !measureSaved,
+    );
     _finishImport();
     return;
   }
@@ -1894,18 +1911,29 @@ export async function handleExternalCsvFile(file) {
     showToast('Those workouts are already in your history.');
     return;
   }
-  await saveStateToLocalStorage(false);
+  const historySaved = await saveStateToLocalStorage(false);
   const parts = [
     `${result.added.length} workout${result.added.length === 1 ? '' : 's'}`,
     `${result.sets} set${result.sets === 1 ? '' : 's'}`,
     result.runs ? `${result.runs} run${result.runs === 1 ? '' : 's'}` : '',
   ].filter(Boolean);
-  showToast(`Imported ${parts.join(' · ')}`);
+  showToast(
+    historySaved
+      ? `Imported ${parts.join(' · ')}`
+      : `Imported ${parts.join(' · ')}, but this device could not save them. Free some space before closing the app.`,
+    !historySaved,
+  );
   _finishImport({ history: true });
 }
 
 export function handleImportFile(file) {
   if (!file) return;
+  // Check the size BEFORE reading the whole file into memory: a multi-GB local
+  // file would otherwise freeze or OOM the tab before validation could refuse it.
+  if (Number(file.size) > MAX_IMPORT_BYTES) {
+    showToast('That file is too large to import.', true);
+    return;
+  }
   const reader = new FileReader();
   reader.onload = (e) => { void _importRawText(String(e.target?.result || '')); };
   reader.readAsText(file);
@@ -1960,10 +1988,10 @@ async function _importRawText(rawText, { skipConfirm = false } = {}) {
       if (current) localStorage.setItem(STORAGE_KEY + '_backup', current);
     }
     cancelPendingLocalSave();
-    setAppState(migratedState);
-    const importedJson = JSON.stringify(migratedState);
-    localStorage.setItem(STORAGE_KEY, importedJson);
-    localStorage.setItem(SAVED_AT_KEY, new Date().toISOString());
+    // Storage first, memory second: a quota failure leaves the current state —
+    // in memory and on disk — untouched instead of adopting a backup that was
+    // never saved.
+    const importedJson = commitImportedState(migratedState);
     await writeMirror(importedJson);
 
     // Restore rich session-linked routes when present; v2 backups fall back to

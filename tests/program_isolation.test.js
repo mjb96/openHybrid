@@ -276,6 +276,15 @@ test('weekHasLoggedData distinguishes history from scaffolding', () => {
   assert.equal(weekHasLoggedData({}), false);
 });
 
+test('athlete-authored notes, effort and day weight are history, not scaffolding', () => {
+  assert.equal(weekHasLoggedData({ notes: { mon: 'Knee felt good today' } }), true);
+  assert.equal(weekHasLoggedData({ gymRpe: { mon: 8 } }), true);
+  assert.equal(weekHasLoggedData({ bodyWeight: { mon: 81.4 } }), true);
+  assert.equal(weekHasLoggedData({ sessionStatus: { mon: 'finished' } }), true);
+  assert.equal(weekHasLoggedData({ gymStats: { mon: { cals: 320 } } }), true);
+  assert.equal(weekHasLoggedData({ notes: { mon: '   ' }, names: {} }), false);
+});
+
 test('archiveForeignWeeks keeps owned weeks, archives logged foreign, drops empty foreign', () => {
   const state = {
     activeActivationId: 'act_new',

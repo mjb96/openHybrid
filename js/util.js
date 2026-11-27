@@ -5,6 +5,15 @@
 const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const escapeHtml = (str) => String(str).replace(/[&<>"']/g, (c) => ESC[c]);
 
+// A key that JavaScript treats specially on assignment. Imported plans and
+// exercise names reach plain-object maps (`lifts[day][name]`), where assigning
+// `__proto__` replaces the map's prototype instead of storing a lift.
+const UNSAFE_RECORD_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+/** @param {unknown} key */
+export function isUnsafeRecordKey(key) {
+  return UNSAFE_RECORD_KEYS.has(String(key));
+}
+
 // Imported custom programs may carry colour metadata that is rendered into an
 // inline style. Keep the small colour vocabulary the app uses and reject
 // quotes, URLs, declarations and other CSS capable of escaping that property.

@@ -77,8 +77,10 @@ function setIsLogged(s) {
 
 /**
  * Does a week object hold ANY history worth preserving — a completed/weighted
- * lift set, or a logged run/gym session? Pure scaffolding (prescribed-but-untouched
- * rows) returns false so an empty foreign week is dropped, not archived.
+ * lift set, a logged run/gym session, or athlete-authored data (a workout note,
+ * an RPE, a day bodyweight, a session status)? Pure scaffolding
+ * (prescribed-but-untouched rows) returns false so an empty foreign week is
+ * dropped, not archived.
  * @param {any} week
  * @returns {boolean}
  */
@@ -97,10 +99,29 @@ export function weekHasLoggedData(week) {
     const r = runDaySummary(week, day);
     if (r && ((parseFloat(r.dist) || 0) > 0 || (r.time != null && r.time !== ''))) return true;
   }
+  // A note, effort rating or day bodyweight is athlete-authored data even when
+  // no set was ticked. Archiving used to drop these weeks because only sets and
+  // runs were inspected, so a written workout note vanished on a program switch.
+  const notes = week.notes || {};
+  const gymRpe = week.gymRpe || {};
+  const bodyWeight = week.bodyWeight || {};
+  const sessionStatus = week.sessionStatus || {};
+  const sessionSummary = week.sessionSummary || {};
+  for (const day of DAY_KEYS) {
+    if (typeof notes[day] === 'string' && notes[day].trim()) return true;
+    if (gymRpe[day] !== '' && gymRpe[day] != null && Number.isFinite(Number(gymRpe[day]))) return true;
+    if (Number(bodyWeight[day]) > 0) return true;
+    if (sessionStatus[day] === 'in_progress' || sessionStatus[day] === 'finished') return true;
+    if (sessionSummary[day] && typeof sessionSummary[day] === 'object') return true;
+  }
   const gym = week.gymStats || {};
   for (const day of DAY_KEYS) {
     const g = gym[day];
-    if (g && g.time != null && g.time !== '') return true;
+    if (!g || typeof g !== 'object') continue;
+    if (g.time != null && g.time !== '') return true;
+    // An imported gym file can carry heart rate/calories without a duration.
+    if (Object.values(g).some((value) => value != null && value !== '' &&
+      !(Array.isArray(value) && value.length === 0))) return true;
   }
   return false;
 }

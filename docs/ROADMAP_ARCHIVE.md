@@ -6281,3 +6281,15 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     remaining **66 of 157** reviewed entries in batches of 25 (91 complete).
   - No code change beyond the roadmap/brief record.
 
+- **2026-11-26 — G9: reviewed-exercise batch (25), 66 → 91.**
+  - Added instructions, difficulty and safety notes for 25 core lifts picked by
+    real programme usage: dumbbell/cable/machine chest and fly work, overhead
+    press and push press, Pendlay/inverted/renegade/band/kettlebell rows, band
+    lat pulldown, pullover, pull-apart, shrugs, cable curls, goblet squat, walking
+    lunge, leg extension, sumo deadlift and barbell hip thrust.
+  - Copy stays conservative and specific (a claim about loading a barbell, not
+    generic advice); every line passes the sentence/length guard.
+  - Ratchet: the reviewed-count guard is now 91 of 157. The 300–500 target needs
+    a CORE-SELECTION decision (which catalogue entries are promoted), so the
+    remaining work stays in human-reviewed batches of 25.
+

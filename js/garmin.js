@@ -57,6 +57,9 @@ export function initGarminGymImport(onDataExtracted) {
   setupUploader('fitGymUpload', false, onDataExtracted);
 }
 
+// A FIT activity is a few hundred KB; 20 MB matches the Settings batch import.
+const MAX_FIT_BYTES = 20 * 1024 * 1024;
+
 function setupUploader(inputId, isRun, onDataExtracted) {
   const uploadInput = document.getElementById(inputId);
   if (!uploadInput) return;
@@ -66,6 +69,12 @@ function setupUploader(inputId, isRun, onDataExtracted) {
     if (!file) return;
 
     event.target.value = ''; 
+
+    // Refuse before reading: a multi-GB file would be loaded into memory first.
+    if (Number(file.size) > MAX_FIT_BYTES) {
+      showToast('That FIT file is too large to import.', true);
+      return;
+    }
 
     showToast('Parsing Garmin file...');
 

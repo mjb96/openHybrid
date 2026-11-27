@@ -12,6 +12,7 @@ import { openManagedModal, closeManagedModal } from './ui/modal-stack.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatDayMonth, todayKey } from './dates.js';
 import { showToast } from './toast.js';
+import { upsertWeighIn } from './metrics/bodyweight.js';
 import {
   displayWeightString, fromCanonicalWeight, toCanonicalWeight,
 } from './metrics/weight-unit.js';
@@ -155,9 +156,7 @@ export function saveBodyweightSheet() {
     return;
   }
   if (!Array.isArray(appState.bodyWeightLog)) appState.bodyWeightLog = [];
-  const index = appState.bodyWeightLog.findIndex((entry) => entry?.date === date);
-  if (index >= 0) appState.bodyWeightLog[index] = { ...appState.bodyWeightLog[index], date, weight };
-  else appState.bodyWeightLog.push({ date, weight });
+  appState.bodyWeightLog = upsertWeighIn(appState.bodyWeightLog, date, weight);
   saveStateToLocalStorage(true);
   closeBodyweightSheet();
   _render();

@@ -114,6 +114,9 @@ export function disableAutomaticBackup(providedRuntime = {}) {
 export async function buildCompleteBackup(state, deps = {}) {
   const getRoutes = deps.getRoutes || getAllRouteRecords;
   const routeRecords = await getRoutes();
+  if (!Array.isArray(routeRecords)) {
+    throw new Error('GPS routes could not be read; no backup was written.');
+  }
   const payload = wrapExport(state, routeRecords, { appVersion: deps.appVersion || APP_VERSION });
   if (payload.routeRecords.length !== routeRecords.length) {
     throw new Error('Route validation did not preserve every route.');

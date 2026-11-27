@@ -60,7 +60,7 @@ export function listPhotos(state) {
  *   file?: File|Blob,
  *   prepared?: { blob: Blob, width: number, height: number },
  *   note?: string,
- *   save?: () => void,
+ *   save?: () => void|boolean,
  *   now?: number,
  * }} input
  */
@@ -86,7 +86,17 @@ export async function addPhoto(input) {
   if (!Array.isArray(state.progressPhotos)) state.progressPhotos = [];
   // One photo per date: the id IS the date, so adding twice replaces.
   state.progressPhotos = state.progressPhotos.filter((photo) => photo?.id !== id).concat(record);
-  input.save?.();
+  // The bytes were written first (they are the recoverable half); if the state
+  // write then fails, remove the orphan rather than leaving invisible bytes in
+  // quota forever.
+  let saved = true;
+  try { saved = input.save ? input.save() !== false : true; }
+  catch { saved = false; }
+  if (!saved) {
+    state.progressPhotos = state.progressPhotos.filter((photo) => photo?.id !== id);
+    await deletePhotoBlob(id);
+    throw new Error('The photo metadata could not be saved on this device.');
+  }
   return record;
 }
 
@@ -165,14 +175,26 @@ export async function importPhotosZip(state, bytes, options = {}) {
   }
   const photos = Array.isArray(manifest?.photos) ? manifest.photos : [];
 
-  let imported = 0;
+  // Validate the WHOLE archive before replacing any stored photo: a truncated or
+  // mislabelled entry must not overwrite a good blob for an earlier date and
+  // then fail.
+  const prepared = [];
   for (const photo of photos) {
     if (!photo?.date || !/^\d{4}-\d{2}-\d{2}$/.test(photo.date)) continue;
     const entry = entries.find((candidate) => candidate.name === `${PHOTO_DIR}/${photo.date}.jpg`);
     if (!entry) continue;
     // Copy into a fresh buffer: a subarray view can carry a SharedArrayBuffer
     // type that BlobPart rejects.
-    const blob = new Blob([new Uint8Array(entry.bytes)], { type: 'image/jpeg' });
+    const raw = new Uint8Array(entry.bytes);
+    if (raw.length < 3 || raw[0] !== 0xff || raw[1] !== 0xd8 || raw[2] !== 0xff) {
+      throw new Error(`The photo for ${photo.date} is not a JPEG.`);
+    }
+    prepared.push({ photo, raw });
+  }
+
+  let imported = 0;
+  for (const { photo, raw } of prepared) {
+    const blob = new Blob([raw], { type: 'image/jpeg' });
     const ok = await putPhotoBlob(photoIdFor(photo.date), blob);
     if (!ok) continue;
 

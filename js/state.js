@@ -87,6 +87,28 @@ export function setActiveTab(tab) { activeTab = tab; }
 export function setSelectedDay(day) { selectedDay = day; }
 export function setAppState(newState) { appState = newState; }
 
+/**
+ * Persist an imported state, and adopt it in memory ONLY after the write
+ * succeeds. A quota failure must leave both the live state and the stored copy
+ * exactly as they were, so an "Import failed" toast cannot describe a
+ * half-import that a later autosave would write over current training.
+ *
+ * @param {any} nextState
+ * @param {{ storage?: Storage, adopt?: (state:any)=>void, now?: Date }} [options]
+ * @returns {string} the serialised state that was written
+ */
+export function commitImportedState(nextState, options = {}) {
+  const storage = options.storage || _defaultStorage();
+  if (!storage) throw new Error('Import needs device storage to save the backup.');
+  const json = JSON.stringify(nextState);
+  storage.setItem(STORAGE_KEY, json);      // may throw (quota) — nothing adopted yet
+  (options.adopt || setAppState)(nextState);
+  try {
+    storage.setItem(SAVED_AT_KEY, (options.now || new Date()).toISOString());
+  } catch { /* tie-breaker only; the state write already succeeded */ }
+  return json;
+}
+
 export function emitStorageLoadedEvent() {
   document.dispatchEvent(
     new CustomEvent('app:storage-loaded', {

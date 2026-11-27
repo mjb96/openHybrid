@@ -1757,6 +1757,26 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Audit slice 1: imports, archives and backups fail safe.**
+  - Import now writes storage BEFORE adopting memory (`commitImportedState`), so a
+    quota failure leaves the live state and the saved copy untouched. The same path
+    rejects `__proto__`/`constructor`/`prototype` keys, and migration steps write
+    own properties, so a hostile backup cannot pollute a prototype.
+  - Program switching no longer deletes a week whose only content is a workout
+    note, session RPE, day bodyweight, session status or gym HR/calories.
+  - GPS-route reads for backup reject on error/abort instead of producing a
+    partial archive; `buildCompleteBackup` refuses a non-array read.
+  - A weigh-in edit rewrites every duplicate row for that date (`upsertWeighIn`),
+    matching the reader's last-row-wins rule.
+  - Photo archives are validated before anything is written (entry count,
+    per-entry/total size, safe relative names, duplicate names, CRC, JPEG magic),
+    and `addPhoto` removes the blob when its state write fails. Oversized
+    JSON/FIT/photo files are refused before they are read into memory.
+  - CSV/FIT imports report an honest failure when the device refuses the save.
+  - Tests: import atomicity/prototype cases, note/RPE archive cases, duplicate
+    weigh-in, and zip truncation/CRC/traversal/duplicate cases (3,004 total).
+    `npm run verify` green; import, photo and measures browser checks pass.
+
 - **2026-11-27 — The notices ship in the app; the map loses its credit line.**
   - `NOTICE.md` reproduces the upstream Body Muscles NOTICE verbatim
     (Apache-2.0 §4(d)), and both `NOTICE.md` and `LICENSES/Apache-2.0.txt` now
@@ -1901,18 +1921,6 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     labels, wiring), `notifications` (next week-end instant), and the Progress
     hub browser check now drives the REAL Settings control and asserts the Home
     rail and Pulse range change without a reload.
-
-- **2026-11-26 — G9: reviewed-exercise batch (25), 66 → 91.**
-  - Added instructions, difficulty and safety notes for 25 core lifts picked by
-    real programme usage: dumbbell/cable/machine chest and fly work, overhead
-    press and push press, Pendlay/inverted/renegade/band/kettlebell rows, band
-    lat pulldown, pullover, pull-apart, shrugs, cable curls, goblet squat, walking
-    lunge, leg extension, sumo deadlift and barbell hip thrust.
-  - Copy stays conservative and specific (a claim about loading a barbell, not
-    generic advice); every line passes the sentence/length guard.
-  - Ratchet: the reviewed-count guard is now 91 of 157. The 300–500 target needs
-    a CORE-SELECTION decision (which catalogue entries are promoted), so the
-    remaining work stays in human-reviewed batches of 25.
 
 - **2026-11-27 — UI contrast audit: measured AA, and the dark surface ladder.**
   - Built `scripts/contrast-audit.mjs` (+ `scripts/lib/contrast.mjs`): real

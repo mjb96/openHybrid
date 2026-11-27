@@ -15,7 +15,10 @@ globalThis.Blob = globalThis.Blob || (await import('node:buffer')).Blob;
 const library = await import('../js/photos/library.js');
 const { getPhotoBlob } = await import('../js/db.js');
 
-const jpeg = (text) => new Blob([new TextEncoder().encode(text)], { type: 'image/jpeg' });
+// A JPEG starts FF D8 FF. The importer now verifies that magic before it
+// replaces a stored photo, so the fixture must be a real JPEG-shaped blob.
+const JPEG_MAGIC = new Uint8Array([0xff, 0xd8, 0xff, 0xe0]);
+const jpeg = (text) => new Blob([JPEG_MAGIC, new TextEncoder().encode(text)], { type: 'image/jpeg' });
 
 before(() => {
   // Fresh database per run so a previous test's blob cannot pass for this one.
@@ -31,7 +34,7 @@ test('adding a photo writes metadata and a blob keyed by its date', async () => 
   assert.equal(state.progressPhotos.length, 1);
   const blob = await getPhotoBlob('photo:2026-11-20');
   assert.ok(blob, 'the bytes are in IndexedDB');
-  assert.equal(await blob.text(), 'photo-a');
+  assert.ok((await blob.text()).includes('photo-a'));
 });
 
 test('a second photo for the same date replaces rather than duplicates', async () => {
@@ -39,7 +42,7 @@ test('a second photo for the same date replaces rather than duplicates', async (
   await library.addPhoto({ state, dateISO: '2026-11-21', prepared: { blob: jpeg('first'), width: 100, height: 100 } });
   await library.addPhoto({ state, dateISO: '2026-11-21', prepared: { blob: jpeg('second'), width: 100, height: 100 } });
   assert.equal(state.progressPhotos.length, 1, 'one photo per date');
-  assert.equal(await (await getPhotoBlob('photo:2026-11-21')).text(), 'second');
+  assert.ok((await (await getPhotoBlob('photo:2026-11-21')).text()).includes('second'));
 });
 
 test('deleting a photo removes the blob and the metadata', async () => {
@@ -73,7 +76,7 @@ test('export then import restores the bytes on a fresh state', async () => {
   assert.equal(imported, 1);
   assert.equal(restored.progressPhotos[0].date, '2026-11-23');
   assert.equal(restored.progressPhotos[0].width, 640);
-  assert.equal(await (await getPhotoBlob('photo:2026-11-23')).text(), 'round-trip');
+  assert.ok((await (await getPhotoBlob('photo:2026-11-23')).text()).includes('round-trip'));
 });
 
 test('re-importing the same archive is idempotent', async () => {

@@ -6,6 +6,7 @@
 import { canonicalExerciseId, normaliseExerciseName } from '../exercises/catalog.js';
 import { liftTarget } from '../engine.js';
 import { getWeekModifier } from '../schema.js';
+import { isUnsafeRecordKey } from '../util.js';
 import { clearLiftTarget, renameLiftTarget } from './editor/prescriptions.js';
 
 export const EDITOR_DAYS = Object.freeze(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']);
@@ -239,7 +240,7 @@ export function replaceProgramExercise(day, index, replacement, opts = {}) {
   const old = day.lifts[index];
   if (typeof old !== 'string') return false;
   const next = String(replacement || '').trim();
-  if (!next) return false;
+  if (!next || isUnsafeRecordKey(next)) return false;
   day.lifts[index] = next;
   renamePreviewExercise(day, old, next);
   renameDescLabel(day, old, next);
@@ -257,7 +258,7 @@ export function addProgramExercise(day, name) {
   if (!day) return false;
   if (!Array.isArray(day.lifts)) day.lifts = [];
   const next = String(name || '').trim();
-  if (!next) return false;
+  if (!next || isUnsafeRecordKey(next)) return false;
   day.lifts.push(next);
   // The structured preview and description are only ever a NAME fallback when
   // `day.lifts` is empty; a new lift needs no synthetic prescription entry, and

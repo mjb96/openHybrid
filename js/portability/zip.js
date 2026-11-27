@@ -118,27 +118,74 @@ export function createZip(entries, options = {}) {
 
 const decoder = new TextDecoder();
 
+// Bounds for an untrusted archive. A photo backup is one JPEG per day; these
+// caps are far above any real library and stop a crafted file from exhausting
+// memory or filling IndexedDB.
+const MAX_ENTRIES = 5000;
+const MAX_ENTRY_BYTES = 20 * 1024 * 1024;
+const MAX_TOTAL_BYTES = 512 * 1024 * 1024;
+const MAX_NAME_LENGTH = 255;
+
+/** A path that could escape the archive root is never a photo entry. */
+function isSafeEntryName(name) {
+  return typeof name === 'string'
+    && name.length > 0
+    && name.length <= MAX_NAME_LENGTH
+    && !name.startsWith('/')
+    && !name.includes('\\')
+    && !/[\u0000-\u001f]/.test(name)
+    && !name.split('/').includes('..');
+}
+
 /**
  * Read a store-only zip. Used by the import path and by the round-trip test —
  * the same code proves the writer and reads a real archive.
+ *
+ * An untrusted archive is validated before a single byte reaches storage:
+ * every declared size must fit the buffer, every name must be a safe relative
+ * path, and every CRC must match the bytes actually present. A truncated file
+ * therefore fails instead of yielding a short entry that would overwrite a good
+ * photo.
  *
  * @param {Uint8Array} bytes
  * @returns {Array<{ name: string, bytes: Uint8Array }>}
  */
 export function readZip(bytes) {
+  if (!(bytes instanceof Uint8Array)) throw new Error('The archive is not a readable file.');
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const entries = [];
+  const names = new Set();
+  let total = 0;
   let at = 0;
   while (at + 4 <= bytes.length && view.getUint32(at, true) === 0x04034b50) {
+    if (entries.length >= MAX_ENTRIES) throw new Error('That archive contains too many files.');
+    if (at + 30 > bytes.length) throw new Error('That archive is truncated.');
+    const flags = view.getUint16(at + 6, true);
     const method = view.getUint16(at + 8, true);
+    const declaredCrc = view.getUint32(at + 14, true);
     const size = view.getUint32(at + 18, true);
     const nameLength = view.getUint16(at + 26, true);
     const extraLength = view.getUint16(at + 28, true);
     const nameStart = at + 30;
-    const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLength));
     const dataStart = nameStart + nameLength + extraLength;
+    if (flags & 0x08) throw new Error('That archive uses an unsupported streaming header.');
+    if (nameStart + nameLength > bytes.length || dataStart > bytes.length) {
+      throw new Error('That archive is truncated.');
+    }
+    const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLength));
+    if (!isSafeEntryName(name)) throw new Error('That archive contains an unsafe file name.');
+    if (names.has(name)) throw new Error('That archive contains two files with the same name.');
     if (method !== 0) throw new Error(`Unsupported compression for ${name}; only store is supported`);
-    entries.push({ name, bytes: bytes.subarray(dataStart, dataStart + size) });
+    if (size > MAX_ENTRY_BYTES) throw new Error(`${name} is too large to import.`);
+    if (dataStart + size > bytes.length) throw new Error('That archive is truncated.');
+    total += size;
+    if (total > MAX_TOTAL_BYTES) throw new Error('That archive is too large to import.');
+    const entryBytes = bytes.subarray(dataStart, dataStart + size);
+    if (crc32(entryBytes) !== declaredCrc) {
+      throw new Error(`${name} is damaged (checksum mismatch).`);
+    }
+    names.add(name);
+    entries.push({ name, bytes: entryBytes });
     at = dataStart + size;
   }
   return entries;
