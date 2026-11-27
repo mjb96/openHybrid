@@ -203,7 +203,12 @@ export function textPromptModal(opts = {}) {
       else if (t.closest('[data-cm="cancel"]')) close(null);
     });
     overlay.addEventListener('keydown', (e) => {
-      if (/** @type {KeyboardEvent} */ (e).key === 'Enter') { e.preventDefault(); submit(); }
+      // Enter submits from the field or the OK button. On Cancel, Enter must
+      // cancel (the browser default) instead of silently confirming.
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (/** @type {KeyboardEvent} */ (e).key === 'Enter' && (t === input || t.closest?.('[data-cm="ok"]'))) {
+        e.preventDefault(); submit();
+      }
     });
     openManagedModal(overlay, {
       initialFocus: '[data-cm="input"]',
@@ -269,7 +274,12 @@ export function datePromptModal(opts = {}) {
       else if (t.closest('[data-cm="cancel"]')) close(null);
     });
     overlay.addEventListener('keydown', (e) => {
-      if (/** @type {KeyboardEvent} */ (e).key === 'Enter') { e.preventDefault(); submit(); }
+      // Enter submits from the field or the OK button. On Cancel, Enter must
+      // cancel (the browser default) instead of silently confirming.
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (/** @type {KeyboardEvent} */ (e).key === 'Enter' && (t === input || t.closest?.('[data-cm="ok"]'))) {
+        e.preventDefault(); submit();
+      }
     });
     openManagedModal(overlay, {
       initialFocus: '[data-cm="input"]',
@@ -408,7 +418,12 @@ export function numberPromptModal(opts = {}) {
       else if (t.closest('[data-cm="cancel"]')) close(null);
     });
     overlay.addEventListener('keydown', (e) => {
-      if (/** @type {KeyboardEvent} */ (e).key === 'Enter') { e.preventDefault(); submit(); }
+      // Enter submits from the field or the OK button. On Cancel, Enter must
+      // cancel (the browser default) instead of silently confirming.
+      const t = /** @type {HTMLElement} */ (e.target);
+      if (/** @type {KeyboardEvent} */ (e).key === 'Enter' && (t === input || t.closest?.('[data-cm="ok"]'))) {
+        e.preventDefault(); submit();
+      }
     });
     openManagedModal(overlay, {
       initialFocus: '[data-cm="input"]',

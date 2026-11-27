@@ -136,7 +136,8 @@ function _currentSettingsRoute() {
 
 function _refreshSettingsSurface() {
   const route = _currentSettingsRoute();
-  if (route) _showSettings(route);
+  // A control change re-renders the page; keep the athlete where they were.
+  if (route) _showSettings(route, '', { preservePosition: true });
   else {
     const host = document.getElementById('settingsPageHost');
     const state = _getState?.();
@@ -495,11 +496,17 @@ function _homeUrl() {
   return `${location.pathname}${location.search}`;
 }
 
-function _showSettings(page, anchor = '') {
+function _showSettings(page, anchor = '', options = {}) {
   const overlay = document.getElementById('settingsOverlay');
   const panel = document.getElementById('settingsPanel');
   const profilePanel = document.getElementById('settingsProfilePanel');
   if (!overlay || !panel || !profilePanel) return;
+  const preservePosition = options.preservePosition === true;
+  const pageHost = document.getElementById('settingsPageHost');
+  const previousScroll = preservePosition ? (pageHost?.scrollTop || 0) : 0;
+  const activeRowKey = preservePosition
+    ? document.activeElement?.closest?.('[data-setting-key]')?.getAttribute('data-setting-key') || null
+    : null;
 
   if (!overlay.classList.contains('active')) {
     _settingsPreviousFocus = document.activeElement;
@@ -538,14 +545,25 @@ function _showSettings(page, anchor = '') {
       if (page) renderSettingsPage(host, page, state, store);
       else renderSettingsHome(host, state, store, document.getElementById('settingsSearch')?.value || '');
     }
-    if (host) host.scrollTop = 0;
+    if (host) host.scrollTop = preservePosition ? previousScroll : 0;
     _syncSettingsUI();
     _setupSettingsNavigation();
+    if (preservePosition && activeRowKey && host) {
+      // The control the athlete just pressed was destroyed by the re-render.
+      // Focus its replacement and restore the scroll, never the top of the page.
+      const row = [...host.querySelectorAll('[data-setting-key]')]
+        .find((el) => el.dataset.settingKey === activeRowKey);
+      const next = row?.querySelector('input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled])');
+      next?.focus?.({ preventScroll: true });
+      host.scrollTop = previousScroll;
+    }
     if (anchor) {
       setTimeout(() => {
-        // Compare the dataset value instead of building a selector from it:
-        // no interpolation means no escaping bug (CodeQL js/incomplete-sanitization).
-        const key = String(anchor);
+        // Resolve the human anchor (weight-unit) to the registry KEY (weightUnit)
+        // before comparing: the row carries the key, and the old comparison meant
+        // a search result or a deep link opened the page but never reached the row.
+        const entry = settingsEntryByAnchor(anchor) || settingsEntry(anchor);
+        const key = entry ? entry.key : String(anchor);
         const target = [...document.querySelectorAll('#settingsPageHost [data-setting-key]')]
           .find((el) => el.dataset.settingKey === key);
         if (!target) return;

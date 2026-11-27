@@ -8,6 +8,8 @@ import { buildExerciseCard, buildSetRow } from '../js/templates.js';
 import { liftTarget } from '../js/engine.js';
 import { getWeekModifier } from '../js/schema.js';
 import { createImportedProgram, parsePlanFile } from '../js/programs/program-json.js';
+import { deleteActivityButtonLabel } from '../js/activities.js';
+import { profileAvatarUrl } from '../js/athlete-profile.js';
 
 const HOSTILE = '<img src=x onerror="globalThis.pwned=1">';
 
@@ -168,4 +170,20 @@ test('an empty diagnostic message renders no empty note', () => {
     diagnostic: { isStalled: false, progression: null, message: '' },
   });
   assert.doesNotMatch(html, /data-diagnostic-note/);
+});
+
+// ── untrusted session titles / avatars ───────────────────────────────────────
+test('a hostile imported session title is escaped in the History delete label', () => {
+  const label = deleteActivityButtonLabel({ kind: 'run', title: HOSTILE });
+  assert.doesNotMatch(label, /<img/i);
+  assert.match(label, /&lt;img/i);
+  assert.equal(deleteActivityButtonLabel({ kind: 'strength', title: HOSTILE }), 'Delete strength workout');
+});
+
+test('the profile avatar only renders a safe raster data URL', () => {
+  assert.equal(profileAvatarUrl({ settings: { avatarDataUrl: HOSTILE } }), null);
+  assert.equal(profileAvatarUrl({ settings: { avatarDataUrl: 'javascript:alert(1)' } }), null);
+  const valid = 'data:image/png;base64,iVBORw0KGgo=';
+  assert.equal(profileAvatarUrl({ settings: { avatarDataUrl: valid } }), valid);
+  assert.equal(profileAvatarUrl({}), null);
 });

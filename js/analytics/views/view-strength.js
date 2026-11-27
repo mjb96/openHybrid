@@ -291,8 +291,8 @@ function volumeGuideRow(row, { showPriority = true } = {}) {
 // carrying a <select> made the common "how did my week go?" read heavy, and
 // setting a priority is a rare, deliberate act rather than a per-visit one.
 function volumeGuideTabs() {
-  return `<div class="vg-tabs" role="tablist" aria-label="Volume Guide sections">
-    ${[['overview', 'Focus'], ['muscles', 'All muscles'], ['plan', 'Planned'], ['priorities', 'Priorities']].map(([id, label]) => `<button type="button" role="tab" aria-selected="${_volumeGuideTab === id}" class="vg-tab${_volumeGuideTab === id ? ' is-active' : ''}" data-volume-tab="${id}">${label}</button>`).join('')}
+  return `<div class="vg-tabs" role="group" aria-label="Volume Guide sections">
+    ${[['overview', 'Focus'], ['muscles', 'All muscles'], ['plan', 'Planned'], ['priorities', 'Priorities']].map(([id, label]) => `<button type="button" aria-pressed="${_volumeGuideTab === id}" class="vg-tab${_volumeGuideTab === id ? ' is-active' : ''}" data-volume-tab="${id}">${label}</button>`).join('')}
   </div>`;
 }
 

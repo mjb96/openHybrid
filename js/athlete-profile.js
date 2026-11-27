@@ -8,6 +8,7 @@ import { showToast } from './state.js';
 import { computeStreak } from './home/dashboard-model.js';
 import { levelFromXp } from './brain/hybrid-score/levels.js';
 import { displayWeightString } from './metrics/weight-unit.js';
+import { isSafeImageDataUrl } from './state/import-validate.js';
 import { screenTabBar, mountScreenTabs } from './analytics/views/screen-kit.js';
 import { buildActivityHistory } from './activities/model.js';
 import { addDaysISO } from './dates.js';
@@ -33,6 +34,12 @@ export function initAthleteProfile(getStateFn, getDaysFn, saveStateFn) {
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
+
+/** A profile avatar is rendered only when it is a safe raster data URL. */
+export function profileAvatarUrl(state) {
+  const raw = state?.settings?.avatarDataUrl;
+  return isSafeImageDataUrl(raw) ? raw : null;
+}
 
 export function renderAthleteProfile(targetId = 'profileContent') {
   _profileTargetId = targetId;
@@ -103,7 +110,7 @@ export function renderAthleteProfile(targetId = 'profileContent') {
   const recentSessions = buildActivityHistory(state).slice(0, 5);
 
   // Profile hero — always shown
-  const avatarUrl  = state.settings?.avatarDataUrl || null;
+  const avatarUrl  = profileAvatarUrl(state);
   const avatarInner = avatarUrl
     ? `<img src="${avatarUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`
     : initials;

@@ -128,7 +128,7 @@ export function openCustomizeSheet(surface = 'home') {
   render();
   sheet.classList.add('active');
   document.getElementById('customizeBackdrop')?.classList.add('active');
-  openManagedModal(sheet, { initialFocus: '[data-customize-card]' });
+  openManagedModal(sheet, { initialFocus: '#customizeSheet .sheet-close-btn' });
 }
 
 export function closeCustomizeSheet() {
