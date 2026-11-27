@@ -5074,27 +5074,6 @@ html[data-theme="light"] .ob-prog-card.active {
   font-size: 0.82rem;
   color: var(--text-faint);
 }
-/* The one route from the swap sheet into the shared library. Quiet and
-   full-width: the direct swaps are the fast path, this is the fallback — and
-   for a custom exercise it is the only list that exists (L-F6). */
-.el-browse-all {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  width: 100%;
-  min-height: 48px;
-  margin: 4px 0 8px;
-  padding: 10px 12px;
-  border-radius: 11px;
-  border: 1px dashed var(--border-medium);
-  background: transparent;
-  color: var(--text-strong);
-  text-align: left;
-  cursor: pointer;
-}
-.el-browse-all__title { font-size: 0.8rem; font-weight: 800; }
-.el-browse-all__sub { font-size: 0.66rem; font-weight: 600; color: var(--text-faint); }
 .el-custom-row {
   display: flex;
   gap: 8px;
@@ -5295,24 +5274,6 @@ body {
   color: var(--text-muted);
   font-weight: 500;
   letter-spacing: 0.01em;
-}
-/* The in-place action for the section it heads: same 44px floor as every other
-   control, and quiet enough not to compete with the title. */
-.app-section-heading__action {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: center;
-  min-height: var(--touch-target);
-  padding: 0 12px;
-  margin-left: 12px;
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--border-medium);
-  background: transparent;
-  color: var(--text-strong);
-  font-size: 0.74rem;
-  font-weight: 800;
-  white-space: nowrap;
-  cursor: pointer;
 }
 .tile-customise-btn {
   grid-column: 2;

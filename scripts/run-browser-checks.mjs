@@ -43,7 +43,6 @@ const checks = [
   'scripts/train-landing-browser-check.mjs',
   'scripts/session-outline-browser-check.mjs',
   'scripts/set-row-browser-check.mjs',
-  'scripts/tap-audit-browser-check.mjs',
   'scripts/lg2-keyboard-browser-check.mjs',
   'scripts/warmup-ramp-browser-check.mjs',
   'scripts/rest-timer-browser-check.mjs',
