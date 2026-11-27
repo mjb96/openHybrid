@@ -66,6 +66,8 @@ test('rest and future days are distinguished visually, not only by colour', () =
 test('the body map appears only when there are credited working sets', () => {
   const withSets = renderPulse(model());
   assert.match(withSets, /session-map/, 'heat map rendered');
+  assert.doesNotMatch(withSets, /pg-pulse__credit/, 'no per-map credit line');
+  assert.doesNotMatch(withSets, /Ivan Vulović/);
 
   const runsOnly = buildPulseModel({
     weeks: { '1': { dates: { mon: '2026-11-23' }, runSessions: { mon: [{ dist: '5', time: '25:00', type: 'run' }] } } },

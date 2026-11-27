@@ -2596,17 +2596,6 @@ html[data-theme="light"] .home-week .home-insight { background: transparent; }
 }
 .session-map__legend span { display: inline-flex; align-items: center; gap: 4px; }
 .bm-swatch { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
-.session-map__credit {
-  margin: 5px 0 0;
-  /* The smallest text in the app, and it sits on the heat-map card's own tint.
-     --text-faint at 70% measured 3.06:1 light and 3.12-3.19:1 on every dark
-     palette, so it takes the muted body token at full strength. */
-  color: var(--text-2);
-  font-size: .46rem;
-  text-align: center;
-}
-.session-map__credit a { color: inherit; text-decoration: none; }
-
 .session-summary__muscles {
   display: flex;
   flex-wrap: wrap;

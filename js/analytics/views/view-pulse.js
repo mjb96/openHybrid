@@ -146,7 +146,6 @@ export function renderPulse(model, options = {}) {
     </div>
     <p class="pg-pulse__summary">${esc(summary)}</p>
     <p class="pg-pulse__delta pg-pulse__delta--${esc(model.delta.tone)}">${esc(model.delta.text)}</p>
-    ${model.muscles?.hasData ? '<p class="pg-pulse__credit">Body map © Ivan Vulović · Apache-2.0</p>' : ''}
     ${dataTableDisclosure(
       ['Day', 'Sessions', 'Sets', `Run (${distanceUnit})`, `Walk (${distanceUnit})`],
       tableRows(model, distanceUnit),
