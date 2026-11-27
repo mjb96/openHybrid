@@ -55,6 +55,25 @@ export function normalizeWeighIns(log) {
 }
 
 /**
+ * Write one weigh-in for a date, collapsing EVERY duplicate row.
+ *
+ * Readers keep the LAST valid row for a date (`normalizeWeighIns`). Writing only
+ * the first match therefore made a correction invisible: storage became
+ * `[80, 80]` → `[82, 80]` and every screen still showed 80. A restore or import
+ * can create duplicates, so the writer must own the same rule as the reader.
+ *
+ * @param {any} log
+ * @param {string} date
+ * @param {number} weight
+ * @returns {Array<{date:string, weight:number}>}
+ */
+export function upsertWeighIn(log, date, weight) {
+  const rows = (Array.isArray(log) ? log : []).filter((row) => row?.date !== date);
+  rows.push({ date, weight });
+  return rows;
+}
+
+/**
  * The latest VALID weigh-in by date, not by array order. A back-dated entry
  * appended after today's must not become "current".
  * @param {any} log

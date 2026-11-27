@@ -23,9 +23,9 @@ import {
   normalizeRoutineCategory,
 } from '../routines/store.js';
 import { isGroupId } from '../workout/superset.js';
-import { safeExternalHttpUrl } from '../util.js';
+import { isUnsafeRecordKey, safeExternalHttpUrl } from '../util.js';
 
-const MAX_IMPORT_BYTES = 25 * 1024 * 1024; // whole-file guard (snapshots are well under this)
+export const MAX_IMPORT_BYTES = 25 * 1024 * 1024; // whole-file guard (snapshots are well under this)
 const MAX_AVATAR_BYTES = 3 * 1024 * 1024;  // a resized avatar is tens of KB; 3 MB is generous
 
 // A safe raster-image data URL: data:image/<type>;base64,<base64>. Everything
@@ -408,6 +408,11 @@ export function isValidRoutineFolder(folder) {
 export function validateImport(parsed, { currentSchemaVersion = Infinity, rawText } = {}) {
   if (rawText != null && byteLength(rawText) > MAX_IMPORT_BYTES) return { ok: false, reason: 'too-large' };
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return { ok: false, reason: 'not-object' };
+  // A JSON object can carry an own `__proto__` key; adopting it would replace
+  // the live state's prototype. Reserved keys are never real state fields.
+  for (const key of Object.keys(parsed)) {
+    if (isUnsafeRecordKey(key)) return { ok: false, reason: 'reserved-key' };
+  }
   if (typeof parsed.currentWeek !== 'string' && typeof parsed.currentWeek !== 'number') return { ok: false, reason: 'no-current-week' };
   if (!parsed.weeks || typeof parsed.weeks !== 'object' || Array.isArray(parsed.weeks)) return { ok: false, reason: 'no-weeks' };
   if (Object.keys(parsed.weeks).length === 0) return { ok: false, reason: 'empty-weeks' };

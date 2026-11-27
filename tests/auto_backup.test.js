@@ -116,6 +116,13 @@ test('complete backup refuses a partial route export', async () => {
   );
 });
 
+test('complete backup refuses a route read that could not be read', async () => {
+  await assert.rejects(
+    buildCompleteBackup(state(), { getRoutes: async () => null }),
+    /could not be read/,
+  );
+});
+
 test('daily due check compares the native last-written calendar day', () => {
   assert.equal(automaticBackupDue({ configured: true, lastBackupDay: '2026-07-21' }, '2026-07-22'), true);
   assert.equal(automaticBackupDue({ configured: true, lastBackupDay: '2026-07-22' }, '2026-07-22'), false);

@@ -485,7 +485,14 @@ function cloneState(state) {
 
 function replaceState(target, candidate) {
   for (const key of Object.keys(target)) delete target[key];
-  Object.assign(target, candidate);
+  // Define own properties instead of assigning: a JSON payload can carry an own
+  // `__proto__` key, and `Object.assign`/`target[key] = value` would hit the
+  // prototype setter and give the live state an attacker-chosen prototype.
+  for (const key of Object.keys(candidate)) {
+    Object.defineProperty(target, key, {
+      value: candidate[key], writable: true, enumerable: true, configurable: true,
+    });
+  }
 }
 
 function assertObject(value, label) {

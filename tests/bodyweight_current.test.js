@@ -4,8 +4,22 @@
 // ==========================================
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { latestWeighIn } from '../js/metrics/bodyweight.js';
+import { latestWeighIn, upsertWeighIn } from '../js/metrics/bodyweight.js';
 import { currentBodyweight } from '../js/workout/set-mutations.js';
+
+test('upsertWeighIn collapses every duplicate row for a date', () => {
+  // A restore/import can leave two rows for one date; readers keep the LAST, so
+  // writing only the first made a correction invisible.
+  const log = [
+    { date: '2026-11-20', weight: 80 },
+    { date: '2026-11-19', weight: 81 },
+    { date: '2026-11-20', weight: 80 },
+  ];
+  const next = upsertWeighIn(log, '2026-11-20', 82);
+  assert.equal(next.filter((row) => row.date === '2026-11-20').length, 1);
+  assert.deepEqual(latestWeighIn(next), { date: '2026-11-20', weight: 82 });
+  assert.equal(next.some((row) => row.date === '2026-11-19'), true, 'other dates are kept');
+});
 
 test('latestWeighIn orders by date, not array position', () => {
   const log = [

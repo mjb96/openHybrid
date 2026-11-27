@@ -285,12 +285,23 @@ export async function getAllRoutes() {
 
 // Rich portable records preserve every same-day session instead of collapsing
 // to the latest `week_day` entry. The meta migration row is never exported.
+//
+// A failed or aborted read REJECTS: a backup that silently omits routes is not
+// a backup, and routes are the one dataset the athlete cannot recreate.
 export async function getAllRouteRecords() {
   if (typeof indexedDB === 'undefined') return [];
   let db;
-  try { db = await openDB(); } catch { return []; }
-  return new Promise((resolve) => {
+  try { db = await openDB(); }
+  catch { throw new Error('GPS routes could not be opened for backup.'); }
+  return new Promise((resolve, reject) => {
     const out = [];
+    let settled = false;
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      closeQuietly(db);
+      reject(error instanceof Error ? error : new Error('GPS routes could not be read for backup.'));
+    };
     try {
       const tx = db.transaction(ROUTES_STORE, 'readonly');
       const req = tx.objectStore(ROUTES_STORE).openCursor();
@@ -300,10 +311,18 @@ export async function getAllRouteRecords() {
           const r = cursor.value;
           if (r && r.id !== MIGRATION_META_KEY && Array.isArray(r.coordinates) && r.coordinates.length) out.push(r);
           cursor.continue();
-        } else { closeQuietly(db); resolve(out); }
+        } else if (!settled) {
+          settled = true;
+          closeQuietly(db);
+          resolve(out);
+        }
       };
-      req.onerror = () => { closeQuietly(db); resolve(out); };
-    } catch { closeQuietly(db); resolve(out); }
+      req.onerror = () => fail(new Error('GPS routes could not be read for backup.'));
+      // An aborted transaction may never fire `req.onerror` (quota, version
+      // change, evicted connection) — without this the backup hangs forever.
+      tx.onabort = () => fail(new Error('The GPS route read was aborted.'));
+      tx.onerror = () => fail(new Error('The GPS route read failed.'));
+    } catch (error) { fail(error); }
   });
 }
 

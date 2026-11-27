@@ -9,6 +9,7 @@
 // =============================================================================
 
 import { secureRandomSuffix } from '../util/secure-id.js';
+import { isUnsafeRecordKey } from '../util.js';
 
 export const PLAN_FILE_FORMAT = 'openhybrid-plan';
 export const PLAN_FILE_VERSION = 1;
@@ -16,7 +17,9 @@ export const PLAN_FILE_VERSION = 1;
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 const str = (value, fallback = '') => (typeof value === 'string' ? value : fallback);
-const strings = (value) => (Array.isArray(value) ? value.filter((item) => typeof item === 'string' && item.trim()) : []);
+const strings = (value) => (Array.isArray(value)
+  ? value.filter((item) => typeof item === 'string' && item.trim() && !isUnsafeRecordKey(item.trim()))
+  : []);
 
 function normalizeDays(days) {
   const out = {};

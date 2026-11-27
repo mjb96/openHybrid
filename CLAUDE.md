@@ -60,6 +60,8 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   numeric keys, so a past run never appears in the active workout). This is what stops a
   previous program's completed lifts leaking into a new program's day — do NOT reintroduce
   same-slot reuse across programs. v3 migration adopts legacy weeks into one activation.
+  A week whose only content is a workout note, session RPE, day bodyweight, session
+  status or gym HR/calories is history: `weekHasLoggedData` archives it, never drops it.
 - Modules: `js/modules.js` owns the Running, Fasting, Health and Recovery
   switches in `settings.modules` (default on). `applyModuleVisibility` publishes
   `<html data-module-*="on|off">`; CSS hides `[data-module="…"]` entry points.
@@ -1017,6 +1019,9 @@ server works.
   localStorage. It is written after every local save, read on boot, and restored only
   when localStorage is missing/corrupt/older. A localStorage quota failure surfaces an
   honest toast and leaves the mirror as the durable copy; browser/PWA builds no-op.
+  A JSON import is written to localStorage BEFORE it is adopted in memory
+  (`commitImportedState`): a failed write leaves the live state and the saved copy
+  untouched, and `__proto__`/`constructor`/`prototype` keys are refused.
 - Live run surface: `js/gps-tracker.js` drives TWO surfaces from one state machine
   (cockpit + Quick Activity) via the `UI` scope map — a named ID there must exist in
   `index.html`. All live numbers go through `js/gps/active-run-display.js`: never write
