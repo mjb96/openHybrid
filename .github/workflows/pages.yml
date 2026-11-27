@@ -42,10 +42,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url || steps.deploy_retry.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: '20'
 
@@ -64,7 +64,7 @@ jobs:
       - name: Configure Pages
         id: configure
         continue-on-error: true
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 
       - name: Pause before Configure retry
         if: steps.configure.outcome == 'failure'
@@ -72,13 +72,13 @@ jobs:
       - name: Configure Pages (auto-retry)
         id: configure_retry
         if: steps.configure.outcome == 'failure'
-        uses: actions/configure-pages@v6
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
 
       - name: Upload Pages artifact
         id: upload
         if: steps.configure.outcome == 'success' || steps.configure_retry.outcome == 'success'
         continue-on-error: true
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: _site
 
@@ -88,7 +88,7 @@ jobs:
       - name: Upload Pages artifact (auto-retry)
         id: upload_retry
         if: steps.upload.outcome == 'failure'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
           path: _site
 
@@ -96,7 +96,7 @@ jobs:
         id: deploy
         if: steps.upload.outcome == 'success' || steps.upload_retry.outcome == 'success'
         continue-on-error: true
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
 
       - name: Pause before Deploy retry
         if: steps.deploy.outcome == 'failure'
@@ -104,7 +104,7 @@ jobs:
       - name: Deploy to GitHub Pages (auto-retry)
         id: deploy_retry
         if: steps.deploy.outcome == 'failure'
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5
 
       # Fail the job unless the deploy ultimately succeeded. Because each stage
       # only runs when the previous one succeeded, a both-attempts failure in

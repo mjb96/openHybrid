@@ -99,10 +99,8 @@ html[data-text-size="xlarge"] { font-size: 125%; }
   --text-3xl:  1.20rem;
 
   /* --- Border radius --- */
-  --radius-sm:  6px;
-  --radius-md:  8px;
-  --radius-lg:  12px;
-  --radius-xl:  16px;
+  /* sm..xl are personality values owned by tokens.css (it loads last). Only the
+     2xl step is unique to this legacy layer. */
   --radius-2xl: 24px;
 
   /* --- Motion --- */

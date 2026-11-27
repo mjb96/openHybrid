@@ -1758,6 +1758,18 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — Audit slice 8: pinned CI, bounded cache, one radius owner.**
+  - Every external GitHub Action is pinned to a commit SHA (tag in the trailing
+    comment), ratcheted by `supply_chain_and_cache.test.js`.
+  - The service worker caps runtime cache entries at 100, never stores a
+    query-string variant, and gives network fetches a 4 s deadline so a stalled
+    connection falls back to cache.
+  - `CHECK_TIMEOUT_SECONDS` gives the two slow browser checks a 300 s ceiling;
+    the default stays 180 s, so other failures are not delayed.
+  - Removed the duplicate `--radius-sm..xl` declarations from `styles.css`
+    (`tokens.css` is the owner) and the unused `--tile-*` tokens.
+  - `npm run verify` green; offline/performance and precache checks cover the SW.
+
 - **2026-11-28 — Audit slice 7: no fabricated weight, no phantom photo.**
   - A fresh weigh-in sheet opens **blank** with a unit-aware placeholder instead
     of the fabricated `70`; the steppers do nothing until the athlete types a
