@@ -112,3 +112,17 @@ test('a restore whose state write fails is reported, not called a success', asyn
     /could not be recorded/i,
   );
 });
+
+test('the manifest never promises a photo whose bytes are missing', async () => {
+  const state = { progressPhotos: [] };
+  await library.addPhoto({ state, dateISO: '2026-11-25', prepared: { blob: jpeg('orphan'), width: 10, height: 10 } });
+  const { deletePhotoBlob } = await import('../js/db.js');
+  await deletePhotoBlob('photo:2026-11-25');
+
+  const archive = await library.exportPhotosZip(state);
+  assert.equal(archive.count, 0, 'no bytes, no entry');
+  const { readZip } = await import('../js/portability/zip.js');
+  const entries = readZip(archive.bytes);
+  const manifest = JSON.parse(new TextDecoder().decode(entries.find((entry) => entry.name === 'manifest.json').bytes));
+  assert.deepEqual(manifest.photos, [], 'the manifest lists only what the archive contains');
+});

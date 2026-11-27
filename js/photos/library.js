@@ -135,15 +135,20 @@ export async function exportPhotosZip(state, options = {}) {
 
   /** @type {Array<{ name: string, bytes: Uint8Array }>} */
   const entries = [];
+  /** @type {any[]} */
+  const exported = [];
   for (const photo of metadata) {
     const blob = blobs.find((entry) => entry.id === photo.id);
+    // A record whose blob is gone is not in the archive, so it must not be in
+    // the manifest either: the file used to promise a photo it did not contain.
     if (!blob) continue;
     const bytes = new Uint8Array(await blob.blob.arrayBuffer());
     entries.push({ name: `${PHOTO_DIR}/${photo.date}.jpg`, bytes });
+    exported.push(photo);
   }
   entries.push({
     name: MANIFEST_NAME,
-    bytes: new TextEncoder().encode(JSON.stringify({ version: 1, photos: metadata }, null, 2)),
+    bytes: new TextEncoder().encode(JSON.stringify({ version: 1, photos: exported }, null, 2)),
   });
 
   return {

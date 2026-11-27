@@ -872,7 +872,9 @@ server works.
   (longest edge 1200, JPEG q 0.82; `fitWithin` is pure and canvas-free to test).
   Export is a **hand-written store-only zip** (`js/portability/zip.js`, no
   dependency — JPEGs are already compressed); the writer and reader are one module
-  and an archive without a manifest is refused rather than half-imported. Deleting a
+  and an archive without a manifest is refused rather than half-imported. The
+  manifest lists only blobs that are actually in the archive, so a record whose
+  bytes went missing is never promised to a restore. Deleting a
   photo deletes its blob and asks first (no Undo). This matters because Android sets
   `allowBackup="false"`: the zip is the only backup path for photo bytes.
 - Progress is complete (P8b): **customization** has per-band detail switches
@@ -1220,7 +1222,9 @@ server works.
   L=10/M=20/H=30 (v5 migration enforces it). Sets logged before the fix keep their
   stored `w` — history is re-READ by role, never rewritten. Body weight has NO
   default: `_currentBodyweight` returns null when unknown and the athlete is asked
-  (`numberPromptModal`) rather than logging a fabricated 75kg as their load.
+  (`numberPromptModal`) rather than logging a fabricated 75kg as their load. The
+  weigh-in sheet opens blank with a placeholder when there is no reading and no
+  target; its steppers do nothing until a number exists.
 - Logger progression and history are deliberately separate: global dated exercise
   history (`exerciseLoggerHistory`) powers the read-only **Last performed** panel
   and analytics, while `computeDiagnosticForLift` only derives a next-load

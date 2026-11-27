@@ -1758,6 +1758,16 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — Audit slice 7: no fabricated weight, no phantom photo.**
+  - A fresh weigh-in sheet opens **blank** with a unit-aware placeholder instead
+    of the fabricated `70`; the steppers do nothing until the athlete types a
+    number. The browser check proves the blank field and that +0.5 cannot invent
+    a starting weight.
+  - A photo export's manifest now lists only photos whose bytes are in the zip.
+    A record whose blob went missing is no longer promised to a restore.
+  - Tests: manifest-with-missing-blob and the fresh-sheet browser scenario.
+    `npm run verify` green.
+
 - **2026-11-27 — Audit slice 6: the export keeps the set, and dead code goes.**
   - The training CSV now carries each set's shape (`SetMode`, `HoldSec`,
     `CarryDist`), `SetType`, `RIR`, `SetNote`, `SetBasis` and `Failed`. A hold or

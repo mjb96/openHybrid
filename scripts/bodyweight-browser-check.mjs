@@ -555,6 +555,35 @@ try {
   ok(errors.length === 0, `no page errors (${errors.join('; ') || 'none'})`);
   await context.close();
 
+  // A fresh athlete has never weighed in. The sheet must open blank: a
+  // fabricated 70 kg was one tap from being saved as their body weight.
+  const freshState = {
+    ...state,
+    bodyWeightLog: [],
+    bodyMeasurements: [],
+    settings: { ...state.settings, targetWeight: null, rateGoal: null },
+  };
+  const freshContext = await createBrowserContext(browser, { viewport: { width: 390, height: 844 }, timezoneId: 'Australia/Sydney' });
+  await freshContext.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(freshState)]);
+  await freshContext.addInitScript(pinClock, Date.parse(`${todayISO}T09:00:00+11:00`));
+  const freshPage = await freshContext.newPage();
+  await freshPage.goto(base, { waitUntil: 'networkidle' });
+  await freshPage.waitForSelector('#homeWeekStrip');
+  await freshPage.evaluate(async () => {
+    const sheet = await import('./js/bodyweight-sheet.js');
+    sheet.openBodyweightSheet();
+  });
+  await freshPage.waitForSelector('#bwSheet.active');
+  const fresh = await freshPage.evaluate(() => ({
+    value: /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'))?.value ?? null,
+    placeholder: /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'))?.placeholder ?? '',
+  }));
+  ok(fresh.value === '', `a fresh weigh-in sheet opens blank (got "${fresh.value}")`);
+  ok(/e\.g\./.test(fresh.placeholder), 'the blank field tells the athlete what to type');
+  await freshPage.click('[data-action="bw-step"][data-delta="0.5"]');
+  ok((await freshPage.locator('#bwSheetWeight').inputValue()) === '', 'the stepper cannot invent a starting weight');
+  await freshContext.close();
+
   // One narrow context: the full-width body-fat field and an open site trend
   // must still fit a 320px phone without pushing the card sideways.
   const narrowState = {
