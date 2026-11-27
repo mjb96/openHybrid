@@ -25,8 +25,6 @@ export const MIDNIGHT_TOKENS = Object.freeze({
   'domain-strength': '#7C8CFF', 'domain-endurance': '#FF9F5A', 'domain-recovery': '#34D399',
   'data-1': '#4C8DF6', 'data-2': '#34C77B', 'data-3': '#F59A3D', 'data-4': '#EF5A6F',
   'data-5': '#9B7BF2', 'data-6': '#E873B9', 'data-7': '#2BB8B0', 'data-8': '#8A8A8A',
-  'tile-1': '#4C8DF6', 'tile-2': '#34C77B', 'tile-3': '#F59A3D', 'tile-4': '#EF5A6F',
-  'tile-5': '#9B7BF2', 'tile-6': '#E873B9', 'tile-7': '#2BB8B0', 'tile-8': '#8A8A8A',
   'overlay-scrim': 'rgba(6,6,6,.76)', 'focus-ring': '#22D3EE',
 });
 
@@ -45,8 +43,6 @@ export const LIGHT_TOKENS = Object.freeze({
   'domain-strength': '#4338CA', 'domain-endurance': '#C2410C', 'domain-recovery': '#047857',
   'data-1': '#1D4ED8', 'data-2': '#047857', 'data-3': '#B45309', 'data-4': '#B91C1C',
   'data-5': '#6D28D9', 'data-6': '#BE185D', 'data-7': '#0F766E', 'data-8': '#475569',
-  'tile-1': '#1D4ED8', 'tile-2': '#047857', 'tile-3': '#B45309', 'tile-4': '#B91C1C',
-  'tile-5': '#6D28D9', 'tile-6': '#BE185D', 'tile-7': '#0F766E', 'tile-8': '#475569',
   'overlay-scrim': 'rgba(15,23,42,.38)', 'focus-ring': '#0E7490',
 });
 

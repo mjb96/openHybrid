@@ -16,7 +16,7 @@
 // (a node --test), so a newly-added, offline-reachable module can never again
 // be silently omitted from the cache.
 // ==========================================
-const CACHE_NAME = 'openhybrid-v122-h6c1ef8c6a0c6';
+const CACHE_NAME = 'openhybrid-v122-h49331a5f5597';
 
 // GENERATED — do not hand-edit. Run: node scripts/gen-precache.mjs
 const REQUIRED_ASSETS = [
@@ -724,8 +724,45 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
+// Runtime caching bounds. The precache is fixed and validated; anything else
+// fetched at runtime (a map marker, a re-fetched module) used to grow the cache
+// forever, and every `?v=` variant was a new key. Runtime entries are capped and
+// query-string URLs are not stored, so storage cannot creep without limit.
+const MAX_RUNTIME_CACHE_ENTRIES = 100;
+const NETWORK_TIMEOUT_MS = 4000;
+
+let _precachePaths = null;
+function precachePaths() {
+  if (!_precachePaths) {
+    _precachePaths = new Set(REQUIRED_ASSETS.map((asset) => new URL(asset, self.location).pathname));
+  }
+  return _precachePaths;
+}
+
+/** Fetch with a deadline, so a stalled connection cannot block app start. */
+async function fetchWithTimeout(request) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), NETWORK_TIMEOUT_MS);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Keep only the newest runtime entries; precached assets are never pruned. */
+async function pruneRuntimeCache(cache) {
+  const fixed = precachePaths();
+  const keys = await cache.keys();
+  const runtime = keys.filter((request) => !fixed.has(new URL(request.url).pathname));
+  if (runtime.length <= MAX_RUNTIME_CACHE_ENTRIES) return;
+  for (const request of runtime.slice(0, runtime.length - MAX_RUNTIME_CACHE_ENTRIES)) {
+    await cache.delete(request);
+  }
+}
+
 // Network-first for JS modules so bug fixes reach users immediately; fall back
-// to cache only when offline; re-throw if cache is also empty.
+// to cache only when offline or the network stalls; re-throw if cache is empty.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
@@ -734,7 +771,7 @@ self.addEventListener('fetch', (event) => {
 
   if (isJSModule) {
     event.respondWith(
-      fetch(event.request)
+      fetchWithTimeout(event.request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
@@ -753,11 +790,13 @@ self.addEventListener('fetch', (event) => {
     // Cache-first for everything else (HTML, CSS, icons, fonts, approved assets).
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        const fetchPromise = fetchWithTimeout(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic'
+            && !new URL(event.request.url).search) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
+            caches.open(CACHE_NAME).then(async (cache) => {
+              await cache.put(event.request, responseToCache);
+              await pruneRuntimeCache(cache);
             });
           }
           return networkResponse;

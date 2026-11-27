@@ -2,6 +2,15 @@ import { spawn } from 'node:child_process';
 import os from 'node:os';
 import { resolveConcurrency, resolveTimeoutSeconds, resolveRetries } from './lib/browser-runner-options.mjs';
 
+// Two checks boot the app repeatedly and legitimately run past the 180 s default
+// on a slow machine (both have hit it and passed on retry). A per-check ceiling
+// keeps a slow machine from failing a correct run without making every failure
+// wait longer.
+const CHECK_TIMEOUT_SECONDS = {
+  'scripts/gym-performance-browser-check.mjs': 300,
+  'scripts/program-editor-browser-check.mjs': 300,
+};
+
 const checks = [
   // First: it is the only check that publishes a non-zero safe-area inset, so a
   // regression that hides controls under the status bar surfaces before the
@@ -145,7 +154,7 @@ for (const signal of /** @type {const} */ (['SIGINT', 'SIGTERM'])) {
  * @param {string} check
  * @returns {Promise<{status:number, output:string, seconds:string, timedOut:boolean}>}
  */
-function runAttempt(check) {
+function runAttempt(check, timeout) {
   const started = Date.now();
 
   return new Promise((resolve) => {
@@ -180,7 +189,7 @@ function runAttempt(check) {
     timer = setTimeout(() => {
       timedOut = true;
       killTree(child);
-    }, timeoutSeconds * 1000);
+    }, timeout * 1000);
 
     child.stdout.on('data', (chunk) => { output += chunk.toString(); });
     child.stderr.on('data', (chunk) => { output += chunk.toString(); });
@@ -198,14 +207,15 @@ async function runCheck(index) {
   const started = Date.now();
   console.log(`▶ ${check}`);
 
+  const attemptTimeout = CHECK_TIMEOUT_SECONDS[check] || timeoutSeconds;
   let result;
   let attemptsUsed = 0;
   for (let attempt = 0; attempt <= retries; attempt++) {
-    result = await runAttempt(check);
+    result = await runAttempt(check, attemptTimeout);
     attemptsUsed = attempt;
     if (!result.timedOut || attempt === retries) break;
     retried++;
-    console.log(`↻ ${check} timed out after ${timeoutSeconds}s — retrying (${attempt + 1}/${retries})`);
+    console.log(`↻ ${check} timed out after ${attemptTimeout}s — retrying (${attempt + 1}/${retries})`);
     // Keep a hung attempt's evidence, but do not let it masquerade as the
     // successful attempt's output in the final block.
     if (result.output) {
@@ -218,7 +228,7 @@ async function runCheck(index) {
     ? (attemptsUsed > 0 ? 'PASS (retry)' : 'PASS')
     : (result.timedOut ? 'FAIL (timeout)' : 'FAIL');
   if (result.timedOut) {
-    result.output += `\n[runner] ${check} exceeded ${timeoutSeconds}s and was killed.\n`;
+    result.output += `\n[runner] ${check} exceeded ${attemptTimeout}s and was killed.\n`;
   }
   // One write per check keeps concurrent blocks from interleaving mid-line.
   process.stdout.write(`\n=== ${check} — ${verdict} (${seconds}s) ===\n${result.output}${result.output.endsWith('\n') || !result.output ? '' : '\n'}`);

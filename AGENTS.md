@@ -1022,7 +1022,12 @@ server works.
   clients. Classic `<script>` tags in `index.html` are precache ROOTS: nothing imports them, so a
   graph walk from `js/app.js` cannot see them and a miss only breaks offline.
   Never hand-edit `CACHE_NAME` or the `REQUIRED_ASSETS` block — run
-  `npm run precache:gen`.
+  `npm run precache:gen`. Runtime (non-precache) entries are capped at 100 and a
+  query-string URL is never stored; network fetches have a 4 s deadline, so a
+  stalled connection falls back to cache instead of blocking boot.
+- CI supply chain: every external GitHub Action is pinned to a full commit SHA
+  (`tests/supply_chain_and_cache.test.js`); the two slow browser checks get a
+  300 s ceiling via `CHECK_TIMEOUT_SECONDS` while the default stays 180 s.
 - Imported activities: FIT files are dated from the activity's own start
   (`sessionStartTs`, `js/garmin.js`) — a session `timestamp` is the END of the activity,
   so the duration is subtracted. That timestamp is persisted as `startTs` and is the
