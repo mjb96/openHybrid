@@ -1,0 +1,7 @@
+name: mjb96/openhybrid-js-models
+version: 0.0.1
+library: true
+extensionTargets:
+  codeql/javascript-all: "*"
+dataExtensions:
+  - models/**/*.yml

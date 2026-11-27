@@ -336,7 +336,7 @@ function fmtDate(iso) {
 function typeBadge(t) {
   const map = { gym: ['🏋️', 'Strength', '#60a5fa'], run: ['🏃', 'Run', '#f472b6'], walk: ['🚶', 'Walk', '#34d399'] };
   const [icon, label, color] = map[t] || ['•', t, '#94a3b8'];
-  return `<span class="recap-badge" style="--c:${color}">${icon} ${label}</span>`;
+  return `<span class="recap-badge" style="--c:${color}">${icon} ${esc(String(label))}</span>`;
 }
 
 function statTile(label, value) {
@@ -605,7 +605,7 @@ export function renderSessionRecapHTML(r, insights = [], thresholdSec = null, ta
   const hasShareablePR = (r.lifts || []).some(l => l.e1rmPr === true || (l.pr && l.e1rm > 0 && l.e1rmPr !== false));
   const head = `
     <div class="recap-head">
-      <div class="recap-date">${fmtDate(r.dateISO)}</div>
+      <div class="recap-date">${esc(fmtDate(r.dateISO))}</div>
       <div class="recap-badges">${r.types.map(typeBadge).join('')}</div>
     </div>
     ${showShareRow ? `<div class="recap-share-row">

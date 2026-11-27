@@ -457,7 +457,7 @@ function renderEquipmentFit(program, settings) {
     <div class="detail-equipment-block">
       <div class="detail-section-title detail-fit-head"><span>Equipment</span>${status}</div>
       <div class="detail-equipment">
-        ${needed.map((e) => `<span class="detail-equipment-chip${missing.has(e) ? ' detail-equipment-chip--missing' : ''}">${formatEquipment(e)}</span>`).join('')}
+        ${needed.map((e) => `<span class="detail-equipment-chip${missing.has(e) ? ' detail-equipment-chip--missing' : ''}">${escapeHtml(formatEquipment(e))}</span>`).join('')}
       </div>
     </div>`;
 }

@@ -126,7 +126,7 @@ export function renderAthleteProfile(targetId = 'profileContent') {
       <div class="profile-hero-avatar" id="profileHeroAvatar">${avatarInner}</div>
       <div class="profile-hero-info">
         <h1 class="profile-hero-name">${_esc(name)}</h1>
-        <div class="profile-hero-sub">${heroSub}</div>
+        <div class="profile-hero-sub">${_esc(heroSub)}</div>
       </div>
       <button class="profile-settings-btn" data-action="share-profile" aria-label="Share profile card">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

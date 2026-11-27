@@ -1095,6 +1095,16 @@ server works.
   only on FULL credit — any-involvement returns 21 glute exercises against the 8
   that train them. The picker's other select filters MOVEMENT (push/pull/legs/
   core/conditioning); it spent a long time mislabelled "muscle group".
+- Custom exercise names are DISPLAY TEXT, not markup: a typed name the catalogue
+  does not know goes through `sanitizeExerciseName` (`js/exercises/catalog.js`)
+  before it can enter state — it strips `<>`, the quotes and `&`, collapses
+  whitespace and caps the length. Do not store a raw `input.value` as an
+  exercise/day key. Rendered state still escapes (`escapeHtml`); the two are
+  independent defences. `.github/codeql/extensions/openhybrid-js-models` models
+  BOTH `sanitizeExerciseName` and `escapeHtml` as `html-injection` barriers for
+  CodeQL, which otherwise follows DOM text into every `innerHTML`; adding a row
+  there is a security claim, not a silencing switch, and
+  `tests/codeql_model_pack.test.js` pins the pack.
 - Recommendations: `js/programs/recommendation-fit.js` is the fit model — score from what
   the ATHLETE told the app (`fitnessGoal`/`fitnessLevel`/`equipmentTier`/`equipment`/
   `weightGoal` + real recent training frequency), never from catalogue constants.

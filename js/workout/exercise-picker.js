@@ -27,6 +27,7 @@ import { escapeHtml } from '../util.js';
 import { isE1rmExercise } from '../strength/e1rm.js';
 import {
   browseExercises, equipmentLabel, exerciseStatForName, EXERCISE_CATEGORY_LABELS,
+  resolveExercise, sanitizeExerciseName,
 } from '../exercises/catalog.js';
 import { activeWorkoutDay, activeWorkoutWeekKey, oneOffBlueprint } from './one-off-session.js';
 import { applyExerciseSwap } from '../workout-order.js';
@@ -240,11 +241,26 @@ export function executeSwapExercise(newName) {
   showToast(`Swapped to ${newName}`);
 }
 
+/**
+ * A typed name becomes the catalogue's own spelling when it is known. An
+ * unknown name is a CUSTOM exercise, so it is sanitised before it can enter
+ * state — the name is display text, and removing HTML metacharacters here means
+ * no later renderer can turn it into markup (see `sanitizeExerciseName`).
+ */
+function acceptedTypedExerciseName(raw) {
+  const typed = String(raw ?? '').trim();
+  if (!typed) return null;
+  const known = resolveExercise(typed);
+  if (known) return known.name;
+  return sanitizeExerciseName(typed) || null;
+}
+
 export function confirmCustomSwap() {
   const input = /** @type {HTMLInputElement|null} */ (document.getElementById('swapCustomInput'));
-  const name = input?.value?.trim();
+  const name = acceptedTypedExerciseName(input?.value);
   if (!name) { showToast('Type an exercise name to swap in'); return; }
-  saveNewCustomExerciseToLibrary(name);
+  // Only a name the catalogue does not know is stored as a custom exercise.
+  if (!resolveExercise(name)) saveNewCustomExerciseToLibrary(name);
   if (input) input.value = '';
   executeSwapExercise(name);
 }
@@ -274,8 +290,9 @@ export function closeAddExerciseModal() {
 
 export function confirmAddExercise() {
   const customInput = /** @type {HTMLInputElement|null} */ (document.getElementById('customExerciseTextInput'));
-  const name = customInput?.value?.trim();
+  const name = acceptedTypedExerciseName(customInput?.value);
   if (!name) { showToast('Type a custom exercise name first'); return; }
-  saveNewCustomExerciseToLibrary(name);
+  // A typed catalogue name must not become a duplicate custom exercise.
+  if (!resolveExercise(name)) saveNewCustomExerciseToLibrary(name);
   addExerciseToDayFromLibrary(name);
 }
