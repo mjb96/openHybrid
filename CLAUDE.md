@@ -7,14 +7,15 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
 - **AGPL-3.0-only** (`LICENSE`), copyright the openHybrid contributors. Third-party notices
   are in `NOTICE.md`; update them before adding vendored code, fonts or media.
 - Contributions are accepted under the same licence. The hosted PWA and Android
-  app keep a source link under Settings → Data → App → Source code.
+  app keep a source link under Settings → About → App → Source code, beside the
+  in-app Licences sheet.
 
 ## Commands (keep all green before every commit)
 - `npm test` — node --test suite
 - `npm run typecheck` — tsc over jsconfig
 - `npm run smoke` — scripts/smoke.mjs (jsdom import + home render)
 - `npm run icons:gen` — regenerate PWA/Android icons from `assets/brand/icon.svg`
-- `npm run browser:verify` — 59 real-Chromium product checks through a parallel
+- `npm run browser:verify` — 60 real-Chromium product checks through a parallel
   worker pool (3 workers by default; `-- --serial` for one-at-a-time debugging,
   `-- --concurrency=N` to pin workers, `-- --timeout=N` for the 180 s per-check
   kill, `-- --retries=N` for the default single retry after a timeout)
@@ -569,7 +570,9 @@ server works.
   Customize hides only the rail, never Today. Completed days add the session
   summary and anatomical heat map (`js/home/session-summary.js` /
   `js/home/body-heatmap.js`: the static path geometry is Apache-2.0 Body
-  Muscles, vendored with its notice), and the rail pages back through four
+  Muscles, vendored with its notice). Attribution lives in `NOTICE.md` and
+  Settings → About → Licences; the heat map carries no per-card credit line),
+  and the rail pages back through four
   previous weeks as a recap (`js/home/week-view.js`), never a Start action.
   A date cell NEVER navigates: today shows the Today decision/summary; a
   completed date selects in place and renders `dayRecapHTML` (stats, heat map,
