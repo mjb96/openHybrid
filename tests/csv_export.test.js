@@ -62,9 +62,10 @@ test('CSV retains a notes/bodyweight-only archived day', () => {
   } };
   const rows = parseCsv(buildTrainingCsv(state, ['tue']));
   assert.equal(rows.length, 2);
-  assert.equal(rows[1][0], 'arch:a:4');
-  assert.equal(rows[1][18], '81.5');
-  assert.equal(rows[1][20], 'Rest day check-in');
+  const rec = Object.fromEntries(rows[0].map((key, i) => [key, rows[1][i]]));
+  assert.equal(rec.WeekKey, 'arch:a:4');
+  assert.equal(rec.BodyWeightKg, '81.5');
+  assert.equal(rec.Notes, 'Rest day check-in');
 });
 
 test('exports bodyweight history as its own CSV, sorted and deduped', () => {
@@ -93,4 +94,33 @@ test('a cell that would execute as a spreadsheet formula is neutralised', () => 
   assert.equal(csvCell('-5'), '"-5"');
   assert.equal(csvCell('-12.5'), '"-12.5"');
   assert.equal(csvCell('normal text'), '"normal text"');
+});
+
+test('a set keeps its shape, type, effort and note in the spreadsheet export', () => {
+  const state = { weeks: { '1': {
+    dates: { mon: '2026-07-14' },
+    lifts: { mon: {
+      'Back Squat': [
+        { w: '100', r: '5', c: true, type: 'W' },
+        { w: '100', r: '5', c: true, rir: 2, note: 'solid reps' },
+        { w: '90', r: '8', c: true, failure: true },
+      ],
+      Plank: [{ mode: 'time', sec: '90', c: true }],
+      Carry: [{ mode: 'distance', dist: '20', c: true, basis: 'each' }],
+    } },
+  } } };
+  const rows = parseCsv(buildTrainingCsv(state, ['mon']));
+  const bySet = rows.slice(1).map((row) => Object.fromEntries(rows[0].map((key, i) => [key, row[i]])));
+
+  assert.equal(bySet.length, 5);
+  assert.equal(bySet[0].SetType, 'W');
+  assert.equal(bySet[1].RIR, '2');
+  assert.equal(bySet[1].SetNote, 'solid reps');
+  assert.equal(bySet[2].Failed, 'true');
+  assert.equal(bySet[3].SetMode, 'time');
+  assert.equal(bySet[3].HoldSec, '90');
+  assert.equal(bySet[3].Reps, '', 'a hold is not given invented reps');
+  assert.equal(bySet[4].SetMode, 'distance');
+  assert.equal(bySet[4].CarryDist, '20');
+  assert.equal(bySet[4].SetBasis, 'each');
 });

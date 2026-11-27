@@ -102,3 +102,13 @@ test('an invalid date is refused before anything is written', async () => {
     /a date is required/i,
   );
 });
+
+test('a restore whose state write fails is reported, not called a success', async () => {
+  const state = { progressPhotos: [] };
+  await library.addPhoto({ state, dateISO: '2026-11-24', prepared: { blob: jpeg('save-failure'), width: 10, height: 10 } });
+  const archive = await library.exportPhotosZip(state);
+  await assert.rejects(
+    () => library.importPhotosZip({ progressPhotos: [] }, archive.bytes, { save: () => false }),
+    /could not be recorded/i,
+  );
+});

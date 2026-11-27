@@ -1758,6 +1758,19 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — Audit slice 6: the export keeps the set, and dead code goes.**
+  - The training CSV now carries each set's shape (`SetMode`, `HoldSec`,
+    `CarryDist`), `SetType`, `RIR`, `SetNote`, `SetBasis` and `Failed`. A hold or
+    carry is no longer exported as a blank weight x reps row, and a per-set note,
+    RIR or warm-up/drop/failure type survives the spreadsheet.
+  - A photo restore whose state write fails now throws an honest error instead of
+    reporting "Restored N photos" for records a reload would lose.
+  - Deleted four modules with no importer: `analytics/charts/running-charts.js`,
+    `analytics/charts/load-charts.js`, `home/tile-renderers.js` and
+    `home/morning-briefing-card.js` (~700 lines of retired UI).
+  - Tests: CSV shape/type/effort/note columns and the photo save-failure path.
+    `npm run verify` green.
+
 - **2026-11-27 — Audit slice 5: the docs match the product.**
   - `NOTICE.md` now attributes the 284 Free Exercise DB stills (Unlicense) and
     no longer claims no exercise media ships; `license.test.js` asserts both.
