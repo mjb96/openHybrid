@@ -38,13 +38,13 @@ test('browser-check contexts allow local assets and block external hosts', async
 
   await handler(routeFor('http://127.0.0.1:4321/js/app.js'));
   await handler(routeFor('http://localhost:4321/css/styles.css'));
-  await handler(routeFor('https://fonts.googleapis.com/css2?family=Test'));
+  await handler(routeFor('https://example.com/third-party.js'));
   await handler(routeFor('data:image/png;base64,AA=='));
 
   assert.deepEqual(outcomes, [
     ['continue', 'http://127.0.0.1:4321/js/app.js'],
     ['continue', 'http://localhost:4321/css/styles.css'],
-    ['abort', 'https://fonts.googleapis.com/css2?family=Test', 'blockedbyclient'],
+    ['abort', 'https://example.com/third-party.js', 'blockedbyclient'],
     ['continue', 'data:image/png;base64,AA=='],
   ]);
 });

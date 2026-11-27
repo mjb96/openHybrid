@@ -15,6 +15,9 @@ import { formatVolume, weightUnitOf } from './utils.js';
 const W = 1080;
 const H = 1350; // portrait 4:5, the shape social feeds crop least
 
+// Canvas cannot inherit the CSS stack, so the share card names it explicitly.
+const FONT_STACK = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 const LABEL = {
   pulse: 'This week', balance: 'Training mix', muscles: 'Muscle volume',
   exercises: 'Main exercises', endurance: 'Endurance', body: 'Body', fasting: 'Fasting',
@@ -38,16 +41,16 @@ export function drawProgressCard(rows, options = {}) {
   const items = (rows || []).filter((row) => row && row.value).slice(0, 7);
 
   ctx.fillStyle = '#22d3ee';
-  ctx.font = '800 26px "Plus Jakarta Sans", system-ui, sans-serif';
+  ctx.font = `800 26px ${FONT_STACK}`;
   ctx.fillText('OPENHYBRID · PROGRESS', 64, 110);
 
   ctx.fillStyle = '#f8fafc';
-  ctx.font = '800 76px "Plus Jakarta Sans", system-ui, sans-serif';
+  ctx.font = `800 76px ${FONT_STACK}`;
   ctx.fillText(options.title || 'Your training', 64, 200);
 
   if (options.subtitle) {
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '600 30px "Plus Jakarta Sans", system-ui, sans-serif';
+    ctx.font = `600 30px ${FONT_STACK}`;
     ctx.fillText(options.subtitle, 64, 250);
   }
 
@@ -57,16 +60,16 @@ export function drawProgressCard(rows, options = {}) {
     ctx.fillRect(64, y - 46, W - 128, 132);
 
     ctx.fillStyle = '#94a3b8';
-    ctx.font = '800 24px "Plus Jakarta Sans", system-ui, sans-serif';
+    ctx.font = `800 24px ${FONT_STACK}`;
     ctx.fillText(String(row.label || LABEL[row.bandId] || row.bandId || '').toUpperCase(), 96, y - 6);
 
     ctx.fillStyle = '#f8fafc';
-    ctx.font = '800 48px "Plus Jakarta Sans", system-ui, sans-serif';
+    ctx.font = `800 48px ${FONT_STACK}`;
     ctx.fillText(String(row.value), 96, y + 50);
 
     if (row.note) {
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '600 24px "Plus Jakarta Sans", system-ui, sans-serif';
+      ctx.font = `600 24px ${FONT_STACK}`;
       const width = ctx.measureText(String(row.note)).width;
       ctx.fillText(String(row.note), W - 96 - width, y + 50);
     }
@@ -74,7 +77,7 @@ export function drawProgressCard(rows, options = {}) {
   }
 
   ctx.fillStyle = '#475569';
-  ctx.font = '600 22px "Plus Jakarta Sans", system-ui, sans-serif';
+  ctx.font = `600 22px ${FONT_STACK}`;
   ctx.fillText('Logged locally · no account, no sync', 64, H - 60);
 
   return canvas;

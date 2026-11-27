@@ -43,11 +43,10 @@ function scriptRoots() {
 
 test('classic <script> entry points are precache roots too', () => {
   // A graph walk from js/app.js cannot see a classic <script> — nothing imports
-  // it. js/font-css.js was added to index.html and silently left out of the
-  // precache, which only breaks OFFLINE: the file 404s, the webfont stylesheet
-  // stays at its non-blocking media="print", and the brand font never applies
-  // on precisely the start the precache exists to serve. Derive the roots from
-  // the markup instead of maintaining a second hand-written list.
+  // it. js/sw-reload.js is one, and a missing precache entry only breaks
+  // OFFLINE: the file 404s on precisely the start the precache exists to
+  // serve. Derive the roots from the markup instead of maintaining a second
+  // hand-written list.
   const cached = new Set(requiredAssetsInSw());
   const missing = scriptRoots().map((p) => './' + p).filter((p) => !cached.has(p));
   assert.deepEqual(missing, [],

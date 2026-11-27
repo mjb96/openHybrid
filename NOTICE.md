@@ -88,17 +88,6 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-### Plus Jakarta Sans — SIL Open Font License 1.1
-
-The interface loads Plus Jakarta Sans from Google Fonts, with a system-font
-fallback. The font is not bundled with the application.
-
-Copyright 2020 The Plus Jakarta Sans Project Authors
-(<https://github.com/tokotype/PlusJakartaSans>).
-
-Licensed under the SIL Open Font License, Version 1.1:
-<https://openfontlicense.org/open-font-license-official-text/>.
-
 ## Exercise catalogue
 
 The core catalogue (the first 157 entries) is original openHybrid text. The
