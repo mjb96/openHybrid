@@ -1757,6 +1757,18 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-27 — The notices ship in the app; the map loses its credit line.**
+  - `NOTICE.md` reproduces the upstream Body Muscles NOTICE verbatim
+    (Apache-2.0 §4(d)), and both `NOTICE.md` and `LICENSES/Apache-2.0.txt` now
+    ship in the PWA precache and the Android www assets.
+  - Settings → About → Licences opens an in-app sheet (fetch + escaped `<pre>`,
+    repository fallback) instead of sending the reader to GitHub.
+  - The per-card credit is gone from the heat map and the Pulse band;
+    attribution lives in the sheet, so the map no longer opens an external tab.
+  - Guards: `licenses_sheet.test.js` (escaping, fallback), the licence test
+    checks the upstream NOTICE text and both shipped files, and the settings
+    browser check opens the sheet, verifies one dialog and returns focus.
+
 - **2026-11-27 — Plans visual pass: no cover art, one reason, one job per row.**
   - Owner feedback: the plan "thumbnails" were the weak part. Removed the
     gradient/glyph hero from the plan page and the cover tiles from the
@@ -1889,12 +1901,6 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     labels, wiring), `notifications` (next week-end instant), and the Progress
     hub browser check now drives the REAL Settings control and asserts the Home
     rail and Pulse range change without a reload.
-
-- **2026-11-26 — G9 scope decision: the core stays at 157.**
-  - The owner chose not to promote catalogue entries into the curated core;
-    the 300–500 line is superseded. Work is now bounded to finishing the
-    remaining **66 of 157** reviewed entries in batches of 25 (91 complete).
-  - No code change beyond the roadmap/brief record.
 
 - **2026-11-26 — G9: reviewed-exercise batch (25), 66 → 91.**
   - Added instructions, difficulty and safety notes for 25 core lifts picked by

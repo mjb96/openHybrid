@@ -561,7 +561,7 @@ function aboutPage(state) {
       rows: [
         settingsRow({ label: 'Version', icon: 'book', tone: 'slate', summary: `openHybrid v${APP_VERSION}` }),
         settingsRow({ label: 'Source code', icon: 'book', tone: 'blue', summary: 'GitHub · AGPL-3.0', nav: true, href: 'https://github.com/mjb96/openHybrid' }),
-        settingsRow({ label: 'Licences', icon: 'book', tone: 'slate', summary: 'AGPL-3.0 · third-party notices', nav: true, href: 'https://github.com/mjb96/openHybrid/blob/main/NOTICE.md' }),
+        settingsRow({ label: 'Licences', icon: 'book', tone: 'slate', summary: 'AGPL-3.0 · third-party notices', nav: true, action: 'open-licenses' }),
       ],
     })}
     ${settingsGroup({

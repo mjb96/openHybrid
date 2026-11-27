@@ -7,6 +7,11 @@
 // text chips beside it are the accessible equivalent; the SVG also carries an
 // aria-label naming the hardest-trained muscles.
 //
+// Attribution lives in NOTICE.md (shipped with the app) and Settings → About →
+// Licences. The map deliberately carries no per-card credit line: it appeared
+// under every heat map, was hidden on Pulse anyway, and opened GitHub from
+// inside the app.
+//
 // No external image is loaded, so the map works offline and in the Android APK.
 // =============================================================================
 import { BODY_FRONT_PATHS, BODY_BACK_PATHS } from './body-paths.js';
@@ -73,8 +78,5 @@ export function muscleHeatmapHTML(muscles, options = {}) {
       <span><i class="bm-swatch bm-h3"></i>Heavy</span>
       <span><i class="bm-swatch bm-h4"></i>Primary</span>
     </div>
-    <p class="session-map__credit">Body map © Ivan Vulović ·
-      <a href="https://github.com/vulovix/body-muscles" target="_blank" rel="noopener noreferrer">Apache-2.0</a>
-    </p>
   </div>`;
 }

@@ -6274,3 +6274,10 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
     crash/diagnostic collection.
   - Ratchets: `typography.test.js` (no font host, system stack, CSP) and
     `csp_vendored_runtime.test.js` (no crash reporter, Leaflet vendored).
+
+- **2026-11-26 — G9 scope decision: the core stays at 157.**
+  - The owner chose not to promote catalogue entries into the curated core;
+    the 300–500 line is superseded. Work is now bounded to finishing the
+    remaining **66 of 157** reviewed entries in batches of 25 (91 complete).
+  - No code change beyond the roadmap/brief record.
+

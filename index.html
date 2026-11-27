@@ -2022,6 +2022,19 @@
     <div style="height: 16px;"></div>
   </div>
 
+  <!-- Licences — the shipped notices, readable offline from Settings → About. -->
+  <div id="licensesBackdrop" class="sheet-backdrop" data-action="close-licenses"></div>
+  <div id="licensesSheet" class="bottom-sheet licenses-sheet" role="dialog" aria-labelledby="licensesTitle" data-modal-root data-modal-close-action="close-licenses" data-modal-companion="#licensesBackdrop" inert aria-hidden="true">
+    <div class="bottom-sheet-handle"></div>
+    <div class="bottom-sheet-header">
+      <h3 id="licensesTitle" class="bottom-sheet-title">Licences</h3>
+      <button class="sheet-close-btn" data-action="close-licenses" aria-label="Close">✕</button>
+    </div>
+    <p class="bottom-sheet-hint">openHybrid is AGPL-3.0-only. The third-party notices and the Apache licence text shipped with this build are below.</p>
+    <div id="licensesBody" class="licenses-sheet__body"></div>
+    <div style="height: 16px;"></div>
+  </div>
+
   <!-- Edit a saved activity — strength sets or run basics. -->
   <div id="editSavedBackdrop" class="sheet-backdrop" data-action="close-edit-saved"></div>
   <div id="editSavedSheet" class="bottom-sheet edit-saved-sheet" role="dialog" aria-labelledby="editSavedTitle" data-modal-root data-modal-close-action="close-edit-saved" data-modal-companion="#editSavedBackdrop" inert aria-hidden="true">

@@ -82,7 +82,7 @@ test('duration formatting is honest about missing and sub-minute values', () => 
   assert.equal(formatGymDuration('nonsense'), '');
 });
 
-test('the summary view carries stats, an accessible map and the licence credit', () => {
+test('the summary view carries stats, an accessible map and no per-map credit', () => {
   const summary = buildSessionSummary(stateWith(LIFTS), '1', 'mon');
   const html = sessionSummaryHTML(summary);
   assert.match(html, /session-summary/);
@@ -93,8 +93,10 @@ test('the summary view carries stats, an accessible map and the licence credit',
   assert.match(html, /1 e1RM PR/);
   assert.match(html, /Front body map/);
   assert.match(html, /Back body map/);
-  assert.match(html, /Body map © Ivan Vulović/);
-  assert.match(html, /Apache-2\.0/);
+  // Attribution lives in NOTICE.md + Settings → About → Licences, not under
+  // every heat map. A re-added credit line is a regression, not a nicety.
+  assert.doesNotMatch(html, /session-map__credit/);
+  assert.doesNotMatch(html, /Ivan Vulović/);
   assert.doesNotMatch(html, /<img/i);
 });
 

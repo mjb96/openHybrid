@@ -731,19 +731,6 @@ html[data-theme="light"] .pg-site__value { color: #0f172a; }
 
 html[data-theme="light"] .pg-fast b, html[data-theme="light"] .pg-fast small { color: #475569; }
 
-/* The vendored body-map credit is a real link and the browser check measures
-   it on this surface; it is a lone footer line, so a 44px hit area is safe. */
-.pg-band .session-map__credit a {
-  display: inline-flex;
-  align-items: center;
-  /* Height AND width: the visible text is ~35px wide, and a lone footer link
-     has no neighbouring control to collide with. */
-  min-height: var(--touch-target);
-  min-width: var(--touch-target);
-  padding-inline: 6px;
-  margin-inline: -6px;
-}
-
 /* ------------------------------------------------------ 17. PHOTO STRIP */
 .pg-photos-block { margin-top: 14px; }
 
@@ -996,7 +983,6 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
 .pg-band .session-map__views { max-width: 190px; margin-inline: auto; gap: 10px; }
 .pg-band .session-map__view svg { width: auto; height: 156px; max-height: 156px; }
 .pg-band .session-map__label { font-size: 0.52rem; }
-.pg-band .session-map__credit { font-size: 0.5rem; }
 
 /* The hub owns its own bottom breathing room so the last band clears the nav. */
 #analytics-hub { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }
@@ -1012,13 +998,11 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
 .pg-pulse__top .session-map { margin-top: 10px; }
 .pg-pulse__top .session-map__views { max-width: 124px; gap: 6px; }
 .pg-pulse__top .session-map__view svg { height: 104px; max-height: 104px; }
-.pg-pulse__top .session-map__legend,
-.pg-pulse__top .session-map__credit { display: none; }
+.pg-pulse__top .session-map__legend { display: none; }
 @media (max-width: 360px) {
   .pg-pulse__top { grid-template-columns: 1fr; }
   .pg-pulse__top .session-map__views { max-width: 170px; }
 }
-.pg-pulse__credit { margin: 8px 0 0; font-size: 0.5rem; color: var(--text-3); }
 
 /* ------------------------------------------------------------ 20. REPORTS */
 .pg-reports { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
