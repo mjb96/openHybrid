@@ -55,12 +55,17 @@ export function openBodyweightSheet(date) {
   const chosen = validDate(date) ? date : todayKey();
   const existing = entriesNewest.find((entry) => entry.date === chosen);
   const latest = entriesNewest[0];
-  const weight = existing?.weight ?? latest?.weight ?? appState.settings?.targetWeight ?? 70;
+  // A fresh athlete has NO body weight: pre-filling 70 kg put a fabricated
+  // number one tap from being saved. The sheet opens blank and asks them to type.
+  const weight = existing?.weight ?? latest?.weight ?? appState.settings?.targetWeight ?? null;
 
   const dateInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetDate'));
   if (dateInput) { dateInput.value = chosen; dateInput.max = todayKey(); }
   const weightInput = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'));
-  if (weightInput) weightInput.value = displayWeightString(weight, unit(), { decimals: 1 });
+  if (weightInput) {
+    weightInput.value = weight == null ? '' : displayWeightString(weight, unit(), { decimals: 1 });
+    weightInput.placeholder = unit() === 'lbs' ? 'e.g. 180' : 'e.g. 80';
+  }
   const unitLabel = document.getElementById('bwSheetUnit');
   if (unitLabel) unitLabel.textContent = unit();
   const title = document.getElementById('bwSheetTitle');
@@ -131,6 +136,9 @@ export function closeBodyweightSheet() {
 export function stepBodyweight(delta) {
   const input = /** @type {HTMLInputElement|null} */ (document.getElementById('bwSheetWeight'));
   if (!input) return;
+  // A blank field is "not answered yet": a stepper must not invent a starting
+  // weight. The athlete types the number instead.
+  if (!String(input.value ?? '').trim()) return;
   const current = parseFloat(input.value) || 0;
   const maxDisplay = Math.round(fromCanonicalWeight(MAX_WEIGHT, unit()) || MAX_WEIGHT);
   const next = Math.min(maxDisplay, Math.max(1, Math.round((current + Number(delta) || 0) * 10) / 10));
