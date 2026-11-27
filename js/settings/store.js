@@ -14,6 +14,7 @@
 import {
   SETTINGS_REGISTRY,
   readSetting,
+  settingPath,
   settingEnabled,
   settingSummary,
   settingVisible,
@@ -176,6 +177,22 @@ export function createSettingsStore(options) {
     return entry ? settingSummary(entry, getState()) : '';
   }
 
+  /**
+   * Does this payload actually carry the entry's path? `readSetting` cannot
+   * answer that: it substitutes the default for a missing path, which is how a
+   * partial cross-tab payload used to wipe every setting it did not include.
+   * @param {any} source
+   * @param {any} entry
+   */
+  function carries(source, entry) {
+    let cursor = source;
+    for (const part of settingPath(entry).split('.')) {
+      if (cursor == null || !(part in Object(cursor))) return false;
+      cursor = cursor[part];
+    }
+    return cursor !== undefined;
+  }
+
   function syncFromRaw(raw, source = 'storage') {
     let parsed;
     try { parsed = typeof raw === 'string' ? JSON.parse(raw) : raw; } catch { return []; }
@@ -183,6 +200,10 @@ export function createSettingsStore(options) {
     const state = getState();
     const changed = [];
     for (const entry of SETTINGS_REGISTRY) {
+      // A partial payload (an older writer, or a tab that only touched one
+      // page) does not carry every path. Absent means "unchanged", never
+      // "reset to default".
+      if (!carries(parsed, entry)) continue;
       const incoming = readSetting(parsed, entry);
       const current = readSetting(state, entry);
       if (same(current, incoming)) continue;

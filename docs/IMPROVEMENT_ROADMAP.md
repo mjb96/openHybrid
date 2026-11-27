@@ -1758,6 +1758,18 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — Audit slice 9: mobile time entry, corrected sets, cross-tab.
+  - Every MM:SS field (cockpit hold, saved-session time, run duration, gym
+    session, summary duration, rest tiers) uses a keyboard that can type a colon
+    instead of a numeric pad with none.
+  - Editing a COMPLETED set now re-runs the tick verdict on change/blur: 0 reps,
+    a blank hold/carry or a negative weight unticks the row and shows the same
+    inline message, so the screen cannot disagree with analytics.
+  - Cross-tab settings sync no longer resets every key a partial payload omits,
+    and theme/palette/text-size/reduced-motion changes repaint the other tab.
+  - Tests: partial-payload store case, completed-edit browser case, two-tab
+    theme-repaint browser case. `npm run verify` green.
+
 - **2026-11-28 — Audit slice 8: pinned CI, bounded cache, one radius owner.**
   - Every external GitHub Action is pinned to a commit SHA (tag in the trailing
     comment), ratcheted by `supply_chain_and_cache.test.js`.

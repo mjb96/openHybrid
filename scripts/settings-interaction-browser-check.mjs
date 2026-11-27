@@ -42,7 +42,7 @@ const CLOCK = Date.parse(`${TODAY}T09:00:00+11:00`);
 const fixture = {
   schemaVersion: 18, currentWeek: '1', activeProgramId: 'hybrid_engine', activeActivationId: 'settings_check',
   settings: {
-    name: 'Settings Athlete', theme: 'midnight', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon',
+    name: 'Settings Athlete', theme: 'dark', palette: 'midnight', weightUnit: 'kg', distanceUnit: 'km', weekStartDay: 'mon',
     onboardingComplete: true, modules: { running: true, fasting: true, health: true, recovery: true },
     equipmentTier: 'full_gym', equipment: ['barbell', 'dumbbells', 'cable', 'machine', 'pullup_bar'],
     equipmentProfiles: [], exercisePrefs: {}, ui: {}, livePR: true, showPlateHints: false,
@@ -184,6 +184,24 @@ try {
     ok(survived.marker, `${width}px · Enter on Cancel did not reload the app`);
     ok(survived.state, `${width}px · Enter on Cancel did not wipe stored data`);
     ok(!survived.promptOpen, `${width}px · Enter on Cancel closed the prompt`);
+
+    // ── 4. A display setting changed in another tab repaints this one ──────
+    if (width === 390) {
+      const second = await context.newPage();
+      await second.goto(base, { waitUntil: 'networkidle' });
+      await second.waitForTimeout(500);
+      await page.evaluate(async () => {
+        const settings = await import('./js/settings.js');
+        settings.setTheme('light');
+      });
+      await second.waitForTimeout(700);
+      const synced = await second.evaluate(() => ({
+        theme: document.documentElement.dataset.theme,
+        background: getComputedStyle(document.body).backgroundColor,
+      }));
+      ok(synced.theme === 'light', `390px · a theme changed in another tab repaints this one (got ${synced.theme})`);
+      await second.close();
+    }
 
     ok(errors.length === 0, `${width}px · no page errors (${errors.join(' | ')})`);
     await context.close();

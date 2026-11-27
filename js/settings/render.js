@@ -621,7 +621,7 @@ export function renderSettingsPage(host, route, state, store) {
 function timersPage(state, store) {
   const rest = state?.settings?.restPeriods || DEFAULT_REST_TIERS;
   const fmt = (seconds) => `${Math.floor((Number(seconds) || 0) / 60)}:${String((Number(seconds) || 0) % 60).padStart(2, '0')}`;
-  const input = (id, label, value) => `<input id="${id}" class="s-input" type="text" inputmode="numeric" value="${escapeHTML(fmt(value))}" aria-label="${label}">`;
+  const input = (id, label, value) => `<input id="${id}" class="s-input" type="text" inputmode="text" autocapitalize="off" spellcheck="false" value="${escapeHTML(fmt(value))}" aria-label="${label}">`;
   return `
     ${settingsGroup({
       label: 'Rest tiers',

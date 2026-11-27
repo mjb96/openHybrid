@@ -146,7 +146,7 @@ export function buildSetRow(sData, sIdx, safeLiftName, historicalSetData = null,
     </div>
     <div class="set-entry">
       ${mode === 'time'
-        ? `<input type="text" inputmode="numeric" class="input-time-node input-set-value-node" aria-label="Time for set ${sIdx + 1} (MM:SS)" placeholder="0:00" value="${sData.sec ? escapeHtml(formatDuration(sData.sec)) : ''}">`
+        ? `<input type="text" inputmode="text" autocapitalize="off" spellcheck="false" class="input-time-node input-set-value-node" aria-label="Time for set ${sIdx + 1} (MM:SS)" placeholder="0:00" value="${sData.sec ? escapeHtml(formatDuration(sData.sec)) : ''}">`
         : mode === 'distance'
           ? `<input type="number" inputmode="decimal" class="input-dist-node input-set-value-node" aria-label="Distance for set ${sIdx + 1} (metres)" placeholder="m" value="${sData.dist ? escapeHtml(formatDistance(sData.dist)) : ''}">`
           : `<input type="number" inputmode="numeric" class="input-reps-node input-set-value-node" aria-label="Reps for set ${sIdx + 1}" data-target-reps="${escapeHtml(String(prescribedRepGoal || ''))}" placeholder="${escapeHtml(String(ghostReps))}" value="${escapeHtml(String(sData.r || ''))}">

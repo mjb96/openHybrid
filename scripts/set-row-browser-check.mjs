@@ -878,6 +878,33 @@ try {
       }
     }
 
+    // ---- a completed set corrected to 0 reps unticks itself -----------------
+    {
+      const corrected = await page.evaluate(() => {
+        const input = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row.is-complete .input-reps-node');
+        if (!input) return false;
+        input.value = '0';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        return true;
+      });
+      if (corrected) {
+        await page.waitForTimeout(300);
+        const afterInvalid = await page.evaluate(async () => {
+          const row = document.querySelector('.cockpit-exercise:not(.collapsed) .cockpit-set-row');
+          const state = await import('./js/state.js');
+          const byDay = state.appState.weeks?.['1']?.lifts || {};
+          const anyTicked = Object.values(byDay).some((byLift) => Object.values(byLift)
+            .some((sets) => Array.isArray(sets) && sets.some((set) => set?.c && String(set?.r) === '0')));
+          return { ticked: row?.classList.contains('is-complete') || false, anyTicked };
+        });
+        console.log(`${tag} completed-edit:`, JSON.stringify(afterInvalid));
+        if (afterInvalid.ticked || afterInvalid.anyTicked) {
+          fail(`${tag}: a completed set edited to 0 reps stayed ticked`);
+        }
+      }
+    }
+
     // ---- layout -------------------------------------------------------------
     if (await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1)) {
       fail(`${tag}: page-level horizontal overflow`);

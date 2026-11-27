@@ -1558,6 +1558,26 @@ export function updateInputState(inputNode) {
   // history scan when the athlete leaves the field — not one per typed digit.
   // Tick, quick-log and log-all stay immediate (they pass `justTicked`).
   if (isCompletedSet(setObj)) {
+    // A completed row can still be corrected. Change/blur is the right moment
+    // to re-run the SAME verdict the tick used: a set edited to 0 reps, a blank
+    // hold or a negative weight must not stay ticked while analytics drop it.
+    const weightInput = row.querySelector('.input-weight-node');
+    const valueInput = row.querySelector('.input-set-value-node');
+    const verdict = validateSetEntry({
+      weight: weightInput?.value ?? '',
+      value: valueInput?.value ?? '',
+      mode: setObj.mode || SET_MODE.REPS,
+      loadMode: row.dataset.loadMode || 'weighted',
+    });
+    if (!verdict.ok) {
+      setObj.c = false;
+      row.classList.remove('is-complete');
+      const tick = row.querySelector('.gym-check');
+      if (tick) tick.checked = false;
+      setRowMessage(row, primarySetEntryMessage(verdict));
+      _saveState(true);
+      return;
+    }
     detectSetPR(row, liftName, sIdx, setObj, appState, wk, selectedDay);
   }
   // High-frequency keystroke path: debounce the local write instead of

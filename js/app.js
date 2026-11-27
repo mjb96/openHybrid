@@ -91,7 +91,7 @@ import { initOnboarding, shouldShowOnboarding, startOnboarding, handleOnboarding
 import {
   initSettings, openSettings, closeSettings, backToSettings, applySettingsRouteFromHash,
   saveName, saveBodyWeight, setWeightUnit,
-  setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, setReducedMotion, stepCurrentWeek, setAutoAdvanceWeek,
+  setProgressionIncrement, setPreviousValuesScope, setDistanceUnit, setTheme, setPalette, setReducedMotion, stepCurrentWeek, setAutoAdvanceWeek, applySyncedSettings,
   exportData, exportTrainingContext, triggerImport, handleImportFile, restoreImportBackup, confirmResetAllData,
   triggerExternalCsvImport, handleExternalCsvFile, triggerFitImport, handleFitFiles, toggleModule, toggleHybridTraining,
   selectEquipmentProfile, addEquipmentProfileFromUI, saveEquipmentProfileName,
@@ -166,12 +166,17 @@ document.addEventListener('app:storage-loaded', () => {
 // repaints). Scoped to that one key: other settings have their own handlers.
 document.addEventListener('settings:changed', (event) => {
   const keys = event.detail?.keys;
-  if (!Array.isArray(keys) || !keys.includes('weekStartDay')) return;
+  if (!Array.isArray(keys)) return;
   try {
-    setCalendarWeekStart(appState.settings?.weekStartDay);
-    hydrateCurrentView();
+    // Theme/palette/text-size/motion are display-only: a change made in another
+    // tab must repaint this one even when the value itself came from storage.
+    applySyncedSettings(keys);
+    if (keys.includes('weekStartDay')) {
+      setCalendarWeekStart(appState.settings?.weekStartDay);
+      hydrateCurrentView();
+    }
   } catch (err) {
-    console.warn('Week-start refresh failed after a settings sync.', err);
+    console.warn('Settings refresh failed after a settings sync.', err);
   }
 });
 
