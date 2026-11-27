@@ -10030,6 +10030,7 @@ input[type="checkbox"].gym-check {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  min-width: 0;
   margin: 0 0 8px;
   padding: 9px 12px;
   border: 1px solid var(--border-default);
@@ -10071,6 +10072,15 @@ input[type="checkbox"].gym-check {
   cursor: pointer;
 }
 .cockpit-active-head__finish:active { transform: scale(.98); }
+/* At 320px the back button, three stats and Finish no longer fit if they keep
+   their roomy gaps. The system font is a little wider than the old webfont, so
+   the band now shrinks its spacing instead of pushing the page 2px sideways.
+   Do not drop the labels: the numbers alone lose their meaning. */
+@media (max-width: 360px) {
+  .cockpit-active-head { padding: 9px 10px; gap: 6px; }
+  .cockpit-active-head__stats { gap: 8px; }
+  .cockpit-active-head__finish { padding: 0 11px; }
+}
 
 .cockpit-exercise-rail {
   display: flex;
