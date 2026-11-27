@@ -33,25 +33,31 @@ const isWorkingSet = isValidWorkingSet;
  *          liftName → (weekKey → record)
  */
 export function liftE1rmByCalendarWeek(state, opts = {}) {
-  const { byDate } = indexSlotsByDate(state, { tz: opts.tz });
+  // EVERY deduplicated session on a date, not just the day's winner. Two
+  // different strength sessions can share one calendar date (a programmed
+  // workout plus a one-off), and `byDate` keeps only the larger one — which made
+  // the second session's best set invisible to e1RM and PR detection.
+  const { allByDate } = indexSlotsByDate(state, { tz: opts.tz });
   /** @type {Record<string, Map<string, any>>} */
   const out = {};
-  for (const [date, slot] of byDate) {
+  for (const [date, slots] of allByDate) {
     const wk = weekStartOf(date);
-    for (const lift in (slot.lifts || {})) {
-      const identity = resolveExercise(lift)?.name || lift;
-      const sets = slot.lifts[lift];
-      if (!Array.isArray(sets)) continue;
-      for (const s of sets) {
-        if (!isWorkingSet(s)) continue;
-        const e = estimatedE1rmForSet(lift, s);
-        if (e <= 0) continue; // unsupported set (zero reps/weight) — never a false 0
-        const m = out[identity] || (out[identity] = new Map());
-        let rec = m.get(wk);
-        if (!rec) { rec = { best: 0, bestSet: null, validSetCount: 0, programWeeks: new Set() }; m.set(wk, rec); }
-        rec.validSetCount++;
-        rec.programWeeks.add(slot.weekNum);
-        if (e > rec.best) { rec.best = e; rec.bestSet = { weight: parseFloat(s.w) || 0, reps: parseInt(s.r, 10) || 0, date }; }
+    for (const slot of slots) {
+      for (const lift in (slot.lifts || {})) {
+        const identity = resolveExercise(lift)?.name || lift;
+        const sets = slot.lifts[lift];
+        if (!Array.isArray(sets)) continue;
+        for (const s of sets) {
+          if (!isWorkingSet(s)) continue;
+          const e = estimatedE1rmForSet(lift, s);
+          if (e <= 0) continue; // unsupported set (zero reps/weight) — never a false 0
+          const m = out[identity] || (out[identity] = new Map());
+          let rec = m.get(wk);
+          if (!rec) { rec = { best: 0, bestSet: null, validSetCount: 0, programWeeks: new Set() }; m.set(wk, rec); }
+          rec.validSetCount++;
+          rec.programWeeks.add(slot.weekNum);
+          if (e > rec.best) { rec.best = e; rec.bestSet = { weight: parseFloat(s.w) || 0, reps: parseInt(s.r, 10) || 0, date }; }
+        }
       }
     }
   }

@@ -717,7 +717,10 @@ server works.
   band and the navigator can never name different weeks. Sessions are counted as
   sessions (a strength + run day is two); a warm-up-only day is rest; an untrained
   current week keeps the streak alive and labels it at risk. Runs and walks never
-  merge: `runKm` excludes walks, `walkKm` excludes runs. `js/analytics/ranges.js`
+  merge: `runKm` excludes walks, `walkKm` excludes runs. Adherence is the same
+  rule everywhere: completed planned DAYS against planned days elapsed — total
+  sessions are never divided by planned days (Week in Review had produced "8 of
+  4" for a hybrid week). `js/analytics/ranges.js`
   is the one time-window contract (trailing windows end today, so comparisons are
   elapsed-matched by construction; labels are real dates). `views/band-kit.js`
   owns the five required states, the text-alternative table, legend and ranked
@@ -797,7 +800,9 @@ server works.
   separate series (grouped bars, never stacked), reports walks as their own count
   and distance, and gives a walk no pace. FIT imports classify via
   `isWalkingSport` (`walk|hik` → `type:'walk'`). Any new running metric must keep
-  the run-only filter.
+  the run-only filter. `splitEnduranceSessions` (`js/state/run-sessions.js`) is the
+  one run/walk split used by Home's endurance card, the day recap, the week rail
+  and Year in Review, so none of them can merge a walk into run distance or pace.
 - Progress body (P6a landed): `js/analytics/body-metrics.js` composes
   `buildBodyweightModel` (weight + change over the selected range) and
   `buildMeasurementModel` (tape sites, body fat) — nothing re-derived, nothing

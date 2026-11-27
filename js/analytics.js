@@ -48,7 +48,7 @@ import { isRangeId, resolveRange } from './analytics/ranges.js';
 import { confirmModal } from './ui/confirm-modal.js';
 import { formatRunDistance } from './workout/run-units.js';
 import { buildRunningMetricDetail } from './analytics/running-detail.js';
-import { displayWeightString, toCanonicalWeight } from './metrics/weight-unit.js';
+import { displayWeightString, fromCanonicalWeight, toCanonicalWeight } from './metrics/weight-unit.js';
 
 let _getState;
 let _getDays;
@@ -311,7 +311,18 @@ async function shareProgressSummary() {
     if (band.id === 'muscles') rows.push({ bandId: 'muscles', value: `${model.totalSets} sets`, note: `${model.muscles?.length || 0} muscles` });
     if (band.id === 'exercises') rows.push({ bandId: 'exercises', value: `${model.rows?.length || 0} exercises`, note: model.rows?.[0]?.lift || '' });
     if (band.id === 'endurance') rows.push({ bandId: 'endurance', value: `${formatRunDistance(model.runKm, state.settings?.distanceUnit === 'mi' ? 'mi' : 'km')} run`, note: `${model.runs} runs` });
-    if (band.id === 'body') rows.push({ bandId: 'body', value: model.weight?.latest ? `${model.weight.latest} ${model.unit}` : '—', note: model.weight?.change == null ? '' : `${model.weight.change > 0 ? '+' : ''}${model.weight.change} ${model.unit}` });
+    if (band.id === 'body') {
+      // The band model stores kilograms; an image the athlete shares must not
+      // print 102.06 kg beside an "lb" label.
+      const display = (kg) => (kg == null ? null : (fromCanonicalWeight(kg, model.unit) ?? 0));
+      const latest = display(model.weight?.latest);
+      const change = display(model.weight?.change);
+      rows.push({
+        bandId: 'body',
+        value: latest == null ? '—' : `${latest.toFixed(1)} ${model.unit}`,
+        note: change == null ? '' : `${change > 0 ? '+' : ''}${change.toFixed(1)} ${model.unit}`,
+      });
+    }
     if (band.id === 'fasting') rows.push({ bandId: 'fasting', value: `${model.averageHours} h average`, note: `${model.adherencePct}% met goal` });
   }
   if (!rows.length) return;

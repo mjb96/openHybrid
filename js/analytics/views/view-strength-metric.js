@@ -1,6 +1,7 @@
 // @ts-check
 import { buildStrengthMetricDetail, collectStrengthHistory } from '../strength-detail.js';
 import { esc } from './screen-kit.js';
+import { formatVolume } from '../utils.js';
 import { metricMethodHTML } from './metric-contract.js';
 import { weightUnitOf } from '../utils.js';
 import { formatDayMonthShort } from '../../dates.js';
@@ -63,7 +64,7 @@ function evidenceHTML(records, periodLabel, unit) {
   return `<div class="metric-evidence-list">${[...records].reverse().slice(0, 50).map((record) =>
     `<button type="button" class="metric-evidence-row" data-action="open-activity-detail" data-activity-id="${esc(record.activityId)}" aria-label="Open ${esc(record.title)} from ${esc(dateLabel(record.date, true))}">
       <span class="metric-evidence-row__main"><strong>${esc(record.title)}</strong><small>${esc(dateLabel(record.date, true))} · ${record.workingSets} working sets</small></span>
-      <span class="metric-evidence-row__metric">${Math.round(record.volumeKg).toLocaleString()} ${esc(unit)}<b aria-hidden="true">›</b></span>
+      <span class="metric-evidence-row__metric">${esc(formatVolume(record.volumeKg, unit))}<b aria-hidden="true">›</b></span>
     </button>`).join('')}</div>`;
 }
 

@@ -28,7 +28,8 @@
 import { computeDashboardModel } from '../home/dashboard-model.js';
 import { plannedTrainingDays } from '../analytics/progress-landing.js';
 import { bestE1rmByLiftForWeek, liftE1rmByCalendarWeek } from '../analytics/strength-calendar.js';
-import { collectCalendarWeek, weekStartOf, addDaysISO, localDayKey, DAY_KEYS } from '../analytics/weekly-aggregate.js';
+import { collectCalendarWeek, weekStartOf, addDaysISO, localDayKey, weekdayKeyOf, DAY_KEYS } from '../analytics/weekly-aggregate.js';
+import { classifyPlannedSession } from '../workout/completion-policy.js';
 import { isE1rmPr } from '../strength/e1rm.js';
 import { isProgramDeloadWeek } from './day-verdict.js';
 import { todayKey, formatWeekRange } from '../dates.js';
@@ -189,13 +190,25 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
   const arc = isCurrentWeek ? scoreArc(state, today) : { hasData: false, series: [] };
   const plan = isCurrentWeek ? program : null;
 
-  // Adherence is a SESSION comparison, the same unit the Progress hub shows.
-  // The old model used prescribed-vs-completed SETS, so a normal part-finished
-  // week rendered as “6% · 5/81” while the hub said “4 of 4 planned”. Planned
-  // sessions stay program-week based (that is what a plan is).
+  // Adherence compares PLANNED DAYS with planned days that got a session — the
+  // same rule Pulse uses. Comparing total sessions (strength + every run)
+  // against planned DAYS produced "8 of 4" and certified 100 % for a week whose
+  // lifts were skipped. A session on a day the plan does not train does not
+  // satisfy a planned day.
   const plannedSessions = plannedTrainingDays(plan);
-  const sessionAdherencePct = plannedSessions
-    ? Math.min(100, Math.round((current.sessions / plannedSessions) * 100))
+  const programDays = plan?.days && typeof plan.days === 'object' ? plan.days : null;
+  const isPlannedDate = (date) => {
+    const key = weekdayKeyOf(date);
+    const blueprint = key && programDays ? programDays[key] : null;
+    return !!blueprint && typeof blueprint === 'object' && !classifyPlannedSession(blueprint).isRest;
+  };
+  const plannedEntries = programDays
+    ? current.days.filter((day) => isPlannedDate(day.date))
+    : [];
+  const elapsedPlanned = plannedEntries.filter((day) => day.date <= today);
+  const completedPlanned = elapsedPlanned.filter((day) => day.sessions > 0).length;
+  const sessionAdherencePct = plannedSessions && elapsedPlanned.length
+    ? Math.round((completedPlanned / elapsedPlanned.length) * 100)
     : null;
 
   const isDeload = isCurrentWeek && isProgramDeloadWeek(state, program);
@@ -230,13 +243,15 @@ export function buildWeeklyReview(state, days, program, opts = {}) {
     },
     deltas: { volumePct: volumeDeltaPct, distancePct: distanceDeltaPct },
     consistency: {
-      done: current.sessions,
+      // A week with no plan to score (a historical selection) still reports what
+      // WAS logged; only a live, planned week counts completed planned DAYS.
+      done: plannedSessions ? completedPlanned : current.sessions,
       // null — not 0 — when there is no plan to score against (always true for a
       // historical week, whose program run is over). Callers drop the whole
       // adherence claim instead of rendering "0 of 0 planned".
       total: plannedSessions,
       pct: sessionAdherencePct,
-      unit: 'sessions',
+      unit: plannedSessions ? 'days' : 'sessions',
     },
     prs,
     arc,

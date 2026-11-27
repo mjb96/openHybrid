@@ -97,6 +97,34 @@ test('forEachLoggedDay: yields only days with completed lifts or a run', () => {
   assert.deepEqual(seen.sort(), ['2026-07-06:500:0', '2026-07-08:0:5']);
 });
 
+test('forEachLoggedDay: a duration-only imported gym session is a logged day', () => {
+  const state = {
+    currentWeek: '1', weekStartedAt: '2026-07-06',
+    weeks: { '1': {
+      lifts: { tue: {} },
+      gymStats: { tue: { time: '45:00' } },
+      dates: { tue: '2026-07-07' },
+    } },
+  };
+  const seen = [];
+  forEachLoggedDay(state, DAYS, (d) => seen.push({ date: d.dateISO, sessions: d.sessionCount }));
+  assert.deepEqual(seen, [{ date: '2026-07-07', sessions: 1 }]);
+});
+
+test('forEachLoggedDay: warm-up-only work with a saved duration is not a session', () => {
+  const state = {
+    currentWeek: '1', weekStartedAt: '2026-07-06',
+    weeks: { '1': {
+      lifts: { tue: { Squat: [{ w: 60, r: 10, c: true, type: 'W' }] } },
+      gymStats: { tue: { time: '15:00' } },
+      dates: { tue: '2026-07-07' },
+    } },
+  };
+  const seen = [];
+  forEachLoggedDay(state, DAYS, (d) => seen.push(d.dateISO));
+  assert.deepEqual(seen, []);
+});
+
 test('loggedDateSet: distinct training dates', () => {
   const state = {
     currentWeek: '1', weekStartedAt: '2026-07-06',

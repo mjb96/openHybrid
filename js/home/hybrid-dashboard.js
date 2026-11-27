@@ -19,7 +19,7 @@ import {
 } from '../analytics/weekly-aggregate.js';
 import { calendarStrengthSummary } from '../analytics/strength-calendar.js';
 import { effectiveVdot } from '../analytics/calculations/running-calcs.js';
-import { runDaySummary } from '../state/run-sessions.js';
+import { runDaySummary, splitEnduranceSessions } from '../state/run-sessions.js';
 import { daysBetween, localDayKey, todayKey } from '../dates.js';
 import { formatRunDistance, formatRunPace } from '../workout/run-units.js';
 import { formatWeight, parsePaceSeconds, weightUnitOf } from '../analytics/utils.js';
@@ -53,10 +53,14 @@ function runWeekTotals(runSessionsByDay, throughDay) {
   DAY_KEYS.slice(0, throughDay).forEach((day) => {
     const daySessions = runSessionsByDay?.[day];
     if (!Array.isArray(daySessions) || !daySessions.length) return;
-    const summary = runDaySummary({ runSessions: { [day]: daySessions } }, day);
+    // Walks are endurance work but they are NOT runs: a walk's pace is not a
+    // running pace, and merging them overstated run distance on this card.
+    const { runs } = splitEnduranceSessions(daySessions);
+    if (!runs.length) return;
+    const summary = runDaySummary({ runSessions: { [day]: runs } }, day);
     const dist = Number(summary.dist) || 0;
     km += dist;
-    sessions += daySessions.length;
+    sessions += runs.length;
     const pace = parsePaceSeconds(dist, summary.time);
     if (pace > 0) seconds += pace * dist;
   });

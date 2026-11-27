@@ -215,6 +215,17 @@ test('a cloud/local duplicate on the same date is counted once', () => {
   assert.equal(wk.Bench.validSetCount, 1, 'duplicate not double-counted');
 });
 
+test('two different sessions on one date both contribute to e1RM and PRs', () => {
+  // `byDate` keeps one winner per date; the second session must still count.
+  const state = { currentWeek: '2', weeks: {
+    '1': { sessionId: 'a', dates: { mon: WK }, lifts: { mon: { Bench: [work(100, 5), work(100, 5)] } } },
+    '2': { sessionId: 'b', dates: { mon: WK }, lifts: { mon: { Bench: [work(150, 1)] } } },
+  } };
+  const wk = bestE1rmByLiftForWeek(state, { weekStart: WK });
+  assert.equal(Math.round(wk.Bench.bestEstimated1RM), 150, 'the 150 kg single beats the 100 kg session');
+  assert.equal(wk.Bench.validSetCount, 3);
+});
+
 // ---- 26. empty intervening week does not reach further back -----------------
 test('previous-week comparison uses the immediately prior calendar week only', () => {
   const state = { currentWeek: '3', weeks: {

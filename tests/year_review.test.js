@@ -89,6 +89,21 @@ test('two runs on one day add their distance instead of replacing it', () => {
   assert.equal(review.totals.distanceKm, 15);
 });
 
+test('walk distance is not reported as run distance in the year totals', () => {
+  const state = stateOf({
+    '1': {
+      dates: { mon: '2026-04-10' },
+      runSessions: { mon: [
+        { sessionId: 'r1', dist: '10.0', time: '50:00', type: 'run' },
+        { sessionId: 'w1', dist: '5.0', time: '60:00', type: 'walk' },
+      ] },
+    },
+  });
+  const review = buildYearInReview(state, [], { year: 2026, today: '2026-12-15' });
+  assert.equal(review.totals.sessions, 2, 'the walk is still a session');
+  assert.equal(review.totals.distanceKm, 10, 'the card labels this line Run');
+});
+
 test('two legacy run objects (no runSessions) still sum their distance', () => {
   const state = stateOf({
     '1': {

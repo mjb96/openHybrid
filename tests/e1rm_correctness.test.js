@@ -336,10 +336,21 @@ test('a warm-up can never trigger a PR', () => {
 test('duplicate local and synced copies of one session are counted once', () => {
   const state = stateWith(
     session('1', 'mon', '2026-07-06', { 'Back Squat': [work(100, 5)] }),
-    session('2', 'tue', '2026-07-06', { 'Back Squat': [work(100, 5)] }), // same date
+    // The SAME program day under another week key is a copy, not a second session.
+    session('2', 'mon', '2026-07-06', { 'Back Squat': [work(100, 5)] }),
   );
   const week = bestE1rmByLiftForWeek(state, { weekStart: '2026-07-06' });
   assert.equal(week['Back Squat'].validSetCount, 1, 'the same-date duplicate is deduplicated');
+});
+
+test('two different program days on one date are two sessions, both counted', () => {
+  const state = stateWith(
+    session('1', 'mon', '2026-07-06', { 'Back Squat': [work(100, 5)] }),
+    session('2', 'tue', '2026-07-06', { 'Back Squat': [work(150, 1)] }),
+  );
+  const week = bestE1rmByLiftForWeek(state, { weekStart: '2026-07-06' });
+  assert.equal(week['Back Squat'].validSetCount, 2);
+  assert.equal(Math.round(week['Back Squat'].bestEstimated1RM), 150);
 });
 
 test('an edited set weight recalculates the estimate immediately', () => {

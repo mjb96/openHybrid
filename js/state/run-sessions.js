@@ -28,6 +28,44 @@ export function hasRunData(run) {
   });
 }
 
+/**
+ * Split same-day endurance sessions into RUNS and WALKS. They are different
+ * populations and must never merge: `running.*` analytics are run-only, and a
+ * walk's pace is not a running pace. One helper so Home, the day recap, Year in
+ * Review and the Progress bands cannot disagree.
+ *
+ * @param {any[]|null|undefined} sessions
+ * @returns {{
+ *   runKm:number, runCount:number, walkKm:number, walkCount:number,
+ *   runs:any[], walks:any[],
+ * }}
+ */
+export function splitEnduranceSessions(sessions) {
+  const list = Array.isArray(sessions) ? sessions : [];
+  const runs = [];
+  const walks = [];
+  let runKm = 0;
+  let walkKm = 0;
+  for (const session of list) {
+    const km = Math.max(0, parseFloat(session?.dist) || 0);
+    if (session?.type === 'walk') {
+      walks.push(session);
+      walkKm += km;
+    } else {
+      runs.push(session);
+      runKm += km;
+    }
+  }
+  return {
+    runKm: Math.round(runKm * 100) / 100,
+    runCount: runs.length,
+    walkKm: Math.round(walkKm * 100) / 100,
+    walkCount: walks.length,
+    runs,
+    walks,
+  };
+}
+
 /** Collision-resistant id for one run/walk session. */
 export function newRunSessionId() {
   try {
