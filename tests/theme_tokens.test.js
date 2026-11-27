@@ -17,9 +17,15 @@ import { PALETTES } from '../js/theme.js';
 
 const CSS = readFileSync(new URL('../css/tokens.css', import.meta.url), 'utf8');
 
+// The surface ladder is pinned, not just the base surface: cards are separated
+// by luminance alone (borderless), so a drifted step is a visual regression the
+// contrast checks cannot see.
 test('Midnight matches the approved semantic baseline', () => {
   assert.equal(MIDNIGHT_TOKENS.bg, '#060606');
-  assert.equal(MIDNIGHT_TOKENS['surface-1'], '#111111');
+  assert.equal(MIDNIGHT_TOKENS['surface-1'], '#1B1B1B');
+  assert.equal(MIDNIGHT_TOKENS['surface-2'], '#252525');
+  assert.equal(MIDNIGHT_TOKENS['surface-3'], '#2D2D2D');
+  assert.equal(MIDNIGHT_TOKENS['text-3'], '#969696');
   assert.equal(MIDNIGHT_TOKENS.text, '#F2F2F2');
   assert.equal(MIDNIGHT_TOKENS.accent, '#22D3EE');
   assert.equal(MIDNIGHT_TOKENS['on-accent'], '#04202A');

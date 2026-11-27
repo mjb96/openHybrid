@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-11-27T05:46:55.001Z",
+  "width": 390,
+  "modes": [
+    "light",
+    "midnight",
+    "slate",
+    "forest",
+    "ember"
+  ],
+  "note": "Every row here is a KNOWN low-contrast text run. The check fails only on new or worse rows; fixes remove entries, --update prunes them.",
+  "rows": {}
+}

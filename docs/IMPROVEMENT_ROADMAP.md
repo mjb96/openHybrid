@@ -943,8 +943,28 @@ starts with the P0 data-safety findings.
 > its own palette (a choice is remembered for dark). `scripts/theme-screenshots.mjs`
 > covers Home/Train/Settings for each palette, and the visibility check audits
 > every mode at 390.
-> Open: the remaining 1,750 literals (share art, shadow stacks, one-off light
-> overrides) — the ratchet only lets that number fall.
+> **Contrast is now measured.** `docs/audit/ui-contrast-audit.md` records the
+> audit that followed: 63 failing text runs (worst 1.11:1) across Home, History,
+> Progress, Plans, Settings, Profile, Train and the cockpit, in light and all
+> four dark palettes, at 390 and 320. `scripts/contrast-audit.mjs` measures AA
+> against the backdrop actually painted behind each text run — compositing
+> alpha text and treating a gradient as a set of candidate stops — and runs in
+> `browser:verify` against a ratchet that fails only on new or worse rows.
+> Fixes were colour-only and removed literals: status **text** tokens (a status
+> hue on its own tint was 1.65:1), filled-button ink from `--on-accent`, one
+> placeholder rule instead of the UA default, day-cell and badge dimming moved
+> off the label and onto the dot/icon, and two invalid `color-mix(… 6200%)`
+> fills that silently resolved to black on every dark card.
+> **The dark surface ladder moved for all four palettes:** cards are borderless
+> and separated by a 1.17–1.18:1 step (was 1.07:1 behind a 1px hairline), and
+> `--text-3` was lifted with the surfaces. `tests/theme_contrast.test.js` now
+> pins every text token against `bg`/`surface-1..3` in all five palettes, and
+> `tests/light_override_guard.test.js` ratchets raw colours inside light-theme
+> rules.
+> Open: the remaining 1,544 literals (share art, shadow stacks, one-off light
+> overrides — 180 raw colours still sit inside light overrides and may only
+> fall), and Progress detail screens are not yet driven by name in the audit's
+> `--full` tier.
 
 ### 14.1 Design stance
 
@@ -1737,21 +1757,6 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
-- **2026-11-27 — No third-party crash reporting and no webfont.**
-  - Removed Sentry entirely: the vendored SDK, its config, the init call, the
-    `@sentry/browser` devDependency, `scripts/vendor-runtime.mjs`, the CSP hosts
-    and the licence notice. `reportHandledError` keeps its console output and
-    test hook; there is no analytics SDK.
-  - Typography now uses the platform system stack (`system-ui`; SF Pro / Roboto
-    / Segoe UI). The Google Fonts request, both preconnects, the non-blocking
-    `js/font-css.js` loader and the OFL notice are gone; canvas share cards name
-    the same stack explicitly.
-  - `connect-src` is now `'self'`; the only third-party request left is the
-    map-tile `<img>`. The privacy policy and Play Data Safety report no
-    crash/diagnostic collection.
-  - Ratchets: `typography.test.js` (no font host, system stack, CSP) and
-    `csp_vendored_runtime.test.js` (no crash reporter, Leaflet vendored).
-
 - **2026-11-27 — Plans visual pass: no cover art, one reason, one job per row.**
   - Owner feedback: the plan "thumbnails" were the weak part. Removed the
     gradient/glyph hero from the plan page and the cover tiles from the
@@ -1903,3 +1908,37 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     a CORE-SELECTION decision (which catalogue entries are promoted), so the
     remaining work stays in human-reviewed batches of 25.
 
+- **2026-11-27 — UI contrast audit: measured AA, and the dark surface ladder.**
+  - Built `scripts/contrast-audit.mjs` (+ `scripts/lib/contrast.mjs`): real
+    Chromium, text-node walk, alpha compositing, gradient worst-stop, optional
+    pixel confirmation that can only clear an over-estimate, real font-size
+    thresholds, JSON ratchet and `--md`. Phase 0 proves it against nine known-bad
+    shipped rows before its silence is believed.
+  - Found 63 failing runs (P0 13 · P1 48 · P2 2). Root causes, not screens:
+    invalid `color-mix(… 6200%)` fills (SVG text fell back to black, 1.11:1),
+    `--text-white` as filled-button ink (1.81:1 Midnight, 2.73:1 light), status
+    hues as text on their own tint (1.65:1), alpha text in light overrides
+    (1.96:1), UA placeholder grey, `opacity` dimming whole day cells and badges,
+    and a blanket analytics SVG `fill` override.
+  - Fixed all of them colour-only: four status **text** tokens (light values are
+    genuinely darker), `--on-accent` on filled buttons, one placeholder rule,
+    dimming moved to the dot/icon/swatch, day cells and locked badges keep their
+    labels at full contrast.
+  - B2 for all four dark palettes: surfaces `#1b1b1b/#252525/#2d2d2d` (Midnight),
+    `#162033/#1c2941/#21314d` (Slate), `#0f2319/#132d20/#173626` (Forest),
+    `#291b15/#34231b/#3e2a20` (Ember) — a 1.17–1.18:1 card/page step, borderless
+    cards, `--divider` for inner rows only, `--text-3` lifted with the surfaces.
+  - Guards: `theme_contrast.test.js` 13 → 45 pairs across `bg`/`surface-1..3` and
+    five palettes; `light_override_guard.test.js` ratchets raw colours inside
+    light rules; the audit runs in `browser:verify` behind an empty baseline and
+    was verified to exit 1 on an injected regression.
+  - First CI run failed on the audit itself: the pinned clock is an instant and
+    the app derives the day in LOCAL time, so a UTC runner rendered the previous,
+    finished day and measured 45 more text runs. That unrendered state held four
+    real defects (heat-map credit at 3.06:1 light / 3.12-3.19 dark, PR pill
+    4.10:1, primary-muscle chip 3.72:1, cockpit "Today" badge 3.25:1) — all
+    fixed. The audit now pins `timezoneId` and the fixture marks the audited day
+    finished, so the summary is always covered.
+  - Gates: `npm run verify` green (2,975 tests), browser audit 0 findings on
+    1,080 text runs across all five modes at 390, clean at 320 (1,075) and with
+    `--full` (1,090), and all 60 browser checks pass.

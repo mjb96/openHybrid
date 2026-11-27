@@ -494,6 +494,28 @@ framework; ~15k CSS; service-worker PWA). This file is auto-loaded every session
   differ — status and data colours stay constant. Light is its own palette and
   ignores the choice (the palette is remembered for dark mode). Settings →
   Look & Home persists `settings.palette`.
+  **Contrast is measured, not assumed.** `npm run contrast:audit`
+  (`scripts/contrast-audit.mjs`, maths in `scripts/lib/contrast.mjs`) boots the
+  real app, walks text nodes and measures each run against the backdrop actually
+  painted behind it — compositing alpha text and treating a gradient as a set of
+  candidate stops (worst wins). `--pixels` re-shoots with glyphs transparent and
+  samples real pixels, which can only CLEAR an over-estimate. It runs in
+  `browser:verify` against `docs/audit/contrast-baseline.json`, so a new or
+  worse row fails and a fix needs no bookkeeping. The old visibility check's
+  1.8:1 floor and its "skip anything under a gradient" rule were why
+  unreadable-on-a-card text shipped: read `docs/audit/ui-contrast-audit.md`
+  before touching colour. Rules that came out of it: **a status hue is never the
+  text colour on its own tint** (use `--warning-text` / `--success-text` /
+  `--danger-text` / `--info-text`); **a filled button's ink is `--on-accent`**
+  (`--text-white` flips dark in light mode); **never dim a label with
+  `opacity`** — dim the dot/icon/swatch and keep the text on a text token;
+  placeholders are text, not chrome. `tests/theme_contrast.test.js` now checks
+  every text token against `bg`/`surface-1..3` in all five palettes (45 pairs),
+  which is the guard that lets the surface ladder move: the base card is
+  **borderless** and cards are separated by a 1.17–1.18:1 luminance step, so
+  raising a surface requires lifting the muted text with it.
+  `tests/light_override_guard.test.js` ratchets raw colours inside
+  `html[data-theme="light"]` rules — that shape caused every light-mode defect.
 - Exercise catalogue: the original 157 are `CORE_EXERCISES`; `js/exercises/opengym-catalogue.js`
   adds ~5,555 openGym catalogue **metadata** entries (names/ids/muscles/equipment; no imported instructions, descriptions or media) imported by
   `scripts/import-opengym-catalogue.mjs`. `OPENGYM_ID_NAMES` resolves plan-file ids.

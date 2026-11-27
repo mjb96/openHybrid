@@ -349,7 +349,7 @@ export function render1RMProgressChart(container, weekLabels, sqData, bpData, dl
   [0.25, 0.5, 0.75].forEach(pct => {
     const val = minVal + pct * range;
     const vy = toY(val);
-    yAxis += `<text x="${PAD_L - 6}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="color-mix(in srgb, var(--text) 50%, transparent)">${Math.round(val)}</text>`;
+    yAxis += `<text x="${PAD_L - 6}" y="${(vy + 4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--text-2)">${Math.round(val)}</text>`;
     yAxis += `<line x1="${PAD_L}" y1="${vy.toFixed(1)}" x2="${W - PAD_R}" y2="${vy.toFixed(1)}" stroke="color-mix(in srgb, var(--text) 12%, transparent)" stroke-width="1"/>`;
   });
 
@@ -448,13 +448,13 @@ export function bodyWeightChartSVG(bwLog, options = {}) {
     const value = ymin + ((ymax - ymin) * i) / gridSteps;
     const y = toY(value);
     grid += `<line x1="${PAD_L}" y1="${y.toFixed(1)}" x2="${W - PAD_R}" y2="${y.toFixed(1)}" stroke="color-mix(in srgb, var(--text-3) 1400%, transparent)" stroke-width="1"/>`
-      + `<text x="${PAD_L - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="color-mix(in srgb, var(--text-2) 6200%, transparent)">${value.toFixed(1)}</text>`;
+      + `<text x="${PAD_L - 6}" y="${(y + 3.5).toFixed(1)}" text-anchor="end" font-size="9.5" fill="var(--text-2)">${value.toFixed(1)}</text>`;
   }
 
   const xLabelIdx = compact
     ? [...new Set([0, log.length - 1])]
     : [...new Set([0, Math.floor((log.length - 1) / 2), log.length - 1])];
-  const xAxis = xLabelIdx.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 5}" text-anchor="${index === 0 ? 'start' : index === log.length - 1 ? 'end' : 'middle'}" font-size="9.5" fill="color-mix(in srgb, var(--text-2) 6200%, transparent)">${formatDayMonth(log[index].date)}</text>`).join('');
+  const xAxis = xLabelIdx.map((index) => `<text x="${xs[index].toFixed(1)}" y="${H - 5}" text-anchor="${index === 0 ? 'start' : index === log.length - 1 ? 'end' : 'middle'}" font-size="9.5" fill="var(--text-2)">${formatDayMonth(log[index].date)}</text>`).join('');
 
   const fillPath = `M ${xs[0].toFixed(1)},${(PAD_T + chartH).toFixed(1)} `
     + xs.map((x, index) => `L ${x.toFixed(1)},${ys[index].toFixed(1)}`).join(' ')

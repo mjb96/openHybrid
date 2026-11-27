@@ -523,6 +523,11 @@ select.native-select {
 .btn-amber       { background: var(--color-amber);  color: var(--text-white); font-weight: 800; }
 .btn-danger      { background: var(--color-red);    color: var(--text-white); }
 
+/* A filled button takes the ink that belongs on its fill. `--text-white` is a
+   TEXT token and flips dark in light mode, which painted dark ink on a dark
+   teal fill ("Finish Workout" measured 2.73:1 light, 1.81:1 Midnight). */
+.btn-blue { color: var(--on-accent); }
+
 /* Ghost variants */
 .btn-ghost {
   background: var(--bg-input);
@@ -940,9 +945,9 @@ select.native-select {
 }
 .run-pace-label {
   font-size: 0.6rem;
+  color: var(--text-2);
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: color-mix(in srgb, var(--accent) 60%, transparent);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -958,10 +963,10 @@ select.native-select {
   text-align: center;
   padding: 0 !important;
 }
-.run-pace-input::placeholder { color: color-mix(in srgb, var(--accent) 25%, transparent); }
+.run-pace-input::placeholder { color: var(--text-2); }
 .run-pace-unit {
   font-size: 0.65rem;
-  color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--text-3);
   flex-shrink: 0;
 }
 
@@ -1500,7 +1505,7 @@ input[type="checkbox"].gym-check:checked ~ .gym-check-icon { opacity: 1; }
   cursor: pointer;
 }
 .btn-pad-link:active { background: var(--overlay-sm); }
-.btn-pad-link.btn-append-warmup { color: color-mix(in srgb, var(--warning) 72%, transparent); }
+.btn-pad-link.btn-append-warmup { color: var(--warning-text); }
 .btn-pad-link.btn-append-drop { color: color-mix(in srgb, var(--data-3) 78%, transparent); }
 .btn-append-warmup {
   border-color: color-mix(in srgb, var(--warning) 25%, transparent);
@@ -2141,7 +2146,10 @@ body.sheet-scroll-locked {
   cursor: pointer;
 }
 .home-week-day:active { transform: scale(0.97); }
-.home-week-day:disabled { cursor: default; opacity: 0.62; }
+.home-week-day:disabled { cursor: default; opacity: 1; }
+.home-week-day:disabled .home-week-day__dot { opacity: 0.45; }
+.home-week-day:disabled .home-week-day__name,
+.home-week-day:disabled .home-week-day__date { color: var(--text-3); }
 .home-week-day__name {
   font-size: 0.55rem;
   line-height: 1;
@@ -2169,13 +2177,18 @@ body.sheet-scroll-locked {
 .home-week-day--missed { border-color: color-mix(in srgb, var(--danger) 30%, transparent); }
 .home-week-day--missed .home-week-day__dot { background: var(--color-red); }
 .home-week-day--planned .home-week-day__dot { background: var(--text-muted); }
-.home-week-day--rest { opacity: 0.60; }
+.home-week-day--rest { opacity: 1; }
+/* The dot carries the "nothing planned" signal. Dimming the whole cell faded
+   the weekday and the date to 2.59:1, which is content, not a control. */
+.home-week-day--rest .home-week-day__dot { opacity: 0.45; }
+.home-week-day--rest .home-week-day__name,
+.home-week-day--rest .home-week-day__date { color: var(--text-2); }
 .home-week-day.is-selected {
   border-color: var(--color-cyan);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-cyan) 16%, transparent);
 }
 .home-week-day.is-today { color: var(--text-primary); }
-.home-week-day.is-today .home-week-day__name { color: var(--color-orange); }
+.home-week-day.is-today .home-week-day__name { color: var(--warning-text); }
 
 .home-insight {
   display: flex;
@@ -2508,7 +2521,7 @@ html[data-theme="light"] .home-week .home-insight { background: transparent; }
   padding: 4px 8px;
   border: 1px solid color-mix(in srgb, var(--color-amber) 28%, transparent);
   border-radius: 999px;
-  color: var(--color-amber);
+  color: var(--warning-text);
   background: color-mix(in srgb, var(--color-amber) 8%, transparent);
   font-size: .6rem;
   font-weight: 850;
@@ -2585,10 +2598,12 @@ html[data-theme="light"] .home-week .home-insight { background: transparent; }
 .bm-swatch { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
 .session-map__credit {
   margin: 5px 0 0;
-  color: var(--text-faint);
+  /* The smallest text in the app, and it sits on the heat-map card's own tint.
+     --text-faint at 70% measured 3.06:1 light and 3.12-3.19:1 on every dark
+     palette, so it takes the muted body token at full strength. */
+  color: var(--text-2);
   font-size: .46rem;
   text-align: center;
-  opacity: .7;
 }
 .session-map__credit a { color: inherit; text-decoration: none; }
 
@@ -2608,7 +2623,9 @@ html[data-theme="light"] .home-week .home-insight { background: transparent; }
   font-weight: 700;
 }
 .session-summary__chip.is-primary {
-  color: color-mix(in srgb, #ff7a1a 72%, var(--text-primary));
+  /* The orange tint and border already mark the primary muscles; the label is
+     text and measured 3.72:1 against that tint. */
+  color: var(--warning-text);
   border-color: color-mix(in srgb, #ff7a1a 30%, transparent);
   background: color-mix(in srgb, #ff7a1a 8%, transparent);
 }
@@ -3480,6 +3497,13 @@ html[data-theme="light"] .cockpit-routine-note__label { color: #5b21b6; }
   flex: 1; min-width: 0; border: 0; outline: 0;
   background: transparent; color: var(--text-primary);
   font: inherit; font-size: .82rem;
+}
+/* Placeholders are text, not chrome. Left to the UA default they resolve to
+   `graytext` (~#757575), which measures 3.5-4.1:1 on our inputs in both modes. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-2);
+  opacity: 1;
 }
 .settings-search input::placeholder { color: var(--text-muted); }
 .settings-tabs {
@@ -5780,7 +5804,7 @@ html[data-theme="light"] .home-week-label {
   color: #0f172a !important;
 }
 html[data-theme="light"] .home-phase-label {
-  color: color-mix(in srgb, var(--domain-strength) 75%, transparent) !important;
+  color: var(--domain-strength) !important;
 }
 
 /* --- In Focus metric cards: gym (soft indigo) & run (soft cyan) --- */
@@ -5953,7 +5977,7 @@ html[data-theme="light"] .ss-unlink {
 /* "Add set / Add warm-up" dashed append button */
 html[data-theme="light"] .btn-pad-append {
   border-color: rgba(0, 0, 0, 0.18);
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--text-2);
 }
 html[data-theme="light"] .btn-pad-append:hover {
   border-color: var(--color-indigo);
@@ -5962,11 +5986,11 @@ html[data-theme="light"] .btn-pad-append:hover {
 }
 html[data-theme="light"] .btn-append-warmup {
   border-color: color-mix(in srgb, var(--warning) 35%, transparent);
-  color: rgba(180, 115, 0, 0.75);
+  color: var(--warning-text);
 }
 html[data-theme="light"] .btn-append-warmup:hover {
-  border-color: var(--color-amber);
-  color: #b45309;
+  border-color: color-mix(in srgb, var(--warning) 55%, transparent);
+  color: var(--warning-text);
   background: color-mix(in srgb, var(--warning) 7%, transparent);
 }
 
@@ -6032,7 +6056,7 @@ html[data-theme="light"] #cockpitTimerClock {
 /* "Add Unplanned Exercise" dashed button */
 html[data-theme="light"] .btn-dashed {
   border-color: rgba(0, 0, 0, 0.18) !important;
-  color: rgba(0, 0, 0, 0.50) !important;
+  color: var(--text-2) !important;
   background: transparent !important;
 }
 html[data-theme="light"] .btn-dashed:hover {
@@ -6054,10 +6078,10 @@ html[data-theme="light"] .run-pace-row {
   background: rgba(8,145,178,0.05);
   border-color: rgba(8,145,178,0.20);
 }
-html[data-theme="light"] .run-pace-label { color: rgba(8,145,178,0.65); }
+html[data-theme="light"] .run-pace-label { color: var(--text-2); }
 html[data-theme="light"] .run-pace-input { color: #0e7490 !important; }
-html[data-theme="light"] .run-pace-input::placeholder { color: rgba(8,145,178,0.25); }
-html[data-theme="light"] .run-pace-unit { color: rgba(8,145,178,0.45); }
+html[data-theme="light"] .run-pace-input::placeholder { color: var(--text-2); }
+html[data-theme="light"] .run-pace-unit { color: var(--text-3); }
 
 /* Run notes textarea — light mode */
 html[data-theme="light"] .run-notes-input {
@@ -6076,7 +6100,7 @@ html[data-theme="light"] .fit-import-tile--run {
   border-color: rgba(8,145,178,0.18);
 }
 html[data-theme="light"] .fit-import-tile--run:hover { background: rgba(8,145,178,0.08); border-color: rgba(8,145,178,0.28); }
-html[data-theme="light"] .fit-import-tile--run .fit-import-tile__title { color: #0e7490; }
+html[data-theme="light"] .fit-import-tile--run .fit-import-tile__title { color: var(--accent-pressed); }
 html[data-theme="light"] .fit-import-tile--gym {
   background: color-mix(in srgb, var(--info) 4%, transparent);
   border-color: color-mix(in srgb, var(--info) 18%, transparent);
@@ -6091,7 +6115,7 @@ html[data-theme="light"] #runExtraStats {
 /* HR zones bar track */
 html[data-theme="light"] #runHrZonesLabels,
 html[data-theme="light"] .set-num-lbl {
-  color: rgba(0, 0, 0, 0.40) !important;
+  color: var(--text-2) !important;
 }
 
 /* Cockpit exercise drag handle */
@@ -6216,7 +6240,7 @@ html[data-theme="light"] .btn-danger-ghost:hover {
   padding: 6px 12px;
   font-size: 0.62rem;
   font-weight: 700;
-  color: color-mix(in srgb, var(--success) 80%, transparent);
+  color: var(--success-text);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   margin-top: 2px;
@@ -6278,7 +6302,7 @@ html[data-theme="light"] .wch-sub {
 html[data-theme="light"] .wch-badge {
   background: color-mix(in srgb, var(--success) 7%, transparent);
   border-color: color-mix(in srgb, var(--success) 20%, transparent);
-  color: rgba(5,150,105,0.85);
+  color: var(--success-text);
 }
 html[data-theme="light"] #gymStatsRow input[readonly] {
   border-color: rgba(0,0,0,0.10) !important;
@@ -6446,7 +6470,9 @@ html[data-theme="light"] .metric-mini-box .val {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   background: color-mix(in srgb, var(--badge-color) 14%, transparent);
-  color: var(--badge-color);
+  /* The hue identifies the badge; the label is still text and owes AA. On its
+     own 14% tint the pure hue measured 1.65:1. */
+  color: var(--text);
   border: 1px solid color-mix(in srgb, var(--badge-color) 45%, transparent);
   white-space: nowrap;
   flex-shrink: 0;
@@ -6529,7 +6555,9 @@ html[data-theme="light"] .metric-mini-box .val {
 .profile-rs-ratio {
   font-size: 1.35rem;
   font-weight: 800;
-  color: var(--data-5);
+  /* The tile tint carries the tier; the reading is text. Colouring the number
+     with the same hue as its own tint measured 1.76:1. */
+  color: var(--text);
   letter-spacing: -0.03em;
   line-height: 1;
 }
@@ -6537,7 +6565,7 @@ html[data-theme="light"] .metric-mini-box .val {
 .profile-rs-x {
   font-size: 0.58rem;
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-2);
   margin-left: 2px;
   letter-spacing: 0;
 }
@@ -6552,6 +6580,7 @@ html[data-theme="light"] .metric-mini-box .val {
 }
 
 .profile-rs-sub {
+  color: var(--text-2);
   font-size: 0.62rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -6561,7 +6590,7 @@ html[data-theme="light"] .metric-mini-box .val {
 .profile-rs-e1rm {
   font-size: 0.6rem;
   font-weight: 600;
-  color: var(--text-faint);
+  color: var(--text-2);
   margin-top: 2px;
 }
 
@@ -6648,7 +6677,12 @@ html[data-theme="light"] .metric-mini-box .val {
   border-radius: 10px;
   text-align: center;
 }
-.profile-badge--locked { opacity: 0.32; filter: grayscale(0.8); }
+.profile-badge--locked { filter: grayscale(0.8); }
+/* The lock reads through the icon and the grey. Dimming the whole badge to 32%
+   made "50 Sessions" 1.65:1 — a locked achievement is information, not an
+   inactive control, so its label keeps full contrast. */
+.profile-badge--locked .profile-badge-icon { opacity: 0.32; }
+.profile-badge--locked .profile-badge-label { color: var(--text-3); }
 .profile-badge-icon { font-size: 1.25rem; line-height: 1; }
 .profile-badge-label {
   font-size: 0.5rem;
@@ -7327,12 +7361,12 @@ html[data-theme="light"] .profile-recent-row { background: #fff; border-color: r
 }
 
 html[data-theme="light"] .profile-pr-set-goal-btn { border-color: rgba(0,0,0,0.1); background: rgba(0,0,0,0.03); color: var(--text-tertiary); }
-html[data-theme="light"] .profile-pr-trend--up   { color: #059669; }
+html[data-theme="light"] .profile-pr-trend--up   { color: var(--success-text); }
 html[data-theme="light"] .profile-empty-cta {
   color: #5b21b6;
   border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
-html[data-theme="light"] .profile-pr-trend--down { color: #e11d48; }
+html[data-theme="light"] .profile-pr-trend--down { color: var(--danger-text); }
 
 /* ── Strength insights: "this week's sessions" strip ──────────────────────── */
 .sw-sessions { margin-bottom: 14px; }
@@ -7389,8 +7423,8 @@ html[data-theme="light"] .sw-session-chip { background: rgba(0,0,0,0.03); border
 }
 .gps-start-btn {
   flex-shrink: 0;
-  background: #f43f5e;
-  color: #fff;
+  background: var(--danger);
+  color: var(--on-accent);
   border: none;
   border-radius: 8px;
   padding: 7px 14px;
@@ -7554,7 +7588,7 @@ html[data-theme="light"] .sw-session-chip { background: rgba(0,0,0,0.03); border
   line-height: 1.4;
   color: var(--text-muted);
 }
-.gps-background-note[data-kind="foreground-only"] { color: var(--warning); }
+.gps-background-note[data-kind="foreground-only"] { color: var(--warning-text); }
 #qsBackgroundNote {
   margin: 12px 4px 0;
   text-align: center;
@@ -8090,8 +8124,8 @@ html[data-theme="light"] .fasting-btn-adjust { background: rgba(0,0,0,0.05); col
 html[data-theme="light"] .fasting-edit-panel { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
 html[data-theme="light"] .fhr-edit-panel      { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.08); }
 html[data-theme="light"] .fasting-edit-input  { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.12); color: #0f172a; }
-html[data-theme="light"] .fasting-edit-cancel { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: #6b7280; }
-html[data-theme="light"] .fhr-edit-btn        { background: color-mix(in srgb, var(--warning) 8%, transparent); border-color: color-mix(in srgb, var(--warning) 35%, transparent); color: #d97706; }
+html[data-theme="light"] .fasting-edit-cancel { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.1); color: var(--text-2); }
+html[data-theme="light"] .fhr-edit-btn        { background: color-mix(in srgb, var(--warning) 8%, transparent); border-color: color-mix(in srgb, var(--warning) 35%, transparent); color: var(--warning-text); }
 html[data-theme="light"] .fhr-edit-btn:hover  { background: color-mix(in srgb, var(--warning) 16%, transparent); }
 html[data-theme="light"] .fasting-history-row.fhr--editing { background: color-mix(in srgb, var(--warning) 5%, transparent); }
 
@@ -8674,7 +8708,7 @@ html[data-theme="light"] .workout-cockpit-header .wch-sub   { color: var(--text-
 html[data-theme="light"] .wch-badge {
   background: rgba(0,0,0,0.05) !important;
   border-color: rgba(0,0,0,0.1) !important;
-  color: rgba(0,0,0,0.5) !important;
+  color: var(--text-2) !important;
 }
 
 
@@ -8851,7 +8885,7 @@ html[data-theme="light"] .workout-cockpit-header {
 html[data-theme="light"] .wch-badge {
   background: rgba(0,0,0,0.04) !important;
   border: 1px solid rgba(0,0,0,0.09) !important;
-  color: rgba(0,0,0,0.45) !important;
+  color: var(--text-2) !important;
 }
 
 html[data-theme="light"] .wch-badge-dot {
@@ -8869,8 +8903,8 @@ html[data-theme="light"] .run-pace-row {
 }
 
 html[data-theme="light"] .run-pace-input { color: #0e7490 !important; }
-html[data-theme="light"] .run-pace-label { color: rgba(8,145,178,0.65) !important; }
-html[data-theme="light"] .run-pace-unit  { color: rgba(8,145,178,0.45) !important; }
+html[data-theme="light"] .run-pace-label { color: var(--text-2) !important; }
+html[data-theme="light"] .run-pace-unit  { color: var(--text-3) !important; }
 
 
 /* --------------------------------------------------------------------------
@@ -9208,7 +9242,7 @@ html[data-theme="light"] .pcs-reset:hover { border-color: rgba(0,0,0,0.22); colo
 
 /* Light mode inactive — visible on white bg */
 html[data-theme="light"] .nav-item {
-  color: rgba(15,23,42,0.52) !important;
+  color: var(--text-2) !important;
 }
 html[data-theme="light"] .nav-item span.icon { opacity: 0.6 !important; }
 html[data-theme="light"] .nav-item:hover { color: rgba(15,23,42,0.78) !important; }
@@ -10065,7 +10099,7 @@ input[type="checkbox"].gym-check {
   border: 1px solid color-mix(in srgb, var(--color-cyan) 35%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--color-cyan) 8%, transparent);
-  color: var(--color-cyan);
+  color: var(--accent-pressed);
   font: inherit;
   font-size: .76rem;
   font-weight: 850;
@@ -10192,7 +10226,10 @@ html[data-theme="light"] .cockpit-exercise-rail__item { background: rgba(0,0,0,.
   cursor: pointer;
 }
 .tl-week__day:active { transform: scale(.97); }
-.tl-week__day:disabled { cursor: default; opacity: .5; }
+.tl-week__day:disabled { cursor: default; opacity: 1; }
+.tl-week__day:disabled .tl-week__dot { opacity: 0.4; }
+.tl-week__day:disabled .tl-week__name,
+.tl-week__day:disabled .tl-week__date { color: var(--text-3); }
 .tl-week__name {
   font-size: .56rem;
   font-weight: 800;

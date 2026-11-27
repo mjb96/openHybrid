@@ -234,7 +234,7 @@
   color: var(--text-secondary);
 }
 
-.pg-legend__item.is-muted { opacity: 0.7; }
+.pg-legend__item.is-muted .pg-legend__swatch { opacity: 0.4; }
 
 .pg-legend__swatch {
   width: 8px;
@@ -562,7 +562,7 @@ html[data-theme="light"] .pg-muscle-meta { color: var(--text-3); }
 
 html[data-theme="light"] .pg-range { background: rgba(15, 23, 42, 0.04); }
 html[data-theme="light"] .pg-range__chip { color: #475569; }
-html[data-theme="light"] .pg-range__chip.is-selected { color: #0e7490; }
+html[data-theme="light"] .pg-range__chip.is-selected { color: var(--accent-pressed); }
 html[data-theme="light"] .pg-focus__chip { color: #475569; }
 html[data-theme="light"] .pg-focus__chip.is-selected { color: #0f172a; border-bottom-color: #0e7490; }
 
@@ -996,7 +996,7 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
 .pg-band .session-map__views { max-width: 190px; margin-inline: auto; gap: 10px; }
 .pg-band .session-map__view svg { width: auto; height: 156px; max-height: 156px; }
 .pg-band .session-map__label { font-size: 0.52rem; }
-.pg-band .session-map__credit { font-size: 0.5rem; opacity: 0.7; }
+.pg-band .session-map__credit { font-size: 0.5rem; }
 
 /* The hub owns its own bottom breathing room so the last band clears the nav. */
 #analytics-hub { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }
@@ -1018,7 +1018,7 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
   .pg-pulse__top { grid-template-columns: 1fr; }
   .pg-pulse__top .session-map__views { max-width: 170px; }
 }
-.pg-pulse__credit { margin: 8px 0 0; font-size: 0.5rem; color: var(--text-secondary); opacity: 0.75; }
+.pg-pulse__credit { margin: 8px 0 0; font-size: 0.5rem; color: var(--text-3); }
 
 /* ------------------------------------------------------------ 20. REPORTS */
 .pg-reports { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }

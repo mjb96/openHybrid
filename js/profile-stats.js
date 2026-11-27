@@ -602,9 +602,9 @@ export function _relStrengthBand(items, unit) {
         const color = i.tier?.color || '#c4b5fd';
         return `
         <div class="profile-rs-tile" style="border-color:${color}38;background:linear-gradient(160deg, ${color}22, ${color}07);">
-          <div class="profile-rs-ratio" style="color:${color};">${i.ratio.toFixed(2)}<span class="profile-rs-x">×BW</span><span class="profile-rs-est">est.</span></div>
+          <div class="profile-rs-ratio">${i.ratio.toFixed(2)}<span class="profile-rs-x">×BW</span><span class="profile-rs-est">est.</span></div>
           <div class="profile-rs-label">${_esc(i.label)}</div>
-          <div class="profile-rs-sub" style="color:${color};">${i.tier?.name || ''}</div>
+          <div class="profile-rs-sub">${i.tier?.name || ''}</div>
           <div class="profile-rs-e1rm">${Math.round(fromCanonicalWeight(i.e1rm, unit) ?? 0)}&nbsp;${unit}</div>
         </div>`;
       }).join('')}

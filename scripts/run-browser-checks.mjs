@@ -10,6 +10,9 @@ const checks = [
   // Theme-wide: proves no rendered text is the same colour as its surface in
   // either mode before the slower feature checks run.
   'scripts/theme-visibility-browser-check.mjs',
+  // Theme-wide, and stricter: measures AA against the backdrop actually painted
+  // behind each text run (gradients included) and fails on new regressions.
+  'scripts/contrast-audit.mjs',
   'scripts/home-today-browser-check.mjs',
   'scripts/move-day-browser-check.mjs',
   'scripts/customize-browser-check.mjs',

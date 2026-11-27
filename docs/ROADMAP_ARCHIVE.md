@@ -6259,3 +6259,18 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: `backdated_session` (date validation, day occupancy, noon stamp), a
     static wiring guard, and the History browser check (past session + collision
     Cancel changes nothing).
+
+- **2026-11-27 — No third-party crash reporting and no webfont.**
+  - Removed Sentry entirely: the vendored SDK, its config, the init call, the
+    `@sentry/browser` devDependency, `scripts/vendor-runtime.mjs`, the CSP hosts
+    and the licence notice. `reportHandledError` keeps its console output and
+    test hook; there is no analytics SDK.
+  - Typography now uses the platform system stack (`system-ui`; SF Pro / Roboto
+    / Segoe UI). The Google Fonts request, both preconnects, the non-blocking
+    `js/font-css.js` loader and the OFL notice are gone; canvas share cards name
+    the same stack explicitly.
+  - `connect-src` is now `'self'`; the only third-party request left is the
+    map-tile `<img>`. The privacy policy and Play Data Safety report no
+    crash/diagnostic collection.
+  - Ratchets: `typography.test.js` (no font host, system stack, CSP) and
+    `csp_vendored_runtime.test.js` (no crash reporter, Leaflet vendored).

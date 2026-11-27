@@ -110,7 +110,14 @@ body { background-image: none; }
 #view-home.active { background-image: var(--bg-image); }
 
 /* One surface vocabulary across Home, Workout, Insights and Profile. Cards use
-   the semantic surface/divider/elevation tokens; no per-card tint or glow. */
+   the semantic surface/divider/elevation tokens; no per-card tint or glow.
+
+   The base card is BORDERLESS on purpose. Separation comes from the surface
+   ladder (card/page is 1.17-1.18:1 in every dark palette, and light mode keeps
+   its own step); a 1px hairline competing with body text was doing the job a
+   luminance step should do. `--divider` still rules INNER rows, where a
+   boundary is genuinely needed. A near-black shadow is invisible on these
+   surfaces, so it is not painted either. */
 .card-dark,
 .glance-card,
 .profile-stat-card,
@@ -118,14 +125,11 @@ body { background-image: none; }
 .an-chart,
 .an-insights {
   border-radius: var(--radius-lg);
-  border: var(--border-width) solid var(--divider);
   background: var(--surface-1);
-  box-shadow: var(--elevation-1);
 }
 
 .card-dark:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--elevation-2);
+  background: var(--surface-2);
 }
 
 /* Programs-style type hierarchy: compact, sentence-case and confident. */
