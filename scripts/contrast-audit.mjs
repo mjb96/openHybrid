@@ -87,11 +87,14 @@ const STATE = {
         mon: { 'Bench Press': [{ c: true, w: '100', r: '5' }, { c: true, w: '100', r: '5' }] },
         tue: { 'Back Squat': [{ c: true, w: '140', r: '5' }] },
         wed: { 'Back Squat': [{ c: true, w: '140', r: '5' }], 'Romanian Deadlift': [{ c: true, w: '100', r: '8', isPR: true }] },
-        thu: { 'Overhead Press': [{ w: '60', r: '5' }], 'Pull Up': [{ w: '0', r: '8' }] },
+        thu: {
+          'Overhead Press': [{ c: true, w: '60', r: '5', isPR: true }, { c: true, w: '60', r: '5' }],
+          'Pull Up': [{ c: true, w: '0', r: '8' }, { c: true, w: '0', r: '7' }],
+        },
       },
       gymStats: { mon: { time: '55' }, tue: { time: '45' }, wed: { time: '62' } },
       runSessions: {},
-      sessionStatus: { mon: 'finished', tue: 'finished', wed: 'finished' },
+      sessionStatus: { mon: 'finished', tue: 'finished', wed: 'finished', thu: 'finished' },
     },
   },
   bodyWeightLog: [
@@ -500,6 +503,11 @@ try {
       viewport: { width: WIDTH, height: 900 },
       colorScheme: mode.theme,
       deviceScaleFactor: 1,
+      // The pinned clock is an instant; the app derives the calendar day from
+      // it in LOCAL time. Without this the audited state depended on the
+      // runner's zone: CI (UTC) rendered "today" as the previous, completed day
+      // and measured 45 more text runs than a Sydney machine.
+      timezoneId: 'Australia/Sydney',
     });
     const seeded = { ...STATE, settings: { ...STATE.settings, theme: mode.theme, palette: mode.palette } };
     await context.addInitScript(([key, value]) => localStorage.setItem(key, value),

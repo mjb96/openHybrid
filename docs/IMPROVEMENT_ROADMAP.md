@@ -1932,5 +1932,13 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
     five palettes; `light_override_guard.test.js` ratchets raw colours inside
     light rules; the audit runs in `browser:verify` behind an empty baseline and
     was verified to exit 1 on an injected regression.
+  - First CI run failed on the audit itself: the pinned clock is an instant and
+    the app derives the day in LOCAL time, so a UTC runner rendered the previous,
+    finished day and measured 45 more text runs. That unrendered state held four
+    real defects (heat-map credit at 3.06:1 light / 3.12-3.19 dark, PR pill
+    4.10:1, primary-muscle chip 3.72:1, cockpit "Today" badge 3.25:1) — all
+    fixed. The audit now pins `timezoneId` and the fixture marks the audited day
+    finished, so the summary is always covered.
   - Gates: `npm run verify` green (2,975 tests), browser audit 0 findings on
-    990 text runs across all five modes at 390, clean at 320 and with `--full`.
+    1,080 text runs across all five modes at 390, clean at 320 (1,075) and with
+    `--full` (1,090), and all 60 browser checks pass.

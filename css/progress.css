@@ -996,7 +996,7 @@ html[data-theme="light"] .customize-order__btn { color: #475569; }
 .pg-band .session-map__views { max-width: 190px; margin-inline: auto; gap: 10px; }
 .pg-band .session-map__view svg { width: auto; height: 156px; max-height: 156px; }
 .pg-band .session-map__label { font-size: 0.52rem; }
-.pg-band .session-map__credit { font-size: 0.5rem; opacity: 0.7; }
+.pg-band .session-map__credit { font-size: 0.5rem; }
 
 /* The hub owns its own bottom breathing room so the last band clears the nav. */
 #analytics-hub { padding-bottom: calc(96px + var(--safe-bottom, 0px)); }

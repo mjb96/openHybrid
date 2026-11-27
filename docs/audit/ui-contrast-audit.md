@@ -53,7 +53,8 @@ chip.
 | D (`--full`) | Customize sheet, Plans browse, plan detail, Review |
 ## 4. What it found
 
-**63 failing text runs** across 8 screens in two modes. Grouped by cause — the
+**63 failing text runs** across 8 screens in two modes. A later run in CI found
+**13 more** in a state the local run never rendered — see §4.1. Grouped by cause — the
 grouping is the point, because fixing the cause cleared dozens of rows:
 
 | # | Root cause | Rows | Worst measured |
