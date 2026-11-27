@@ -28,6 +28,17 @@ test('a deload halves a prescribed lift (floor 2) and keeps its reps', () => {
   assert.equal(liftTarget('', 'Bench Press', deload, { program: five, week: 4, dayKey: 'mon' }).reps, '5');
 });
 
+test('a deload halves an inline sets×reps string too', () => {
+  const plan = {
+    id: 'inline', totalWeeks: 4,
+    days: { mon: { title: 'Lower', lifts: ['Back Squat 5×5'], runs: 'Rest' } },
+  };
+  assert.equal(liftTarget('', 'Back Squat 5×5', build, { program: plan, week: 1, dayKey: 'mon' }).sets, 5);
+  assert.equal(liftTarget('', 'Back Squat 5×5', deload, { program: plan, week: 4, dayKey: 'mon' }).sets, 3);
+  // The catalog's own deload week modifier is never re-halved below the floor.
+  assert.equal(liftTarget('', 'Barbell Row', deload, { program: plan, week: 4, dayKey: 'mon' }).sets, 2);
+});
+
 test('a lift without a target still follows the deload week modifier', () => {
   assert.equal(liftTarget('', 'Barbell Row', deload, { program, week: 4, dayKey: 'mon' }).sets, 2);
   assert.equal(liftTarget('', 'Barbell Row', build, { program, week: 1, dayKey: 'mon' }).sets, 3);

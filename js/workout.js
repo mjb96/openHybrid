@@ -79,7 +79,7 @@ import {
   clearActiveOneOffSession, discardActiveOneOffSession, oneOffBlueprint, routineNoteForSession,
 } from './workout/one-off-session.js';
 import { workoutSessionKey } from './workout/session-identity.js';
-import { displayWeight, storedWeightFromInput, weightUnitLabel } from './workout/units.js';
+import { displayWeight, shouldCommitEnteredWeight, storedWeightFromInput, weightUnitLabel } from './workout/units.js';
 import { fromCanonicalWeight, toCanonicalWeight } from './metrics/weight-unit.js';
 import { formatEffort } from './workout/effort.js';
 import {
@@ -1628,7 +1628,14 @@ export function commitWorkoutUIState() {
           const hasValue = String(valueIn?.value ?? '').trim() !== '';
           const hasStoredWeight = String(storedSet.w ?? '').trim() !== '';
           const isTicked = !!cIn?.checked;
-          if (wIn && (isTicked || hasValue || hasStoredWeight)) storedSet.w = storedWeightFromInput(appState, wIn.value);
+          if (wIn && (isTicked || hasValue || hasStoredWeight)) {
+            // An untouched field still shows the stored value; re-parsing that
+            // display string would rewrite e.g. 100 kg as 100.02 kg on every tick.
+            const displayed = wIn.getAttribute('data-display-value');
+            if (shouldCommitEnteredWeight({ entered: wIn.value, displayed, hasStoredWeight })) {
+              storedSet.w = storedWeightFromInput(appState, wIn.value);
+            }
+          }
           const hadStoredValue = storedSet.sec != null || storedSet.dist != null || String(storedSet.r ?? '').trim() !== '';
           if (valueIn && (isTicked || hasValue || hadStoredValue)) {
             if (mode === SET_MODE.TIME) {
@@ -2216,8 +2223,15 @@ function _normalizeDuration(v) {
   const s = String(v ?? '').trim();
   if (!s) return '';
   if (s.includes(':')) {
-    const [m, sec] = s.split(':');
-    return `${parseInt(m, 10) || 0}:${(parseInt(sec, 10) || 0).toString().padStart(2, '0')}`;
+    // Accept M:SS and H:MM:SS without silently dropping seconds; clamp a
+    // malformed "1:75" to a real clock time instead of storing it verbatim.
+    const parts = s.split(':').map((part) => parseInt(part, 10) || 0);
+    const total = parts.length >= 3
+      ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+      : parts[0] * 60 + parts[1];
+    const minutes = Math.floor(total / 60);
+    const seconds = total % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }
   const n = parseInt(s, 10);
   return Number.isFinite(n) ? `${n}:00` : '';

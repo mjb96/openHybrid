@@ -34,7 +34,7 @@ export const EDITOR_DAY_LABELS = Object.freeze({
 /**
  * @param {any} program
  * @param {string} label  what was done, in the athlete's language
- * @returns {null | { label:string, days:any, weeklyVolModifiers:any }}
+ * @returns {null | { label:string, days:any, weeklyVolModifiers:any, prescriptions:any }}
  */
 export function captureProgramDraft(program, label) {
   if (!program) return null;
@@ -42,6 +42,10 @@ export function captureProgramDraft(program, label) {
     label: String(label || 'Last change'),
     days: JSON.parse(JSON.stringify(program.days || {})),
     weeklyVolModifiers: JSON.parse(JSON.stringify(program.weeklyVolModifiers || {})),
+    // The per-exercise target sidecar is part of the plan. Structural edits
+    // (remove/rename/copy/make-rest) mutate it, so an undo that restored only
+    // `days` brought the lift back with the WRONG target — or no target at all.
+    prescriptions: JSON.parse(JSON.stringify(program.prescriptions || {})),
   };
 }
 
@@ -54,6 +58,9 @@ export function restoreProgramDraft(program, snapshot) {
   if (!program || !snapshot?.days) return false;
   program.days = JSON.parse(JSON.stringify(snapshot.days));
   program.weeklyVolModifiers = JSON.parse(JSON.stringify(snapshot.weeklyVolModifiers || {}));
+  const prescriptions = JSON.parse(JSON.stringify(snapshot.prescriptions || {}));
+  if (Object.keys(prescriptions).length) program.prescriptions = prescriptions;
+  else delete program.prescriptions;
   return true;
 }
 

@@ -208,14 +208,26 @@ for (const width of WIDTHS) {
     return {
       mon: [...(program.days.mon.lifts || [])],
       monTitle: program.days.mon.title,
+      targets: { ...(program.prescriptions?.mon || {}) },
       undoLabel: document.querySelector('.program-editor__undobar span')?.textContent?.trim() || null,
       undoHeight: Math.round(document.querySelector('.program-editor__undobar-btn')?.getBoundingClientRect().height || 0),
       dialogOpen: !!document.querySelector('.confirm-modal, [data-confirm-modal], #confirmModal.active'),
     };
   });
 
+  const beforeAnyEdit = await lifts();
+  check(beforeAnyEdit.undoLabel === null, 'nothing has been edited yet, so no undo strip');
+
+  // Give the first lift its own target so Undo has a sidecar to restore.
+  await page.click('#builderViewContainer [data-action="b-lift-target"]');
+  await page.waitForSelector('#builderTargetSheet.active', { timeout: 4000 });
+  await page.fill('#bTargetSets', '4');
+  await page.fill('#bTargetReps', '6');
+  await page.click('[data-action="b-target-save"]');
+  await page.waitForTimeout(250);
+
   const start = await lifts();
-  check(start.undoLabel === null, 'nothing has been edited yet, so no undo strip');
+  check(start.targets['Bench Press']?.sets === 4, 'the target was not set before the undo check');
 
   // Remove an exercise: no dialog, and the strip names what it will put back.
   // PL5: row actions live in the row's ••• menu.
@@ -235,6 +247,8 @@ for (const width of WIDTHS) {
   const undone = await lifts();
   console.log(`  4C undo    restored=${JSON.stringify(undone.mon)} label=${undone.undoLabel}`);
   check(JSON.stringify(undone.mon) === JSON.stringify(start.mon), 'Undo did not restore the removed exercise');
+  check(undone.targets['Bench Press']?.sets === 4 && undone.targets['Bench Press']?.reps === '6',
+    'Undo did not restore the removed lift\'s per-exercise target');
   check(undone.undoLabel === null, 'the strip must clear once the undo is used');
 
   // Wiping a day to rest is the biggest destructive edit — also undoable.

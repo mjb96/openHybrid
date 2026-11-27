@@ -132,7 +132,32 @@ try {
     });
     if (Number(shown) !== 225) fail(`${tag}: the row no longer shows the typed 225 (shows ${shown})`);
 
-    console.log(`${tag}:`, JSON.stringify({ home: homeWeight.title, sheet: sheet.value, storedKg: stored, shown }));
+    // ── ROUND TRIP: an untouched field must not be re-parsed ───────────────
+    // 102.06 kg renders as "225" lb; parsing that display string back would
+    // store 102.06 again at best and drift with other values. Fire the same
+    // input/change events a blur uses WITHOUT editing the text.
+    await page.evaluate(() => {
+      const row = document.querySelector('#view-workout .cockpit-set-row');
+      const weight = row?.querySelector('.input-weight-node');
+      weight?.dispatchEvent(new Event('input', { bubbles: true }));
+      weight?.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const storedAfterBlur = await page.evaluate(([key, name]) => {
+      const state = JSON.parse(localStorage.getItem(key) || '{}');
+      for (const week of Object.values(state.weeks || {})) {
+        for (const byLift of Object.values(week?.lifts || {})) {
+          const sets = byLift?.[name];
+          const done = Array.isArray(sets) ? sets.find((set) => set?.c) : null;
+          if (done) return Number(done.w);
+        }
+      }
+      return null;
+    }, [STORAGE_KEY, lift]);
+    if (!(Math.abs(storedAfterBlur - stored) < 0.005)) {
+      fail(`${tag}: an untouched weight drifted from ${stored} to ${storedAfterBlur} kg`);
+    }
+
+    console.log(`${tag}:`, JSON.stringify({ home: homeWeight.title, sheet: sheet.value, storedKg: stored, shown, afterBlur: storedAfterBlur }));
     if (errors.length) fail(`${tag}: browser errors: ${errors.join(' | ')}`);
     await context.close();
   }

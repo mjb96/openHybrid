@@ -70,6 +70,23 @@ test('a started or logged workout cannot be moved', () => {
   assert.equal(movableDay(state(), program, 'fri', WEEK).ok, false, 'a rest day has no workout to move');
 });
 
+test('a past week cannot be moved into this week', () => {
+  const s = state();
+  assert.deepEqual(moveOptions(s, program, 'wed', { today: TODAY, weekStart: '2026-11-16' }), []);
+  const result = applyMove(s, program, 'wed', '2026-11-27', { today: TODAY, weekStart: '2026-11-16' });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /this week/i);
+  assert.equal(s.weekSchedule, undefined, 'nothing was written');
+});
+
+test('movableDay reads the week that owns the planned date, not state.currentWeek', () => {
+  const s = { currentWeek: '2', weeks: {
+    '1': { dates: { wed: '2026-11-25' }, sessionStatus: { wed: 'finished' }, lifts: {} },
+    '2': { dates: {}, sessionStatus: {}, lifts: {} },
+  } };
+  assert.equal(movableDay(s, program, 'wed', WEEK).ok, false);
+});
+
 test('a move is validated, then undo restores the previous schedule exactly', () => {
   const s = state();
   const first = applyMove(s, program, 'wed', '2026-11-27', { today: TODAY });

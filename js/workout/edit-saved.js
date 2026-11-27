@@ -15,7 +15,7 @@ import {
   SET_MODE, formatDistance, formatDuration, isCompletedSet, isWarmupSet,
   parseDuration, setModeOf,
 } from '../set-utils.js';
-import { displayWeight, storedWeightFromInput } from './units.js';
+import { displayWeight, shouldCommitEnteredWeight, storedWeightFromInput } from './units.js';
 import { runSessionsForDay, upsertRunSession } from '../state/run-sessions.js';
 import { browseExercises, canonicalExerciseId } from '../exercises/catalog.js';
 import { showToast } from '../state.js';
@@ -220,9 +220,10 @@ function strengthBody(draft, unit) {
         const valueLabel = mode === SET_MODE.TIME ? 'Time (M:SS)' : mode === SET_MODE.DISTANCE ? 'Distance (m)' : 'Reps';
         const value = mode === SET_MODE.TIME ? (set.sec ? formatDuration(set.sec) : '')
           : mode === SET_MODE.DISTANCE ? (set.dist ?? '') : (set.r ?? '');
+        const shownWeight = displayWeight(_ctx?.state, set.w);
         return `<div class="edit-saved-set" data-edit-set>
           <span class="edit-saved-set__n">${index + 1}${set.type ? ` · ${esc(set.type)}` : ''}</span>
-          <label><span>Weight (${esc(unit)})</span><input type="number" inputmode="decimal" step="0.5" min="0" data-edit-lift="${esc(lift)}" data-edit-index="${index}" data-edit-field="w" value="${esc(displayWeight(_ctx?.state, set.w))}"></label>
+          <label><span>Weight (${esc(unit)})</span><input type="number" inputmode="decimal" step="0.5" min="0" data-edit-lift="${esc(lift)}" data-edit-index="${index}" data-edit-field="w" data-display-value="${esc(shownWeight)}" value="${esc(shownWeight)}"></label>
           <label><span>${valueLabel}</span><input type="${mode === SET_MODE.TIME ? 'text' : 'number'}" ${mode === SET_MODE.TIME ? 'inputmode="numeric"' : 'inputmode="decimal" step="0.01" min="0"'} data-edit-lift="${esc(lift)}" data-edit-index="${index}" data-edit-field="${valueField}" value="${esc(value)}"></label>
           <button type="button" class="edit-saved-remove-set" data-edit-remove-set data-edit-lift="${esc(lift)}" data-edit-index="${index}" aria-label="Remove set ${index + 1} of ${esc(lift)}">✕</button>
         </div>`;
@@ -269,7 +270,16 @@ function captureDraftInputs() {
       set.dist = input.value;
     } else if (field === 'w') {
       // The sheet is a display surface; the draft (and therefore storage) is kg.
-      set.w = storedWeightFromInput(_ctx?.state, input.value);
+      // An untouched field still showing the rendered value must not be re-parsed
+      // (100 kg → "220.5 lb" → 100.02 kg on a notes-only save).
+      const displayed = input.getAttribute('data-display-value');
+      if (shouldCommitEnteredWeight({
+        entered: input.value,
+        displayed,
+        hasStoredWeight: String(set.w ?? '').trim() !== '',
+      })) {
+        set.w = storedWeightFromInput(_ctx?.state, input.value);
+      }
     } else {
       set[field] = input.value;
     }
