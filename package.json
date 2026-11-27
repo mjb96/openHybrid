@@ -21,7 +21,8 @@
     "vendor:fit": "node scripts/vendor-fit.mjs",
     "verify": "npm run typecheck && npm run precache:check && npm run workflow:check && npm run theme:guard && npm test && npm run smoke",
     "preflight": "npm run verify && npm run browser:verify",
-    "theme:guard": "node scripts/theme-literal-check.mjs"
+    "theme:guard": "node scripts/theme-literal-check.mjs",
+    "contrast:audit": "node scripts/contrast-audit.mjs"
   },
   "devDependencies": {
     "buffer": "^6.0.3",
