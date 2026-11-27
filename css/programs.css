@@ -551,8 +551,8 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   cursor: pointer;
 }
 .prog-basis__btn.is-current {
-  border-color: var(--color-cyan);
-  color: var(--color-cyan);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  color: var(--accent-pressed);
 }
 .prog-basis__btn:active { opacity: 0.75; }
 
@@ -1535,7 +1535,7 @@ html[data-theme="light"] .active-prog-ring-track { stroke: rgba(0,0,0,0.10); }
   line-height: 1.55;
 }
 
-html[data-theme="light"] .wpm-hyrox-run-text { color: #dc2626; }
+html[data-theme="light"] .wpm-hyrox-run-text { color: var(--danger-text); }
 html[data-theme="light"] .wpm-hyrox-run-leg { background: rgba(220,38,38,0.05); border-color: rgba(220,38,38,0.10); }
 html[data-theme="light"] .wpm-hyrox-station-leg { background: rgba(109,40,217,0.05); border-color: rgba(109,40,217,0.10); }
 html[data-theme="light"] .wpm-hyrox-notes { color: rgba(0,0,0,0.48); background: rgba(0,0,0,0.02); border-color: rgba(0,0,0,0.06); }
@@ -2429,7 +2429,7 @@ html[data-theme="light"] .routine-card__note-flag {
   border: 1px solid transparent;
   border-radius: 12px;
   background: var(--accent-blue);
-  color: #fff;
+  color: var(--on-accent);
   font-family: inherit;
   font-size: 0.78rem;
   font-weight: 800;
@@ -3074,7 +3074,7 @@ html[data-theme="dark"] .active-prog-continue-btn:not(.active-prog-continue-btn-
   border: 0;
   border-radius: 12px;
   background: var(--accent-blue);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 700;
   cursor: pointer;
 }

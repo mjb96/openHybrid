@@ -1029,7 +1029,7 @@ html[data-theme="light"] .analytics-section .flex-between[style*="rgba(255,255,2
 
 /* -- Empty state text colour fix ------------------------------------------ */
 html[data-theme="light"] .analytics-section p[style*="rgba(255,255,255"] {
-  color: rgba(15, 23, 42, 0.52) !important;
+  color: var(--text-2) !important;
 }
 
 /* -- deltaBadge tick arrow stroke (SVG dot halo) --------------------------
@@ -1421,10 +1421,6 @@ html[data-theme="light"] #analytics-fasting { --an-domain: var(--color-amber); }
 /* --------------------------------------------------------------------------
    SVG chart elements — additional overrides
    -------------------------------------------------------------------------- */
-
-html[data-theme="light"] #view-analytics svg text {
-  fill: rgba(0, 0, 0, 0.50) !important;
-}
 
 html[data-theme="light"] #view-analytics svg .chart-grid-line {
   stroke: rgba(0, 0, 0, 0.08) !important;

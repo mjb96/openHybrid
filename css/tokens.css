@@ -8,12 +8,12 @@
 :root {
   /* --- Primitive palette (raw, never used by components) --- */
   --p-ink-950: #060606;
-  --p-ink-900: #111111;
-  --p-ink-850: #181818;
-  --p-ink-800: #202020;
+  --p-ink-900: #1b1b1b;
+  --p-ink-850: #252525;
+  --p-ink-800: #2d2d2d;
   --p-grey-100: #f2f2f2;
   --p-grey-300: #b0b0b0;
-  --p-grey-500: #8a8a8a;
+  --p-grey-500: #969696;
   --p-cyan-400: #22d3ee;
   --p-cyan-500: #06b6d4;
   --p-green-400: #34d399;
@@ -56,6 +56,14 @@
   --danger-subtle: rgba(248, 113, 113, 0.14);
   --info: var(--p-blue-400);
   --info-subtle: rgba(96, 165, 250, 0.14);
+  /* Status TEXT on a surface tinted with the same hue. The base status colours
+     are tuned for a bare surface; on their own 6-14% tint they land near 2:1
+     (amber-on-amber measured 1.76:1 on the profile ratio tile). Dark keeps the
+     base values, which already clear AA on a tint. */
+  --warning-text: var(--warning);
+  --success-text: var(--success);
+  --danger-text: var(--danger);
+  --info-text: var(--info);
   --domain-strength: var(--p-indigo-400);
   --domain-endurance: var(--p-orange-400);
   --domain-recovery: var(--p-green-400);
@@ -104,12 +112,12 @@
    ---------------------------------------------------------------------------- */
 html[data-theme="dark"][data-palette="slate"] {
   --bg: #0a0f1a;
-  --surface-1: #111827;
-  --surface-2: #18202f;
-  --surface-3: #212b3d;
+  --surface-1: #162033;
+  --surface-2: #1c2941;
+  --surface-3: #21314d;
   --text: #f1f5f9;
   --text-2: #b7c3d5;
-  --text-3: #8c9ab0;
+  --text-3: #8d9bb1;
   --text-inverse: #04202a;
   --accent: #38bdf8;
   --accent-pressed: #0ea5e9;
@@ -123,9 +131,9 @@ html[data-theme="dark"][data-palette="slate"] {
 
 html[data-theme="dark"][data-palette="forest"] {
   --bg: #05100b;
-  --surface-1: #0b1912;
-  --surface-2: #12241a;
-  --surface-3: #1a3023;
+  --surface-1: #0f2319;
+  --surface-2: #132d20;
+  --surface-3: #173626;
   --text: #edf7f1;
   --text-2: #b0c7ba;
   --text-3: #88a895;
@@ -142,12 +150,12 @@ html[data-theme="dark"][data-palette="forest"] {
 
 html[data-theme="dark"][data-palette="ember"] {
   --bg: #120b08;
-  --surface-1: #1c120e;
-  --surface-2: #271912;
-  --surface-3: #331f17;
+  --surface-1: #291b15;
+  --surface-2: #34231b;
+  --surface-3: #3e2a20;
   --text: #f7f0ea;
   --text-2: #cdb9ab;
-  --text-3: #a88f7f;
+  --text-3: #ab9282;
   --text-inverse: #2a1204;
   --accent: #fb923c;
   --accent-pressed: #f97316;
@@ -184,6 +192,12 @@ html[data-theme="light"] {
   --danger-subtle: rgba(185, 28, 28, 0.10);
   --info: var(--accent-pressed);
   --info-subtle: rgba(29, 78, 216, 0.10);
+  /* Status text on its own tint: the base status hues measure 1.76-2.03:1 on
+     their 6-14% tint in light mode, so they get a text-safe value instead. */
+  --warning-text: #92400e;
+  --success-text: #065f46;
+  --danger-text: #991b1b;
+  --info-text: #1e40af;
   --domain-strength: #4338ca;
   --domain-endurance: #c2410c;
   --domain-recovery: #047857;
