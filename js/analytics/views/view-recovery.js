@@ -3,6 +3,7 @@
 // ==========================================
 import { renderRpeChart } from '../charts.js';
 import { saveStateToLocalStorage } from '../../state.js';
+import { escapeHtml } from '../../util.js';
 import {
   renderSleepTrendChart,
   renderHRVTrendChart,
@@ -620,7 +621,7 @@ function _renderWellnessForm(formParent, getState, getDays, data) {
       <div class="mb-3">
         <div class="text-sm text-muted mb-2">Sleep last night (hours)</div>
         <input id="wellnessSleepInput" type="number" min="0" max="12" step="0.5"
-          value="${existing.sleep || ''}" placeholder="e.g. 7.5"
+          value="${escapeHtml(existing.sleep ?? '')}" placeholder="e.g. 7.5"
           style="border-radius:8px;padding:8px 12px;width:100%;font-size:0.9rem;"/>
       </div>
       <div class="mb-3">

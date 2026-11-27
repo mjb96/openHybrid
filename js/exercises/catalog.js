@@ -1840,6 +1840,36 @@ export function normaliseExerciseName(value) {
     .trim();
 }
 
+/** Upper bound for a custom exercise name (display text, not a description). */
+export const CUSTOM_EXERCISE_NAME_MAX = 80;
+
+/**
+ * Custom exercise names are DISPLAY TEXT, not markup.
+ *
+ * They are typed into an input, stored in `state.customExercises` and then
+ * re-rendered on many surfaces (the picker, the cockpit, History, Plans,
+ * analytics). Trusting the raw input means every one of those renderers has to
+ * escape perfectly for ever; removing HTML metacharacters here means the stored
+ * value CANNOT become markup even if a later renderer forgets.
+ *
+ * This is an input-format rule, not display escaping: the name keeps its
+ * letters, digits, spaces and punctuation. An apostrophe becomes the
+ * typographic form (identical to read), `&` becomes the word "and" and the
+ * brackets are dropped. Catalogue names never come through here.
+ */
+export function sanitizeExerciseName(value) {
+  return String(value ?? '')
+    .replace(/\s*&\s*/g, ' and ')
+    .replace(/[<>]/g, '')
+    .replace(/"/g, '”')
+    .replace(/'/g, '’')
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, CUSTOM_EXERCISE_NAME_MAX)
+    .trim();
+}
+
 export const EXERCISES = Object.freeze([...CORE_EXERCISES, ...OPENGYM_EXERCISES]);
 
 const BY_ID = new Map(EXERCISES.map((item) => [item.id, item]));

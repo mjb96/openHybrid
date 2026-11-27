@@ -1,0 +1,22 @@
+# HTML-injection barriers for openHybrid's own escapers.
+#
+# `js/xss-through-dom` treats text read from the DOM as a source. This app
+# stores athlete-typed names in state and re-renders them on many surfaces, so
+# the analyser correctly follows the value all the way into `innerHTML` — but it
+# cannot know that our two boundaries actually neutralise HTML:
+#
+#   • `escapeHtml` (js/util.js) escapes & < > " ' on the way INTO markup.
+#   • `sanitizeExerciseName` (js/exercises/catalog.js) strips the same
+#     metacharacters before a typed custom-exercise name can enter state.
+#
+# Declaring both as `html-injection` barriers keeps the query live for any
+# unescaped path: a new `innerHTML` fed straight from state still fails CI.
+# Adding a row here is a security claim, not a silencing switch — only add a
+# function that genuinely neutralises HTML metacharacters.
+extensions:
+  - addsTo:
+      pack: codeql/javascript-all
+      extensible: barrierModel
+    data:
+      - ["file:js/util.js", "Member[escapeHtml].ReturnValue", "html-injection"]
+      - ["file:js/exercises/catalog.js", "Member[sanitizeExerciseName].ReturnValue", "html-injection"]
