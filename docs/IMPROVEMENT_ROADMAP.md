@@ -1773,7 +1773,12 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
   - **Honesty:** adding a lift already in the day says so instead of toasting
     "Added"; a no-op/duplicate swap names the problem instead of closing
     silently; a typed catalogue name is canonicalised instead of saved as a
-    custom duplicate.
+    custom duplicate. A second toast now cancels the previous timer — the old
+    one hid the new message early, which is exactly how the duplicate warning
+    could vanish before it was read.
+  - A borderline light-mode AA row found by the CI contrast audit
+    (`#band-muscles .pg-segment__chip.is-selected`, 4.42:1 on its gradient)
+    uses the project's `#155e75` light accent (~6:1) instead of `#0e7490`.
   - **Reach:** `+ Add Unplanned Exercise` sat **3.67 screens** down; a 44px
     `+ Add` with the Exercises heading puts it at **0.50 screens** and on screen.
     An added or swapped lift is expanded and scrolled into view through
