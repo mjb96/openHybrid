@@ -62,6 +62,7 @@ const todayDay = DAY_KEYS[new Date(`${todayISO}T12:00:00Z`).getUTCDay()];
 const otherDay = DAY_KEYS[(DAY_KEYS.indexOf(todayDay) + 6) % 7];
 const yesterdayISO = new Date(Date.parse(`${todayISO}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
 const lastWeekISO = new Date(Date.parse(`${todayISO}T12:00:00Z`) - 7 * 86400000).toISOString().slice(0, 10);
+const oldTrainingISO = new Date(Date.parse(`${todayISO}T12:00:00Z`) - 60 * 86400000).toISOString().slice(0, 10);
 
 function program(restToday = false) {
   return {
@@ -75,7 +76,7 @@ function program(restToday = false) {
   };
 }
 
-function fixture({ state = 'ready', theme = 'dark', hideWeekStrip = false, pastWeek = false } = {}) {
+function fixture({ state = 'ready', theme = 'dark', hideWeekStrip = false, pastWeek = false, backupNudge = false } = {}) {
   const testProgram = program(state === 'rest');
   const lifts = Object.fromEntries(DAY_KEYS.map((day) => [
     day,
@@ -121,16 +122,22 @@ function fixture({ state = 'ready', theme = 'dark', hideWeekStrip = false, pastW
     customPrograms: [testProgram],
     weeks: {
       '1': week,
-      ...(pastWeek ? {
+      ...(pastWeek || backupNudge ? {
         'arch:old:1': {
           activationId: 'old', programId: testProgram.id,
-          dates: { mon: lastWeekISO },
+          dates: { mon: backupNudge ? oldTrainingISO : lastWeekISO },
           lifts: { mon: { 'EZ-Bar Curl': [{ w: '20', r: '10', c: true }] } },
           runs: {}, runSessions: {}, sessionStatus: {}, sessionSummary: {}, gymStats: {},
           liftOrder: {}, liftMeta: {}, notes: {}, gymRpe: {}, bodyWeight: {},
         },
       } : {}),
     },
+    ...(backupNudge ? {
+      // A 20-day-old manual backup with 60 days of history: the one state Home
+      // is allowed to remind about (browser/PWA, where export is the only path).
+      lastBackupAt: new Date(Date.parse(`${todayISO}T12:00:00Z`) - 20 * 86400000).toISOString(),
+      backupNudgeDismissedAt: null,
+    } : {}),
     loadMetrics: { atl: 0, ctl: 0 },
     healthConnect: { connected: true, hrv: [], restingHR: [], sleep: [{ date: todayISO, totalHours: 6.2 }], steps: [], vo2max: [] },
     wellnessLog: [{ date: todayISO, mood: 4, soreness: 2 }], bodyWeightLog: [],
@@ -139,9 +146,9 @@ function fixture({ state = 'ready', theme = 'dark', hideWeekStrip = false, pastW
   };
 }
 
-async function openState({ state, theme = 'dark', width = 390, height = 844, hideWeekStrip = false, pastWeek = false }) {
+async function openState({ state, theme = 'dark', width = 390, height = 844, hideWeekStrip = false, pastWeek = false, backupNudge = false }) {
   const context = await createBrowserContext(browser, { viewport: { width, height }, timezoneId: TZ });
-  const seed = fixture({ state, theme, hideWeekStrip, pastWeek });
+  const seed = fixture({ state, theme, hideWeekStrip, pastWeek, backupNudge });
   await context.addInitScript(([key, value]) => localStorage.setItem(key, value), [STORAGE_KEY, JSON.stringify(seed)]);
   await context.addInitScript(pinClock, CLOCK);
   const page = await context.newPage();
@@ -505,6 +512,37 @@ try {
     await page.locator('.nav-item[data-target="home"]').click();
     await page.waitForSelector('#view-home.active');
     ok(await page.locator('#homeRestPill').isHidden(), 'a finished rest never resurrects a pill on Home');
+    await context.close();
+  }
+  {
+    // A local-only app: the JSON export is the only copy of this device's
+    // training. The reminder must be rare, dismissible, and honest about age.
+    const { context, page } = await openState({ state: 'ready', backupNudge: true });
+    const nudge = page.locator('#homeBackupNudge');
+    ok(await nudge.isVisible(), 'a stale backup is raised on Home');
+    ok(/Last backup 20 days ago/.test((await page.locator('#homeBackupNudgeText').textContent()) || ''), 'the nudge states how old the backup is');
+    ok((await page.locator('#homeBackupNudge .home-backup-nudge__export').boundingBox()).height >= 44, 'the export action meets 44px');
+    ok((await page.locator('#homeBackupNudge .home-backup-nudge__dismiss').boundingBox()).height >= 44, 'the dismiss control meets 44px');
+    await page.locator('#homeBackupNudge .home-backup-nudge__dismiss').click();
+    ok(await nudge.isHidden(), 'dismissing the backup reminder hides it');
+    const stored = await page.evaluate(() => {
+      const raw = localStorage.getItem('hybrid_engine_v2_state');
+      return raw ? JSON.parse(raw).backupNudgeDismissedAt : undefined;
+    });
+    ok(typeof stored === 'string' && stored.length > 0, 'the dismissal is remembered');
+    await context.close();
+  }
+
+  {
+    // On the Android app, automatic backups exist; Home must never nag.
+    const { context, page } = await openState({ state: 'ready', backupNudge: true });
+    await page.evaluate(() => {
+      window.HybridAutoBackupBridge = window.HybridAutoBackupBridge || {};
+    });
+    await page.locator('.nav-item[data-target="analytics"]').click();
+    await page.locator('.nav-item[data-target="home"]').click();
+    await page.waitForSelector('#view-home.active');
+    ok(await page.locator('#homeBackupNudge').isHidden(), 'a build with automatic backups is never nagged');
     await context.close();
   }
 } finally {

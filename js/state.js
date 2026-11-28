@@ -927,6 +927,9 @@ export async function pullEngineDataFromStorage() {
     weeks: {}, exerciseStats: {}, customExercises: [], customPrograms: [],
     // ST9: metadata for the last successful manual JSON export. Not a setting.
     lastBackupAt: null,
+    // Presentation-only: when the athlete last dismissed Home's backup nudge.
+    // Root metadata beside lastBackupAt, never a setting.
+    backupNudgeDismissedAt: null,
     routines: [], libraryFolders: [], bodyWeightLog: [], weekSchedule: {},
     thresholdPaceSeconds: null, deloadApplied: null, _deloadDismissedWeek: null,
     streakData: { current: 0, longest: 0, lastActivityDate: null },
@@ -1010,6 +1013,7 @@ settings: { name: '', weightUnit: 'kg', distanceUnit: 'km', progressionIncrement
   if (!['default', 'large', 'xlarge'].includes(appState.settings.textSize)) appState.settings.textSize = 'default';
   if (typeof appState.settings.haptics !== 'boolean') appState.settings.haptics = true;
   if (typeof appState.lastBackupAt !== 'string' || Number.isNaN(Date.parse(appState.lastBackupAt))) appState.lastBackupAt = null;
+  if (typeof appState.backupNudgeDismissedAt !== 'string' || Number.isNaN(Date.parse(appState.backupNudgeDismissedAt))) appState.backupNudgeDismissedAt = null;
   if (!appState.settings.avatarDataUrl && appState.settings.avatarDataUrl !== null) appState.settings.avatarDataUrl = null;
   if (!appState.settings.bandWeights) appState.settings.bandWeights = { L: 10, M: 20, H: 30 };
   if (!appState.settings.restPeriods) appState.settings.restPeriods = { ...DEFAULT_REST_TIERS };

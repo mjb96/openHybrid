@@ -519,6 +519,16 @@
         <button type="button" class="home-first-run__action" data-action="open-bw-sheet">Log a weigh-in</button>
       </article>
 
+      <!-- A rare, dismissible backup reminder: on the browser/PWA build a JSON
+           export is the only copy of this device's training. -->
+      <div id="homeBackupNudge" class="home-backup-nudge" role="status" hidden>
+        <p class="home-backup-nudge__text" id="homeBackupNudgeText"></p>
+        <div class="home-backup-nudge__actions">
+          <button type="button" class="home-backup-nudge__export" data-action="export-data">Export</button>
+          <button type="button" class="home-backup-nudge__dismiss" data-action="dismiss-backup-nudge" aria-label="Dismiss backup reminder">×</button>
+        </div>
+      </div>
+
       <!-- One Start lives on the Today decision above. A second "Workout"
            quick start here competed with it, so these three are secondary
            destinations only. -->
