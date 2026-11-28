@@ -44,9 +44,14 @@ test('Home offers one Start, not a competing Workout quick action', () => {
   const quickBlock = indexHTML.slice(quickAt, indexHTML.indexOf('</div>', quickAt));
   assert.doesNotMatch(quickBlock, /open-quick-start/);
   // HM5: Run moved to Train (where Quick start lives); the three Home actions
-  // are deliberately Empty workout · Weight · History.
+  // are deliberately Check-in · Empty workout · History. The old Weight tile
+  // only navigated to the same bodyweight view the card below already opens;
+  // the daily check-in (a readiness input) had no entry point on a training day.
+  assert.match(quickBlock, /id="qaCheckin"[^>]*data-action="open-wellness-checkin"/);
+  assert.match(quickBlock, /data-module="recovery"/);
   assert.match(quickBlock, /data-action="start-empty-workout"/);
   assert.doesNotMatch(quickBlock, /data-action="open-run-logger"/);
+  assert.doesNotMatch(quickBlock, /data-context="bodyweight"/);
   assert.match(quickBlock, /class="home-quick-btn btn-history-link"/);
 });
 

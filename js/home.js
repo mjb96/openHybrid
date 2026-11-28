@@ -225,10 +225,14 @@ function updateQuickActions(model) {
   }
   const checkBtn = document.getElementById('qaCheckin');
   if (checkBtn) {
+    // The check-in is the one readiness signal the athlete can add today: it
+    // feeds readiness directly and raises its confidence. It shows a done state
+    // so the same row stops asking once the day's entry is in.
     const done = ((model.ready && model.ready.available) || []).includes('wellness');
-    const sub = checkBtn.querySelector('.qa-sub');
+    const sub = document.getElementById('qaCheckinSub');
     if (sub) sub.textContent = done ? '✓ Done today' : 'Sleep · mood · soreness';
-    checkBtn.classList.toggle('qa-btn--active', done);
+    checkBtn.classList.toggle('home-quick-btn--done', done);
+    checkBtn.setAttribute('aria-label', done ? 'Daily check-in — done today' : 'Daily wellness check-in');
   }
 }
 
