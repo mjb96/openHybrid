@@ -466,6 +466,47 @@ try {
     ok(hidden, 'a disabled Recovery module removes the check-in entry point');
     await context.close();
   }
+  {
+    // A rest that outlived a tab switch: the countdown had no UI outside the
+    // cockpit, so checking History mid-rest meant guessing when to return.
+    const { context, page } = await openState({ state: 'in_progress' });
+    await page.evaluate(() => {
+      const now = Date.now();
+      localStorage.setItem('hybrid_restTimer_v1', JSON.stringify({
+        v: 1, lift: 'EZ-Bar Curl', working: true, duration: 90, total: 90,
+        paused: false, remaining: 90, endsAt: now + 90_000, savedAt: now,
+      }));
+    });
+    await page.locator('.nav-item[data-target="analytics"]').click();
+    await page.locator('.nav-item[data-target="home"]').click();
+    await page.waitForSelector('#view-home.active');
+    ok(await page.locator('#homeRestPill').isVisible(), 'a rest that outlived a tab switch shows on Home');
+    const clock1 = (await page.locator('#homeRestPillClock').textContent())?.trim() || '';
+    ok(/^1:[0-5]\d$/.test(clock1), `the pill states the remaining rest (${clock1})`);
+    const pillBtn = page.locator('#homeRestPill .home-rest-pill__btn');
+    ok(/remaining/.test((await pillBtn.getAttribute('aria-label')) || ''), 'the pill names its remaining time for a screen reader');
+    ok((await pillBtn.boundingBox()).height >= 44, 'the rest pill meets 44px');
+    await pillBtn.click();
+    ok(await page.locator('#view-workout').evaluate((el) => el.classList.contains('active')), 'the pill returns to the workout');
+    await context.close();
+  }
+
+  {
+    // A finished rest leaves no pill behind.
+    const { context, page } = await openState({ state: 'in_progress' });
+    await page.evaluate(() => {
+      const now = Date.now();
+      localStorage.setItem('hybrid_restTimer_v1', JSON.stringify({
+        v: 1, lift: 'EZ-Bar Curl', paused: false, remaining: 5, total: 90,
+        endsAt: now - 5_000, savedAt: now - 10_000,
+      }));
+    });
+    await page.locator('.nav-item[data-target="analytics"]').click();
+    await page.locator('.nav-item[data-target="home"]').click();
+    await page.waitForSelector('#view-home.active');
+    ok(await page.locator('#homeRestPill').isHidden(), 'a finished rest never resurrects a pill on Home');
+    await context.close();
+  }
 } finally {
   await browser.close();
   server.close();

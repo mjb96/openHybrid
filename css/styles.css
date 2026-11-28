@@ -2266,7 +2266,37 @@ body.sheet-scroll-locked {
   font-size: 0.72rem;
   font-weight: 750;
   cursor: pointer;
-}.home-quick-btn {
+}
+/* A rest that outlived a tab switch: one tap back to the session. */
+.home-rest-pill {
+  margin: 0 0 12px;
+}
+.home-rest-pill[hidden] { display: none; }
+.home-rest-pill__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border-default));
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.home-rest-pill__label { flex: 0 0 auto; }
+.home-rest-pill__clock {
+  flex: 0 0 auto;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.home-rest-pill__go { flex: 1; text-align: right; color: var(--text-muted); font-weight: 600; }.home-quick-btn {
   display: flex;
   flex-direction: column;
   align-items: center;

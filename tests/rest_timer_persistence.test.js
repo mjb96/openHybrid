@@ -62,7 +62,9 @@ const {
   triggerRestTimerEngine, toggleRestPause, isRestPaused, dismissRestTimer,
   adjustRestDuration, setRestTimerEnabled, setRestTiers, setRestOverrides,
   restoreRestTimer, clearRestTimerPersistence, REST_TIMER_STORAGE_KEY,
+  readRestSnapshot,
 } = await import('../js/timers.js');
+const { restPillModel } = await import('../js/home/rest-pill.js');
 
 const snapshot = () => {
   const raw = storage.getItem(REST_TIMER_STORAGE_KEY);
@@ -179,4 +181,61 @@ test('dismissing and resetting both clear the snapshot', () => {
   clearRestTimerPersistence();
   assert.equal(snapshot(), null);
   dismissRestTimer();
+});
+
+// ---------------------------------------------------------------------------
+// The Home pill reads the snapshot without restoring or mutating anything.
+// ---------------------------------------------------------------------------
+test('a running rest is readable from another tab, from its absolute end time', () => {
+  triggerRestTimerEngine('Back Squat', null, '');
+  const snap = readRestSnapshot();
+  assert.ok(snap, 'a running rest must be readable');
+  assert.equal(snap.lift, 'Back Squat');
+  assert.equal(snap.paused, false);
+  assert.ok(snap.remaining > 0 && snap.remaining <= 180);
+  // Reading it must not disturb the cockpit's own restore.
+  assert.ok(snapshot(), 'reading the snapshot cleared storage');
+  dismissRestTimer();
+});
+
+test('a paused rest reads as paused with exactly the held time', () => {
+  triggerRestTimerEngine('Back Squat', null, '');
+  toggleRestPause();
+  const held = snapshot()?.remaining;
+  const snap = readRestSnapshot();
+  assert.equal(snap?.paused, true);
+  assert.equal(snap?.remaining, held);
+  dismissRestTimer();
+});
+
+test('an expired, stale, malformed or foreign snapshot reads as no rest', () => {
+  const now = Date.now();
+  storage.setItem(REST_TIMER_STORAGE_KEY, JSON.stringify({
+    v: 1, lift: 'Back Squat', paused: false, remaining: 90, total: 180,
+    endsAt: now - 5_000, savedAt: now - 10_000,
+  }));
+  assert.equal(readRestSnapshot(), null, 'a finished rest must not come back at 0:00');
+
+  storage.setItem(REST_TIMER_STORAGE_KEY, JSON.stringify({
+    v: 1, lift: 'Back Squat', paused: false, remaining: 90, total: 180,
+    endsAt: now + 60_000, savedAt: now - (3 * 60 * 60 * 1000),
+  }));
+  assert.equal(readRestSnapshot(), null, 'a three-hour-old rest is stale');
+
+  storage.setItem(REST_TIMER_STORAGE_KEY, '{not json');
+  assert.equal(readRestSnapshot(), null);
+
+  storage.setItem(REST_TIMER_STORAGE_KEY, JSON.stringify({ v: 2, remaining: 90, endsAt: now + 60_000, savedAt: now }));
+  assert.equal(readRestSnapshot(), null, 'an unknown snapshot version is not trusted');
+});
+
+test('the pill model formats the clock and names a paused rest', () => {
+  assert.equal(restPillModel(null), null);
+  assert.equal(restPillModel({ remaining: 0, paused: false }), null);
+  assert.deepEqual(restPillModel({ remaining: 72, paused: false, lift: 'Row' }), {
+    clock: '1:12', label: 'Resting', paused: false,
+  });
+  assert.deepEqual(restPillModel({ remaining: 5, paused: true }), {
+    clock: '0:05', label: 'Rest paused', paused: true,
+  });
 });

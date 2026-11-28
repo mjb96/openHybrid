@@ -23,6 +23,7 @@ import { escapeHtml } from './util.js';
 import { buildHomeWeekStrip } from './home/week-strip.js';
 import { HOME_WEEK_HISTORY, buildDayRecap, buildPastWeekView, dayRecapHTML, plannedDayHTML, weekOffsetLabel, weekRecapHTML } from './home/week-view.js';
 import { renderHomeBodyweight } from './home/bodyweight-card.js';
+import { renderHomeRestPill } from './home/rest-pill.js';
 import { renderHomeHybrid } from './home/hybrid-dashboard.js';
 import { reportHandledError, renderSafely } from './monitoring/report-error.js';
 import { addDaysISO, startOfProgramWeek, todayKey } from './dates.js';
@@ -747,6 +748,7 @@ export function renderHome() {
   // the guard here sees the settled surface.
   renderHomeInsight(model, appState, { safetyActive: overtrainingActive, selectedDay: homeDay, briefing });
   renderHomeSupportingSignals(appState, model);
+  renderSafely('home:rest-pill', () => renderHomeRestPill(document.getElementById('homeRestPill')), null);
   renderHomeVolumeGuide(appState, activeProgram);
 
   // Overtraining escalation (R10) takes priority over the advisory deload card.
