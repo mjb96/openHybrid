@@ -114,3 +114,26 @@ export function loggedDateSet(state, days) {
   forEachLoggedDay(state, days, (d) => set.add(d.dateISO));
   return set;
 }
+
+/**
+ * Has this athlete EVER logged training? This is deliberately BROADER than the
+ * date-strict calendar readers: work stored without a stamped date is still
+ * history, and it must never make Home treat a trained athlete as brand new.
+ * (Calendar analytics still ignores undated work rather than guessing its day.)
+ * @param {any} state
+ */
+export function hasAnyStoredTraining(state) {
+  for (const week of Object.values(state?.weeks || {})) {
+    for (const day of Object.values(week?.lifts || {})) {
+      if (!day || typeof day !== 'object') continue;
+      for (const sets of Object.values(day)) {
+        if (Array.isArray(sets) && sets.some((set) => set?.c)) return true;
+      }
+    }
+    if (week?.runSessions && Object.values(week.runSessions).some((runs) => Array.isArray(runs) && runs.length > 0)) return true;
+    for (const stats of Object.values(week?.gymStats || {})) {
+      if (stats && (Number(stats.time) > 0 || Number(stats.cals) > 0)) return true;
+    }
+  }
+  return false;
+}

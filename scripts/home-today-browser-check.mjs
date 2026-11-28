@@ -412,6 +412,25 @@ try {
   }
 
   {
+    // A genuinely empty profile: no completed work and no weigh-in. One honest
+    // start-here card instead of four cards of dashes.
+    const { context, page } = await openState({ state: 'ready' });
+    ok(await page.locator('#homeFirstRun').isVisible(), 'a first run shows the start-here card');
+    ok(await page.locator('#homeHybridSection').isHidden(), 'a first run hides the empty hybrid cards');
+    ok(await page.locator('#homeBodyweightCard').isHidden(), 'a first run hides the empty bodyweight card');
+    ok((await page.locator('#homeFirstRun button').boundingBox()).height >= 44, 'the first-run action meets 44px');
+    await context.close();
+  }
+
+  {
+    // Any logged work ends the first run and restores the real cards.
+    const { context, page } = await openState({ state: 'in_progress' });
+    ok(await page.locator('#homeFirstRun').isHidden(), 'logged work ends the first run');
+    ok(await page.locator('#homeHybridSection').isVisible(), 'logged work restores the hybrid cards');
+    await context.close();
+  }
+
+  {
     const { context, page } = await openState({ state: 'ready', hideWeekStrip: true });
     ok(await page.locator('.home-week__rail').evaluate((el) => el.classList.contains('home-card-hidden')), 'hiding This week removes only the seven-day rail');
     ok(await page.locator('#homeTodayCard .today-card').isVisible(), 'the pinned Today decision survives a hidden week strip');

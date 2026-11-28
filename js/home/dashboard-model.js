@@ -20,12 +20,13 @@ import { generateRecommendation } from '../brain/recommendations.js';
 import { computeReadiness, readinessStatus, readinessColor } from '../analytics/scoring/readiness-scoring.js';
 import { getFastingContext } from '../fasting.js';
 import { isCompletedSet as isDone, dayVolume } from '../set-utils.js';
-import { loggedDateSet } from '../analytics/logged-days.js';
+import { loggedDateSet, hasAnyStoredTraining } from '../analytics/logged-days.js';
 import { buildCalendarWeekStrength, indexSlotsByDate } from '../analytics/weekly-aggregate.js';
 import { addDaysISO, localDayKey, todayKey } from '../dates.js';
 import { runDaySummary, runSessionsForDay } from '../state/run-sessions.js';
 import { estimatedE1rmForSet } from '../strength/e1rm.js';
 import { canonicalExerciseId } from '../exercises/catalog.js';
+import { normalizeUi } from '../ui/customize.js';
 
 const TONE_COLOR = {
   positive: 'var(--color-green)',
@@ -284,7 +285,11 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
   const pace = computePace(weeks, days, state?.settings?.distanceUnit || 'km');
 
   // ---- Streak -------------------------------------------------------------
-  const streak = computeStreak(weeks, days, state);
+  // One dated training-day set drives the streak, the freezes and "has this
+  // athlete ever trained?" - so the first-run state costs no extra scan.
+  const trainingDates = activeTrainingDates(weeks, days, state);
+  const hasAnyTraining = trainingDates.size > 0 || hasAnyStoredTraining(state);
+  const streak = computeStreak(weeks, days, state, todayKey(), trainingDates);
 
   // ---- Fasting ------------------------------------------------------------
   const fasting = getFastingContext(state || {});
@@ -340,6 +345,7 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
     },
     calendarWeek,
     bodyweight,
+    hasAnyTraining,
     big3,
     pace,
     streak,
@@ -351,6 +357,22 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
 
   model.topInsight = pickTopInsight(model);
   return model;
+}
+
+/**
+ * A true first run is the only time Home hides its data cards: no training in
+ * any week, no weigh-in, and no saved Home customization to respect. One honest
+ * "start here" beats four cards of dashes for a brand-new athlete.
+ *
+ * @param {any} model
+ * @param {any} state
+ */
+export function showHomeFirstRun(model, state) {
+  if (!model) return false;
+  if (model.hasAnyTraining) return false;
+  if (model.bodyweight?.hasData) return false;
+  const ui = normalizeUi(state?.settings?.ui);
+  return ui.home.hidden.length === 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -471,8 +493,8 @@ export function activeTrainingDates(weeks, days, state) {
   return loggedDateSet(state?.weeks === weeks ? state : { ...state, weeks }, days);
 }
 
-export function computeStreak(weeks, days, state, todayISO = todayKey()) {
-  const active = activeTrainingDates(weeks, days, state);
+export function computeStreak(weeks, days, state, todayISO = todayKey(), activeDates = null) {
+  const active = activeDates || activeTrainingDates(weeks, days, state);
   // Streak freezes (R7): a frozen day counts for streak continuity, so an
   // occasional missed day doesn't wipe a long streak.
   (state?.streakFreezes?.used || []).forEach(ds => active.add(ds));
