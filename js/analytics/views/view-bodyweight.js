@@ -7,7 +7,7 @@
 // water and salt move a morning.
 // ==========================================
 import { renderBodyWeightWithMA, renderSiteTrend } from '../charts.js';
-import { buildBodyweightModel } from '../../metrics/bodyweight.js';
+import { buildBodyweightModel, rateStatusLabel } from '../../metrics/bodyweight.js';
 import { buildMeasurementModel, cmToDisplay, roundDisplay } from '../../metrics/measurements.js';
 import { formatDayMonth, todayKey } from '../../dates.js';
 import { fromCanonicalWeight } from '../../metrics/weight-unit.js';
@@ -64,12 +64,7 @@ function summaryHtml(model, state) {
         // weigh-ins exist.
         ? `Add ${missing} more weigh-in${missing === 1 ? '' : 's'} in the last 10 days for a weekly rate — earlier entries still appear in the graph.`
         : `Need ${missing} more weigh-in${missing === 1 ? '' : 's'} across 10 days for a weekly trend.`;
-  const statusText = {
-    in: 'On pace',
-    slow: 'Slower than planned',
-    fast: 'Faster than planned',
-    off: 'Outside your range',
-  }[model.status] || '';
+  const statusText = rateStatusLabel(model.status);
   const goalText = model.targetWeight
     ? `Goal ${fmtWeight(model.targetWeight, unit)} · ${Math.abs(toDisplayUnit(model.latest.weight, unit) - toDisplayUnit(model.targetWeight, unit)).toFixed(1)} ${unit} to go`
     : 'No goal weight set';

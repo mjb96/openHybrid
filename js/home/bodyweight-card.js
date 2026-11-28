@@ -6,9 +6,9 @@
 // line with the goal, and one row that opens the prefilled sheet. The full
 // graph stays in Progress → Body Weight.
 // =============================================================================
-import { buildBodyweightModel } from '../metrics/bodyweight.js';
+import { buildBodyweightModel, rateStatusLabel } from '../metrics/bodyweight.js';
 import { bodyWeightChartSVG } from '../analytics/charts.js';
-import { formatDayMonth } from '../dates.js';
+import { daysBetween, formatDayMonth, localDayKey } from '../dates.js';
 import { escapeHtml } from '../util.js';
 import { displayWeightString, fromCanonicalWeight } from '../metrics/weight-unit.js';
 
@@ -22,12 +22,14 @@ export function buildHomeBodyweight(state, { now = Date.now(), days = 30 } = {})
 }
 
 /**
- * @param {HTMLElement|null} container
- * @param {any} state
+ * The card's words: latest value, its age when stale, the weekly rate and the
+ * athlete's own corridor verdict, then the goal. Pure, so the display contract
+ * is testable without a DOM.
+ *
+ * @param {ReturnType<typeof buildHomeBodyweight>} model
+ * @param {{ now?: number }} [options]
  */
-export function renderHomeBodyweight(container, state) {
-  if (!container) return;
-  const model = buildHomeBodyweight(state);
+export function bodyweightCardText(model, { now = Date.now() } = {}) {
   const unit = model.unit;
   const latest = model.latest;
   // ST6: the model is canonical kilograms; the card is a display surface.
@@ -36,14 +38,40 @@ export function renderHomeBodyweight(container, state) {
   const trend = model.rate.enough
     ? `${model.rate.perWeek > 0 ? '+' : ''}${show(model.rate.perWeek).toFixed(2)} ${unit}/wk`
     : delta;
-  const meta = [
-    latest ? formatDayMonth(latest.date) : '',
-    trend,
-    model.targetWeight ? `Goal ${displayWeightString(model.targetWeight, unit, { decimals: 1 })} ${unit}` : '',
-  ].filter(Boolean).join(' · ');
-  const aria = latest
-    ? `Log bodyweight, latest ${displayWeightString(latest.weight, unit, { decimals: 1 })} ${unit}`
-    : 'Log bodyweight';
+  // The verdict comes from the athlete's own corridor, phrased by the model
+  // owner, so Home and Progress cannot disagree. A stale weigh-in leads with
+  // its age instead: a "current" weight from nine days ago is not current.
+  const verdict = rateStatusLabel(model.status);
+  const todayISO = localDayKey(new Date(now));
+  const sinceDays = latest ? daysBetween(latest.date, todayISO) : null;
+  const stale = sinceDays != null && sinceDays >= 7;
+  return {
+    title: latest ? `${displayWeightString(latest.weight, unit, { decimals: 1 })} ${unit}` : 'No weigh-ins yet',
+    meta: [
+      latest
+        ? (stale ? `Last weigh-in ${sinceDays} days ago` : formatDayMonth(latest.date))
+        : '',
+      trend,
+      verdict,
+      model.targetWeight ? `Goal ${displayWeightString(model.targetWeight, unit, { decimals: 1 })} ${unit}` : '',
+    ].filter(Boolean).join(' · '),
+    aria: latest
+      ? `Log bodyweight, latest ${displayWeightString(latest.weight, unit, { decimals: 1 })} ${unit}${stale ? `, last weigh-in ${sinceDays} days ago` : ''}`
+      : 'Log bodyweight',
+  };
+}
+
+/**
+ * @param {HTMLElement|null} container
+ * @param {any} state
+ */
+export function renderHomeBodyweight(container, state) {
+  if (!container) return;
+  const model = buildHomeBodyweight(state);
+  const unit = model.unit;
+  const text = bodyweightCardText(model);
+  const meta = text.meta;
+  const aria = text.aria;
   // The same chart Progress draws, at card geometry: daily points, the 7-day
   // mean and the goal line. Tapping the chart still opens the full graph, while
   // the summary row above it opens the prefilled weigh-in sheet.
@@ -62,7 +90,7 @@ export function renderHomeBodyweight(container, state) {
     <button type="button" class="home-bw__line" data-action="open-bw-sheet" aria-label="${escapeHtml(aria)}">
       <span class="home-bw__copy">
         <span class="home-bw__eyebrow">Bodyweight</span>
-        <strong class="home-bw__title">${latest ? `${displayWeightString(latest.weight, unit, { decimals: 1 })} ${unit}` : 'No weigh-ins yet'}</strong>
+        <strong class="home-bw__title">${text.title}</strong>
         <span class="home-bw__meta">${escapeHtml(meta)}</span>
       </span>
       <span class="home-bw__log" aria-hidden="true">Log</span>
