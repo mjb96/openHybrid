@@ -6513,3 +6513,23 @@ Older entries: `docs/ROADMAP_ARCHIVE.md`.
   - Tests: same-date e1RM (two days counted, a copied day deduped), walk/run
     splits on Home and Year in Review, planned-day adherence, FIT gym sessions,
     walk-only recap. `npm run verify` green (3,011 tests).
+
+
+- **2026-11-27 — Audit slice 3: the plan and the log agree with the screen.**
+  - A deload now halves an inline `5×5` lift as well as a per-exercise sidecar
+    target, so the catalogue's deload week is a lighter week for every lift.
+  - Editor Undo snapshots and restores the per-lift `prescriptions` sidecar:
+    removing a lift and taking it back no longer returns it with the wrong target.
+  - A schedule move is current-week only; `movableDay` reads the week that owns
+    the planned date instead of `state.currentWeek`.
+  - An untouched weight field is never re-parsed through the display unit
+    (`shouldCommitEnteredWeight`), in the cockpit or the saved-session editor;
+    the weight-unit browser check now proves a blur leaves 102.06 kg unchanged.
+  - Retyping a PR row as a warm-up/drop clears its PR flag and badge; discarding
+    a workout re-prescribes with the same `getWeekModifier` the cockpit renders;
+    a duration with seconds or a malformed `1:75` normalises honestly; a plan
+    rest above the timer's 600 s maximum is clamped instead of vanishing on reload.
+  - Tests: `workout_correctness`, deload-inline, undo-sidecar and past-week
+    schedule cases; program-editor browser check asserts the restored target.
+    `npm run verify` green (3,018 tests); set-row, rest-timer, weight-unit,
+    move-day, edit-saved and program-editor checks pass.

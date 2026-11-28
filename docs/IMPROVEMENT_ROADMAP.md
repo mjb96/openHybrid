@@ -1297,6 +1297,15 @@ first.
 | HM5 | Quick actions | `index.html`, `home.js` | At most three: empty workout, log a past session (G3), and one contextual action | DONE (G3 deferred) | The three Home shortcuts are now **Empty workout · Weight · History**: Run moved to Train's Quick start (the surface that owns starting an activity), so Home is about starting/recording, not browsing. "Log a past session" stays in History until G3 lands. The module switches still hide the Train Run/Walk offers. |
 | HM6 | Honest states | `home/today-card.js`, `home/week-view.js` | Rest day, no plan, first run, offline, partial data: each distinct and useful | DONE | Ready/rest/in-progress/completed/unresolved/no-plan/past-week empty were already distinct. Added an explicit **first session** state (no completed work anywhere), moved the offline note into the card head so it is visible while collapsed, and made a one-signal readiness read say "limited signal" instead of presenting it as settled. `home_today_card` tests pin all three; Home Today browser check passes. |
 | HM7 | No duplicate metrics | `home/dashboard-model.js`, `week-strip.js`, `hybrid-dashboard.js`, `bodyweight-card.js` | Audit Home for the same figure shown twice or by two owners; also confirm there is one readiness surface and one owner (HY6) | DONE | One owner per figure: readiness → the Today card's guidance (and the recovery detail); bodyweight + delta → the bodyweight card; weekly volume, sessions and working sets → the Strength week card; planned sessions → the week rail. The coach is advisory only (fasting, load/ACWR, streak) and hides while the overtraining card is up. `tests/home_metric_ownership.test.js` pins the rule; `home-today-browser-check` still passes. |
+| HM8 | Readiness on the collapsed card | `home/today-card.js`, `css/styles.css` | The day's readiness read must be visible without opening Today, and state confidence honestly | DONE | A 44px `card.readiness` row (score + confidence-aware status + the limiting signal when ≥2 signals; full list in the detail). Guidance is advice only, so the score has one owner. Links to `recovery-score` only while the Recovery module is on. Tests: `home_today_card` (present/absent, limiting, module gating), `home_metric_ownership`, and the browser check at 320/390/412 (named, 44px, reachable, still inside the first viewport). |
+| HM9 | A coach line that answers | `home.js`, `home/dashboard-model.js`, `brain/coach-qa.js`, `index.html` | No filler line; the delivered ask-the-coach feature must be reachable | DONE | `pickTopInsight` returns `null` when there is no story (only an empty profile gets a prompt). Precedence: warning → strength stall/deload → the briefing's streak-at-risk → its memory line → nothing. Two 44px chips answer into `#coachAnswer` with `aria-live`; the line yields (chips stay) while the overtraining card is up; the card hides for a past week/picked day and clears a stale answer. Tests: `dashboard_model`, `home_metric_ownership`, browser check (chips, group, 44px, real answer). |
+| HM10 | Daily check-in, one tap | `index.html`, `js/home.js` | The one readiness input the athlete supplies must be reachable on a training day; no duplicate destination tile | DONE | Quick actions are Check-in · Empty workout · History. The check-in reuses `open-wellness-checkin`, shows `✓ Done today` from `readiness.available` (today only), and carries `data-module="recovery"`. The Weight tile only duplicated the bodyweight card. Tests: `home_analytics_hierarchy`, browser check (44px, done state, opens the form, module-off hides it). |
+| HM11 | Session size and what's next | `home/today-card.js`, `home/week-strip.js`, `js/home.js` | Say what today costs and name the next planned session | DONE | Today meta ends with `N lifts · M sets` from the same `sessionExercisePreview`/`liftTarget` (deload honoured; run days keep their prescription; no invented duration). `strip.nextPlanned` names the first planned date AFTER today (`Next up: Thu 6 Aug · Lower B`), today is never repeated, a past week shows none. Tests: `home_week_strip`, `home_today_card`, browser check both strings. |
+| HM12 | Bodyweight verdict | `home/bodyweight-card.js`, `metrics/bodyweight.js` | State whether the rate is on pace, and how old the weight is | DONE | `bodyweightCardText` (pure) shows latest · age when 7+ days stale · rate · `rateStatusLabel` verdict · goal. The wording moved into `metrics/bodyweight.js` so Progress cannot drift; no corridor means no verdict. Tests: `home_bodyweight_card` (on pace, slower, no corridor, stale, empty). |
+| HM13 | First-run state | `js/home/dashboard-model.js`, `analytics/logged-days.js`, `index.html` | A brand-new athlete gets one honest start, not four dash cards | DONE | `showHomeFirstRun` gates on no dated training, no stored training of any kind, no weigh-in and no saved customization; `#homeFirstRun` replaces the hybrid pair + bodyweight card. `hasAnyStoredTraining` is the one owner (and the Today card's private copy is gone). Tests: `home_first_run`, browser check (shown/hidden, 44px action). |
+| HM14 | Rest survives the tab switch | `js/timers.js`, `home/rest-pill.js`, `index.html` | A running rest must be visible and returnable from Home | DONE | `readRestSnapshot()` is a pure read (expired/stale/malformed/foreign-version refused; never restores). `#homeRestPill` renders it; the cockpit's 250 ms tick updates the same clock and the completion branch hides it. No second timer. Tests: `rest_timer_persistence` + the browser check (shown, clock, aria, returns to Train, finished rest shows nothing). |
+| HM15 | Backup trust on Home | `portability/backup-status.js`, `js/home.js`, `js/settings.js` | The only durable copy of local data must be nudged for where it matters, without nagging | DONE | `backupNudgeFor` shows only on a build without `HybridAutoBackupBridge`, for real data, 14+ days stale (never: after 21 days of use), and is dismissible for 30 days (`backupNudgeDismissedAt`, presentation-only). A successful export dispatches `app:backup-exported` and drops it. Tests: `backup_nudge` + the browser check (age, 44px, dismissal persisted, silent with the native bridge). |
+| HM16 | Dead Home surfaces removed | `js/dashboard.js`, `home.js`, `home/today-card.js` | No renderer/state that nothing displays | DONE | The dormant At-a-Glance tile registry (557 lines) and its drag/hide helpers are deleted (the deprecated `appState.dashboardTiles` store stays for migrate/compat); `card.score` and the two `style.display='none'` lookups for removed elements are gone. `tests/home_analytics_hierarchy` pins the deletion. |
 
 **Acceptance:** Home answers "what should I do today?" without scrolling; no
 metric appears twice; hybrid cards stay hidden when Hybrid training is off;
@@ -1758,6 +1767,35 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
 
 
 ## 23. Session log
+- **2026-11-28 — H2 Home: the audit, and what was actually missing.**
+  - **Audit first.** Verified what Home renders, then found the gaps: the
+    readiness score lived inside a detail block the collapsed (default) card
+    hides; the coach line never disappeared and printed a platitude; the
+    delivered ask-the-coach feature had no host element in the DOM;
+    `card.score` and two `style.display='none'` lookups targeted surfaces that
+    no longer existed; the dormant At-a-Glance tile registry (557 lines) was
+    still shipping; the Weight quick action duplicated the bodyweight card
+    while the daily check-in had no entry point on a training day.
+  - **Removed:** `js/dashboard.js` + its two test files (the deprecated
+    `appState.dashboardTiles` store stays for migration/compat), `card.score`,
+    the dead element lookups, and the `#qaCheckin`/`#coachAnswer` orphans.
+  - **Added (HM8–HM15):** readiness row on the collapsed Today card; an honest
+    coach line with two working chips; Check-in quick action; session size and
+    "Next up"; bodyweight corridor verdict + stale-weigh-in age (words owned by
+    `metrics/bodyweight.js`); a true first-run start card (`hasAnyStoredTraining`
+    is now the one owner); a rest pill that survives the tab switch from a pure
+    snapshot read; and a rare, dismissible backup nudge for browser/PWA only.
+  - **One owner per metric held:** guidance is advice only (the score moved to
+    its row), the bodyweight verdict reuses the Progress wording, and the
+    coach's new lines are words (streak-at-risk/memory), not figures.
+  - **CI reliability:** `rest-timer-browser-check` judged the restored clock
+    against a wall-clock allowance and failed by one display second on loaded
+    runners; it now checks the persisted absolute `endsAt`. The tap audit waited
+    a flat 500 ms for a custom lift; it now waits for the card.
+  - Evidence: `npm test` 3,024 · `typecheck` · `smoke`; `browser:verify` at
+    320/390/412 light+dark for every UI slice (each PR green before merge).
+    Matrix rows HM8–HM16 carry their own evidence lines.
+
 - **2026-11-28 — H3 LG1: the logging flows are measured, and the dead ends closed.**
   - `scripts/tap-audit-browser-check.mjs` counts trusted `pointerdown` taps,
     asserts a budget per flow and reports reach + ms: **log 1 · add 2 ·
@@ -1901,23 +1939,3 @@ fixture. PL4/PL5 measurements are included; PL6–PL8 fill the rest as they land
   - New `settings-interaction-browser-check` (61st check) covers scroll/focus,
     deep links, Enter-on-Cancel, inert and 320px control overlap.
   - `npm run verify` green (3,020 tests); full browser suite 61/61.
-
-- **2026-11-27 — Audit slice 3: the plan and the log agree with the screen.**
-  - A deload now halves an inline `5×5` lift as well as a per-exercise sidecar
-    target, so the catalogue's deload week is a lighter week for every lift.
-  - Editor Undo snapshots and restores the per-lift `prescriptions` sidecar:
-    removing a lift and taking it back no longer returns it with the wrong target.
-  - A schedule move is current-week only; `movableDay` reads the week that owns
-    the planned date instead of `state.currentWeek`.
-  - An untouched weight field is never re-parsed through the display unit
-    (`shouldCommitEnteredWeight`), in the cockpit or the saved-session editor;
-    the weight-unit browser check now proves a blur leaves 102.06 kg unchanged.
-  - Retyping a PR row as a warm-up/drop clears its PR flag and badge; discarding
-    a workout re-prescribes with the same `getWeekModifier` the cockpit renders;
-    a duration with seconds or a malformed `1:75` normalises honestly; a plan
-    rest above the timer's 600 s maximum is clamped instead of vanishing on reload.
-  - Tests: `workout_correctness`, deload-inline, undo-sidecar and past-week
-    schedule cases; program-editor browser check asserts the restored target.
-    `npm run verify` green (3,018 tests); set-row, rest-timer, weight-unit,
-    move-day, edit-saved and program-editor checks pass.
-
