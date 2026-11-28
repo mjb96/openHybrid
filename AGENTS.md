@@ -575,10 +575,20 @@ server works.
   completed/rest/no-plan/unresolved states fully open.
   States stay honest: a no-history athlete gets a `First session` state, the
   offline note sits in the visible head, and a one-signal readiness read says
-  `limited signal`. The ready card previews
-  up to three lifts with the same target and last-time numbers the cockpit
-  resolves through `workout/session-preview.js` (shared with Train); the compact
-  row carries a one-line version. Hiding "This week" in
+  `Limited signal`. **Readiness has its own visible row** under the head
+  (`card.readiness`, a 44px button): score + confidence-aware status, the one
+  limiting signal when two or more signals contributed, and the signal list in
+  the expanded detail. It links to `recovery-score` only while the Recovery
+  module is on; with the module off it still states the day's read. Guidance is
+  advice only and never repeats the number, so the figure has one owner (HM7) —
+  the collapsed card used to hide the score inside the detail block. The ready
+  card previews up to three lifts with the same target and last-time numbers the
+  cockpit resolves through `workout/session-preview.js` (shared with Train), the
+  compact row carries a one-line version, and the meta ends with the exact size
+  (`6 lifts · 18 sets`, summed from the same `liftTarget`; lifts only, never an
+  invented duration). The rail prints **Next up: <date> · <title>**
+  (`strip.nextPlanned`, the first planned date AFTER today) or an honest "no
+  more planned sessions" line; a past week shows none. Hiding "This week" in
   Customize hides only the rail, never Today. Completed days add the session
   summary and anatomical heat map (`js/home/session-summary.js` /
   `js/home/body-heatmap.js`: the static path geometry is Apache-2.0 Body
@@ -604,25 +614,47 @@ server works.
   The balance and endurance cards carry `data-hybrid` (hidden by the Hybrid
   training switch) and the endurance card also carries `data-module="running"`;
   the strength card is never removed by either, so strength-only mode keeps it.
-  Below that sit the compact
+  A **true first run** (no dated training, no stored training of any kind, no
+  weigh-in, no saved Home customization) hides the hybrid pair and the
+  bodyweight card behind one `#homeFirstRun` start-here card; any real data
+  restores them. `hasAnyStoredTraining()` (`analytics/logged-days.js`) is the one
+  owner of "has this athlete ever trained", and it is deliberately broader than
+  the date-strict calendar readers. Below that sit the compact
   bodyweight card (`js/home/bodyweight-card.js` → `#homeBodyweightCard`) with
-  one-tap prefilled logging, one coach insight, and a 2×2 quick-action grid.
-  The insight is strength-derived when possible (`js/home/strength-insight.js`:
-  a planned deload week, else the first stalled lift planned today, with the
-  stall decision owned by `computeDiagnosticForLift`); it never replaces a
-  warning/caution line and is suppressed while the overtraining card is up,
-  otherwise it falls back to `model.topInsight`. The coach is advisory only —
-  never a figure another card owns (readiness is Today guidance, weight the
-  bodyweight card, volume/sets the Strength card, plan progress the rail) — and
-  it hides while the overtraining card is on screen; `home_metric_ownership`
-  pins that rule. The In Focus cards and their graph module were removed;
-  deep charts live in Progress. Optional cards (week strip, training balance,
-  strength this week, endurance this week, bodyweight, coach insight, muscle
-  volume) can be hidden from the Home header's Customize sheet:
+  one-tap prefilled logging and the pure `bodyweightCardText` meta: latest value,
+  its age when 7+ days old, the weekly rate, the athlete's own corridor verdict
+  (`rateStatusLabel`, shared with Progress) and the goal. No corridor set means
+  no verdict. The coach card (`#homeInsightCard`) carries ONE optional advisory
+  line plus two 44px **ask-the-coach** chips (`Train today?`, `How recovered am
+  I?`) answered deterministically into `#coachAnswer` (`brain/coach-qa.js`,
+  `aria-live`). Line precedence: warning → strength stall/deload
+  (`js/home/strength-insight.js`, the stall decision owned by
+  `computeDiagnosticForLift`) → the briefing's streak-at-risk → its memory line →
+  nothing. It never replaces a warning, and the line yields (chips stay) while
+  the overtraining card is up; the whole card hides for a past week or a picked
+  day. `pickTopInsight` returns `null` rather than a platitude when there is no
+  story; only an empty profile gets a prompt. The coach is advisory only — never
+  a figure another card owns (readiness the Today row, weight the bodyweight
+  card, volume/sets the Strength card, plan progress the rail) — and
+  `home_metric_ownership` pins that rule. Optional cards (week strip, training
+  balance, strength this week, endurance this week, bodyweight, coach insight,
+  muscle volume) can be hidden from the Home header's Customize sheet:
   `js/ui/customize.js` owns the card catalogue and `settings.ui`, and
   `js/ui/customize-sheet.js` persists/applies it. Today, safety flags, quick
-  actions and navigation stay pinned. Keep `#homePrimaryCta`,
-  `.btn-history-link` in the Home DOM — browser checks measure them. Run lives in
+  actions and navigation stay pinned. The three quick actions are **Check-in ·
+  Empty workout · History**: the daily wellness check-in is the one readiness
+  input the athlete supplies (done state from `readiness.available`, entry
+  hidden by `data-module="recovery"`), and the old Weight tile only duplicated
+  the bodyweight card. Keep `#homePrimaryCta`, `.btn-log`/`#qaCheckin` and
+  `.btn-history-link` in the Home DOM — browser checks measure them. A rest that
+  outlived a tab switch shows a 44px `#homeRestPill` ("Resting 1:12 · Back to
+  workout") from the pure `readRestSnapshot()` (`js/timers.js`); it is a
+  presenter over the ONE cockpit timer, never a second clock. On browser/PWA
+  builds only, `#homeBackupNudge` asks for a JSON export when the backup is
+  14+ days stale (or missing after three weeks of use); it is dismissible for 30
+  days (`backupNudgeDismissedAt`, presentation-only root metadata), gated on the
+  native `HybridAutoBackupBridge` so Android is never nagged, and disappears the
+  moment an export succeeds (`app:backup-exported`). Run lives in
   Train's Quick start (its Run/Walk offers carry the module hooks).
 - Train landing: `js/train/train-landing.js` + `view-train-landing.js` render a
   SESSION PREVIEW, not a second Home: week rail, today's card with the day's
