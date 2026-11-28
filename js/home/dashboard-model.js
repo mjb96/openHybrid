@@ -289,6 +289,10 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
   // athlete ever trained?" - so the first-run state costs no extra scan.
   const trainingDates = activeTrainingDates(weeks, days, state);
   const hasAnyTraining = trainingDates.size > 0 || hasAnyStoredTraining(state);
+  let firstTrainingDate = null;
+  for (const ds of trainingDates) {
+    if (!firstTrainingDate || ds < firstTrainingDate) firstTrainingDate = ds;
+  }
   const streak = computeStreak(weeks, days, state, todayKey(), trainingDates);
 
   // ---- Fasting ------------------------------------------------------------
@@ -346,6 +350,7 @@ export function computeDashboardModel(state, days, program, selectedDay, opts = 
     calendarWeek,
     bodyweight,
     hasAnyTraining,
+    firstTrainingDate,
     big3,
     pace,
     streak,

@@ -1625,6 +1625,8 @@ export async function exportData() {
   if (result?.status === 'saved' || result?.status === 'started') {
     appState.lastBackupAt = new Date().toISOString();
     saveStateToLocalStorage(true);
+    // Let Home drop its backup nudge without waiting for the next visit.
+    document.dispatchEvent(new CustomEvent('app:backup-exported'));
   }
   const copy = exportResultMessage(result, n ? `Data (${n} route${n === 1 ? '' : 's'})` : 'Data');
   showToast(copy.message, copy.error);

@@ -24,6 +24,8 @@ import { buildHomeWeekStrip } from './home/week-strip.js';
 import { HOME_WEEK_HISTORY, buildDayRecap, buildPastWeekView, dayRecapHTML, plannedDayHTML, weekOffsetLabel, weekRecapHTML } from './home/week-view.js';
 import { renderHomeBodyweight } from './home/bodyweight-card.js';
 import { renderHomeRestPill } from './home/rest-pill.js';
+import { backupNudgeFor } from './portability/backup-status.js';
+import { automaticBackupSupported } from './portability/auto-backup.js';
 import { renderHomeHybrid } from './home/hybrid-dashboard.js';
 import { reportHandledError, renderSafely } from './monitoring/report-error.js';
 import { addDaysISO, startOfProgramWeek, todayKey } from './dates.js';
@@ -237,8 +239,46 @@ function updateQuickActions(model) {
   }
 }
 
-function renderHomeVolumeGuide(appState, activeProgram) {
-  const card = document.getElementById('homeVolumeGuideCard');
+// ==========================================
+// BACKUP NUDGE (ST9, Home)
+//
+// A local-only app has exactly one durable copy of this device's training: the
+// JSON export. Settings → Data already says when the last one was, but nobody
+// visits Settings. This is a rare, dismissible reminder that only appears where
+// a manual export is the ONLY path (never on Android, which has automatic
+// backups), after real use, and at most once a month when dismissed.
+// ==========================================
+function renderBackupNudge(appState, model) {
+  const el = document.getElementById('homeBackupNudge');
+  if (!el) return;
+  if (document.getElementById('homeFirstRun') && !document.getElementById('homeFirstRun').hidden) {
+    el.hidden = true;
+    return;
+  }
+  let nudge;
+  try {
+    nudge = backupNudgeFor({
+      lastBackupAt: appState.lastBackupAt,
+      firstTrainingDate: model?.firstTrainingDate,
+      dismissedAt: appState.backupNudgeDismissedAt,
+      autoBackupSupported: automaticBackupSupported(),
+    });
+  } catch (e) {
+    reportHandledError('home:backup-nudge', e);
+    el.hidden = true;
+    return;
+  }
+  if (!nudge.show) { el.hidden = true; return; }
+  const text = document.getElementById('homeBackupNudgeText');
+  if (text) {
+    text.textContent = nudge.reason === 'never'
+      ? 'No backup yet — a JSON export is the only copy of this device’s training.'
+      : `Last backup ${nudge.days} days ago — export a fresh JSON copy.`;
+  }
+  el.hidden = false;
+}
+
+function renderHomeVolumeGuide(appState, activeProgram) {  const card = document.getElementById('homeVolumeGuideCard');
   if (!card) return;
   if (!hasExplicitMusclePriorities(appState)) {
     card.style.display = 'none';
@@ -749,6 +789,7 @@ export function renderHome() {
   renderHomeInsight(model, appState, { safetyActive: overtrainingActive, selectedDay: homeDay, briefing });
   renderHomeSupportingSignals(appState, model);
   renderSafely('home:rest-pill', () => renderHomeRestPill(document.getElementById('homeRestPill')), null);
+  renderSafely('home:backup-nudge', () => renderBackupNudge(appState, model), null);
   renderHomeVolumeGuide(appState, activeProgram);
 
   // Overtraining escalation (R10) takes priority over the advisory deload card.
@@ -807,4 +848,19 @@ document.addEventListener('click', (e) => {
     if (card) card.style.display = 'none';
     renderHome();
   }
+
+  if (action === 'dismiss-backup-nudge') {
+    // Presentation-only, like an acknowledged risk: no setting, no backup
+    // change. It returns after BACKUP_NUDGE_REPEAT_DAYS.
+    const appState = _getState();
+    appState.backupNudgeDismissedAt = new Date().toISOString();
+    saveStateToLocalStorage(true);
+    const el = document.getElementById('homeBackupNudge');
+    if (el) el.hidden = true;
+  }
+});
+
+// A completed export makes the reminder untrue immediately, not on next visit.
+document.addEventListener('app:backup-exported', () => {
+  if (document.getElementById('view-home')?.classList.contains('active')) renderHome();
 });
