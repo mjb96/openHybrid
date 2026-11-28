@@ -501,6 +501,15 @@
 
       <div id="homeBodyweightCard" data-home-card="bodyweight"></div>
 
+      <!-- A rest that survived a tab switch: one tap back to the session. -->
+      <div id="homeRestPill" class="home-rest-pill" hidden>
+        <button type="button" class="home-rest-pill__btn" data-action="switch-tab" data-target="workout">
+          <span class="home-rest-pill__label" id="homeRestPillLabel">Resting</span>
+          <span class="home-rest-pill__clock" id="homeRestPillClock">0:00</span>
+          <span class="home-rest-pill__go" aria-hidden="true">Back to workout ›</span>
+        </button>
+      </div>
+
       <!-- A true first run: no training and no weigh-in yet. One honest start
            beat four cards of dashes; any real data restores them. -->
       <article id="homeFirstRun" class="card-dark home-first-run" hidden>

@@ -150,6 +150,38 @@ export function clearRestTimerPersistence() {
   _clearRestTimerPersistence();
 }
 
+/**
+ * Read the persisted rest without touching the UI or the in-memory timer. Home
+ * uses it to show a running rest while the athlete is on another tab; the
+ * cockpit's own renderer keeps owning the bar. Returns null for an expired,
+ * stale (>2 h), malformed or finished rest, so nothing ever resurrects at 0:00.
+ *
+ * @param {{ now?: number }} [options]
+ * @returns {{ lift: string, paused: boolean, remaining: number, total: number }|null}
+ */
+export function readRestSnapshot({ now = Date.now() } = {}) {
+  const storage = _restStorage();
+  if (!storage) return null;
+  let raw;
+  try { raw = storage.getItem(REST_TIMER_STORAGE_KEY); } catch (_) { return null; }
+  if (!raw) return null;
+  let saved;
+  try { saved = JSON.parse(raw); } catch (_) { return null; }
+  if (!saved || saved.v !== 1) return null;
+  const savedAge = now - Number(saved.savedAt || 0);
+  if (!Number.isFinite(savedAge) || savedAge > REST_TIMER_MAX_AGE_MS) return null;
+  const remaining = saved.paused
+    ? Number(saved.remaining)
+    : Math.round((Number(saved.endsAt) - now) / 1000);
+  if (!Number.isFinite(remaining) || remaining <= 0) return null;
+  return {
+    lift: String(saved.lift || ''),
+    paused: !!saved.paused,
+    remaining: Math.max(0, Math.round(remaining)),
+    total: Number(saved.total) || 0,
+  };
+}
+
 function _updateRestTimerDisplay(remaining, total) {
   const clockDisplay = document.getElementById('cockpitTimerClock');
   const progressFill = document.getElementById('restProgressFill');
@@ -158,6 +190,11 @@ function _updateRestTimerDisplay(remaining, total) {
   const m = Math.floor(remaining / 60);
   const s = (remaining % 60).toString().padStart(2, '0');
   if (clockDisplay) clockDisplay.textContent = m + ':' + s;
+
+  // Home shows the same rest while the athlete is on another tab. One clock:
+  // the cockpit's interval drives it rather than a second timer.
+  const homeClock = document.getElementById('homeRestPillClock');
+  if (homeClock) homeClock.textContent = m + ':' + s;
 
   if (progressFill) {
     const pct = total > 0 ? (remaining / total) * 100 : 100;
@@ -199,6 +236,10 @@ function _startRestCountdown() {
         timerBar.classList.remove('rest-warning');
         timerBar.classList.add('rest-done');
       }
+      // A rest that finished while the athlete was on Home must not leave a
+      // pill promising a rest that is over.
+      const homePill = document.getElementById('homeRestPill');
+      if (homePill) homePill.hidden = true;
     }
   }, 250);
 }
