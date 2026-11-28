@@ -10,6 +10,7 @@ import { explicitSessionStatus, SESSION_STATUS } from '../workout/session-status
 import { buildSessionSummary, sessionSummaryHTML } from './session-summary.js';
 import { buildDayRecap } from './week-view.js';
 import { sessionExercisePreview } from '../workout/session-preview.js';
+import { hasAnyStoredTraining } from '../analytics/logged-days.js';
 import { moduleEnabled } from '../modules.js';
 
 const DAY_NAMES = Object.freeze({
@@ -103,27 +104,9 @@ function calendarCompletedToday(state, program, todayISO, activeWeekKey) {
 }
 
 /**
- * True once any completed training exists anywhere in the state. Home uses this
- * only to give a brand-new athlete an honest "first session" state; it never
- * hides the plan or changes the action.
- * @param {any} state
+ * The coaching sentence for the ready card. The readiness score lives in its
+ * own row (readinessModel), so this never repeats the number.
  */
-function hasTrainingHistory(state) {
-  for (const week of Object.values(state?.weeks || {})) {
-    for (const day of Object.values(week?.lifts || {})) {
-      if (!day || typeof day !== 'object') continue;
-      for (const sets of Object.values(day)) {
-        if (Array.isArray(sets) && sets.some((set) => set?.c)) return true;
-      }
-    }
-    if (week?.runSessions && Object.values(week.runSessions).some((runs) => Array.isArray(runs) && runs.length > 0)) return true;
-    for (const stats of Object.values(week?.gymStats || {})) {
-      if (stats && (Number(stats.time) > 0 || Number(stats.cals) > 0)) return true;
-    }
-  }
-  return false;
-}
-
 function readinessGuidance(model, fallback) {
   const rec = model?.rec || {};
   // The score, its confidence and its evidence are the readiness STRIP's job
@@ -388,7 +371,7 @@ export function buildTodayCardModel(options) {
 
   card.preview = sessionExercisePreview(state, program, card.day);
   card.guidance = readinessGuidance(model, 'Follow the planned session and log how it feels.');
-  if (!hasTrainingHistory(state)) {
+  if (!hasAnyStoredTraining(state)) {
     card.eyebrow = 'First session';
     card.guidance = 'This first session sets your baseline — use a comfortable load and log how it feels.';
   }

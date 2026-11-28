@@ -15,7 +15,7 @@ import { answerCoachQuestion } from './brain/coach-qa.js';
 import { pushOvertrainingWarning, pushFastingStageNudge } from './notifications.js';
 import { reconcileStreakFreezes } from './brain/streak.js';
 import { shouldSuggestDeload } from './engine.js';
-import { computeDashboardModel } from './home/dashboard-model.js';
+import { computeDashboardModel, showHomeFirstRun } from './home/dashboard-model.js';
 import { buildStrengthInsight, chooseHomeInsight } from './home/strength-insight.js';
 import { initFastingCard } from './home/fasting-card.js';
 import { setHTML } from './ui/render.js';
@@ -646,6 +646,17 @@ export function renderHome() {
   // must never blank the decision surface above them.
   renderSafely('home:hybrid', () => renderHomeHybrid(appState, { today: renderDay }));
   renderHomeBodyweight(document.getElementById('homeBodyweightCard'), appState);
+
+  // A brand-new athlete sees one honest "start here" instead of the hybrid pair
+  // and the bodyweight card rendering dashes. Any training or weigh-in restores
+  // them; saved Home customization always wins.
+  const firstRun = showHomeFirstRun(model, appState);
+  const hybridSection = document.getElementById('homeHybridSection');
+  const bodyweightCard = document.getElementById('homeBodyweightCard');
+  const firstRunCard = document.getElementById('homeFirstRun');
+  if (hybridSection) hybridSection.hidden = firstRun;
+  if (bodyweightCard) bodyweightCard.hidden = firstRun;
+  if (firstRunCard) firstRunCard.hidden = !firstRun;
 
   const scoreResult = renderHybridScoreHome(appState, model);
 
