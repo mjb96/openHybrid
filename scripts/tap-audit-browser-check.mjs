@@ -307,8 +307,17 @@ try {
     await page.click('[data-action="open-add-exercise"]');
     await page.waitForSelector('#addExerciseModal.active');
     await page.fill('#customExerciseTextInput', custom);
+    const typed = await page.inputValue('#customExerciseTextInput');
+    check(typed === custom, `swap library: the custom name did not reach the field (got "${typed}")`);
     await page.click('[data-action="confirm-add-exercise"]');
-    await page.waitForTimeout(500);
+    // Wait for the card instead of a fixed 500 ms: on a loaded CI runner the
+    // confirm re-render can take longer, and the check then reported "the custom
+    // lift was not added" for a lift that appeared a moment later.
+    await page.waitForFunction(
+      (name) => !!document.querySelector(`.cockpit-exercise[data-liftname="${name}"]`),
+      custom,
+      { timeout: 15000 },
+    ).catch(() => { /* the count assertion below reports the real failure */ });
 
     const customCard = `.cockpit-exercise[data-liftname="${custom}"]`;
     check(await page.locator(customCard).count() === 1,
