@@ -2098,6 +2098,15 @@ body.sheet-scroll-locked {
   scrollbar-width: none;
 }
 .home-week__days::-webkit-scrollbar { display: none; }
+/* "Next up": one line under the rail, hidden on a past week. */
+.home-week__next {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 0.66rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.home-week__next[hidden] { display: none; }
 .home-week-day {
   display: flex;
   flex-direction: column;

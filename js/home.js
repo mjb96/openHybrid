@@ -359,6 +359,22 @@ function renderHomeWeek(appState, activeProgram) {
     }
   }
 
+  // "What's coming": the rail only carries a dot per day, and Today's own
+  // session is already the card above. A past week has nothing to preview.
+  const nextEl = document.getElementById('homeWeekNext');
+  if (nextEl) {
+    if (pastView) {
+      nextEl.hidden = true;
+    } else if (strip.nextPlanned) {
+      const label = `${shortDate(strip.nextPlanned.date)}${strip.nextPlanned.title ? ` · ${strip.nextPlanned.title}` : ''}`;
+      nextEl.textContent = `Next up: ${label}`;
+      nextEl.hidden = false;
+    } else {
+      nextEl.textContent = 'No more planned sessions this week';
+      nextEl.hidden = false;
+    }
+  }
+
   const prevBtn = document.querySelector('[data-action="home-week-prev"]');
   const nextBtn = document.querySelector('[data-action="home-week-next"]');
   if (prevBtn) prevBtn.disabled = _homeWeekOffset <= -HOME_WEEK_HISTORY;

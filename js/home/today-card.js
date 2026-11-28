@@ -392,6 +392,15 @@ export function buildTodayCardModel(options) {
     card.eyebrow = 'First session';
     card.guidance = 'This first session sets your baseline — use a comfortable load and log how it feels.';
   }
+  // What the session actually costs today, from the same liftTarget the cockpit
+  // honours (a deload's halved sets included). Only lifts: a run day keeps its
+  // prescription text in the meta, and inventing a duration would be a guess.
+  const liftCount = card.preview.length;
+  const setCount = card.preview.reduce((total, item) => total + (Number(item.sets) || 0), 0);
+  if (liftCount) {
+    card.meta += ` · ${liftCount} lift${liftCount === 1 ? '' : 's'}`;
+    if (setCount > 0) card.meta += ` · ${setCount} sets`;
+  }
   card.primary = { action: 'select-program-workout', day: card.day, label: 'Start workout' };
   card.secondary = { action: 'open-program-workout-picker', label: 'Choose another workout' };
   return card;
