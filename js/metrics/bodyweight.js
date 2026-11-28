@@ -215,6 +215,22 @@ export function rateStatus(rate, goal) {
 }
 
 /**
+ * The verdict for a weekly rate against the athlete's own corridor. One owner
+ * for the words: Progress and the Home card must never phrase the same status
+ * differently.
+ * @param {'in'|'slow'|'fast'|'off'|null|undefined} status
+ * @returns {string}
+ */
+export function rateStatusLabel(status) {
+  return {
+    in: 'On pace',
+    slow: 'Slower than planned',
+    fast: 'Faster than planned',
+    off: 'Outside your range',
+  }[status] || '';
+}
+
+/**
  * Everything the Progress bodyweight view needs.
  * @param {any} state
  * @param {{ now?: number, rangeDays?: number }} [options]
