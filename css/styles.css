@@ -2286,6 +2286,58 @@ html[data-theme="light"] .home-insight { background: linear-gradient(135deg, col
   line-height: 1.42;
 }
 
+/* Readiness: the day's read stays visible while the ready card is collapsed.
+   Score + status use text tokens; the status hue only ever colours the status
+   word (a status colour is never body text on its own tint). */
+.today-card__readiness {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+}
+button.today-card__readiness { cursor: pointer; }
+button.today-card__readiness:active { transform: scale(.995); }
+.today-card__readiness-score {
+  min-width: 2ch;
+  color: var(--text-primary);
+  font-size: 1.05rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+.today-card__readiness-copy { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.today-card__readiness-status {
+  color: var(--text-secondary);
+  font-size: .72rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+.today-card__readiness--good .today-card__readiness-status { color: var(--success-text); }
+.today-card__readiness--moderate .today-card__readiness-status { color: var(--warning-text); }
+.today-card__readiness--rest .today-card__readiness-status { color: var(--danger-text); }
+.today-card__readiness-hint {
+  color: var(--text-muted);
+  font-size: .68rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.today-card__readiness-arrow { color: var(--text-muted); font-size: .95rem; }
+.today-card__readiness-evidence {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: .68rem;
+  line-height: 1.35;
+}
+
 .today-card__preview {
   list-style: none;
   margin: 8px 0 0;
@@ -2441,11 +2493,12 @@ html[data-theme="light"] .home-week .home-insight { background: transparent; }
 .today-card.is-collapsed {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "head actions";
+  grid-template-areas: "head actions" "readiness readiness";
   align-items: center;
   column-gap: 10px;
 }
 .today-card.is-collapsed .today-card__head { grid-area: head; min-width: 0; }
+.today-card.is-collapsed .today-card__readiness { grid-area: readiness; align-self: start; }
 .today-card.is-collapsed .today-card__title {
   font-size: 1rem;
   white-space: nowrap;

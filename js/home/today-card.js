@@ -10,6 +10,7 @@ import { explicitSessionStatus, SESSION_STATUS } from '../workout/session-status
 import { buildSessionSummary, sessionSummaryHTML } from './session-summary.js';
 import { buildDayRecap } from './week-view.js';
 import { sessionExercisePreview } from '../workout/session-preview.js';
+import { moduleEnabled } from '../modules.js';
 
 const DAY_NAMES = Object.freeze({
   mon: 'Monday', tue: 'Tuesday', wed: 'Wednesday', thu: 'Thursday',
@@ -124,23 +125,48 @@ function hasTrainingHistory(state) {
 }
 
 function readinessGuidance(model, fallback) {
-  const ready = model?.ready;
   const rec = model?.rec || {};
-  if (ready?.hasData && ready.score != null) {
-    // Partial data is a distinct state: say the read is rough instead of
-    // presenting a one-signal score as settled (HM6).
-    if (ready.confidence === 'low') {
-      return `Readiness ${ready.score} · limited signal — add a check-in for a sharper read.`;
-    }
-    const coaching = rec.badge === 'Getting Started'
-      ? 'Keep the plan simple and log how it feels.'
-      : (rec.headline || fallback);
-    return `Readiness ${ready.score} · ${coaching}`;
-  }
+  // The score, its confidence and its evidence are the readiness STRIP's job
+  // (it is visible while the ready card is collapsed). Guidance stays advice,
+  // so the number has exactly one owner inside this card.
   if (rec.badge === 'Getting Started') {
     return 'Log this session to start personalising your guidance.';
   }
   return rec.headline || fallback;
+}
+
+/**
+ * The readiness read for the Today card: score, status, confidence, the signals
+ * it was built from, and (only with two or more signals) the one holding it
+ * back. Rendered as one visible row, because the collapsed card used to hide
+ * this number inside a detail block the athlete had to open.
+ *
+ * @param {any} model
+ * @param {any} state
+ */
+function readinessModel(model, state) {
+  const ready = model?.ready;
+  if (!ready?.hasData || ready.score == null) return null;
+  const evidence = Array.isArray(ready.evidence)
+    ? ready.evidence
+      .filter((item) => item && item.label)
+      .map((item) => ({ key: item.key || '', label: String(item.label), score: Number(item.score) }))
+    : [];
+  const weakest = evidence.length >= 2
+    ? evidence.reduce((low, item) => (Number.isFinite(item.score) && item.score < low.score ? item : low), evidence[0])
+    : null;
+  const score = Number(ready.score);
+  return {
+    score,
+    status: ready.status || '',
+    confidence: ready.confidence || 'none',
+    evidence,
+    limiting: weakest && Number.isFinite(weakest.score) && weakest.score < 60 ? weakest.label : null,
+    tone: score >= 70 ? 'good' : score >= 40 ? 'moderate' : 'rest',
+    // The detail behind the read belongs to the Recovery module. With that
+    // module off the row still states the day's read; it just is not a link.
+    linked: moduleEnabled(state, 'recovery'),
+  };
 }
 
 function completedMeta(dayLabel, summary) {
@@ -166,6 +192,7 @@ function baseModel({ state, program, model, briefing, now, offline, tz, todayDay
     primary: null,
     secondary: null,
     evidence: briefing?.coach?.evidence || null,
+    readiness: readinessModel(model, state),
     offline: !!offline,
     week: String(state?.currentWeek || '1'),
     weightUnit: state?.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
@@ -222,6 +249,7 @@ export function buildTodayCardModel(options) {
     card.guidance = 'Your existing workout history is safe and still available in Progress.';
     card.primary = { action: 'switch-tab', target: 'program', label: 'Choose a plan' };
     card.evidence = null;
+    card.readiness = null;
     return card;
   }
 
@@ -406,6 +434,47 @@ function previewListHTML(card) {
   }).join('');
 }
 
+const READINESS_CONFIDENCE_LABEL = Object.freeze({
+  low: 'limited signal',
+  moderate: 'developing read',
+});
+
+/**
+ * The visible readiness row. It sits between the head and the actions so the
+ * collapsed ready card never hides the day's read behind the chevron, and it is
+ * a link to the recovery detail only when that module is on.
+ *
+ * @param {any} card
+ */
+function readinessHTML(card) {
+  const r = card?.readiness;
+  if (!r) return '';
+  const confidence = READINESS_CONFIDENCE_LABEL[r.confidence] || '';
+  const status = [r.status, confidence].filter(Boolean).join(' · ');
+  const hint = r.limiting
+    ? `<span class="today-card__readiness-hint">${esc(r.limiting)} is limiting</span>`
+    : '';
+  const label = [
+    `Readiness ${r.score}`,
+    r.status,
+    confidence,
+    r.limiting ? `${r.limiting} is limiting` : '',
+  ].filter(Boolean).join(', ');
+  const inner = `<span class="today-card__readiness-score" aria-hidden="true">${esc(String(r.score))}</span>
+      <span class="today-card__readiness-copy">
+        <span class="today-card__readiness-status">${esc(status)}</span>
+        ${hint}
+      </span>`;
+  const classes = `today-card__readiness today-card__readiness--${esc(r.tone)}`;
+  if (!r.linked) {
+    return `<div class="${classes}" role="group" aria-label="${esc(label)}">${inner}</div>`;
+  }
+  return `<button type="button" class="${classes}" data-action="open-analytics" data-context="recovery-score" aria-label="${esc(`${label} — open readiness details`)}">
+      ${inner}
+      <span class="today-card__readiness-arrow" aria-hidden="true">›</span>
+    </button>`;
+}
+
 /**
  * @param {any} card
  * @param {{expanded?: boolean, canMove?: boolean, moveDay?: string}} [options]
@@ -442,6 +511,10 @@ export function todayCardHTML(card, options = {}) {
   const previewCompact = card.preview?.length
     ? `<p class="today-card__preview-compact">${esc(card.preview.slice(0, 2).map((item) => `${item.name} ${previewTarget(item)}`).join(' · '))}${card.preview.length > 2 ? ` · +${card.preview.length - 2} more` : ''}</p>`
     : '';
+  const readiness = readinessHTML(card);
+  const evidence = card.readiness?.evidence?.length >= 2
+    ? `<p class="today-card__readiness-evidence">Read from ${card.readiness.evidence.map((item) => esc(item.label)).join(' · ')}.</p>`
+    : '';
 
   return `<article class="${classes.join(' ')}" data-today-state="${esc(card.state)}" aria-labelledby="homeTodayTitle">
     <div class="today-card__head">
@@ -451,11 +524,13 @@ export function todayCardHTML(card, options = {}) {
       ${previewCompact}
       ${toggle}
     </div>
+    ${readiness}
     ${offline}
     ${summary}
     <div class="today-card__detail" id="homeTodayCardDetail">
       ${preview ? `<ul class="today-card__preview" aria-label="Today's lifts">${preview}</ul>` : ''}
       <p class="today-card__guidance">${esc(card.guidance)}</p>
+      ${evidence}
       ${move}
     </div>
     <div class="today-card__actions">
