@@ -158,7 +158,6 @@ test('the card HTML is compact: no score row, state pill or evidence drawer', ()
   const card = buildTodayCardModel({
     state: state(), program: PROGRAM, model, now: MONDAY, tz: DISPLAY_TZ,
     briefing: { coach: { evidence: { bullets: ['One reason', 'Another reason'] } } },
-    score: { hasData: true, score: 74, confidence: 75, delta: 2, band: { status: 'Productive' } },
   });
   const html = todayCardHTML(card);
   assert.doesNotMatch(html, /today-card__score/);
@@ -176,20 +175,15 @@ test('offline state reassures without changing the workout action', () => {
   assert.match(todayCardHTML(card), /logging still saves on this device/);
 });
 
-test('Hybrid Score stays supporting until confidence is meaningful', () => {
-  const provisional = buildTodayCardModel({
+test('the Hybrid Score is not carried on the card model at all', () => {
+  // The score is computed and recorded once per day for the briefing and
+  // notifications, but Home stopped rendering it (HM7: the Today card owns
+  // readiness, not a second score surface).
+  const card = buildTodayCardModel({
     state: state(), program: PROGRAM, model, now: MONDAY,
     tz: DISPLAY_TZ,
-    score: { hasData: true, score: 64, confidence: 20, band: { status: 'Building' } },
   });
-  assert.equal(provisional.score, null);
-
-  const established = buildTodayCardModel({
-    state: state(), program: PROGRAM, model, now: MONDAY,
-    tz: DISPLAY_TZ,
-    score: { hasData: true, score: 74, confidence: 75, delta: 2, band: { status: 'Productive' } },
-  });
-  assert.deepEqual(established.score, { value: 74, label: 'Hybrid Score · +2 today' });
+  assert.equal('score' in card, false);
 });
 
 test('only a fresh ready day collapses; states with a warning or a result stay open', () => {

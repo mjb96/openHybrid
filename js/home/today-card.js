@@ -143,19 +143,6 @@ function readinessGuidance(model, fallback) {
   return rec.headline || fallback;
 }
 
-function scoreSupport(score) {
-  if (!score?.hasData || score.score == null || Number(score.confidence) < 50) return null;
-  const delta = typeof score.delta === 'number'
-    ? score.delta > 0 ? `+${score.delta} today`
-      : score.delta < 0 ? `${score.delta} today`
-      : 'steady today'
-    : score.band?.status || '';
-  return {
-    value: score.score,
-    label: ['Hybrid Score', delta].filter(Boolean).join(' · '),
-  };
-}
-
 function completedMeta(dayLabel, summary) {
   const finished = summary?.finishedAt ? new Date(summary.finishedAt) : null;
   const time = finished && !Number.isNaN(finished.getTime())
@@ -164,7 +151,7 @@ function completedMeta(dayLabel, summary) {
   return [dayLabel, time ? `finished ${time}` : 'workout logged'].filter(Boolean).join(' · ');
 }
 
-function baseModel({ state, program, model, briefing, score, now, offline, tz, todayDay: requestedDay }) {
+function baseModel({ state, program, model, briefing, now, offline, tz, todayDay: requestedDay }) {
   const todayDay = requestedDay || todayProgramDay(now, tz);
   return {
     state: 'ready',
@@ -179,7 +166,6 @@ function baseModel({ state, program, model, briefing, score, now, offline, tz, t
     primary: null,
     secondary: null,
     evidence: briefing?.coach?.evidence || null,
-    score: scoreSupport(score),
     offline: !!offline,
     week: String(state?.currentWeek || '1'),
     weightUnit: state?.settings?.weightUnit === 'lbs' ? 'lbs' : 'kg',
@@ -191,17 +177,17 @@ function baseModel({ state, program, model, briefing, score, now, offline, tz, t
 
 /**
  * @param {{
- *  state:any, program?:any, model?:any, briefing?:any, score?:any,
+ *  state:any, program?:any, model?:any, briefing?:any,
  *  now?:Date, offline?:boolean, tz?:string, todayDay?:string, noSession?:boolean
  * }} options
  */
 export function buildTodayCardModel(options) {
   const {
-    state, program = null, model = null, briefing = null, score = null,
+    state, program = null, model = null, briefing = null,
     now = new Date(), offline = false, tz = undefined, todayDay = null, noSession = false,
   } = options;
   const todayISO = dateKey(now, tz);
-  const card = baseModel({ state, program, model, briefing, score, now, offline, tz, todayDay });
+  const card = baseModel({ state, program, model, briefing, now, offline, tz, todayDay });
   const weekKey = card.week;
 
   // A one-off strength session is the most explicit unfinished intent. Keep it
@@ -235,7 +221,6 @@ export function buildTodayCardModel(options) {
     card.meta = 'Choose a plan to put the right session here each day.';
     card.guidance = 'Your existing workout history is safe and still available in Progress.';
     card.primary = { action: 'switch-tab', target: 'program', label: 'Choose a plan' };
-    card.score = null;
     card.evidence = null;
     return card;
   }
