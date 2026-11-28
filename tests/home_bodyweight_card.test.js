@@ -10,7 +10,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildHomeBodyweight, bodyweightCardText } from '../js/home/bodyweight-card.js';
 
-const NOW = Date.parse('2026-11-20T09:00:00+11:00');
+// Local noon, so the card's local-day staleness maths is the same in any
+// timezone the test suite runs in (a UTC instant landed on the previous day).
+const NOW = new Date(2026, 10, 20, 12, 0, 0).getTime();
 
 /** A weigh-in N days before NOW, canonical kilograms. */
 function daysAgo(n) {
