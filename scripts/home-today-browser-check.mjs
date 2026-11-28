@@ -412,6 +412,35 @@ try {
     ok(await page.locator('#homePrimaryCta').isVisible(), 'the primary action survives a hidden week strip');
     await context.close();
   }
+
+  {
+    // The daily check-in is the one readiness input the athlete supplies; it
+    // had no entry point on a training day. It must be a real 44px control that
+    // opens the wellness form, and it must stop asking once the day is logged.
+    const { context, page } = await openState({ state: 'ready' });
+    const checkIn = page.locator('#qaCheckin');
+    ok(await checkIn.isVisible(), 'the check-in quick action is on Home');
+    ok((await checkIn.boundingBox()).height >= 44, 'the check-in quick action meets 44px');
+    ok(/✓ Done today/.test(await page.locator('#qaCheckinSub').textContent()), 'a logged check-in shows its done state');
+    await checkIn.click();
+    await page.waitForSelector('#wellnessFormSection');
+    const formVisible = await page.locator('#wellnessFormSection').isVisible();
+    ok(formVisible, 'the check-in action opens the wellness form');
+    await context.close();
+  }
+
+  {
+    // With the Recovery module off the check-in is not offered: the readiness
+    // form it opens belongs to that module (data-module hides the entry point).
+    const { context, page } = await openState({ state: 'ready' });
+    await page.evaluate(() => document.documentElement.setAttribute('data-module-recovery', 'off'));
+    const hidden = await page.evaluate(() => {
+      const btn = document.getElementById('qaCheckin');
+      return getComputedStyle(btn).display === 'none' || btn.getBoundingClientRect().height === 0;
+    });
+    ok(hidden, 'a disabled Recovery module removes the check-in entry point');
+    await context.close();
+  }
 } finally {
   await browser.close();
   server.close();
