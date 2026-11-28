@@ -188,6 +188,15 @@ try {
             && (todayMount.compareDocumentPosition(insight) & Node.DOCUMENT_POSITION_FOLLOWING)),
           insightVisible: !!insight && !insight.hidden,
           insightHeight: insight?.getBoundingClientRect().height || 0,
+          insightChips: (() => {
+            const chips = [...document.querySelectorAll('#homeInsightCard .home-insight__chip')];
+            return {
+              count: chips.length,
+              labels: chips.map((chip) => chip.textContent.trim()),
+              heights: chips.map((chip) => Math.round(chip.getBoundingClientRect().height)),
+              insideGroup: !!document.querySelector('#homeInsightCard [role="group"][aria-label="Ask the coach"]'),
+            };
+          })(),
           readiness: (() => {
             const row = card?.querySelector('.today-card__readiness');
             if (!row) return null;
@@ -210,6 +219,24 @@ try {
       ok(layout.insideWeek, `${theme} ${width}px keeps Today inside the week surface`);
       ok(layout.insightInsideWeek && layout.insightAfterToday, `${theme} ${width}px keeps the coach line inside Today's surface`);
       ok(layout.insightVisible && layout.insightHeight >= 44, `${theme} ${width}px renders the coach line at 44px or taller`);
+      ok(layout.insightChips.count === 2 && layout.insightChips.insideGroup, `${theme} ${width}px offers both ask-the-coach chips in one named group`);
+      ok(layout.insightChips.labels.includes('Train today?') && layout.insightChips.labels.includes('How recovered am I?'), `${theme} ${width}px names the coach questions (${layout.insightChips.labels.join(' · ')})`);
+      ok(layout.insightChips.heights.every((h) => h >= 44), `${theme} ${width}px coach chips meet 44px (${layout.insightChips.heights.join(', ')})`);
+
+      // Ask the coach is deterministic: a real answer from the same model, not
+      // a dead control. The delivered chips lost their host when the briefing
+      // card left Home, so this pins the return path.
+      await page.getByRole('button', { name: 'Train today?' }).click();
+      const answered = await page.evaluate(() => {
+        const el = document.getElementById('coachAnswer');
+        return {
+          hidden: !!el?.hidden,
+          text: el?.textContent?.trim() || '',
+          live: el?.getAttribute('aria-live') || '',
+        };
+      });
+      ok(!answered.hidden && answered.text.length > 20, `${theme} ${width}px answers "Train today?" (${answered.text})`);
+      ok(answered.live === 'polite', `${theme} ${width}px announces the coach answer`);
       ok(layout.collapsed, `${theme} ${width}px starts the ready day compact`);
       ok(layout.primaryCount === 1, `${theme} ${width}px has exactly one Today primary action`);
       ok(layout.primaryHeight >= 44, `${theme} ${width}px Start meets 44px touch target while collapsed`);
@@ -221,7 +248,7 @@ try {
       ok(!!layout.readiness, `${theme} ${width}px shows the readiness row on the collapsed ready card`);
       if (layout.readiness) {
         ok(/^Readiness \d+/.test(layout.readiness.aria), `${theme} ${width}px names the readiness read ("${layout.readiness.aria}")`);
-        ok(/limited signal|developing read|Ready|Moderate|Peak|Low|Rest Advised/.test(layout.readiness.text), `${theme} ${width}px states the readiness status (${layout.readiness.text})`);
+        ok(/Limited signal|Developing read|Ready|Moderate|Peak|Low|Rest Advised/.test(layout.readiness.text), `${theme} ${width}px states the readiness status (${layout.readiness.text})`);
         ok(layout.readiness.height >= 44, `${theme} ${width}px readiness row meets 44px`);
         ok(layout.readiness.reachable, `${theme} ${width}px readiness row is not covered`);
       }

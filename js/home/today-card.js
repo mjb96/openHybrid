@@ -435,8 +435,8 @@ function previewListHTML(card) {
 }
 
 const READINESS_CONFIDENCE_LABEL = Object.freeze({
-  low: 'limited signal',
-  moderate: 'developing read',
+  low: 'Limited signal',
+  moderate: 'Developing read',
 });
 
 /**
@@ -449,15 +449,16 @@ const READINESS_CONFIDENCE_LABEL = Object.freeze({
 function readinessHTML(card) {
   const r = card?.readiness;
   if (!r) return '';
-  const confidence = READINESS_CONFIDENCE_LABEL[r.confidence] || '';
-  const status = [r.status, confidence].filter(Boolean).join(' · ');
+  // `ready.status` is already confidence-aware ("Limited signal", "Developing
+  // read", "Ready"), so it is the one label; appending the confidence again
+  // said "Developing read · developing read".
+  const status = r.status || READINESS_CONFIDENCE_LABEL[r.confidence] || '';
   const hint = r.limiting
     ? `<span class="today-card__readiness-hint">${esc(r.limiting)} is limiting</span>`
     : '';
   const label = [
     `Readiness ${r.score}`,
-    r.status,
-    confidence,
+    status,
     r.limiting ? `${r.limiting} is limiting` : '',
   ].filter(Boolean).join(', ');
   const inner = `<span class="today-card__readiness-score" aria-hidden="true">${esc(String(r.score))}</span>

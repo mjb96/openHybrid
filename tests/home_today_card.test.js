@@ -368,7 +368,7 @@ test('a one-signal readiness read says it is limited instead of settled', () => 
   assert.equal(card.readiness.confidence, 'low');
   // The confidence caveat moved from prose (hidden while collapsed) into the
   // always-visible readiness row.
-  assert.match(html, /limited signal/);
+  assert.match(html, /Limited signal/);
   assert.doesNotMatch(html, /is limiting/);
   assert.doesNotMatch(card.guidance, /readiness 55/i);
 });

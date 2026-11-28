@@ -383,10 +383,13 @@ export function pickTopInsight(m) {
   if (sessionDone) {
     return { text: 'Session logged — recovery is the next rep.', tone: 'neutral', nav: 'progress' };
   }
-  // Nothing worth a "because" line: an honest prompt, never a restated metric.
+  // Nothing worth a "because" line. With data but no story the card's advisory
+  // line is removed entirely rather than printing a platitude in prime Home
+  // space; the ask-the-coach chips keep the card useful on those days. An
+  // empty profile still gets one honest prompt.
   const hasData = !!(m.ready?.hasData || (m.calendarWeek?.sets || 0) > 0 || (m.week?.planDone || 0) > 0);
   return hasData
-    ? { text: 'One session at a time — log how it feels.', tone: 'neutral', nav: 'progress' }
+    ? null
     : { text: 'Log a few sessions to unlock personalised insights.', tone: 'neutral', nav: 'progress' };
 }
 

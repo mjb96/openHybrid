@@ -26,17 +26,34 @@ const model = (overrides = {}) => ({
 const REPEATED = [/readiness/i, /planned sessions?/i, /body weight/i, /weekly volume/i, /working sets?/i];
 
 test('the coach never restates a metric another Home card owns', () => {
-  const insight = pickTopInsight(model());
-  for (const pattern of REPEATED) {
-    assert.doesNotMatch(insight.text, pattern, `coach repeated ${pattern}: ${insight.text}`);
+  // Only lines that actually exist are checked; a model with no story now
+  // returns null and the card shows no advisory line at all.
+  const variants = [
+    model(),                                        // no story
+    model({ fasting: { active: true, hours: 16, zone: { name: 'Fat burn' } } }),
+    model({ load: { hasData: true, acwr: 1.6 } }),
+    model({ load: { hasData: true, acwr: 0.9 }, streak: { current: 5 } }),
+    model({ rec: { badge: 'Session Done', headline: '' } }),
+  ];
+  for (const variant of variants) {
+    const insight = pickTopInsight(variant);
+    if (!insight) continue;
+    for (const pattern of REPEATED) {
+      assert.doesNotMatch(insight.text, pattern, `coach repeated ${pattern}: ${insight.text}`);
+    }
   }
+});
+
+test('a model with no story returns no line instead of a platitude', () => {
+  assert.equal(pickTopInsight(model()), null);
 });
 
 test('a high or low readiness score is not repeated by the coach', () => {
   for (const score of [92, 24]) {
-    const text = pickTopInsight(model({ ready: { hasData: true, score, confidence: 'high' } })).text;
-    assert.doesNotMatch(text, /readiness/i);
-    assert.doesNotMatch(text, new RegExp(String(score)));
+    const insight = pickTopInsight(model({ ready: { hasData: true, score, confidence: 'high' } }));
+    if (!insight) continue;
+    assert.doesNotMatch(insight.text, /readiness/i);
+    assert.doesNotMatch(insight.text, new RegExp(String(score)));
   }
 });
 
@@ -51,8 +68,8 @@ test('a streak is advisory and still surfaces when there is nothing else', () =>
   assert.match(insight.text, /5-day training streak/);
 });
 
-test('data with no story gets an honest prompt, not an invented metric', () => {
-  assert.match(pickTopInsight(model()).text, /One session at a time/);
+test('data with no story gets no invented metric, and an empty profile gets a prompt', () => {
+  assert.equal(pickTopInsight(model()), null);
   assert.match(pickTopInsight(model({ ready: { hasData: false }, calendarWeek: { sets: 0 }, week: { planDone: 0, planTotal: 0 } })).text, /Log a few sessions/);
 });
 
