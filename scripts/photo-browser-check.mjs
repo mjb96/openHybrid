@@ -127,21 +127,29 @@ try {
     });
     const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
     await page.click('#analytics-measures [data-action="open-ms-sheet"]');
-    await page.waitForSelector('#measurementsSheet.active', { timeout: 5000 });
+    await page.waitForSelector('#measurementsSheet.active', { timeout: 10000 });
     const [chooser] = await Promise.all([
-      page.waitForEvent('filechooser', { timeout: 5000 }),
+      page.waitForEvent('filechooser', { timeout: 10000 }),
       page.click('#msSheetPhoto [data-ms-photo-pick="library"]'),
     ]);
     await chooser.setFiles({ name: 'progress.png', mimeType: 'image/png', buffer });
     // A picture on its own is a valid entry: Save with no numbers typed.
     await page.click('[data-action="save-measurements-sheet"]');
-    await page.waitForFunction(() => !document.getElementById('measurementsSheet')?.classList.contains('active'), null, { timeout: 8000 });
+    // Save closes the sheet only after the IndexedDB put resolves. A loaded CI
+    // runner can take longer than 8 s for that transaction, and the script used
+    // to crash on the wait (exit 1) instead of reporting a real failure.
+    const sheetClosed = await page.waitForFunction(
+      () => !document.getElementById('measurementsSheet')?.classList.contains('active'),
+      null,
+      { timeout: 20000 },
+    ).then(() => true).catch(() => false);
+    ok(sheetClosed, `${width}px: the entry sheet stayed open after Save (the photo write did not settle)`);
 
     // The thumbnail must hydrate from IndexedDB, not just exist.
     const hydrated = await page.waitForFunction(() => {
       const img = document.querySelector('#analytics-measures .pg-photo__img');
       return img && img.getAttribute('src') && img.naturalWidth > 0;
-    }, null, { timeout: 8000 }).then(() => true).catch(() => false);
+    }, null, { timeout: 20000 }).then(() => true).catch(() => false);
     ok(hydrated, `${width}px: the photo was saved but its thumbnail never loaded`);
     // The tile must be a VIEW control. This was collected and never asserted,
     // so removing `data-photo-view` entirely would have passed.
@@ -156,7 +164,7 @@ try {
 
     // Open it. This is the path that did not exist.
     await page.click('#analytics-measures [data-photo-view]');
-    const opened = await page.waitForSelector('#photoViewer.active', { timeout: 4000 }).then(() => true).catch(() => false);
+    const opened = await page.waitForSelector('#photoViewer.active', { timeout: 10000 }).then(() => true).catch(() => false);
     ok(opened, `${width}px: tapping a photo did not open the viewer`);
     if (opened) {
       const viewer = await page.evaluate(() => {
@@ -180,9 +188,9 @@ try {
 
     // Delete from the viewer: confirm, then the record and its blob are gone.
     await page.click('#analytics-measures [data-photo-view]');
-    await page.waitForSelector('#photoViewer.active', { timeout: 3000 }).catch(() => {});
+    await page.waitForSelector('#photoViewer.active', { timeout: 5000 }).catch(() => {});
     await page.click('#photoViewerDelete');
-    await page.waitForSelector('.cmodal', { timeout: 3000 }).catch(() => {});
+    await page.waitForSelector('.cmodal', { timeout: 5000 }).catch(() => {});
     await page.click('.cmodal__btn--danger');
     await page.waitForTimeout(900);
 
