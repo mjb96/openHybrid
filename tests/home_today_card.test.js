@@ -51,6 +51,8 @@ test('ready state uses the real calendar day and exposes one primary action', ()
   const html = todayCardHTML(card);
   assert.equal((html.match(/id="homePrimaryCta"/g) || []).length, 1);
   assert.match(html, /data-day="mon"/);
+  // What today costs, from the same liftTarget the cockpit honours.
+  assert.match(card.meta, /1 lift · 2 sets$/);
 });
 
 test('today is independent of a previously selected cockpit day', () => {

@@ -209,6 +209,9 @@ try {
               reachable: !!hit && (row === hit || row.contains(hit)),
             };
           })(),
+          nextUp: document.getElementById('homeWeekNext')?.textContent?.trim() || '',
+          nextUpVisible: (document.getElementById('homeWeekNext')?.getBoundingClientRect().height || 0) > 0,
+          metaText: card?.querySelector('.today-card__meta')?.textContent?.trim() || '',
           overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
         };
       });
@@ -243,6 +246,8 @@ try {
       ok(layout.previewRows === 1, `${theme} ${width}px previews today's one lift`);
       ok(/EZ-Bar Curl/.test(layout.previewText) && /2×8/.test(layout.previewText), `${theme} ${width}px preview shows the lift and target (${layout.previewText})`);
       ok(layout.compactPreviewVisible && /EZ-Bar Curl 2×8/.test(layout.compactPreview), `${theme} ${width}px keeps a compact preview in the collapsed row (${layout.compactPreview})`);
+      ok(/1 lift · 2 sets/.test(layout.metaText), `${theme} ${width}px states what today costs (${layout.metaText})`);
+      ok(layout.nextUpVisible && /^Next up: /.test(layout.nextUp), `${theme} ${width}px names the next planned session (${layout.nextUp})`);
       // The readiness score used to hide in the detail block of a collapsed
       // card. It must be readable and reachable in the default state.
       ok(!!layout.readiness, `${theme} ${width}px shows the readiness row on the collapsed ready card`);
@@ -385,6 +390,7 @@ try {
     ok(await page.locator('#view-home.active').count() === 1, 'today date stays on Home');
     await page.locator('[data-action="home-week-prev"]').click();
     await page.waitForSelector('.week-recap');
+    ok(await page.locator('#homeWeekNext').isHidden(), 'a past week does not promise a next session');
     const done = page.locator('#homeWeekDays .home-week-day--done').first();
     ok(await done.count() >= 1, 'past week shows a completed day');
     await done.click();

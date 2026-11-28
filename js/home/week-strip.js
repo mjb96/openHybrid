@@ -25,7 +25,8 @@ function shortDate(dateISO) {
 /**
  * @param {{ state:any, program:any, days?:string[], today?:string }} opts
  * @returns {{ days: Array<{day:string,label:string,date:string|null,status:string,planned:boolean,done:boolean,isToday:boolean}>,
- *   doneCount:number, plannedCount:number, pct:number|null, weekStart:string, range:string }}
+ *   doneCount:number, plannedCount:number, pct:number|null, weekStart:string, range:string,
+ *   nextPlanned: { date: string, day: string, title: string }|null }}
  */
 export function buildHomeWeekStrip({ state, program = null, days = DAY_ORDER, today }) {
   // Home is a CALENDAR surface. `state.currentWeek` is a program counter and can
@@ -76,12 +77,27 @@ export function buildHomeWeekStrip({ state, program = null, days = DAY_ORDER, to
     });
   });
 
+  // The next planned session AFTER today: the rail only shows a dot, so this is
+  // the one line that answers "what's coming" without tapping a date. Today's
+  // own session is deliberately excluded - the Today card owns it.
+  let nextPlanned = null;
+  for (const cell of cells) {
+    if (!cell.date || cell.date <= todayISO || !cell.planned) continue;
+    nextPlanned = {
+      date: cell.date,
+      day: cell.programDay,
+      title: program?.days?.[cell.programDay]?.title || '',
+    };
+    break;
+  }
+
   const weekEnd = addDaysISO(weekStart, 6);
   return {
     days: cells,
     doneCount,
     plannedCount,
     pct: plannedCount > 0 ? Math.round((doneCount / plannedCount) * 100) : null,
+    nextPlanned,
     weekStart,
     range: `${shortDate(weekStart)} – ${shortDate(weekEnd)}`,
   };

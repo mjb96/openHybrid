@@ -65,6 +65,20 @@ test('a moved day carries its plan on the target date and rests on its own', () 
   assert.equal(strip.plannedCount, 5);
 });
 
+test('the strip names the next planned session after today', () => {
+  const strip = buildHomeWeekStrip({ state, program, days, today: '2026-11-19' });
+  assert.deepEqual(strip.nextPlanned, { date: '2026-11-20', day: 'fri', title: 'Push' });
+});
+
+test('today own session is not repeated as "next up", and nothing is left after Friday', () => {
+  const todayStrip = buildHomeWeekStrip({ state, program, days, today: '2026-11-17' });
+  // Tuesday is today, so the next planned day is Wednesday - never today.
+  assert.equal(todayStrip.nextPlanned.date, '2026-11-18');
+  const friday = buildHomeWeekStrip({ state, program, days, today: '2026-11-20' });
+  // Only Saturday/Sunday remain and both are rest days.
+  assert.equal(friday.nextPlanned, null);
+});
+
 test('a completed run counts as done and respects the week start', () => {
   state.weeks['1'].runSessions.thu = [{ sessionId: 'r1', dist: '5', time: '27:00' }];
   state.settings.weekStartDay = 'sun';
