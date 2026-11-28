@@ -188,7 +188,17 @@ try {
     await page.waitForSelector('#cockpitTimerBar.active');
     const reloadSeconds = Math.round((Date.now() - reloadStartedAt) / 1000);
     const restored = await readTimer(page);
-    console.log(`${tag} reload:`, JSON.stringify({ beforeReload, after: restored.clock, paused: restored.paused, reloadSeconds }));
+    // The persisted snapshot is the contract: while a rest is running it holds
+    // an ABSOLUTE `endsAt`. Comparing against a wall-clock allowance from the
+    // pre-reload reading let a loaded runner fail by one display second (the
+    // interval rounds to whole seconds at both ends). Judge the restored clock
+    // against the end time the app actually stored instead, with a two-second
+    // allowance for the 250 ms tick and the one-second display granularity.
+    const restoredAt = Date.now();
+    const snapshot = await page.evaluate((key) => {
+      try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
+    }, 'hybrid_restTimer_v1');
+    console.log(`${tag} reload:`, JSON.stringify({ beforeReload, after: restored.clock, paused: restored.paused, reloadSeconds, endsIn: snapshot?.endsAt ? Math.round((snapshot.endsAt - restoredAt) / 1000) : null }));
     if (!restored.active) fail(`${tag}: reloading lost the running rest timer`);
     if (restored.paused) fail(`${tag}: the restored rest came back paused`);
     const clockSeconds = (clock) => {
@@ -198,9 +208,13 @@ try {
     if (clockSeconds(restored.clock) >= clockSeconds(beforeReload)) {
       fail(`${tag}: the restored rest ignored time spent reloading (${beforeReload} -> ${restored.clock})`);
     }
-    // +2 s covers the one-second display granularity either side of the reload.
-    if (clockSeconds(restored.clock) < clockSeconds(beforeReload) - (reloadSeconds + 2)) {
-      fail(`${tag}: the restored rest lost more time than the reload took (${beforeReload} -> ${restored.clock} over ${reloadSeconds}s)`);
+    if (!snapshot || !Number.isFinite(snapshot.endsAt) || snapshot.endsAt <= 0) {
+      fail(`${tag}: the storage snapshot the reload restored from is not an absolute end time (${JSON.stringify(snapshot)})`);
+    } else {
+      const expected = Math.max(0, Math.round((snapshot.endsAt - restoredAt) / 1000));
+      if (Math.abs(clockSeconds(restored.clock) - expected) > 2) {
+        fail(`${tag}: the restored rest disagrees with the stored end time (${restored.clock} vs ~${expected}s remaining)`);
+      }
     }
     await page.waitForTimeout(1500);
     if ((await readTimer(page)).clock === restored.clock) {
