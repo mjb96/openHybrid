@@ -363,32 +363,56 @@ function renderHomeWeek(appState, activeProgram) {
 
 function renderHomeInsight(model, state, options = {}) {
   const card = document.getElementById('homeInsightCard');
+  const line = document.getElementById('homeInsightLine');
   const text = document.getElementById('homeInsightText');
+  const answer = document.getElementById('coachAnswer');
+  if (!card || !line || !text) return;
+  const hide = () => {
+    card.hidden = true;
+    // A stale answer must never greet a different day or week.
+    if (answer) { answer.hidden = true; answer.textContent = ''; }
+  };
+  // The coach line belongs to Today's settled state. A past week or a picked
+  // day owns the surface instead, so the whole card yields rather than
+  // answering about a different day.
+  if (_homeWeekOffset < 0 || _homeSelectedDate) { hide(); return; }
+
   // HM4: a strength "because" line may replace a generic insight, but never a
-  // warning, and never while the overtraining escalation is on screen. Skip the
-  // diagnostic scan entirely when the line would be discarded anyway.
+  // warning. Skip the diagnostic scan entirely when the line would be discarded.
   const top = model?.topInsight;
   const replaceable = !top || (top.tone !== 'warning' && top.tone !== 'caution');
   const strength = replaceable ? buildStrengthInsight(state, model, options) : null;
-  const insight = chooseHomeInsight(top, strength, options);
-  if (!card || !text) return;
-  // One voice for safety: while the overtraining escalation is on screen it owns
-  // the message, so the advisory coach line yields (the briefing does the same).
-  if (options.safetyActive) { card.hidden = true; return; }
-  // The coach line belongs to Today's settled state. A past week or a picked
-  // day owns the surface instead, so the insight yields rather than describing
-  // a different day.
-  if (!insight || _homeWeekOffset < 0 || _homeSelectedDate) { card.hidden = true; return; }
-  const nav = String(insight.nav || 'progress');
-  if (nav === 'custom:fasting' && !moduleEnabled(state, 'fasting')) { card.hidden = true; return; }
-  if (nav.startsWith('recovery') && !moduleEnabled(state, 'recovery')) { card.hidden = true; return; }
-  text.textContent = insight.text;
-  if (nav === 'custom:fasting') {
-    card.setAttribute('data-action', 'open-fasting-detail');
-    card.removeAttribute('data-context');
+  let insight = chooseHomeInsight(top, strength, options);
+  // The briefing already writes two advisory lines Home used to throw away: a
+  // streak at risk and a memory drawn from the athlete's own history. They are
+  // words, not new figures (HM7), and only fill a line that would otherwise be
+  // empty.
+  if (!insight || insight.tone === 'neutral') {
+    const streakRisk = options.briefing?.streakRisk?.text;
+    if (streakRisk) insight = { text: streakRisk, tone: 'caution', nav: 'streak' };
+    else if (options.briefing?.memory) insight = { text: String(options.briefing.memory), tone: 'neutral', nav: 'progress' };
+  }
+
+  // One voice for safety: while the overtraining escalation is on screen it
+  // owns the message, so the advisory LINE yields - but the chips stay, because
+  // "should I train today?" is exactly the question a red card raises.
+  const suppressed = !!options.safetyActive;
+  if (suppressed || !insight) {
+    line.hidden = true;
+    text.textContent = '';
   } else {
-    card.setAttribute('data-action', 'open-analytics');
-    card.setAttribute('data-context', nav);
+    const nav = String(insight.nav || 'progress');
+    if (nav === 'custom:fasting' && !moduleEnabled(state, 'fasting')) { hide(); return; }
+    if (nav.startsWith('recovery') && !moduleEnabled(state, 'recovery')) { hide(); return; }
+    text.textContent = insight.text;
+    line.hidden = false;
+    if (nav === 'custom:fasting') {
+      line.setAttribute('data-action', 'open-fasting-detail');
+      line.removeAttribute('data-context');
+    } else {
+      line.setAttribute('data-action', 'open-analytics');
+      line.setAttribute('data-context', nav);
+    }
   }
   card.hidden = false;
 }
@@ -690,7 +714,7 @@ export function renderHome() {
   }
   // After the Today mount: a selected date with no recap is cleared above, so
   // the guard here sees the settled surface.
-  renderHomeInsight(model, appState, { safetyActive: overtrainingActive, selectedDay: homeDay });
+  renderHomeInsight(model, appState, { safetyActive: overtrainingActive, selectedDay: homeDay, briefing });
   renderHomeSupportingSignals(appState, model);
   renderHomeVolumeGuide(appState, activeProgram);
 

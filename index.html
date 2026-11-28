@@ -470,12 +470,21 @@
         <!-- Pinned: the strip may be hidden in Customize; the decision cannot. -->
         <div id="homeTodayCard"></div>
         <!-- One coach line lives inside Today's surface: it follows the settled
-             day/week selection and never competes as a separate card. -->
-        <button class="home-insight" id="homeInsightCard" data-home-card="insight" data-action="open-analytics" data-context="progress" hidden>
-          <span class="home-insight__eyebrow">Coach</span>
-          <span class="home-insight__text" id="homeInsightText"></span>
-          <span class="home-insight__arrow" aria-hidden="true">›</span>
-        </button>
+             day/week selection and never competes as a separate card. The chips
+             are the ask-the-coach entry: deterministic answers from the same
+             model, never a chat surface. -->
+        <div class="home-insight" id="homeInsightCard" data-home-card="insight" hidden>
+          <button type="button" class="home-insight__line" id="homeInsightLine" data-action="open-analytics" data-context="progress">
+            <span class="home-insight__eyebrow">Coach</span>
+            <span class="home-insight__text" id="homeInsightText"></span>
+            <span class="home-insight__arrow" aria-hidden="true">›</span>
+          </button>
+          <div class="home-insight__ask" role="group" aria-label="Ask the coach">
+            <button type="button" class="home-insight__chip" data-action="coach-ask" data-q="train-today">Train today?</button>
+            <button type="button" class="home-insight__chip" data-action="coach-ask" data-q="readiness">How recovered am I?</button>
+          </div>
+          <p class="home-insight__answer" id="coachAnswer" aria-live="polite" hidden></p>
+        </div>
       </section>
 
       <!-- Hybrid section: only the metrics Home does not already show. The

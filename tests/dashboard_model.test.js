@@ -175,7 +175,9 @@ test('high readiness is owned by the Today card, not the coach', () => {
   const s = highReadinessState([{ w: '100', r: '5', c: true }, { w: '100', r: '5', c: false }]);
   const m = computeDashboardModel(s, DAYS, GYM_PROGRAM, 'mon');
   assert.ok(m.ready.score >= 85, `expected high readiness, got ${m.ready.score}`);
-  assert.doesNotMatch(m.topInsight.text, /readiness|primed for a hard session/i);
+  // Nothing advisory to say once readiness owns the read, so the line is absent
+  // rather than a platitude.
+  assert.equal(m.topInsight, null);
 });
 
 test('a logged session never resurrects the readiness line', () => {
@@ -221,6 +223,7 @@ test('the coach line counts planned sessions, not completed set rows', () => {
   // The set-row percentage is a different unit and may be 100 for one logged
   // set; it must not be presented as "the plan".
   assert.equal(m.week.consistencyPct, 100);
-  // The week rail owns plan progress; the coach must not repeat it (HM7).
-  assert.doesNotMatch(m.topInsight.text, /planned sessions?/i);
+  // The week rail owns plan progress, and with no advisory story the coach line
+  // is absent rather than restating it (HM7).
+  assert.equal(m.topInsight, null);
 });
