@@ -324,7 +324,6 @@ export const ANALYTICS_INVENTORY = Object.freeze([
 ]);
 
 export const ANALYTICS_EXCLUSIONS = Object.freeze([
-  { pattern: 'Dormant TILE_REGISTRY configurations', reason: 'The former Home At-a-Glance grid has been removed; these remain code configurations pending safe deletion, not current user-facing analytics.' },
   { pattern: 'Activity rows and recent-session rows', reason: 'Evidence/navigation records, not derived analytics; they remain exact interactive destinations.' },
   { pattern: 'Program cards and workout prescriptions', reason: 'Plans and actions, not measurements of completed performance.' },
   { pattern: 'Coach recommendations and warning copy', reason: 'Interpretations of metrics, inventoried through their source metric rather than counted as duplicate numeric tiles.' },

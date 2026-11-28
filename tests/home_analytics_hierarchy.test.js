@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const indexHTML = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const dashboardSource = await readFile(new URL('../js/dashboard.js', import.meta.url), 'utf8');
 
 test('This week leads Home, then the compact Today card', () => {
   const weekAt = indexHTML.indexOf('id="homeWeekStrip"');
@@ -51,6 +50,7 @@ test('Home offers one Start, not a competing Workout quick action', () => {
   assert.match(quickBlock, /class="home-quick-btn btn-history-link"/);
 });
 
-test('the dormant tile catalogue no longer defines a Home tile selection', () => {
-  assert.doesNotMatch(dashboardSource, /HOME_TILE_IDS/);
+test('the retired tile catalogue cannot come back', async () => {
+  const { existsSync } = await import('node:fs');
+  assert.equal(existsSync(new URL('../js/dashboard.js', import.meta.url)), false);
 });

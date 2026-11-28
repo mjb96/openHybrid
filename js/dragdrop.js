@@ -3,7 +3,6 @@
 // ==========================================
 import { showToast } from './state.js';
 import { createSortable } from './ui/sortable.js';
-import { DEFAULT_HIDDEN_TILES } from './dashboard.js';
 import { activeWorkoutDay, activeWorkoutWeekKey } from './workout/one-off-session.js';
 
 let _getState;
@@ -63,83 +62,4 @@ export function commitReorderedDOMStateToStorage() {
   appState.weeks[wk].liftOrder[selectedDay] = newOrder;
   _saveState(true);
   showToast('Order updated ✓');
-}
-
-// ==========================================
-// DASHBOARD TILE LAYOUT PERSISTENCE
-// Order + hidden live in appState (appState.dashboardTiles) so they export and
-// saved with the rest of the user's data. Legacy standalone localStorage
-// keys are migrated once on load in state.js.
-// ==========================================
-function _dashboardTiles() {
-  const st = _getState?.();
-  if (!st) return null;
-  if (!st.dashboardTiles) st.dashboardTiles = { order: null, hidden: null };
-  return st.dashboardTiles;
-}
-
-export function loadTileOrder() {
-  const t = _dashboardTiles();
-  return t && Array.isArray(t.order) ? t.order : null;
-}
-
-export function saveTileOrder(orderedIds) {
-  const t = _dashboardTiles();
-  if (!t) return;
-  t.order = orderedIds;
-  _saveState?.(true);
-}
-
-export function resetTileOrder() {
-  const t = _dashboardTiles();
-  if (!t) return;
-  t.order = null;
-  _saveState?.(true);
-}
-
-// ==========================================
-// DASHBOARD TILE REORDER
-// Press-and-hold a tile to pick it up; the grid reflows around it. The synthetic
-// tile id prefix (glance-tile-) maps back to the registry id we persist.
-// ==========================================
-export function mountTileDragAndDrop() {
-  const grid = document.getElementById('glanceGrid');
-  if (!grid) return;
-  createSortable(grid, {
-    itemSelector: '.glance-card',
-    layout: 'grid',
-    holdDelay: 230,
-    onReorder: (items) => {
-      const ids = items
-        .map(t => t.id.replace('glance-tile-', ''))
-        .filter(id => id && id !== 'connect-health');
-      saveTileOrder(ids);
-      showToast('Tile order saved ✓');
-    },
-  });
-}
-
-// ==========================================
-// HIDDEN TILES PERSISTENCE (appState-backed)
-// ==========================================
-// hidden === null means "never customised" → the focused default set (R4).
-// Any saved array — including [] (user chose to show everything) — wins.
-export function loadHiddenTiles() {
-  const t = _dashboardTiles();
-  if (t && Array.isArray(t.hidden)) return new Set(t.hidden);
-  return new Set(DEFAULT_HIDDEN_TILES);
-}
-
-export function saveHiddenTiles(hiddenSet) {
-  const t = _dashboardTiles();
-  if (!t) return;
-  t.hidden = [...hiddenSet];
-  _saveState?.(true);
-}
-
-export function resetHiddenTiles() {
-  const t = _dashboardTiles();
-  if (!t) return;
-  t.hidden = null;   // back to the focused default set
-  _saveState?.(true);
 }

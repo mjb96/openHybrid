@@ -65,7 +65,7 @@ test('inventory summary and explicit non-analytic exclusions remain reviewable',
   assert.equal(summary.metrics, ANALYTICS_INVENTORY.length);
   assert.equal(summary.newlyExact, RUNNING_METRICS.length + STRENGTH_METRICS.length);
   assert.ok(summary.tileInstances >= summary.metrics);
-  assert.ok(ANALYTICS_EXCLUSIONS.length >= 5);
+  assert.ok(ANALYTICS_EXCLUSIONS.length >= 4);
 });
 
 test('Profile reads the canonical persisted Health Connect field names', () => {
