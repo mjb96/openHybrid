@@ -71,13 +71,13 @@ export function recentActivities(state, limit = 3) {
  * Build the Train landing model.
  *
  * @param {{
- *   state: any, program?: any, model?: any, briefing?: any, score?: any,
+ *   state: any, program?: any, model?: any, briefing?: any,
  *   now?: Date, tz?: string, offline?: boolean, recentLimit?: number,
  *   days?: string[],
  * }} options
  */
 export function buildTrainLanding(options) {
-  const { state, program = null, model = null, briefing = null, score = null,
+  const { state, program = null, model = null, briefing = null,
     now = new Date(), tz = undefined, offline = false, recentLimit = 3,
     days = DAY_KEYS } = options || {};
 
@@ -88,7 +88,7 @@ export function buildTrainLanding(options) {
   const scheduledToday = scheduledDayForDate(state, program, todayISO);
   const todayDay = scheduledToday?.day || null;
   const noSession = !scheduledToday && !!weekStart && isMovedAway(state, weekday, weekStart);
-  const today = buildTodayCardModel({ state, program, model, briefing, score, now, offline, tz, todayDay, noSession });
+  const today = buildTodayCardModel({ state, program, model, briefing, now, offline, tz, todayDay, noSession });
   const week = buildHomeWeekStrip({ state, program, days, today: todayISO });
   const recent = recentActivities(state, recentLimit)
     .filter((row) => !['run', 'walk', 'ride'].includes(row.kind) || moduleEnabled(state, 'running'));

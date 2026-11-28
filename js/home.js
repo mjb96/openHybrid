@@ -603,12 +603,6 @@ export function renderHome() {
   renderSafely('home:hybrid', () => renderHomeHybrid(appState, { today: renderDay }));
   renderHomeBodyweight(document.getElementById('homeBodyweightCard'), appState);
 
-  // V2 (S4): engine stall alerts move off Home — the one-hero Home keeps only
-  // the recovery flag slot (overtraining/deload). Stall diagnostics still surface
-  // in the workout cockpit where they're actionable.
-  const engineAlertCard = document.getElementById('homeEngineAlertCard');
-  if (engineAlertCard) engineAlertCard.style.display = 'none';
-
   const scoreResult = renderHybridScoreHome(appState, model);
 
   // Overtraining escalation assessed ONCE here (and reused below). This also
@@ -683,7 +677,6 @@ export function renderHome() {
         program: activeProgram,
         model,
         briefing,
-        score: scoreResult,
         todayDay: homeDay,
         noSession: todayMovedAway,
         offline: typeof navigator !== 'undefined' && navigator.onLine === false,
@@ -700,11 +693,6 @@ export function renderHome() {
   renderHomeInsight(model, appState, { safetyActive: overtrainingActive, selectedDay: homeDay });
   renderHomeSupportingSignals(appState, model);
   renderHomeVolumeGuide(appState, activeProgram);
-
-  // V2 (S4): the week-compare card moves off Home — it was one of several
-  // redundant "did you train this week" renderings the Hybrid Score already owns.
-  const compareCard = document.getElementById('homeWeekCompareCard');
-  if (compareCard) compareCard.style.display = 'none';
 
   // Overtraining escalation (R10) takes priority over the advisory deload card.
   // Wrapped so a render fault degrades to "card hidden" AND is reported — never a
