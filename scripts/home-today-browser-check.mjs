@@ -132,8 +132,8 @@ function fixture({ state = 'ready', theme = 'dark', hideWeekStrip = false, pastW
       } : {}),
     },
     loadMetrics: { atl: 0, ctl: 0 },
-    healthConnect: { connected: false, hrv: [], restingHR: [], sleep: [], steps: [], vo2max: [] },
-    wellnessLog: [], bodyWeightLog: [],
+    healthConnect: { connected: true, hrv: [], restingHR: [], sleep: [{ date: todayISO, totalHours: 6.2 }], steps: [], vo2max: [] },
+    wellnessLog: [{ date: todayISO, mood: 4, soreness: 2 }], bodyWeightLog: [],
     programLibrary: { bookmarks: [], completions: [], recentlyViewed: [], personalRatings: {}, activeFilters: {} },
     hybridScore: { history: [], xp: 0, lastRecordedDate: null },
   };
@@ -188,6 +188,18 @@ try {
             && (todayMount.compareDocumentPosition(insight) & Node.DOCUMENT_POSITION_FOLLOWING)),
           insightVisible: !!insight && !insight.hidden,
           insightHeight: insight?.getBoundingClientRect().height || 0,
+          readiness: (() => {
+            const row = card?.querySelector('.today-card__readiness');
+            if (!row) return null;
+            const box = row.getBoundingClientRect();
+            const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+            return {
+              text: row.textContent.replace(/\s+/g, ' ').trim(),
+              aria: row.getAttribute('aria-label') || '',
+              height: Math.round(box.height),
+              reachable: !!hit && (row === hit || row.contains(hit)),
+            };
+          })(),
           overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
         };
       });
@@ -204,6 +216,15 @@ try {
       ok(layout.previewRows === 1, `${theme} ${width}px previews today's one lift`);
       ok(/EZ-Bar Curl/.test(layout.previewText) && /2×8/.test(layout.previewText), `${theme} ${width}px preview shows the lift and target (${layout.previewText})`);
       ok(layout.compactPreviewVisible && /EZ-Bar Curl 2×8/.test(layout.compactPreview), `${theme} ${width}px keeps a compact preview in the collapsed row (${layout.compactPreview})`);
+      // The readiness score used to hide in the detail block of a collapsed
+      // card. It must be readable and reachable in the default state.
+      ok(!!layout.readiness, `${theme} ${width}px shows the readiness row on the collapsed ready card`);
+      if (layout.readiness) {
+        ok(/^Readiness \d+/.test(layout.readiness.aria), `${theme} ${width}px names the readiness read ("${layout.readiness.aria}")`);
+        ok(/limited signal|developing read|Ready|Moderate|Peak|Low|Rest Advised/.test(layout.readiness.text), `${theme} ${width}px states the readiness status (${layout.readiness.text})`);
+        ok(layout.readiness.height >= 44, `${theme} ${width}px readiness row meets 44px`);
+        ok(layout.readiness.reachable, `${theme} ${width}px readiness row is not covered`);
+      }
       ok(layout.cardWithinViewport, `${theme} ${width}px keeps the complete Today decision in the first viewport`);
       ok(layout.inFocusCards === 0, `${theme} ${width}px removes the In Focus cards`);
       ok(layout.glanceGrids === 0, `${theme} ${width}px removes the repeated At-a-Glance grid`);

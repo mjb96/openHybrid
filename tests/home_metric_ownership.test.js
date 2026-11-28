@@ -9,7 +9,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { pickTopInsight } from '../js/home/dashboard-model.js';
-import { buildTodayCardModel } from '../js/home/today-card.js';
+import { buildTodayCardModel, todayCardHTML } from '../js/home/today-card.js';
 
 const model = (overrides = {}) => ({
   rec: { badge: 'Productive', headline: 'On track' },
@@ -56,7 +56,7 @@ test('data with no story gets an honest prompt, not an invented metric', () => {
   assert.match(pickTopInsight(model({ ready: { hasData: false }, calendarWeek: { sets: 0 }, week: { planDone: 0, planTotal: 0 } })).text, /Log a few sessions/);
 });
 
-test('the Today card remains the one readiness surface', () => {
+test('the Today card remains the one readiness surface, with the score in its own row', () => {
   const card = buildTodayCardModel({
     state: {
       currentWeek: '1', activeProgramId: 'test',
@@ -70,5 +70,9 @@ test('the Today card remains the one readiness surface', () => {
     now: new Date('2026-08-03T09:00:00+10:00'),
     tz: 'Australia/Sydney',
   });
-  assert.match(card.guidance, /Readiness 78/);
+  // The figure has one owner: the readiness row. Guidance is advice only, so a
+  // collapsed card can never hide the score behind the chevron.
+  assert.equal(card.readiness.score, 78);
+  assert.doesNotMatch(card.guidance, /readiness|\b78\b/i);
+  assert.match(todayCardHTML(card, { expanded: false }), /today-card__readiness/);
 });

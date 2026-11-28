@@ -364,9 +364,68 @@ test('a one-signal readiness read says it is limited instead of settled', () => 
     state: started, program: PROGRAM, now: MONDAY, tz: DISPLAY_TZ,
     model: { ready: { hasData: true, score: 55, confidence: 'low' }, rec: { badge: 'Productive', headline: 'On track' } },
   });
-  assert.match(card.guidance, /limited signal/);
-  assert.match(card.guidance, /sharper read/);
+  const html = todayCardHTML(card, { expanded: false });
+  assert.equal(card.readiness.confidence, 'low');
+  // The confidence caveat moved from prose (hidden while collapsed) into the
+  // always-visible readiness row.
+  assert.match(html, /limited signal/);
+  assert.doesNotMatch(html, /is limiting/);
+  assert.doesNotMatch(card.guidance, /readiness 55/i);
 });
+
+test('the readiness row names the limiting signal only when there is more than one', () => {
+  const card = buildTodayCardModel({
+    state: state(), program: PROGRAM, now: MONDAY, tz: DISPLAY_TZ,
+    model: {
+      ready: {
+        hasData: true, score: 62, status: 'Moderate', confidence: 'high',
+        evidence: [
+          { key: 'hrv', label: 'HRV vs baseline', score: 88 },
+          { key: 'sleep', label: 'Latest sleep', score: 30 },
+          { key: 'load', label: 'Training load balance', score: 75 },
+        ],
+      },
+      rec: { badge: 'Productive', headline: 'On track' },
+    },
+  });
+  assert.equal(card.readiness.limiting, 'Latest sleep');
+  assert.equal(card.readiness.tone, 'moderate');
+  const html = todayCardHTML(card, { expanded: false });
+  assert.match(html, /Latest sleep is limiting/);
+  const expandedHtml = todayCardHTML(card, { expanded: true });
+  assert.match(expandedHtml, /Read from HRV vs baseline · Latest sleep · Training load balance\./);
+});
+
+test('no readiness data renders no row at all', () => {
+  const card = buildTodayCardModel({
+    state: state(), program: PROGRAM, now: MONDAY, tz: DISPLAY_TZ,
+    model: { ready: { hasData: false }, rec: { badge: 'Getting Started', headline: 'Easy does it' } },
+  });
+  assert.equal(card.readiness, null);
+  assert.doesNotMatch(todayCardHTML(card, { expanded: false }), /today-card__readiness/);
+});
+
+test('the readiness row is a link only while the Recovery module is on', () => {
+  const ready = { hasData: true, score: 80, status: 'Ready', confidence: 'high' };
+  const on = buildTodayCardModel({
+    state: state(), program: PROGRAM, now: MONDAY, tz: DISPLAY_TZ,
+    model: { ready, rec: { badge: 'Productive', headline: 'On track' } },
+  });
+  assert.equal(on.readiness.linked, true);
+  assert.match(todayCardHTML(on, { expanded: false }), /data-context="recovery-score"/);
+
+  const offState = state();
+  offState.settings = { modules: { recovery: false } };
+  const off = buildTodayCardModel({
+    state: offState, program: PROGRAM, now: MONDAY, tz: DISPLAY_TZ,
+    model: { ready, rec: { badge: 'Productive', headline: 'On track' } },
+  });
+  assert.equal(off.readiness.linked, false);
+  const html = todayCardHTML(off, { expanded: false });
+  assert.match(html, /today-card__readiness/);
+  assert.doesNotMatch(html, /recovery-score/);
+});
+
 
 test('the offline note is visible in the card head, not only the detail', () => {
   const card = buildTodayCardModel({
